@@ -6,6 +6,22 @@ from crmonitor.common.helper import (_compute_jerk,
                                      )
 from typing import List
 from commonroad.scenario.obstacle import State
+from vehiclemodels.parameters_vehicle1 import VehicleParameters
+
+
+def check_velocity_feasibility(state: State, parameters: VehicleParameters):
+    if state.velocity < 0 or \
+            state.velocity > parameters.longitudinal.v_max:
+        return False
+    return True
+
+
+def check_steering_angle_feasibility(state: State, parameters: VehicleParameters):
+    if state.steering_angle < parameters.steering.min or \
+            state.steering_angle > parameters.steering.max:
+        return False
+    return True
+
 
 def update_ego_vehicle(world_state: WorldState,
                        updated_ego_states: List[State],
