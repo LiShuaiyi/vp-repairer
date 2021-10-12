@@ -1,11 +1,12 @@
 from enum import Enum
+from math import sqrt
 from abc import ABC, abstractmethod
 
 from commonroad.common.solution import VehicleType
 from commonroad.scenario.obstacle import DynamicObstacle, State
 from commonroad_dc.feasibility.vehicle_dynamics import (KinematicSingleTrackDynamics,
                                                         PointMassDynamics)
-from commonroad_dc.feasibility.feasibility_checker import state_transition_feasibility
+from crmonitor.common.world_state import WorldState
 from cut_off.utils import check_steering_angle_feasibility, check_velocity_feasibility
 
 
@@ -69,7 +70,7 @@ class SimulationLong(SimulationBase, ABC):
                  simulated_vehicle: DynamicObstacle,
                  start_time: int):
         assert action == CutOffAction.BRAKE or action == CutOffAction.KICKDOWN\
-            or action == CutOffAction.STEADYSPEED, "<SimulateLong>: provided action {} is not supported".format(action)
+            or action == CutOffAction.STEADYSPEED, "<SimulationLong>: provided action {} is not supported".format(action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
 
     def set_inputs(self):
@@ -93,6 +94,68 @@ class SimulationLong(SimulationBase, ABC):
             else:
                 self._input.acceleration = 0
         return self._state_list
+
+
+class SimulationLateral(SimulationBase, ABC):
+    def __init__(self,  action: CutOffAction,
+                 simulated_vehicle: DynamicObstacle,
+                 start_time: int,
+                 world_state: WorldState):
+        assert action == CutOffAction.LANECHANGELEFT or action == CutOffAction.LANECHANGERIGHT,\
+            "<SimulationLateral>: provided action {} is not supported".format(action)
+        super().__init__(action, simulated_vehicle, start_time, dt=0.1)
+        self._vehicle_dynamics = KinematicSingleTrackDynamics(VehicleType.BMW_320i)
+        self._world_state = world_state
+
+    def set_target_lane(self):
+        if self.action == CutOffAction.LANECHANGELEFT:
+            return self._world_state.ego_vehicle.lane.adj_left
+        else:
+            return self._world_state.ego_vehicle.lane.adj_right
+
+    def calc_total_time(self, lat_dist):
+        return sqrt(2*lat_dist/self.parameters.longitudinal.a_max)
+
+    def set_inputs(self):
+        self._input.acceleration = 0
+        if self.action == CutOffAction.LANECHANGELEFT:
+            self._input.steering_angle_speed = self._vehicle_dynamics.parameters.steering.v_max
+        elif self.action == CutOffAction.LANECHANGERIGHT:
+            self._input.steering_angle_speed = self._vehicle_dynamics.parameters.steering.v_min
+        else:
+            self._input.steering_angle_speed = 0
+
+    def simulate_state_list(self):
+        self.set_inputs()
+        target_lane = self.set_target_lane()
+        lateral_distance = self._world_state.ego_vehicle.lane.width(self._world_state.ego_vehicle.
+                                                                    states_lon[self._cut_off_state.time_step].s)/2 + \
+                           target_lane.width(self._world_state.ego_vehicle.
+                                             states_lon[self._cut_off_state.time_step].s)/2
+        total_time = self.calc_total_time(lateral_distance)
+        current_state = self._cut_off_state
+        # bang-bang input
+        while current_state.time_step < self._time_horizon:
+            for i in range(4):
+                self.bang_bang_simulation(current_state, int(total_time/(4*self._dt)))
+                current_state = self._state_list[-1]
+                self._input.steering_angle_speed = - self._input.steering_angle_speed
+            self._input.steering_angle_speed = 0
+            self._input.time_step = current_state.time_step
+            current_state = self._vehicle_dynamics.simulate_next_state(current_state, self._input, self._dt, throw=False)
+            self._state_list.append(current_state)
+        pass
+
+    def bang_bang_simulation(self, state, time_horizon):
+        pre_state = state
+        for i in range(time_horizon):
+            self._input.time_step = pre_state.time_step
+            suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
+            if suc_state and check_steering_angle_feasibility(suc_state, self._vehicle_dynamics.parameters):
+                self._state_list.append(suc_state)
+                pre_state = suc_state
+            else:
+                self._input.steering_angle_speed = 0
 
 
 if __name__ == '__main__':

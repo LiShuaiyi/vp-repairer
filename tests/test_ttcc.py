@@ -6,7 +6,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from crmonitor.common.world_state import WorldState
 
 from cut_off.ttcc import TTCC
-from cut_off.simulation import SimulationLong, CutOffAction
+from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
 from cut_off.utils import check_velocity_feasibility
 
 class TestTTCC(unittest.TestCase):
@@ -46,3 +46,11 @@ class TestTTCC(unittest.TestCase):
         simulated_state3 = SL3.simulate_state_list()
         self.assertEqual(simulated_state3[-1].time_step, 50)
         self.assertEqual(check_velocity_feasibility(simulated_state3[-1], SL3.parameters), True)
+
+    def test_simulate_lateral(self):
+        ego_id = 1003
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        world_state_1 = WorldState.create_from_scenario(self.scenario,
+                                                        ego_id)
+        SL1 = SimulationLateral(CutOffAction.LANECHANGELEFT, ego_vehicle, 0, world_state_1)
+        simulated_state1 = SL1.simulate_state_list()
