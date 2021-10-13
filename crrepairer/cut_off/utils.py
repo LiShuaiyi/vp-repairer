@@ -17,6 +17,7 @@ def check_velocity_feasibility(state: State, parameters: VehicleParameters):
 
 
 def check_steering_angle_feasibility(state: State, parameters: VehicleParameters):
+    # if not hasattr(state, "steering_angle")
     if state.steering_angle < parameters.steering.min or \
             state.steering_angle > parameters.steering.max:
         return False
