@@ -5,8 +5,12 @@ from crmonitor.common.helper import (_compute_jerk,
                                      create_curvilinear_states
                                      )
 from typing import List
-from commonroad.scenario.obstacle import State
 from vehiclemodels.parameters_vehicle1 import VehicleParameters
+from commonroad.scenario.obstacle import StaticObstacle, ObstacleType, DynamicObstacle
+from commonroad.scenario.trajectory import State, Trajectory
+from commonroad.prediction.prediction import TrajectoryPrediction
+from commonroad.geometry.shape import Rectangle
+from commonroad.common.solution import VehicleModel, VehicleType
 
 
 def check_velocity_feasibility(state: State, parameters: VehicleParameters):
@@ -22,6 +26,42 @@ def check_steering_angle_feasibility(state: State, parameters: VehicleParameters
             state.steering_angle > parameters.steering.max:
         return False
     return True
+
+
+def transfer_state_list_to_trajectory(scenario, state_list, parameters):
+    """
+    Transfers given state list into a dummy vehicle.
+    :param scenario: given scenario
+    :param state_list: given state list
+    :return:
+    """
+    for k in range(len(state_list) - 1):
+        if not hasattr(state_list[k], "yaw_rate"):
+            state_list[k].yaw_rate = (state_list[k + 1].orientation - state_list[k].orientation) / scenario.dt
+        if not hasattr(state_list[k], "slip_angle"):
+            state_list[k].slip_angle = 0
+        if not hasattr(state_list[k], "steering_angle"):
+            state_list[k].steering_angle = 0
+        if not hasattr(state_list[k], "acceleration"):
+            state_list[k].acceleration = (state_list[k + 1].velocity - state_list[k].velocity) / scenario.dt
+        if not hasattr(state_list[k], "velocity_y"):
+            state_list[k].velocity_y = 0
+    state_list[-1].yaw_rate = 0
+    state_list[-1].slip_angle = 0
+    state_list[-1].steering_angle = 0
+    state_list[-1].acceleration = 0
+    dynamic_obstacle_trajectory = Trajectory(state_list[0].time_step, state_list)
+    dynamic_obstacle_shape = Rectangle(width=parameters.w, length=parameters.l)
+    dynamic_obstacle_prediction = TrajectoryPrediction(dynamic_obstacle_trajectory, dynamic_obstacle_shape)
+
+    dynamic_obstacle_id = scenario.generate_object_id()
+    dynamic_obstacle_type = ObstacleType.CAR
+    dynamic_obstacle_new = DynamicObstacle(dynamic_obstacle_id,
+                                           dynamic_obstacle_type,
+                                           dynamic_obstacle_shape,
+                                           state_list[0],
+                                           dynamic_obstacle_prediction)
+    return dynamic_obstacle_new
 
 
 def update_ego_vehicle(world_state: WorldState,

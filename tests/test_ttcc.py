@@ -1,13 +1,16 @@
 import os
 import unittest
 import math
+import matplotlib.pyplot as plt
 
+
+from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.common.file_reader import CommonRoadFileReader
 from crmonitor.common.world_state import WorldState
 
 from cut_off.ttcc import TTCC
 from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
-from cut_off.utils import check_velocity_feasibility
+from cut_off.utils import check_velocity_feasibility, transfer_state_list_to_trajectory
 
 class TestTTCC(unittest.TestCase):
     def setUp(self) -> None:
@@ -53,4 +56,12 @@ class TestTTCC(unittest.TestCase):
         world_state_1 = WorldState.create_from_scenario(self.scenario,
                                                         ego_id)
         SL1 = SimulationLateral(CutOffAction.LANECHANGELEFT, ego_vehicle, 0, world_state_1)
-        simulated_state1 = SL1.simulate_state_list()
+        simulated_state_list1 = SL1.simulate_state_list()
+        rnd = MPRenderer()
+        self.scenario.draw(rnd)
+        trajectory1 = transfer_state_list_to_trajectory(self.scenario, simulated_state_list1,
+                                                        SL1.parameters)
+        trajectory1.draw(rnd, draw_params={'time_begin': 0,
+                                           'trajectory': {'draw_trajectory': True}})
+        rnd.render()
+        plt.show()

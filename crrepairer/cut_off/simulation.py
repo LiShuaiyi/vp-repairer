@@ -32,7 +32,8 @@ class SimulationBase(ABC):
         self._action = action
         self._simulated_vehicle = simulated_vehicle
         self._cut_off_state = simulated_vehicle.state_at_time(start_time)
-        self._state_list = simulated_vehicle.prediction.trajectory.state_list[:start_time]
+        self._state_list = [simulated_vehicle.initial_state] +\
+                           simulated_vehicle.prediction.trajectory.state_list[:start_time]
         self._input: State = State(steering_angle_speed=0,
                                    acceleration=0)
         self._vehicle_dynamics = PointMassDynamics(VehicleType.BMW_320i)
@@ -110,10 +111,7 @@ class SimulationLateral(SimulationBase, ABC):
         assert action == CutOffAction.LANECHANGELEFT or action == CutOffAction.LANECHANGERIGHT,\
             "<SimulationLateral>: provided action {} is not supported".format(action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
-        # self._vehicle_dynamics = KinematicSingleTrackDynamics(VehicleType.BMW_320i)
         self._world_state = world_state
-        # l_wb = self.parameters.a + self.parameters.b
-        # self.delta_max = math.atan(l_wb * self.parameters.longitudinal.a_max/self._cut_off_state.velocity**2)
 
     def set_target_lane(self):
         if self.action == CutOffAction.LANECHANGELEFT:
@@ -122,7 +120,7 @@ class SimulationLateral(SimulationBase, ABC):
             return self._world_state.ego_vehicle.lane.adj_right
 
     def calc_total_time(self, lat_dist):
-        return sqrt(2*lat_dist/self.parameters.longitudinal.a_max)
+        return sqrt(4*lat_dist/self.parameters.longitudinal.a_max)
 
     def set_inputs(self):
         self._input.acceleration = 0
