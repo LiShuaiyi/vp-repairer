@@ -53,15 +53,22 @@ class TestTTCC(unittest.TestCase):
     def test_simulate_lateral(self):
         ego_id = 1003
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
-        world_state_1 = WorldState.create_from_scenario(self.scenario,
-                                                        ego_id)
-        SL1 = SimulationLateral(CutOffAction.LANECHANGELEFT, ego_vehicle, 0, world_state_1)
+        world_state: WorldState = WorldState.create_from_scenario(self.scenario, ego_id)
+        SL1 = SimulationLateral(CutOffAction.LANECHANGELEFT, ego_vehicle, 0, world_state)
         simulated_state_list1 = SL1.simulate_state_list()
-        rnd = MPRenderer()
-        self.scenario.draw(rnd)
-        trajectory1 = transfer_state_list_to_trajectory(self.scenario, simulated_state_list1,
-                                                        SL1.parameters)
-        trajectory1.draw(rnd, draw_params={'time_begin': 0,
-                                           'trajectory': {'draw_trajectory': True}})
-        rnd.render()
-        plt.show()
+        final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position([simulated_state_list1[-1].position])[0]
+        final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
+        self.assertEqual(world_state.ego_vehicle.lane.adj_left.lane_id, final_lane.lane_id)
+        SL2 = SimulationLateral(CutOffAction.LANECHANGERIGHT, ego_vehicle, 0, world_state)
+        simulated_state_list2 = SL2.simulate_state_list()
+        final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position([simulated_state_list2[-1].position])[0]
+        final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
+        self.assertEqual(world_state.ego_vehicle.lane.adj_right.lane_id, final_lane.lane_id)
+        # rnd = MPRenderer()
+        # self.scenario.draw(rnd)
+        # trajectory1 = transfer_state_list_to_trajectory(self.scenario, simulated_state_list1,
+        #                                                 SL1.parameters)
+        # trajectory1.draw(rnd, draw_params={'time_begin': 0,
+        #                                    'trajectory': {'draw_trajectory': True}})
+        # rnd.render()
+        # plt.show()

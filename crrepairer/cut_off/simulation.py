@@ -120,6 +120,10 @@ class SimulationLateral(SimulationBase, ABC):
             return self._world_state.ego_vehicle.lane.adj_right
 
     def calc_total_time(self, lat_dist):
+        """
+        Modified from Eq. (11) in Pek, C., Zahn, P. and Althoff, M., Verifying the safety of lane change maneuvers of
+         self-driving vehicles based on formalized traffic rules. In IV 2017 (pp. 1477-1483). IEEE.
+        """
         return sqrt(4*lat_dist/self.parameters.longitudinal.a_max)
 
     def set_inputs(self):
