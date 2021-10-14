@@ -83,6 +83,8 @@ class TestTTCC(unittest.TestCase):
         self.assertEqual(
             world_state.ego_vehicle.lane.adj_left.lane_id,
             final_lane.lane_id)
+        # visualize the scenario and the trajectory
+        visualize_state_list(simulated_state_list1, self.scenario, SL1.parameters)
         SL2 = SimulationLateral(CutOffAction.LANECHANGERIGHT, ego_vehicle, 0, world_state)
         simulated_state_list2 = SL2.simulate_state_list()
         final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position(
@@ -91,5 +93,30 @@ class TestTTCC(unittest.TestCase):
         self.assertEqual(
             world_state.ego_vehicle.lane.adj_right.lane_id,
             final_lane.lane_id)
-        # visualize the scenario and the trajectory
+
+        # # visualize the scenario and the trajectory
         # visualize_state_list(simulated_state_list2, self.scenario, SL2.parameters)
+
+    def test_ttcc_1(self):
+        ego_id = 1003
+        world_state = WorldState.create_from_scenario(self.scenario,
+                                                        ego_id)
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        ttcc_object_1 = TTCC(world_state, self.scenario, ego_vehicle, ["R_G1"])
+        ttcc = ttcc_object_1.generate(CutOffAction.LANECHANGELEFT)
+        self.assertEqual(
+            ttcc,
+            -math.inf)
+
+    def test_ttcc_2(self):
+        ego_id = 1003
+        self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
+        world_state = WorldState.create_from_scenario(self.scenario,
+                                                        ego_id)
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        ttcc_object_2 = TTCC(world_state, self.scenario, ego_vehicle, ["R_G1"])
+        ttcc = ttcc_object_2.generate(CutOffAction.LANECHANGELEFT)
+        self.assertEqual(
+            ttcc,
+            -math.inf)
+

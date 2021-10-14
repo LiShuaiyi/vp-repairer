@@ -32,7 +32,7 @@ class SimulationBase(ABC):
         self._action = action
         self._simulated_vehicle = simulated_vehicle
         self._cut_off_state = simulated_vehicle.state_at_time(start_time)
-        self._state_list = [simulated_vehicle.initial_state] +\
+        self._state_list = [simulated_vehicle.initial_state] + \
                            simulated_vehicle.prediction.trajectory.state_list[:start_time]
         self._input: State = State(steering_angle_speed=0,
                                    acceleration=0)
@@ -73,11 +73,12 @@ class SimulationBase(ABC):
 
 
 class SimulationLong(SimulationBase, ABC):
-    def __init__(self,  action: CutOffAction,
+    def __init__(self, action: CutOffAction,
                  simulated_vehicle: DynamicObstacle,
                  start_time: int):
-        assert action == CutOffAction.BRAKE or action == CutOffAction.KICKDOWN\
-            or action == CutOffAction.STEADYSPEED, "<SimulationLong>: provided action {} is not supported".format(action)
+        assert action == CutOffAction.BRAKE or action == CutOffAction.KICKDOWN \
+               or action == CutOffAction.STEADYSPEED, "<SimulationLong>: provided action {} is not supported".format(
+            action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
 
     def set_inputs(self):
@@ -104,11 +105,11 @@ class SimulationLong(SimulationBase, ABC):
 
 
 class SimulationLateral(SimulationBase, ABC):
-    def __init__(self,  action: CutOffAction,
+    def __init__(self, action: CutOffAction,
                  simulated_vehicle: DynamicObstacle,
                  start_time: int,
                  world_state: WorldState):
-        assert action == CutOffAction.LANECHANGELEFT or action == CutOffAction.LANECHANGERIGHT,\
+        assert action == CutOffAction.LANECHANGELEFT or action == CutOffAction.LANECHANGERIGHT, \
             "<SimulationLateral>: provided action {} is not supported".format(action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
         self._world_state = world_state
@@ -124,7 +125,7 @@ class SimulationLateral(SimulationBase, ABC):
         Modified from Eq. (11) in Pek, C., Zahn, P. and Althoff, M., Verifying the safety of lane change maneuvers of
          self-driving vehicles based on formalized traffic rules. In IV 2017 (pp. 1477-1483). IEEE.
         """
-        return sqrt(4*lat_dist/self.parameters.longitudinal.a_max)
+        return sqrt(4 * lat_dist / self.parameters.longitudinal.a_max)
 
     def set_inputs(self):
         self._input.acceleration = 0
@@ -140,7 +141,7 @@ class SimulationLateral(SimulationBase, ABC):
         while pre_state.time_step < state.time_step + time_horizon:
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
-            if suc_state: # and check_steering_angle_feasibility(suc_state, self._vehicle_dynamics.parameters):
+            if suc_state:  # and check_steering_angle_feasibility(suc_state, self._vehicle_dynamics.parameters):
                 self._state_list.append(suc_state)
                 pre_state = suc_state
             else:
@@ -151,9 +152,9 @@ class SimulationLateral(SimulationBase, ABC):
         self.set_inputs()
         target_lane = self.set_target_lane()
         lateral_distance = self._world_state.ego_vehicle.lane.width(self._world_state.ego_vehicle.
-                                                                    states_lon[self._cut_off_state.time_step].s)/2 + \
+                                                                    states_lon[self._cut_off_state.time_step].s) / 2 + \
                            target_lane.width(self._world_state.ego_vehicle.
-                                             states_lon[self._cut_off_state.time_step].s)/2
+                                             states_lon[self._cut_off_state.time_step].s) / 2
         total_time = self.calc_total_time(lateral_distance)
         bang_bang_time = int(total_time / (2 * self._dt)) + 1
         current_state = self._cut_off_state

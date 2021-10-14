@@ -4,14 +4,25 @@ from crmonitor.common.helper import (_compute_jerk,
                                      update_curvilinear_states_long,
                                      create_curvilinear_states
                                      )
-from typing import List
+from typing import List, Union
 from vehiclemodels.parameters_vehicle1 import VehicleParameters
 from commonroad.scenario.obstacle import StaticObstacle, ObstacleType, DynamicObstacle
 from commonroad.scenario.trajectory import State, Trajectory
 from commonroad.prediction.prediction import TrajectoryPrediction
 from commonroad.geometry.shape import Rectangle
 from commonroad.common.solution import VehicleModel, VehicleType
+import matplotlib.pyplot as plt
+from commonroad.visualization.mp_renderer import MPRenderer
 
+
+def visualize_state_list(state_list: Union[State], scenario, parameters):
+    rnd = MPRenderer()
+    # scenario.draw(rnd)
+    scenario.draw(rnd, draw_params={'time_begin': 0, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
+    trajectory = transfer_state_list_to_trajectory(scenario, state_list, parameters)
+    trajectory.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True}})
+    rnd.render()
+    plt.show()
 
 def check_velocity_feasibility(state: State, parameters: VehicleParameters):
     if state.velocity < 0 or \
@@ -71,7 +82,7 @@ def update_ego_vehicle(world_state: WorldState,
     Update the ego vehicle based on the new given trajectory
     """
     ego_vehicle = world_state.ego_vehicle
-    ego_initial_state = ego_vehicle.initial_state
+    ego_initial_state = ego_vehicle.states_cr[0]
     lane_network = world_state.road_network
     dt = world_state.dt
     if cut_off_time == 0:
