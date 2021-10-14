@@ -7,7 +7,7 @@ from commonroad.scenario.scenario import Scenario
 from crmonitor.common.world_state import WorldState
 from cut_off.base import CutOffBase
 from cut_off.monitor import RuleMonitor
-from cut_off.utils import update_ego_vehicle
+from cut_off.utils import update_ego_vehicle, visualize_state_list
 from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 
 
@@ -15,13 +15,13 @@ class TTCC(CutOffBase):
     """
     Time-To-Compliance.
     """
-    def __init__(self, world_state: WorldState,
+    def __init__(self,
                  scenario: Scenario,
                  ego_vehicle_cr: DynamicObstacle,
                  rules: Union[str, Iterable[str]],
                  dT: float = 0.1):
-        super().__init__(world_state, scenario, ego_vehicle_cr, dT)
-        self._rule_monitor = RuleMonitor(world_state, rules)
+        super().__init__(scenario, ego_vehicle_cr, dT)
+        self._rule_monitor = RuleMonitor(self.world_state, rules)
         self._check_initial = True
         self._ttv = self._calc_ttv()
 
@@ -36,15 +36,18 @@ class TTCC(CutOffBase):
     def _calc_ttv(self, updated_states: List[State] = None,
                  start_time_step: int = None) -> float:
         # detect violation time using STL monitor
-        if self._check_initial:
-            self.rule_monitor.evaluate_initially()
-            self._check_initial = False
-        else:
-            self.rule_monitor.world_state.time_step = start_time_step
-            update_ego_vehicle(self.world_state,
-                               updated_states,
-                               start_time_step)
-            self.rule_monitor.evaluate_consecutively()
+        self.rule_monitor.evaluate_initially()
+        # if self._check_initial:
+        #     self.rule_monitor.evaluate_initially()
+        #     self._check_initial = False
+        # else:
+        #     self.rule_monitor.world_state.time_step = start_time_step
+        #     update_ego_vehicle(self.world_state.road_network,
+        #                        self.world_state.ego_vehicle,
+        #                        updated_states,
+        #                        start_time_step,
+        #                        self.dT)
+        #     self.rule_monitor.evaluate_consecutively()
         evaluated_robustness = self.rule_monitor.query_rule_rob_all()
         if evaluated_robustness[0] < 0:
             return -math.inf  # all violated
@@ -76,12 +79,21 @@ class TTCC(CutOffBase):
             else:
                 raise ValueError("<TTCC>: given compliant maneuver {} is not supported".format(maneuver))
             state_list = SL.simulate_state_list()
-            ttc = self._calc_ttc(state_list)
+
+            # visualize_state_list(state_list, self.world_state.scenario, SL.parameters)
+            # ttc = self._calc_ttc(state_list)
+            ttc = math.inf
+            self.scenario.remove_obstacle(self.ego_vehicle)
+            self.ego_vehicle.initial_state = state_list[0]
+            self.ego_vehicle.prediction.trajectory.state_list = state_list[1:]
+            self.scenario.add_objects(self.ego_vehicle)
+            self.construct_world_state(self.scenario, self.ego_vehicle.obstacle_id)
             ttv = self._calc_ttv(state_list, mid)
             if ttv == math.inf and ttc == math.inf:
                 low = mid + 1
             else:
                 high = mid
+
         if low != 0:
             ttcc = (low - 1) * self.dT
         return ttcc

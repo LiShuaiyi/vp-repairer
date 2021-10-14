@@ -1,4 +1,6 @@
 from crmonitor.common.world_state import WorldState
+from crmonitor.common.vehicle import Vehicle
+from crmonitor.common.road_network import RoadNetwork
 from crmonitor.common.helper import (_compute_jerk,
                                      _compute_acceleration,
                                      update_curvilinear_states_long,
@@ -18,7 +20,7 @@ from commonroad.visualization.mp_renderer import MPRenderer
 def visualize_state_list(state_list: Union[State], scenario, parameters):
     rnd = MPRenderer()
     # scenario.draw(rnd)
-    scenario.draw(rnd, draw_params={'time_begin': 0, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
+    scenario.lanelet_network.draw(rnd, draw_params={'time_begin': 0, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
     trajectory = transfer_state_list_to_trajectory(scenario, state_list, parameters)
     trajectory.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True}})
     rnd.render()
@@ -75,16 +77,15 @@ def transfer_state_list_to_trajectory(scenario, state_list, parameters):
     return dynamic_obstacle_new
 
 
-def update_ego_vehicle(world_state: WorldState,
+def update_ego_vehicle(road_network: RoadNetwork,
+                       ego_vehicle: Vehicle,
                        updated_ego_states: List[State],
-                       cut_off_time: int = 1):
+                       cut_off_time: int,
+                       dt):
     """
     Update the ego vehicle based on the new given trajectory
     """
-    ego_vehicle = world_state.ego_vehicle
     ego_initial_state = ego_vehicle.states_cr[0]
-    lane_network = world_state.road_network
-    dt = world_state.dt
     if cut_off_time == 0:
         acceleration = 0.0
         jerk = 0.0
@@ -130,7 +131,7 @@ def update_ego_vehicle(world_state: WorldState,
                                                              state.orientation)
         # use the shape lanelet assignment
         ego_vehicle.lanelet_assignment[state.time_step] = \
-        set(lane_network.lanelet_network.find_lanelet_by_shape(ego_shape))
+        set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
         # obstacle.prediction.shape_lanelet_assignment[state.time_step]
         # vehicle_classifications[state.time_step] = vehicle_classification
     if ego_vehicle.end_time > len(updated_ego_states):

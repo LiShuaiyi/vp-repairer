@@ -27,6 +27,7 @@ class RuleMonitor:
 
     def query_rule_rob_all(self):
         rob_rule, _ = self._rule_eval.result2pandas(self.rob_rule, self.rob_predicate)
+        print(rob_rule)
         if rob_rule is None:
             raise ValueError("the evaluation procedure is not executed yet")
         return rob_rule['robustness'].values

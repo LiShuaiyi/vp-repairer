@@ -37,7 +37,7 @@ class TestTTCC(unittest.TestCase):
     def test_simulation_long(self):
         ego_id = 1003
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
-        SL1 = SimulationLong(CutOffAction.KICKDOWN, ego_vehicle, 0)
+        SL1 = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0)
         simulated_state1 = SL1.simulate_state_list()
         self.assertEqual(
             simulated_state1[-1].time_step,
@@ -46,6 +46,9 @@ class TestTTCC(unittest.TestCase):
             simulated_state1[-1],
             SL1.parameters),
             True)
+        # visualize the scenario and the trajectory
+        # self.scenario.lanelet_network
+        visualize_state_list(simulated_state1, self.scenario, SL1.parameters)
         SL2 = SimulationLong(CutOffAction.STEADYSPEED, ego_vehicle, 0)
         simulated_state2 = SL2.simulate_state_list()
         self.assertEqual(
@@ -65,7 +68,7 @@ class TestTTCC(unittest.TestCase):
                 SL3.parameters),
             True)
         # visualize the scenario and the trajectory
-        # visualize_state_list(simulated_state3, self.scenario, SL3.parameters)
+        visualize_state_list(simulated_state3, self.scenario, SL3.parameters)
 
     def test_simulate_lateral(self):
         ego_id = 1003
@@ -110,11 +113,10 @@ class TestTTCC(unittest.TestCase):
 
     def test_ttcc_2(self):
         ego_id = 1003
+        self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1005))
         self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
-        world_state = WorldState.create_from_scenario(self.scenario,
-                                                        ego_id)
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
-        ttcc_object_2 = TTCC(world_state, self.scenario, ego_vehicle, ["R_G1"])
+        ttcc_object_2 = TTCC(self.scenario, ego_vehicle, ["R_G1"])
         ttcc = ttcc_object_2.generate(CutOffAction.LANECHANGELEFT)
         self.assertEqual(
             ttcc,

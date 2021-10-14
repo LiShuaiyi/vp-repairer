@@ -34,6 +34,9 @@ class SimulationBase(ABC):
         self._cut_off_state = simulated_vehicle.state_at_time(start_time)
         self._state_list = [simulated_vehicle.initial_state] + \
                            simulated_vehicle.prediction.trajectory.state_list[:start_time]
+        for state in self._state_list:
+            if not hasattr(state, "velocity_y"):
+                state.velocity_y = state.velocity * math.sin(state.orientation)
         self._input: State = State(steering_angle_speed=0,
                                    acceleration=0)
         self._vehicle_dynamics = PointMassDynamics(VehicleType.BMW_320i)
@@ -81,6 +84,7 @@ class SimulationLong(SimulationBase, ABC):
             action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
 
+
     def set_inputs(self):
         self._input.acceleration_y = 0
         if self.action == CutOffAction.BRAKE:
@@ -97,6 +101,7 @@ class SimulationLong(SimulationBase, ABC):
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
             if suc_state and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
+                check_elements(suc_state)
                 self._state_list.append(suc_state)
                 pre_state = suc_state
             else:
@@ -142,6 +147,7 @@ class SimulationLateral(SimulationBase, ABC):
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
             if suc_state:  # and check_steering_angle_feasibility(suc_state, self._vehicle_dynamics.parameters):
+                check_elements(suc_state)
                 self._state_list.append(suc_state)
                 pre_state = suc_state
             else:
@@ -166,8 +172,18 @@ class SimulationLateral(SimulationBase, ABC):
             self._input.time_step = current_state.time_step
             current_state = self._vehicle_dynamics.simulate_next_state(current_state, self._input, self._dt,
                                                                        throw=False)
+            check_elements(current_state)
             self._state_list.append(current_state)
         return self._state_list
+
+
+def check_elements(state: State):
+    if not hasattr(state, "slip_angle"):
+        state.slip_angle = 0
+    if not hasattr(state, "yaw_rate"):
+        state.yaw_rate = 0
+    if not hasattr(state, "velocity_y"):
+        state.velocity_y = state.velocity * math.cos(state.orientation)
 
 
 if __name__ == '__main__':
