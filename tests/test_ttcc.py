@@ -117,8 +117,8 @@ class TestTTCC(unittest.TestCase):
         self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
         ttcc_object_2 = TTCC(self.scenario, ego_vehicle, ["R_G1"])
-        ttcc = ttcc_object_2.generate(CutOffAction.LANECHANGELEFT)
+        ttcc = ttcc_object_2.generate(CutOffAction.LANECHANGERIGHT)
         self.assertEqual(
-            ttcc,
-            -math.inf)
+            round(ttcc, 1),
+            1.2)
 

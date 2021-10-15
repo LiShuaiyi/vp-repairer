@@ -36,18 +36,18 @@ class TTCC(CutOffBase):
     def _calc_ttv(self, updated_states: List[State] = None,
                  start_time_step: int = None) -> float:
         # detect violation time using STL monitor
-        self.rule_monitor.evaluate_initially()
-        # if self._check_initial:
-        #     self.rule_monitor.evaluate_initially()
-        #     self._check_initial = False
-        # else:
-        #     self.rule_monitor.world_state.time_step = start_time_step
-        #     update_ego_vehicle(self.world_state.road_network,
-        #                        self.world_state.ego_vehicle,
-        #                        updated_states,
-        #                        start_time_step,
-        #                        self.dT)
-        #     self.rule_monitor.evaluate_consecutively()
+        # self.rule_monitor.evaluate_initially()
+        if self._check_initial:
+            self.rule_monitor.evaluate_initially()
+            self._check_initial = False
+        else:
+            self.rule_monitor.world_state.time_step = start_time_step
+            update_ego_vehicle(self.world_state.road_network,
+                               self.world_state.ego_vehicle,
+                               updated_states,
+                               start_time_step,
+                               self.dT)
+            self.rule_monitor.evaluate_consecutively()
         evaluated_robustness = self.rule_monitor.query_rule_rob_all()
         if evaluated_robustness[0] < 0:
             return -math.inf  # all violated
@@ -83,11 +83,11 @@ class TTCC(CutOffBase):
             # visualize_state_list(state_list, self.world_state.scenario, SL.parameters)
             # ttc = self._calc_ttc(state_list)
             ttc = math.inf
-            self.scenario.remove_obstacle(self.ego_vehicle)
-            self.ego_vehicle.initial_state = state_list[0]
-            self.ego_vehicle.prediction.trajectory.state_list = state_list[1:]
-            self.scenario.add_objects(self.ego_vehicle)
-            self.construct_world_state(self.scenario, self.ego_vehicle.obstacle_id)
+            # self.scenario.remove_obstacle(self.ego_vehicle)
+            # self.ego_vehicle.initial_state = state_list[0]
+            # self.ego_vehicle.prediction.trajectory.state_list = state_list[1:]
+            # self.scenario.add_objects(self.ego_vehicle)
+            # self.construct_world_state(self.scenario, self.ego_vehicle.obstacle_id)
             ttv = self._calc_ttv(state_list, mid)
             if ttv == math.inf and ttc == math.inf:
                 low = mid + 1
