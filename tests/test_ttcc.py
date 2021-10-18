@@ -113,7 +113,6 @@ class TestTTCC(unittest.TestCase):
 
     def test_ttcc_2(self):
         ego_id = 1003
-        self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1005))
         self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
         ttcc_object_2 = TTCC(self.scenario, ego_vehicle, ["R_G1"])
@@ -121,4 +120,15 @@ class TestTTCC(unittest.TestCase):
         self.assertEqual(
             round(ttcc, 1),
             1.2)
+
+    def test_ttcc_3(self):
+        ego_id = 1003
+        self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        ttcc_object_2 = TTCC(self.scenario, ego_vehicle, ["R_G1"])
+        ttcc = ttcc_object_2.generate(CutOffAction.BRAKE)
+        self.assertEqual(
+            round(ttcc, 1),
+            -math.inf)
+
 

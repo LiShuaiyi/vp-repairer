@@ -81,8 +81,8 @@ class TTCC(CutOffBase):
             state_list = SL.simulate_state_list()
 
             # visualize_state_list(state_list, self.world_state.scenario, SL.parameters)
-            # ttc = self._calc_ttc(state_list)
-            ttc = math.inf
+            ttc = self._calc_ttc(state_list)
+            # ttc = math.inf
             # self.scenario.remove_obstacle(self.ego_vehicle)
             # self.ego_vehicle.initial_state = state_list[0]
             # self.ego_vehicle.prediction.trajectory.state_list = state_list[1:]

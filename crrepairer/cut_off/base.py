@@ -15,6 +15,9 @@ from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch impor
 import commonroad_dc.boundary.boundary as boundary
 from commonroad_dc.boundary.boundary import create_road_boundary_obstacle
 from commonroad.visualization.mp_renderer import MPRenderer
+from commonroad_dc.collision.visualization.drawing \
+    import draw_collision_timevariantcollisionobject, \
+    draw_collision_collisionchecker, draw_collision_rectobb
 
 
 class CutOffBase(ABC):
@@ -49,6 +52,7 @@ class CutOffBase(ABC):
             rnd.render()
             plt.show()
         self.scenario = scenario
+        self._debug = False
 
     def construct_world_state(self, scenario, ego_id) -> WorldState:
         self._world_state = WorldState.create_from_scenario(scenario, ego_id)
@@ -103,7 +107,17 @@ class CutOffBase(ABC):
             ego.append_obstacle(pycrcc.RectOBB(0.5 * length,
                                                0.5 * width,
                                                theta, pos1, pos2))
+
             if self._collision_checker.collide(ego):
+                if self._debug:
+                    rnd = MPRenderer()
+                    ego_obb = pycrcc.RectOBB(0.5 * length,
+                                                   0.5 * width,
+                                                   theta, pos1, pos2)
+                    draw_collision_rectobb(ego_obb, rnd)
+                    self.scenario.draw(rnd, draw_params={'time_begin': i,})
+                    rnd.render()
+                    plt.show()
                 return i*self.dT
         return math.inf
 
