@@ -66,7 +66,7 @@ def transfer_state_list_to_prediction(state_list, shape, dt):
     :param state_list: given state list
     :return:
     """
-    for k in range(len(state_list) - 1):
+    for k in range(len(state_list)):
         if not hasattr(state_list[k], "yaw_rate"):
             state_list[k].yaw_rate = (state_list[k + 1].orientation - state_list[k].orientation) / dt
         if not hasattr(state_list[k], "slip_angle"):
@@ -147,3 +147,17 @@ def update_ego_vehicle(road_network: RoadNetwork,
             del ego_vehicle.states_lat[time_step]
             del ego_vehicle.states_cr[time_step]
             del ego_vehicle.lanelet_assignment[time_step]
+
+
+def int_round(some_float, tolerance=1):
+    """
+    Round function using int.
+    :param some_float: number
+    :param tolerance: float point
+    :return: rounded number
+    """
+    p = float(10 ** tolerance)
+    if some_float < 0:
+        return int(some_float * p - 0.5) / p
+    else:
+        return int(some_float * p + 0.5) / p
