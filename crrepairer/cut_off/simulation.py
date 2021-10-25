@@ -34,10 +34,10 @@ class SimulationBase(ABC):
         self._cut_off_state = simulated_vehicle.state_at_time(start_time)
         if simulated_vehicle.prediction.trajectory.state_list[0].time_step != 0:
             self._state_list = [simulated_vehicle.initial_state] + \
-                               simulated_vehicle.prediction.trajectory.state_list[:start_time+1]
+                               simulated_vehicle.prediction.trajectory.state_list[:start_time + 1]
         else:
             self._state_list = [simulated_vehicle.initial_state] + \
-                               simulated_vehicle.prediction.trajectory.state_list[1:start_time+1]
+                               simulated_vehicle.prediction.trajectory.state_list[1:start_time + 1]
         for state in self._state_list:
             if not hasattr(state, "velocity_y"):
                 state.velocity_y = state.velocity * math.sin(state.orientation)
@@ -87,7 +87,6 @@ class SimulationLong(SimulationBase, ABC):
                or action == CutOffAction.STEADYSPEED, "<SimulationLong>: provided action {} is not supported".format(
             action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
-
 
     def set_inputs(self):
         self._input.acceleration_y = 0
@@ -145,7 +144,7 @@ class SimulationLateral(SimulationBase, ABC):
         else:
             self._input.acceleration_y = 0
 
-    def bang_bang_simulation(self, state, time_horizon):
+    def bang_bang_simulation(self, state, time_horizon, max_orientation):
         pre_state = state
         while pre_state.time_step < state.time_step + time_horizon:
             self._input.time_step = pre_state.time_step
@@ -154,6 +153,8 @@ class SimulationLateral(SimulationBase, ABC):
                 check_elements(suc_state)
                 self._state_list.append(suc_state)
                 pre_state = suc_state
+                if suc_state.orientation > max_orientation:
+                    break
             else:
                 self._input.acceleration_y = 0
         return suc_state
@@ -161,22 +162,29 @@ class SimulationLateral(SimulationBase, ABC):
     def simulate_state_list(self):
         self.set_inputs()
         target_lane = self.set_target_lane()
-        lateral_distance = self._world_state.ego_vehicle.lane.width(self._world_state.ego_vehicle.
-                                                                    states_lon[self._cut_off_state.time_step].s) / 2 + \
+        current_lane_width = self._world_state.ego_vehicle.lane.width(self._world_state.ego_vehicle.
+                                                                      states_lon[self._cut_off_state.time_step].s)
+        current_d_lat = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d
+        ego_to_lane_boundary = current_lane_width/2 - abs(current_d_lat)
+        lateral_distance = ego_to_lane_boundary + \
                            target_lane.width(self._world_state.ego_vehicle.
                                              states_lon[self._cut_off_state.time_step].s) / 2
         total_time = self.calc_total_time(lateral_distance)
-        bang_bang_time = int(total_time / (2 * self._dt)) #+ 1
+        bang_bang_time = int(total_time / (2 * self._dt))
+
+        current_orientation = target_lane.orientation(self._world_state.ego_vehicle.
+                                                  states_lon[self._cut_off_state.time_step].s)
+        max_orientation = current_orientation + math.pi/4
         current_state = self._cut_off_state
         for i in range(2):
-            current_state = self.bang_bang_simulation(current_state, bang_bang_time)
+            current_state = self.bang_bang_simulation(current_state, bang_bang_time, max_orientation)
             self._input.acceleration_y = - self._input.acceleration_y
         while current_state.time_step < self._time_horizon:
             self._input.acceleration_y = 0
             self._input.time_step = current_state.time_step
+            current_state.velocity_y = current_state.velocity*math.sin(current_orientation)
             current_state = self._vehicle_dynamics.simulate_next_state(current_state, self._input, self._dt,
                                                                        throw=False)
-            check_elements(current_state)
             self._state_list.append(current_state)
         return self._state_list
 

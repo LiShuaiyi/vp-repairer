@@ -23,7 +23,7 @@ class TTR(CutOffBase, ABC):
         super().__init__(scenario, ego_vehicle_cr, dT)
         # calculate the time-to-collision as default value
         self._ttc = self._calc_ttc(ego_vehicle_cr.prediction.trajectory.state_list)
-        self._visualize = True
+        self._visualize = False
 
     @property
     def ttc(self):
