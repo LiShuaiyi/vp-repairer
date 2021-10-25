@@ -112,7 +112,7 @@ class TestTTCC(unittest.TestCase):
         ttcc = ttcc_object_2.generate(CutOffAction.LANECHANGERIGHT)
         self.assertEqual(
             round(ttcc, 1),
-            1.2)
+            1.1)
 
     def test_ttcc_3(self):
         ego_id = 1003

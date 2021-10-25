@@ -80,8 +80,9 @@ class TTCC(CutOffBase, ABC):
             else:
                 raise ValueError("<TTCC>: given compliant maneuver {} is not supported".format(maneuver))
             state_list = SL.simulate_state_list()
+
             if self._visualize:
-                visualize_state_list(state_list, self.world_state.scenario, SL.parameters)
+                visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
 
             flag_collision = self._detect_collision(state_list) # bool value
             ttv = self._calc_ttv(state_list, mid)

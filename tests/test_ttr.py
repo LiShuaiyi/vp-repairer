@@ -33,6 +33,6 @@ class TestTTR(unittest.TestCase):
         ego_id = 8
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
         ttr_object = TTR(self.scenario, ego_vehicle)
-        maneuver_set = [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
+        maneuver_set = [CutOffAction.LANECHANGELEFT] #[CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.LANECHANGELEFT]
         ttr = ttr_object.generate(maneuver_set)
         self.assertEqual(round(ttr, 1), 2.1)

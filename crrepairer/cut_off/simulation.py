@@ -32,8 +32,12 @@ class SimulationBase(ABC):
         self._action = action
         self._simulated_vehicle = simulated_vehicle
         self._cut_off_state = simulated_vehicle.state_at_time(start_time)
-        self._state_list = [simulated_vehicle.initial_state] + \
-                           simulated_vehicle.prediction.trajectory.state_list[:start_time]
+        if simulated_vehicle.prediction.trajectory.state_list[0].time_step != 0:
+            self._state_list = [simulated_vehicle.initial_state] + \
+                               simulated_vehicle.prediction.trajectory.state_list[:start_time+1]
+        else:
+            self._state_list = [simulated_vehicle.initial_state] + \
+                               simulated_vehicle.prediction.trajectory.state_list[1:start_time+1]
         for state in self._state_list:
             if not hasattr(state, "velocity_y"):
                 state.velocity_y = state.velocity * math.sin(state.orientation)
@@ -162,7 +166,7 @@ class SimulationLateral(SimulationBase, ABC):
                            target_lane.width(self._world_state.ego_vehicle.
                                              states_lon[self._cut_off_state.time_step].s) / 2
         total_time = self.calc_total_time(lateral_distance)
-        bang_bang_time = int(total_time / (2 * self._dt)) + 1
+        bang_bang_time = int(total_time / (2 * self._dt)) #+ 1
         current_state = self._cut_off_state
         for i in range(2):
             current_state = self.bang_bang_simulation(current_state, bang_bang_time)

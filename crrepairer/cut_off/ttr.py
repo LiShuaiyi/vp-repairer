@@ -23,6 +23,7 @@ class TTR(CutOffBase, ABC):
         super().__init__(scenario, ego_vehicle_cr, dT)
         # calculate the time-to-collision as default value
         self._ttc = self._calc_ttc(ego_vehicle_cr.prediction.trajectory.state_list)
+        self._visualize = True
 
     @property
     def ttc(self):
@@ -68,7 +69,7 @@ class TTR(CutOffBase, ABC):
                 raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))
             state_list = SL.simulate_state_list()
             if self._visualize:
-                visualize_state_list(state_list, self.world_state.scenario, SL.parameters)
+                visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
             flag_collision = self._detect_collision(state_list)  # bool value
             # if violation-free and collision-free
             if not flag_collision:
