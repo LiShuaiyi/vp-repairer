@@ -1,5 +1,6 @@
 from typing import Iterable, Union, List
 import math
+from abc import ABC
 
 import numpy as np
 from commonroad.scenario.obstacle import State, DynamicObstacle
@@ -11,7 +12,7 @@ from cut_off.utils import update_ego_vehicle, visualize_state_list
 from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 
 
-class TTCC(CutOffBase):
+class TTCC(CutOffBase, ABC):
     """
     Time-To-Compliance.
     """

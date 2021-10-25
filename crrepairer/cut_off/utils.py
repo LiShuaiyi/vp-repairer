@@ -1,3 +1,5 @@
+import math
+
 from crmonitor.common.world_state import WorldState
 from crmonitor.common.vehicle import Vehicle
 from crmonitor.common.road_network import RoadNetwork
@@ -66,7 +68,7 @@ def transfer_state_list_to_prediction(state_list, shape, dt):
     :param state_list: given state list
     :return:
     """
-    for k in range(len(state_list)):
+    for k in range(len(state_list) - 1):
         if not hasattr(state_list[k], "yaw_rate"):
             state_list[k].yaw_rate = (state_list[k + 1].orientation - state_list[k].orientation) / dt
         if not hasattr(state_list[k], "slip_angle"):
@@ -76,11 +78,12 @@ def transfer_state_list_to_prediction(state_list, shape, dt):
         if not hasattr(state_list[k], "acceleration"):
             state_list[k].acceleration = (state_list[k + 1].velocity - state_list[k].velocity) / dt
         if not hasattr(state_list[k], "velocity_y"):
-            state_list[k].velocity_y = 0
+            state_list[k].velocity_y = state_list[k].velocity * math.cos(state_list[k].orientation)
     state_list[-1].yaw_rate = 0
     state_list[-1].slip_angle = 0
     state_list[-1].steering_angle = 0
     state_list[-1].acceleration = 0
+    state_list[-1].velocity_y = state_list[k].velocity * math.cos(state_list[k].orientation)
     dynamic_obstacle_trajectory = Trajectory(state_list[0].time_step, state_list)
     dynamic_obstacle_prediction = TrajectoryPrediction(dynamic_obstacle_trajectory, shape)
     return dynamic_obstacle_prediction

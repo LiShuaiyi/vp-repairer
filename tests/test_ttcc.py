@@ -63,7 +63,7 @@ class TestTTCC(unittest.TestCase):
                 SL3.parameters),
             True)
         # visualize the scenario and the trajectory
-        visualize_state_list(simulated_state3, self.scenario, SL3.vehicle_dynamics.shape)
+        # visualize_state_list(simulated_state3, self.scenario, SL3.vehicle_dynamics.shape)
 
     def test_simulate_lateral(self):
         ego_id = 1003
