@@ -17,11 +17,11 @@ import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 
 
-def visualize_state_list(state_list: Union[State], scenario, parameters):
+def visualize_state_list(state_list: Union[State], scenario, obs_shape):
     rnd = MPRenderer()
     # scenario.draw(rnd)
     scenario.lanelet_network.draw(rnd, draw_params={'time_begin': 0, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
-    trajectory = transfer_state_list_to_trajectory(scenario, state_list, parameters)
+    trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
     trajectory.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True}})
     rnd.render()
     plt.show()
@@ -41,22 +41,40 @@ def check_steering_angle_feasibility(state: State, parameters: VehicleParameters
     return True
 
 
-def transfer_state_list_to_trajectory(scenario, state_list, parameters):
+def transfer_state_list_to_obstacle(scenario, state_list, shape):
     """
     Transfers given state list into a dummy vehicle.
     :param scenario: given scenario
     :param state_list: given state list
     :return:
     """
+    dynamic_obstacle_prediction = transfer_state_list_to_prediction(state_list, shape, scenario.dt)
+
+    dynamic_obstacle_id = scenario.generate_object_id()
+    dynamic_obstacle_type = ObstacleType.CAR
+    dynamic_obstacle_new = DynamicObstacle(dynamic_obstacle_id,
+                                           dynamic_obstacle_type,
+                                           shape,
+                                           state_list[0],
+                                           dynamic_obstacle_prediction)
+    return dynamic_obstacle_new
+
+
+def transfer_state_list_to_prediction(state_list, shape, dt):
+    """
+    Transfers given state list into a dummy vehicle.
+    :param state_list: given state list
+    :return:
+    """
     for k in range(len(state_list) - 1):
         if not hasattr(state_list[k], "yaw_rate"):
-            state_list[k].yaw_rate = (state_list[k + 1].orientation - state_list[k].orientation) / scenario.dt
+            state_list[k].yaw_rate = (state_list[k + 1].orientation - state_list[k].orientation) / dt
         if not hasattr(state_list[k], "slip_angle"):
             state_list[k].slip_angle = 0
         if not hasattr(state_list[k], "steering_angle"):
             state_list[k].steering_angle = 0
         if not hasattr(state_list[k], "acceleration"):
-            state_list[k].acceleration = (state_list[k + 1].velocity - state_list[k].velocity) / scenario.dt
+            state_list[k].acceleration = (state_list[k + 1].velocity - state_list[k].velocity) / dt
         if not hasattr(state_list[k], "velocity_y"):
             state_list[k].velocity_y = 0
     state_list[-1].yaw_rate = 0
@@ -64,17 +82,8 @@ def transfer_state_list_to_trajectory(scenario, state_list, parameters):
     state_list[-1].steering_angle = 0
     state_list[-1].acceleration = 0
     dynamic_obstacle_trajectory = Trajectory(state_list[0].time_step, state_list)
-    dynamic_obstacle_shape = Rectangle(width=parameters.w, length=parameters.l)
-    dynamic_obstacle_prediction = TrajectoryPrediction(dynamic_obstacle_trajectory, dynamic_obstacle_shape)
-
-    dynamic_obstacle_id = scenario.generate_object_id()
-    dynamic_obstacle_type = ObstacleType.CAR
-    dynamic_obstacle_new = DynamicObstacle(dynamic_obstacle_id,
-                                           dynamic_obstacle_type,
-                                           dynamic_obstacle_shape,
-                                           state_list[0],
-                                           dynamic_obstacle_prediction)
-    return dynamic_obstacle_new
+    dynamic_obstacle_prediction = TrajectoryPrediction(dynamic_obstacle_trajectory, shape)
+    return dynamic_obstacle_prediction
 
 
 def update_ego_vehicle(road_network: RoadNetwork,
@@ -132,8 +141,6 @@ def update_ego_vehicle(road_network: RoadNetwork,
         # use the shape lanelet assignment
         ego_vehicle.lanelet_assignment[state.time_step] = \
         set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
-        # obstacle.prediction.shape_lanelet_assignment[state.time_step]
-        # vehicle_classifications[state.time_step] = vehicle_classification
     if ego_vehicle.end_time > len(updated_ego_states):
         for time_step in range(len(updated_ego_states)+1, ego_vehicle.end_time+1):
             del ego_vehicle.states_lon[time_step]
