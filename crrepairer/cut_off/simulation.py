@@ -138,12 +138,17 @@ class SimulationLateral(SimulationBase, ABC):
         """
         return sqrt(4 * lat_dist / self.parameters.longitudinal.a_max)
 
-    def set_inputs(self):
+    def set_inputs(self, velocity):
         self._input.acceleration = 0
+        v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch
+        if velocity > v_switch:
+            a_max = self._vehicle_dynamics.parameters.longitudinal.a_max * v_switch / velocity
+        else:
+            a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
         if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.STEERLEFT]:
-            self._input.acceleration_y = self._vehicle_dynamics.parameters.longitudinal.a_max
+            self._input.acceleration_y = a_max
         elif self.action in [CutOffAction.LANECHANGERIGHT, CutOffAction.STEERRIGHT]:
-            self._input.acceleration_y = - self._vehicle_dynamics.parameters.longitudinal.a_max
+            self._input.acceleration_y = - a_max
         else:
             self._input.acceleration_y = 0
 
@@ -183,7 +188,7 @@ class SimulationLateral(SimulationBase, ABC):
         return suc_state
 
     def simulate_state_list(self):
-        self.set_inputs()
+        self.set_inputs(self._cut_off_state.velocity)
         target_lane = self.set_target_lane()
         current_ego_s = self._world_state.ego_vehicle.states_lon[self._cut_off_state.time_step].s
         current_ego_d = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d

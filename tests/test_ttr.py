@@ -18,10 +18,6 @@ class TestTTR(unittest.TestCase):
         scenario_file = os.path.join(self.scenario_root_path, "ZAM_Urban-3_3_Repair.xml")
         self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
 
-    def test_steering(self):
-        visualize_state_list(self.scenario.obstacles[2].prediction.trajectory.state_list, self.scenario,
-                             self.scenario.obstacles[1].obstacle_shape)
-
     def test_ttc(self):
         ego_id = 8
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
