@@ -19,6 +19,8 @@ class CutOffAction(Enum):
     LANECHANGELEFT = "lane change to the left"
     LANECHANGERIGHT = "lane change to the right"
     STEADYSPEED = "steady speed"
+    STEERLEFT = "steer to the left"
+    STEERRIGHT = "steer to the right"
 
 
 class SimulationBase(ABC):
@@ -117,7 +119,8 @@ class SimulationLateral(SimulationBase, ABC):
                  simulated_vehicle: DynamicObstacle,
                  start_time: int,
                  world_state: WorldState):
-        assert action == CutOffAction.LANECHANGELEFT or action == CutOffAction.LANECHANGERIGHT, \
+        assert action in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT,
+                          CutOffAction.STEERLEFT, CutOffAction.STEERRIGHT], \
             "<SimulationLateral>: provided action {} is not supported".format(action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
         self._world_state = world_state
@@ -137,25 +140,29 @@ class SimulationLateral(SimulationBase, ABC):
 
     def set_inputs(self):
         self._input.acceleration = 0
-        if self.action == CutOffAction.LANECHANGELEFT:
+        if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.STEERLEFT]:
             self._input.acceleration_y = self._vehicle_dynamics.parameters.longitudinal.a_max
-        elif self.action == CutOffAction.LANECHANGERIGHT:
+        elif self.action in [CutOffAction.LANECHANGERIGHT, CutOffAction.STEERRIGHT]:
             self._input.acceleration_y = - self._vehicle_dynamics.parameters.longitudinal.a_max
         else:
             self._input.acceleration_y = 0
 
     def set_bang_bang_time(self, ego_s, ego_d, target_lane):
-        ego_lane_width = self._world_state.ego_vehicle.lane.width(ego_s)
-        ego_to_lane_boundary = ego_lane_width/2 - abs(ego_d)
-        lateral_distance = ego_to_lane_boundary + target_lane.width(ego_s) / 2
+        if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
+            ego_lane_width = self._world_state.ego_vehicle.lane.width(ego_s)
+            ego_to_lane_boundary = ego_lane_width/2 - abs(ego_d)
+            lateral_distance = ego_to_lane_boundary + target_lane.width(ego_s) / 2
+        else:
+            # from paper: A flexible method for criticality assessment in driver assistance systems
+            lateral_distance = 0.8
         total_time = self.calc_total_time(lateral_distance)
         bang_bang_time = int(total_time / (2 * self._dt))
         return bang_bang_time
 
     def set_maximal_orientation(self, lane_orientation):
-        if self.action == CutOffAction.LANECHANGELEFT:
+        if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.STEERLEFT]:
             return lane_orientation + math.pi/4
-        elif self.action == CutOffAction.LANECHANGERIGHT:
+        elif self.action in [CutOffAction.LANECHANGERIGHT, CutOffAction.STEERRIGHT]:
             return lane_orientation - math.pi/4
         else:
             pass
@@ -178,12 +185,10 @@ class SimulationLateral(SimulationBase, ABC):
     def simulate_state_list(self):
         self.set_inputs()
         target_lane = self.set_target_lane()
-        if target_lane is None:
-            return None
         current_ego_s = self._world_state.ego_vehicle.states_lon[self._cut_off_state.time_step].s
         current_ego_d = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d
         bang_bang_time = self.set_bang_bang_time(current_ego_s, current_ego_d, target_lane)
-        lane_orientation = target_lane.orientation(current_ego_s)
+        lane_orientation = self._world_state.ego_vehicle.lane.orientation(current_ego_s)
         max_orientation = self.set_maximal_orientation(lane_orientation)
         current_state = self._cut_off_state
         for i in range(2):

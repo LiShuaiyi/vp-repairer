@@ -23,7 +23,7 @@ class TTR(CutOffBase, ABC):
         super().__init__(scenario, ego_vehicle_cr, dT)
         # calculate the time-to-collision as default value
         self._ttc = self._calc_ttc(ego_vehicle_cr.prediction.trajectory.state_list)
-        self._visualize = False
+        self._visualize = True
 
     @property
     def ttc(self):
@@ -53,16 +53,21 @@ class TTR(CutOffBase, ABC):
         """
         Finds the TTM.
         """
-        ttm = 0
+        ttm = -math.inf 
         low = 0
         high = int(self._ttc / self.dT)
         while low < high:
             mid = int((low + high)/2)
-            if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
+            if maneuver in [CutOffAction.BRAKE,
+                            CutOffAction.KICKDOWN,
+                            CutOffAction.STEADYSPEED]:
                 SL = SimulationLong(maneuver,
                                     self.ego_vehicle,
                                     mid)
-            elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
+            elif maneuver in [CutOffAction.LANECHANGELEFT,
+                              CutOffAction.LANECHANGERIGHT,
+                              CutOffAction.STEERLEFT,
+                              CutOffAction.STEERRIGHT,]:
                 SL = SimulationLateral(maneuver,
                                        self.ego_vehicle,
                                        mid,
