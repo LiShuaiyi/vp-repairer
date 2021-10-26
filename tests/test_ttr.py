@@ -1,0 +1,45 @@
+import os
+import unittest
+import math
+from copy import deepcopy
+from commonroad.common.file_reader import CommonRoadFileReader
+
+from cut_off.ttr import TTR
+from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
+from cut_off.utils import check_velocity_feasibility, visualize_state_list
+from decimal import *
+
+
+class TestTTR(unittest.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
+        self.scenario_root_path = os.path.join(root_path, "scenarios")
+        scenario_file = os.path.join(self.scenario_root_path, "ZAM_Urban-3_3_Repair.xml")
+        self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
+
+    def test_ttc(self):
+        ego_id = 8
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        ttr_object = TTR(self.scenario, ego_vehicle)
+        ttc = ttr_object.ttc
+        self.assertEqual(round(ttc, 1), 2.4)
+
+    def test_ttr_1(self):
+        ego_id = 8
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        ttr_object = TTR(self.scenario, ego_vehicle)
+        maneuver_set = [CutOffAction.STEERLEFT,
+                        CutOffAction.BRAKE,
+                        CutOffAction.KICKDOWN,
+                        CutOffAction.STEERRIGHT]
+        ttr = ttr_object.generate(maneuver_set)
+        self.assertEqual(ttr, 2.3)
+
+    def test_ttr_2(self):
+        ego_id = 8
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        ttr_object = TTR(self.scenario, ego_vehicle)
+        maneuver_set = [CutOffAction.STEERRIGHT]  # impossible maneuver
+        ttr = ttr_object.generate(maneuver_set)
+        self.assertEqual(ttr, -math.inf)
