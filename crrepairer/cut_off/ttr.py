@@ -44,6 +44,8 @@ class TTR(CutOffBase, ABC):
         else:
             for maneuver in emergency_maneuvers:
                 ttm[maneuver] = self.search_ttm(maneuver)
+            if max(ttm.values()) in [math.inf, -math.inf]:
+                return max(ttm.values())
             return int_round(max(ttm.values()), 1) #, max(ttm, key=ttm.get)
         return ttr
 
@@ -68,6 +70,8 @@ class TTR(CutOffBase, ABC):
             else:
                 raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))
             state_list = SL.simulate_state_list()
+            if state_list is None:
+                return -math.inf
             if self._visualize:
                 visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
             flag_collision = self._detect_collision(state_list)  # bool value

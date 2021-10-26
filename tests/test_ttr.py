@@ -29,10 +29,21 @@ class TestTTR(unittest.TestCase):
         ttc = ttr_object.ttc
         self.assertEqual(round(ttc, 1), 2.4)
 
-    def test_ttr(self):
+    def test_ttr_1(self):
         ego_id = 8
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
         ttr_object = TTR(self.scenario, ego_vehicle)
-        maneuver_set = [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.LANECHANGELEFT]
+        maneuver_set = [CutOffAction.LANECHANGERIGHT, 
+                        CutOffAction.BRAKE,
+                        CutOffAction.KICKDOWN,
+                        CutOffAction.LANECHANGELEFT]
         ttr = ttr_object.generate(maneuver_set)
-        self.assertEqual(round(ttr, 1), 2.1)
+        self.assertEqual(ttr, 2.1)
+
+    def test_ttr_2(self):
+        ego_id = 8
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        ttr_object = TTR(self.scenario, ego_vehicle)
+        maneuver_set = [CutOffAction.LANECHANGERIGHT]  # impossible maneuver
+        ttr = ttr_object.generate(maneuver_set)
+        self.assertEqual(ttr, -math.inf)

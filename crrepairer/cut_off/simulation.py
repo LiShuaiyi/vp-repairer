@@ -144,6 +144,22 @@ class SimulationLateral(SimulationBase, ABC):
         else:
             self._input.acceleration_y = 0
 
+    def set_bang_bang_time(self, ego_s, ego_d, target_lane):
+        ego_lane_width = self._world_state.ego_vehicle.lane.width(ego_s)
+        ego_to_lane_boundary = ego_lane_width/2 - abs(ego_d)
+        lateral_distance = ego_to_lane_boundary + target_lane.width(ego_s) / 2
+        total_time = self.calc_total_time(lateral_distance)
+        bang_bang_time = int(total_time / (2 * self._dt))
+        return bang_bang_time
+
+    def set_maximal_orientation(self, lane_orientation):
+        if self.action == CutOffAction.LANECHANGELEFT:
+            return lane_orientation + math.pi/4
+        elif self.action == CutOffAction.LANECHANGERIGHT:
+            return lane_orientation - math.pi/4
+        else:
+            pass
+
     def bang_bang_simulation(self, state, time_horizon, max_orientation):
         pre_state = state
         while pre_state.time_step < state.time_step + time_horizon:
@@ -162,19 +178,13 @@ class SimulationLateral(SimulationBase, ABC):
     def simulate_state_list(self):
         self.set_inputs()
         target_lane = self.set_target_lane()
-        current_lane_width = self._world_state.ego_vehicle.lane.width(self._world_state.ego_vehicle.
-                                                                      states_lon[self._cut_off_state.time_step].s)
-        current_d_lat = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d
-        ego_to_lane_boundary = current_lane_width/2 - abs(current_d_lat)
-        lateral_distance = ego_to_lane_boundary + \
-                           target_lane.width(self._world_state.ego_vehicle.
-                                             states_lon[self._cut_off_state.time_step].s) / 2
-        total_time = self.calc_total_time(lateral_distance)
-        bang_bang_time = int(total_time / (2 * self._dt))
-
-        current_orientation = target_lane.orientation(self._world_state.ego_vehicle.
-                                                  states_lon[self._cut_off_state.time_step].s)
-        max_orientation = current_orientation + math.pi/4
+        if target_lane is None:
+            return None
+        current_ego_s = self._world_state.ego_vehicle.states_lon[self._cut_off_state.time_step].s
+        current_ego_d = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d
+        bang_bang_time = self.set_bang_bang_time(current_ego_s, current_ego_d, target_lane)
+        lane_orientation = target_lane.orientation(current_ego_s)
+        max_orientation = self.set_maximal_orientation(lane_orientation)
         current_state = self._cut_off_state
         for i in range(2):
             current_state = self.bang_bang_simulation(current_state, bang_bang_time, max_orientation)
@@ -182,7 +192,7 @@ class SimulationLateral(SimulationBase, ABC):
         while current_state.time_step < self._time_horizon:
             self._input.acceleration_y = 0
             self._input.time_step = current_state.time_step
-            current_state.velocity_y = current_state.velocity*math.sin(current_orientation)
+            current_state.velocity_y = current_state.velocity*math.sin(lane_orientation)
             current_state = self._vehicle_dynamics.simulate_next_state(current_state, self._input, self._dt,
                                                                        throw=False)
             self._state_list.append(current_state)
