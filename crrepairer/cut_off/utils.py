@@ -24,6 +24,7 @@ def visualize_state_list(state_list: Union[State], scenario, obs_shape):
     # scenario.draw(rnd)
     scenario.lanelet_network.draw(rnd, draw_params={'time_begin': 0, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
     trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
+    scenario.draw(rnd)
     trajectory.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True}})
     rnd.render()
     plt.show()
