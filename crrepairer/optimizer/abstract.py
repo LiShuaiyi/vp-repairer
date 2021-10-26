@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 """
-Class for trajectory planner, which is similar to Stefanie's planner.
+Class for trajectory planner.
 """
+
 
 def is_valid_duration(tstcc, duration: float, N=None, dT=None):
     """
@@ -15,21 +16,23 @@ def is_valid_duration(tstcc, duration: float, N=None, dT=None):
     if N is None:
         return duration > 0.0
     else:
-        factor = duration / (N+tstcc)
+        factor = duration / (N + tstcc)
         if dT is None:
             return duration > 0.0 and isinstance(N, int) and N > 0
         else:
             return duration > 0.0 and isinstance(N, int) and N > 0 and np.isclose(factor, dT)
 
 
-class TrajectoryRepairer(ABC):
+class TrajectoryPlanner(ABC):
     """
-        Abstract base class for a trajectory repairer. Contains basic methods and properties every planner has to offer,
+        Abstract base class for a trajectory planner. Contains basic methods and properties every planner has to offer,
         e.g., time step and horizon
     """
 
-    def __init__(self, tstcc:int, horizon: float, N: int, dT: float):
-        assert is_valid_duration(tstcc, horizon, N, dT), "Duration or time horizon not valid, e.g. not greater than zero!"
+    def __init__(self, horizon: float, N: int, dT: float):
+        assert is_valid_duration(horizon,
+                                 N,
+                                 dT), "Duration or time horizon not valid, e.g. not greater than zero!"
         self._horizon = horizon
         self._N = N
         self._dT = dT
@@ -59,7 +62,7 @@ class TrajectoryRepairer(ABC):
         raise Exception("You are not allowed to change the time step of the planner!")
 
     @abstractmethod
-    def repair(self): # -> commonroad_reach.planning.qp_planner.trajectory.Trajectory:
+    def plan(self):  # -> commonroad_reach.planning.qp_planner.trajectory.Trajectory:
         """
         Calculates the trajectory which is based on the initially planned trajctory
         :return: The trajectory of the maneuver with respect to the initial state and environment map

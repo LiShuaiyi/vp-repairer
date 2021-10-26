@@ -26,7 +26,7 @@ import commonroad_dc.pycrccosy as pycrccosy
 import commonroad_dc.pycrcc as pycrcc
 import commonroad_dc
 
-from optimization.configuration import RepairingConfigurationVehicle
+from optimizer.configuration import RepairingConfigurationVehicle
 from optimization.utils import plot_reference_path
 
 def set_up(settings: Dict, scenario: Scenario, planning_problem: PlanningProblem, initial_trajectory: Trajectory):

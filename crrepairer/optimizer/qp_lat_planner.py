@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from cvxpy import *
 
-from optimization.abstract_repairer import TrajectoryRepairer
-from optimization.constraints import TIConstraints, TVConstraints
-from optimization.trajectory import Trajectory, TrajPoint, TrajectoryType
+from optimizer.abstract import TrajectoryPlanner
+from optimizer.constraints import TIConstraints, TVConstraints
+from optimizer.trajectory import Trajectory, TrajPoint, TrajectoryType
 
 from commonroad_ccosy.geometry.util import compute_curvature_from_polyline, compute_pathlength_from_polyline, \
     compute_orientation_from_polyline
@@ -302,7 +302,7 @@ class QPLatReference(object):
         return QPLatReference(states)
 
 
-class QPLatRepairer(TrajectoryRepairer):
+class QPLatPlanner(TrajectoryPlanner):
     def __init__(self,
                  tstcc: int,
                  tstv: int,
@@ -429,7 +429,7 @@ class QPLatRepairer(TrajectoryRepairer):
         plt.show()
         plt.pause(0.001)
 
-    def repair(self, x_initial: QPLatState, x_ref: QPLatReference, ti: TIConstraints, tv: TVConstraints,
+    def plan(self, x_initial: QPLatState, x_ref: QPLatReference, ti: TIConstraints, tv: TVConstraints,
              d_reference=None) -> Trajectory:
 
         # check if reference has the same size as optimization horizon

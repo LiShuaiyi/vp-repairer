@@ -1,8 +1,8 @@
 import numpy as np
 from operator import itemgetter
 from collections import defaultdict
-from optimization.configuration import RepairingConfigurationVehicle
-from optimization.constraints import LonConstraints, LatConstraints
+from optimizer.configuration import RepairingConfigurationVehicle
+from optimizer.constraints import LonConstraints, LatConstraints
 from typing import Dict, Union, List
 from crmonitor.common.world_state import WorldState
 from crmonitor.common.road_network import RoadNetwork, Lane

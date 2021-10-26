@@ -5,14 +5,14 @@ from cvxpy import *
 from collections import defaultdict
 from typing import Union, Tuple
 
-from optimization.abstract_repairer import TrajectoryRepairer
-from optimization.constraints import TIConstraints, TVConstraints, LonConstraints
-from optimization.trajectory import Trajectory, TrajPoint, TrajectoryType
+from optimizer.abstract import TrajectoryPlanner
+from optimizer.constraints import TIConstraints, TVConstraints, LonConstraints
+from optimizer.trajectory import Trajectory, TrajPoint, TrajectoryType
 
 import commonroad.common.validity as val
 
 
-# QPLongRepairer Weights
+# Weights
 class QPLongPARAMS:
     W_S = 4.0  # weight for state deviation
     W_V = 4  # weight for velocity deviation
@@ -110,7 +110,7 @@ class QPLongReference(object):
             return 1
 
 
-class QPLongRepairer(TrajectoryRepairer):
+class QPLongPlanner(TrajectoryPlanner):
     def __init__(self,
                  tstcc: int,
                  horizon: float,
@@ -227,7 +227,7 @@ class QPLongRepairer(TrajectoryRepairer):
         plt.show()
         plt.pause(0.001)
 
-    def repair(self, x_initial: QPLongState, x_ref: QPLongReference, ti: TIConstraints, tv: TVConstraints) \
+    def plan(self, x_initial: QPLongState, x_ref: QPLongReference, ti: TIConstraints, tv: TVConstraints) \
             -> Tuple[Union[Trajectory, None], int]:
         # if self.N in self._codegen_solver_dict:
         #     traj, status, cost = self._codegen_plan(x_initial, x_ref, ti, tv)

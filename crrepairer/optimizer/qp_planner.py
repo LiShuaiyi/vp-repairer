@@ -9,16 +9,16 @@ from commonroad.scenario.trajectory import State, Trajectory
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.scenario import Scenario
 
-# trajectory repairing tools
-from optimization.safety_constraints import SafetyConstraints
-from optimization.trajectory import Trajectory, TrajPoint, TrajectoryType
-from optimization.qp_lat_repairer import QPLatRepairer, QPLatReference, QPLatState, QPLatPARAMS
-from optimization.qp_long_repairer import QPLongRepairer, QPLongReference, QPLongState, QPLongPARAMS
-from optimization.constraints import TIConstraints
+# trajectory planning tools
+from optimizer.safety_constraints import SafetyConstraints
+from optimizer.trajectory import Trajectory, TrajPoint, TrajectoryType
+from optimizer.qp_lat_planner import QPLatPlanner, QPLatReference, QPLatState, QPLatPARAMS
+from optimizer.qp_long_planner import QPLongPlanner, QPLongReference, QPLongState, QPLongPARAMS
+from optimizer.constraints import TIConstraints
 
 from crmonitor.common.world_state import WorldState
 
-class QPRepairer:
+class QPPlanner:
     def __init__(self,
                  initial_state: Union[State, TrajPoint],
                  scenario: Scenario,
@@ -37,7 +37,7 @@ class QPRepairer:
             self.dt = scenario.dt
         self.t_h = time_horizon
         if Decimal(str(time_horizon)) % Decimal(str(self.dt)) != Decimal('0.0'):
-            raise ValueError('<QPRepairer>: the given time step {} is inapproparite,'
+            raise ValueError('<QPPlanner>: the given time step {} is inapproparite,'
                              'since time horizon is {}.'.format(dt, time_horizon))
         self.tstcc = tstcc
         self.tstv = tstv
@@ -48,7 +48,7 @@ class QPRepairer:
         # todo: set desired speed (goal?)
         self.vehicle_configuration.desired_speed = initial_state.velocity
         # if vehicle_configuration.reference_point != pycrreach.ReferencePoint.REAR:
-        #     raise ValueError('<QPRepairer>: Reference point must be rear axis!')
+        #     raise ValueError('<QPPlanner>: Reference point must be rear axis!')
 
         # self.collision_avoidance_constraints = CollisionAvoidanceConstraints(self.reachable_set,
         #                                                                      self.vehicle_configuration.reference_point)
@@ -73,18 +73,18 @@ class QPRepairer:
         else:
             self.qp_lat_params = QPLatPARAMS()
 
-    def repair_trajectories(self,
-                            target_lanes: [Dict, None],
-                            find_all_trajectories: bool = False):
+    def plan_trajectories(self,
+                          target_lanes: [Dict, None],
+                          find_all_trajectories: bool = False):
         print('\t\t Longitudinal optimization')
-        traj_lon, status = self._longitudinal_trajectory_repairing(target_lanes)
+        traj_lon, status = self._longitudinal_trajectory_planning(target_lanes)
         if status is not 'optimal':
-            raise ValueError('<QPRepairer/_longitudinal_trajectory_repairing>: failed')
+            raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: failed')
         print('\t\t Lateral optimization')
-        traj_lat, status = self._lateral_trajectory_repairing(traj_lon, target_lanes)
+        traj_lat, status = self._lateral_trajectory_planning(traj_lon, target_lanes)
         # convert trajectory to cartesian space
         if status is not 'optimal':
-            raise ValueError('<QPRepairer/_lateral_trajectory_repairing>: failed')
+            raise ValueError('<QPPlanner/_lateral_trajectory_planning>: failed')
         # except Exception as e:
         #     print(e)
         return traj_lat
@@ -158,7 +158,7 @@ class QPRepairer:
 
         return traj
 
-    def _longitudinal_trajectory_repairing(self, target_lanes):
+    def _longitudinal_trajectory_planning(self, target_lanes):
         # get longitudinal position constraints from reachable set
         c_long = self.collision_avoidance_constraints.\
             longitudinal_position_constraints(
@@ -169,10 +169,10 @@ class QPRepairer:
         #####
         # Plan longitudinal trajectory
         #####
-        # Create long repairer with t_h, N, dT, slack usage, zero velocity at t_h, longitudinal parameters
-        lon_repairer = QPLongRepairer(self.tstcc, self.t_h, self.N, self.dt, slack=False,
-                                      qp_long_params=self.qp_long_params)
-        lon_repairer.verbose = self.verbose  # turn on diagnose solver output
+        # Create long planner with t_h, N, dT, slack usage, zero velocity at t_h, longitudinal parameters
+        lon_planner = QPLongPlanner(self.tstcc, self.t_h, self.N, self.dt, slack=False,
+                                    qp_long_params=self.qp_long_params)
+        lon_planner.verbose = self.verbose  # turn on diagnose solver output
 
         # initial state s,v,a,j,t
         if isinstance(self.initial_state, State):
@@ -191,7 +191,7 @@ class QPRepairer:
                                  self.initial_state.j,
                                  0.)
         else:
-            raise ValueError('<QPRepairer/_longitudinal_trajectory_repairing>: Initial state must be of type {} or '
+            raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: Initial state must be of type {} or '
                              'of type {}. Got type {}.'.format(type(State), type(TrajPoint),
                                                                type(self.initial_state)))
         x_ref = list()
@@ -207,7 +207,7 @@ class QPRepairer:
             x_ref.append(QPLongState(state.s, state.v, 0., 0., 0.))
         reference = QPLongReference(x_ref[self.tstcc + 1:]) # initial state not included?
 
-        traj, status = lon_repairer.repair(x_init, reference, self.time_invariant_constraints, c_long)
+        traj, status = lon_planner.plan(x_init, reference, self.time_invariant_constraints, c_long)
 
         if status == 'optimal':
             if self.verbose:
@@ -242,22 +242,22 @@ class QPRepairer:
             plt.show(block=True)
         return traj, status
 
-    def _lateral_trajectory_repairing(self,
-                                      longitudinal_trajectory: Trajectory,
-                                      target_lanes):
+    def _lateral_trajectory_planning(self,
+                                     longitudinal_trajectory: Trajectory,
+                                     target_lanes):
         ######
-        # Repair lateral trajectory
+        # Plan lateral trajectory
         c_lat = self.collision_avoidance_constraints.lateral_position_constraints(
             self.tstcc,
             target_lanes,
             longitudinal_trajectory.cartesian_ptsX(),
             self.vehicle_configuration)
         ######
-        # create lateral repairer with t_h, N, dt, wheelbase, slack usage, lateral parameters
-        lat_repairer = QPLatRepairer(self.tstcc, self.tstv, self.t_h, c_lat.N, self.dt,
+        # create lateral planner with t_h, N, dt, wheelbase, slack usage, lateral parameters
+        lat_planner = QPLatPlanner(self.tstcc, self.tstv, self.t_h, c_lat.N, self.dt,
                                     self.vehicle_configuration.wheelbase,
                                     self.slack_usage, self.qp_lat_params)
-        lat_repairer.verbose = self.verbose
+        lat_planner.verbose = self.verbose
 
         # d: float, theta: float, kappa: float, theta_ref: float, t = 0., s= None, v= None, a= None
         if isinstance(self.initial_state, State):
@@ -283,7 +283,7 @@ class QPRepairer:
                                 j=longitudinal_trajectory.states[0].j,
                                 u_lon=longitudinal_trajectory.u_lon)
         else:
-            raise ValueError('<QPRepairer/_longitudinal_trajectory_repairing>: Initial state must be of type {} or '
+            raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: Initial state must be of type {} or '
                              'of type {}. Got type {}.'.format(type(State), type(TrajPoint),
                                                                type(self.initial_state)))
 
@@ -294,7 +294,7 @@ class QPRepairer:
         self.x_ref = x_ref
 
         # plan trajectory
-        traj_lat, status = lat_repairer.repair(x_init, x_ref, self.time_invariant_constraints, c_lat)
+        traj_lat, status = lat_planner.plan(x_init, x_ref, self.time_invariant_constraints, c_lat)
 
         if not status == 'optimal' and self.verbose:
             for s in longitudinal_trajectory.states:
