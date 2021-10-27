@@ -1,7 +1,7 @@
 import numpy as np
 from operator import itemgetter
 from collections import defaultdict
-from optimizer.configuration import RepairingConfigurationVehicle
+from optimizer.configuration import PlanningConfigurationVehicle
 from optimizer.constraints import LonConstraints, LatConstraints
 from typing import Dict, Union, List
 from crmonitor.common.world_state import WorldState
@@ -28,7 +28,7 @@ class SafetyConstraints:
 
     def lateral_position_constraints(self, tstcc: int, target_lanes: List[Lane],
                                      longitudinal_trajectory_s_coordinates: List[float],
-                                     vehicle_configuration:RepairingConfigurationVehicle) -> LatConstraints:
+                                     vehicle_configuration:PlanningConfigurationVehicle) -> LatConstraints:
         def convert(d_constraints: Dict[int, Interval]):
             d_min = list()
             d_max = list()
@@ -59,7 +59,7 @@ class SafetyConstraints:
                                                       tstcc: int,
                                                       target_lanes: Union[Dict, None],
                                                       longitudinal_trajectory_s_coordinates: Dict[int, float],
-                                                      vehicle_configuration: RepairingConfigurationVehicle):
+                                                      vehicle_configuration: PlanningConfigurationVehicle):
         d_constraints_reference_point = defaultdict()
         for time_step, lanes in target_lanes.items():
             time_step -= tstcc
@@ -85,7 +85,7 @@ class SafetyConstraints:
 
     def _lateral_position_constraints_other_vehicles(self,
                                                      longitudinal_trajectory_s_coordinates: Dict[int, float],
-                                                     vehicle_configuration: RepairingConfigurationVehicle,
+                                                     vehicle_configuration: PlanningConfigurationVehicle,
                                                      d_constraints_reference_point: Dict[int, Interval]):
         d_constraints_rear_or_center = defaultdict()
         d_constraints_front = defaultdict()
@@ -123,7 +123,7 @@ class SafetyConstraints:
         pass
 
 
-    def longitudinal_position_constraints(self, veh_config: RepairingConfigurationVehicle,
+    def longitudinal_position_constraints(self, veh_config: PlanningConfigurationVehicle,
                                           target_lanes: Union[Dict, None], tstcc: int, tstv: int) -> LonConstraints:
         # set time steps
         self.time_steps = sorted(list(target_lanes.keys()))
