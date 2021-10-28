@@ -118,11 +118,25 @@ class QPLongPlanner(TrajectoryPlanner):
                  qp_long_params: QPLongPARAMS = QPLongPARAMS()):
         super().__init__(horizon, N, dT)
 
-        self.verbose = True
+        # turn off verbose mode as default
+        self.verbose = False
 
-        # define variables and matrices
+        # set parameters
         self._n = 4
         self._m = 1
+        # ---------------------------------------- slack variable ----------------------------------------------------#
+        self._slack = slack
+        self._slack_soft_pos = False
+        # number of slack variables if slack has been set to True <s_l_soft, s_u_soft>
+        self._n_s = 2 if self._slack_soft_pos else 0
+        # plus additional 2 soft for acceleration bath tubs
+        self._slack_acc = False
+        self._n_a = 3 if self._slack_acc else 0
+        # NEW SLACK APPROACH -> only slacking s_u_hard otherwise vehicle crashes on purpose with following vehicles
+        # In total N slacks now to check collision at each time step
+        self._n_c = 1 if self._slack else 0  # self.N # currently only one slack support
+        # ------------------------------------------------------------------------------------------------------------#
+        # define variables and matrices
         self._x = Variable((self._n,
                             self.N + 1))
         self._u = Variable((self._m,
@@ -143,19 +157,6 @@ class QPLongPlanner(TrajectoryPlanner):
         # store parameters
         self._qp_long_params = qp_long_params
 
-        # ---------------------------------------- slack variable ----------------------------------------------------#
-        self._slack = slack
-        self._slack_soft_pos = False
-        # number of slack variables if slack has been set to True <s_l_soft, s_u_soft>
-        self._n_s = 2 if self._slack_soft_pos else 0
-        # plus additional 2 soft for acceleration bath tubs
-        self._slack_acc = False
-        self._n_a = 3 if self._slack_acc else 0
-        # NEW SLACK APPROACH -> only slacking s_u_hard otherwise vehicle crashes on purpose with following vehicles
-        # In total N slacks now to check collision at each time step
-        self._n_c = 1 if self._slack else 0  # self.N # currently only one slack support
-        # -------------------------------------------------------------------------------------------------------------
-
     @property
     def slack(self):
         return self._slack
@@ -172,48 +173,55 @@ class QPLongPlanner(TrajectoryPlanner):
     def plan(self,
              x_initial: QPLongState,
              x_ref: QPLongReference,
-             ti: TIConstraints,
-             tv: TVConstraints) \
+             c_ti: TIConstraints,
+             c_tv: TVConstraints) \
             -> Tuple[Union[Trajectory, None], int]:
-        traj, status, cost = self._cvxpy_plan(x_initial, x_ref, ti, tv)
+        traj, status, cost = self._cvxpy_plan(x_initial, x_ref, c_ti, c_tv)
         # check result
         if not 'optimal' == status:
             print('\t\t\t Status longitudinal trajectory planner: {}'.format(status))
         return traj, status
 
-    def _cvxpy_plan(self, x_initial: QPLongState, x_ref: QPLongReference, ti: TIConstraints, tv: TVConstraints) \
+    def _cvxpy_plan(self,
+                    x_initial: QPLongState,
+                    x_ref: QPLongReference,
+                    c_ti: TIConstraints,
+                    c_tv: TVConstraints) \
             -> Tuple[Union[Trajectory, None], str, float]:
         """
             Plans a longitudinal trajectory for a given initial state and reference with respect to
             time-variant and invariant constraints
             :param x_initial: The initial state of the vehicle
             :param x_ref: The reference state or list of states (goals)
-            :param ti: The time-invariant constraints
-            :param tv: The time-variant longitudinal constraints
+            :param c_ti: The time-invariant constraints
+            :param c_tv: The time-variant longitudinal constraints
             :return: A longitudinal trajectory where the lateral component is set to zero
         """
         # Prepare constraints
-        if isinstance(tv, TVConstraints):
-            c_tv = tv.lon
-        if isinstance(tv, LonConstraints):
-            c_tv = tv
+        if isinstance(c_tv, TVConstraints):
+            c_tv = c_tv.lon
+        if isinstance(c_tv, LonConstraints):
+            c_tv = c_tv
+
         # check if reference is single state or list
         ref_len = x_ref.length()
         if ref_len > 1:
             assert ref_len == self.N
+
         # initialize cost and constraints
         cost = 0
         constr = []
+
         # create all states of the problem along the horizon N
         for k in range(self.N):
             #########################################
             # Define cost function including reference
             #########################################
-            cost += quad_form(
-                        self._x[:, k + 1] - npy.transpose(
+            cost += quad_form(self._x[:, k + 1] - npy.transpose(
                             [x_ref.reference[k].s, x_ref.reference[k].v,
-                             x_ref.reference[k].a, x_ref.reference[k].j]),
-                        self._Q) + square(self._u[:, k]) * self._R
+                             x_ref.reference[k].a, x_ref.reference[k].j]),self._Q) +\
+                    square(self._u[:, k]) * self._R
+
             ##################################
             # Specify time-variant constraints
             ##################################
@@ -231,13 +239,15 @@ class QPLongPlanner(TrajectoryPlanner):
                     constr += [self._x[0, k + 1] + self._u[:, self.N] >= c_tv.s_soft_min[k]]  # position constraints
                 if c_tv.s_soft_max[k] != npy.inf:
                     constr += [self._x[0, k + 1] - self._u[:, self.N + 1] <= c_tv.s_soft_max[k]]
+
         ###################################
         # Set up time-invariant constraints
         ###################################
-        constr += [self._x[1, :] >= ti.v_min, self._x[1, :] <= ti.v_max]  # velocity
-        constr += [self._x[2, :] >= ti.a_x_min, self._x[2, :] <= ti.a_x_max]  # acceleration
-        constr += [self._x[3, :] >= ti.j_x_min, self._x[3, :] <= ti.j_x_max]  # jerk
+        constr += [self._x[1, :] >= c_ti.v_min, self._x[1, :] <= c_ti.v_max]  # velocity
+        constr += [self._x[2, :] >= c_ti.a_x_min, self._x[2, :] <= c_ti.a_x_max]  # acceleration
+        constr += [self._x[3, :] >= c_ti.j_x_min, self._x[3, :] <= c_ti.j_x_max]  # jerk
         constr += [self._x[:, 0] == x_initial.to_array()]  # initial state constraint
+
         ############################
         # Solve optimization problem
         ############################
@@ -256,6 +266,7 @@ class QPLongPlanner(TrajectoryPlanner):
                 else:
                     print("Hard Pos Slack variable = {}".format(self._u[(self.N + self._n_s + self._n_a)].value))
             print("Costs = {}".format(cost))
+
         ##########################
         # Create output trajectory
         ##########################

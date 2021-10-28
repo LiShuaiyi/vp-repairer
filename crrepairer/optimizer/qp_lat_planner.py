@@ -1,3 +1,4 @@
+import math
 import sys
 import numpy as npy
 import matplotlib.pyplot as plt
@@ -15,7 +16,7 @@ from commonroad_ccosy.geometry.util import compute_curvature_from_polyline, comp
 import commonroad.common.validity as val
 
 
-# QPLatPlanner Weigths
+# QPLatPlanner Weights
 class QPLatPARAMS:
     W_D = 0.0  # weight for d deviation
     W_THETA = 0.1  # weight for theta deviation
@@ -38,7 +39,6 @@ class QPLatState(object):
     """
     Class representing a state <d,theta,kappa,kappa_dot> within the QPLatPlanner
     """
-
     def __init__(self, d: float, theta: float, kappa: float, kappa_dot: float,
                  t=0., s=None, v=None, a=None, j=None, u_lon=None):
         self.d = d
@@ -304,10 +304,9 @@ class QPLatReference(object):
 
 class QPLatPlanner(TrajectoryPlanner):
     def __init__(self,
-                 tstcc: int,
-                 tstv: int,
                  horizon: float,
-                 N: int, dT: float,
+                 N: int,
+                 dT: float,
                  length: float,
                  slack=False,
                  qp_lat_params: QPLatPARAMS = QPLatPARAMS()):
@@ -319,31 +318,32 @@ class QPLatPlanner(TrajectoryPlanner):
         :param length: The distance between rear and front circle of vehicle shape
         :param slack: If slack variable approach should be used
         """
-
         # set super class variables
-        super().__init__(tstcc, horizon, N, dT)
+        super().__init__(horizon, N, dT)
 
         # turn off verbose mode as default
         self.verbose = False
-        # set slack flag
-        self._slack = slack
 
         # set parameters
         self._n = 4  # state vector length <d, theta, kappa, kappa dot>
         self._m = 1  # input vector length <kappa dot dot>
+        # ---------------------------------------- slack variable ----------------------------------------------------#
         self._n_s = 4  # number of slack variables if slack has been set to True <d_l, d_u, kappa_l, kappa_u>
-        assert val.is_positive(length), "<QPLatPlanner>: provided vehicle length is not valid! length={}".format(length)
+        # ------------------------------------------------------------------------------------------------------------#
+
+        assert val.is_positive(length), "<QPLatPlanner>: provided wheelbase length " \
+                                        "is not valid! length={}".format(length)
         self._length = length
 
-        # store parameters
-        self._qp_lat_params = qp_lat_params
-
         # define variables and matrices
-        self._x = Variable((self._n, self.N + 1)) # d, theta, kappa, kappa dot
+        self._x = Variable((self._n, self.N + 1))  # d, theta, kappa, kappa dot
+
+        self._slack = slack
         if self.slack:
-            self._u = Variable((self._m, self.N + self._n_s))  # kappa dot dot
+            self._u = Variable((self._m, self.N + self._n_s))
         else:
-            self._u = Variable((self._m, self.N))  # kappa dot dot
+            self._u = Variable((self._m, self.N))
+        # -------------------------------------------------------------------------------------------------------------
 
         # cost function matrices for state and input
         self._Q = npy.array(
@@ -357,15 +357,14 @@ class QPLatPlanner(TrajectoryPlanner):
         self._W = npy.array(
             [[1, 0, 0],
              [0, 1, 0],
-             [0, 0, 1],]
-        ) # todo
+             [0, 0, 1]])
         self._R = self._qp_lat_params.W_U  # weight for input
-        self.tstcc = tstcc
-        self.tstv = tstv
         # cost function matrices for slack variables
         self._H_Q = npy.identity(self._n_s) * self._qp_lat_params.W_SLACK_Q
         self._H_L = npy.repeat(1, self._n_s) * self._qp_lat_params.W_SLACK_L
-        # self._codegen_solver_dict = self._set_codegen_solver_dict()
+
+        # store parameters
+        self._qp_lat_params = qp_lat_params
 
     @property
     def slack(self):
@@ -380,93 +379,53 @@ class QPLatPlanner(TrajectoryPlanner):
         assert isinstance(verbose, bool), "<QPLatPlanner>: verbose flag must be of type bool!"
         self._verbose = verbose
 
-    def plot_state_vector(self, c: TVConstraints, s_obj=None):
-
-        if isinstance(c, TVConstraints):
-            lat = c.lat
-        else:
-            lat = c
-
-        x = self._x
-        N = x.size[1] - 1
-
-        plt.ion()
-        plt.figure()
-
-        # Plot (x_t)_1.
-        plt.subplot(4, 1, 1)
-        x1 = x[0, :].value.A.flatten()
-        plt.plot(npy.array(range(N + 1)), x1)
-        plt.plot(npy.array(range(1, N + 1)), lat.d_hard_min, 'C1')
-        plt.plot(npy.array(range(1, N + 1)), lat.d_soft_min, 'C2')
-        plt.plot(npy.array(range(1, N + 1)), lat.d_hard_max, 'C1')
-        plt.plot(npy.array(range(1, N + 1)), lat.d_soft_max, 'C2')
-        plt.ylabel(r"$d$", fontsize=16)
-        plt.xticks([])
-
-        # Plot (x_t)_2.
-        plt.subplot(4, 1, 2)
-        x2 = x[1, :].value.A.flatten()
-        plt.plot(npy.array(range(N + 1)), x2)
-        plt.ylabel(r"$theta$", fontsize=16)
-        plt.xticks([])
-
-        # Plot (x_t)_3.
-        plt.subplot(4, 1, 3)
-        x2 = x[2, :].value.A.flatten()
-        plt.plot(npy.array(range(N + 1)), x2)
-        plt.ylabel(r"$kappa$", fontsize=16)
-        plt.xticks([])
-
-        # Plot (x_t)_4.
-        plt.subplot(4, 1, 4)
-        x2 = x[3, :].value.A.flatten()
-        plt.plot(npy.array(range(N + 1)), x2)
-        plt.ylabel(r"$kappa_dot$", fontsize=16)
-        plt.xticks(range(0, N + 1))
-        plt.xlabel(r"$k$", fontsize=16)
-        plt.tight_layout()
-        plt.show()
-        plt.pause(0.001)
-
-    def plan(self, x_initial: QPLatState, x_ref: QPLatReference, ti: TIConstraints, tv: TVConstraints,
+    def plan(self,
+             x_initial: QPLatState,
+             x_ref: QPLatReference,
+             c_ti: TIConstraints,
+             c_tv: TVConstraints,
+             k_lane_change: int,
              d_reference=None) -> Trajectory:
-
         # check if reference has the same size as optimization horizon
         assert x_ref.length() == self.N, "<QPLatPlanner>: reference must have the same length as " \
                                          "optimization horizon. length={}".format(x_ref.length())
         # check length of time-variant constraints
-        assert tv.N == self.N, "<QPLatPlanner>: time-variant constraints must have the same length as " \
-                               "optimization horizon. length={}".format(tv.N)
+        assert c_tv.N == self.N, "<QPLatPlanner>: time-variant constraints must have the same length as " \
+                               "optimization horizon. length={}".format(c_tv.N)
 
         if d_reference is not None:
-            assert val.is_real_number_vector(d_reference, length=tv.N), '<QPLatPlanner/plan>: provided d reference ' \
+            assert val.is_real_number_vector(d_reference, length=c_tv.N), '<QPLatPlanner/plan>: provided d reference ' \
                                                                         'is not valid! ref = {}'.format(d_reference)
 
-        # if self.N in self._codegen_solver_dict:
-        #     traj, status, cost = self._codegen_plan(x_initial, x_ref, ti, tv, d_reference)
-        # else:
-        traj, status, cost = self._cvxpy_plan(x_initial, x_ref, ti, tv, d_reference)
+        traj, status, cost = self._cvxpy_plan(x_initial, x_ref, c_ti, c_tv, d_reference, k_lane_change)
 
         if not 'optimal' == status:
             print('\t\t\t Status lateral trajectory planner: {}'.format(status))
 
         return traj, status
 
-    def _cvxpy_plan(self, x_initial: QPLatState,
+    def _cvxpy_plan(self,
+                    x_initial: QPLatState,
                     x_ref: QPLatReference,
-                    ti: TIConstraints,
-                    tv: TVConstraints,
-                    d_reference=None) -> Trajectory:
-        if isinstance(tv, TVConstraints):
-            c = tv.lat
+                    c_ti: TIConstraints,
+                    c_tv: TVConstraints,
+                    d_reference=None,
+                    k_lane_change=math.inf,) -> Trajectory:
+        # Prepare constraints
+        if isinstance(c_tv, TVConstraints):
+            c_tv = c_tv.lat
         else:
-            c = tv
+            c_tv = c_tv
 
+        # initialize cost and constraints
         cost = 0
         constr = []
+
+        # create all states of the problem along the horizon N
         for k in range(self.N):
-            # time-variant parameters
+            #########################################
+            # Define cost function including reference
+            #########################################
             v = x_ref.reference[k].v
             a = x_ref.reference[k].a
             theta = x_ref.reference[k].theta
@@ -474,79 +433,59 @@ class QPLatPlanner(TrajectoryPlanner):
 
             # define cost function including reference
             x_desired = [0 if d_reference is None else d_reference[k], theta, kappa, 0]
-            # cost function is different for end state
-            # if k < self.N - 1:
+
+            #########################################
+            # Define cost function including reference
+            #########################################
             cost += quad_form(self._x[:, k + 1] - x_desired, self._Q) + square(self._u[:, k]) * self._R
 
-            # else:
-            #     # end state costs and slack costs
-            #     if self.slack:
-            #         cost = quad_form(self._x[:, k + 1] - x_desired, self._P) \
-            #                + quad_form(self._u[:, k], self._R) + self._H_L * self._u[self.N:].T \
-            #                + quad_form(self._u[self.N:].T, self._H_Q)
-            #     else:
-                    # cost = quad_form(self._x[:, k + 1] - x_desired, self._P) + square(self._u[:, k]) * self._R
-
-            #
-            # TIME-VARIANT STATE TRANSITION MATRICES
-            #
-
+            ##########################################
+            # Specify time-variant transition matrices
+            ##########################################
             # x = Ax+Bu+Dz
             A = npy.array(
                 [[1, self.dT * v, (self.dT ** 2) * 0.5 * (v ** 2), (self.dT ** 3) / 6 * (v ** 2)],
-                 [0, 1, self.dT * v, (self.dT ** 2) * 0.5 * v], [0, 0, 1, self.dT], [0, 0, 0, 1]])
-
-            # B = npy.transpose(
-            #     npy.array([(self.dT ** 4) / 24 * (v ** 2),
-            #                (self.dT ** 3) / 6 * v,
-            #                (self.dT ** 2) * 0.5,
-            #                self.dT]))
-
-            B = npy.array([[(self.dT ** 4) / 24 * (v ** 2)], [(self.dT ** 3) / 6 * v]\
-                ,[(self.dT ** 2) * 0.5], [self.dT]])
+                 [0, 1, self.dT * v, (self.dT ** 2) * 0.5 * v],
+                 [0, 0, 1, self.dT],
+                 [0, 0, 0, 1]])
+            B = npy.array([[(self.dT ** 4) / 24 * (v ** 2)],
+                           [(self.dT ** 3) / 6 * v],
+                           [(self.dT ** 2) * 0.5],
+                           [self.dT]])
             # disturbances on input
             D = npy.array([-self.dT * v, 0, 0, 0])
             # selection matrix for output
             S = npy.array([[1, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0],
                            [0, 0, 1, 0, 0]])
-
             C = npy.array([[1, 0, 0, 0],
                            [1, 0.5 * self._length, 0, 0],
                            [1, self._length, 0, 0],
                            [0, 0, 1, 0],
                            [0, 0, 0, 1]])
-
-            # C = npy.array([[1, 0, 0, 0],
-            #                [1, -0.5 * self._length, 0, 0],
-            #                [1, 0.5 * self._length, 0, 0],
-            #                [0, 0, 1, 0],
-            #                [0, 0, 0, 1]])  # Todo last row is originally [0,0,1,0]
             # disturbances on output
             E = npy.transpose(npy.array([0, -0.5 * self._length, -self._length, 0, 0]))
-            # E = npy.transpose(npy.array([0, 0.5 * self._length, -0.5 * self._length, 0, 0]))
 
-            # TIME-VARIANT CONSTRAINTS
-            # npy.array([1,1,1]) *
-
+            ##################################
+            # Specify time-variant constraints
+            ##################################
             constr += [self._x[:, k + 1] == A @ self._x[:, k] + B @ self._u[:, k] + theta * D]  # state transition
-            # print(c.d_hard_max[k], c.d_hard_min[k])
-            if k > self.tstv - self.tstcc:
-                d_optimal = (c.d_hard_min[k] + c.d_hard_max[k]) / 2
-                cost += 100 * quad_form(S @ (C @ self._x[:, k + 1] + E * theta) - d_optimal, self._W)
-            # todo: other circles
-            # constr += [self._x[0, k + 1] <= c.d_hard_max[k][0]]  # upper lateral bound
-            # constr += [self._x[0, k + 1] >= c.d_hard_min[k][0]]
-            # constr += [self._x[0, k + 1] + 0.5 * self._length * self._x[1, k + 1] <=  c.d_hard_max[k][1]]  # upper lateral bound
-            # constr += [self._x[0, k + 1] + 0.5 * self._length * self._x[1, k + 1] >= c.d_hard_min[k][1]]
-            # constr += [self._x[0, k + 1] + 1. * self._length * self._x[1, k + 1] <=  c.d_hard_max[k][1]]  # upper lateral bound
-            # constr += [self._x[0, k + 1] + 1. * self._length * self._x[1, k + 1] >= c.d_hard_min[k][1]]
-            # constr += [S @ (C @ self._x[:, k + 1] + E * theta) <= (c.d_hard_max[k])]  # upper lateral bound
-            # constr += [S @ (C @ self._x[:, k + 1] + E * theta) >= (c.d_hard_min[k])]  # lower lateral bound
+            # print(c_tv.d_hard_max[k], c_tv.d_hard_min[k])
 
-            # if k >= 10:
-            #     constr += [self._x[0, k+1] >= 3.4, self._x[0, k+1] <= 3.5]
-            kappa_lim = npy.min([npy.sqrt(ti.a_max ** 2 - a ** 2) / (npy.max([v, 0.5]) ** 2),
+            if k >= k_lane_change:
+                d_optimal = (c_tv.d_hard_min[k] + c_tv.d_hard_max[k]) / 2
+                cost += 100 * quad_form(S @ (C @ self._x[:, k + 1] + E * theta) - d_optimal, self._W)
+
+            constr += [self._x[0, k + 1] <= c_tv.d_hard_max[k][0]]  # upper lateral bound
+            constr += [self._x[0, k + 1] >= c_tv.d_hard_min[k][0]]
+            constr += [self._x[0, k + 1] + 0.5 * self._length * self._x[1, k + 1] <= c_tv.d_hard_max[k][1]]  # upper lateral bound
+            constr += [self._x[0, k + 1] + 0.5 * self._length * self._x[1, k + 1] >= c_tv.d_hard_min[k][1]]
+            constr += [self._x[0, k + 1] + 1. * self._length * self._x[1, k + 1] <= c_tv.d_hard_max[k][1]]  # upper lateral bound
+            constr += [self._x[0, k + 1] + 1. * self._length * self._x[1, k + 1] >= c_tv.d_hard_min[k][1]]
+            constr += [S @ (C @ self._x[:, k + 1] + E * theta) <= (c_tv.d_hard_max[k])]  # upper lateral bound
+            constr += [S @ (C @ self._x[:, k + 1] + E * theta) >= (c_tv.d_hard_min[k])]  # lower lateral bound
+
+            kappa_lim = npy.min([npy.sqrt(c_ti.a_max ** 2 - a ** 2) / (npy.max([v, 0.5]) ** 2),
                                  self._qp_lat_params.KAPPA_MAX])
 
             constr += [self._x[2, k + 1] <= kappa_lim + 0.1]  # curvature constraint Kamm's circle
@@ -559,20 +498,23 @@ class QPLatPlanner(TrajectoryPlanner):
             # slack constraints
             if self.slack:
                 # upper lateral bound
-                constr += [S * (C * self._x[:, k + 1] + E * theta) - self._u[self.N] <= (c.d_soft_max[k])]
+                constr += [S * (C * self._x[:, k + 1] + E * theta) - self._u[self.N] <= (c_tv.d_soft_max[k])]
                 # lower lateral bound
-                constr += [S * (C * self._x[:, k + 1] + E * theta) + self._u[self.N + 1] >= (c.d_soft_min[k])]
+                constr += [S * (C * self._x[:, k + 1] + E * theta) + self._u[self.N + 1] >= (c_tv.d_soft_min[k])]
 
-        # time-invariant constraints
+        ###################################
+        # Set up time-invariant constraints
+        ###################################
         constr += [self._x[:, 0] == x_initial.to_array()]
         if self.slack:
             constr += [self._u[:, self.N:].T >= npy.repeat(0, self._n_s)]
 
-        # sums problem objectives and concatenates constraints
-        prob = Problem(Minimize(cost), constr)
-
+        ############################
         # Solve optimization problem
+        ############################
+        prob = Problem(Minimize(cost), constr)
         prob.solve(verbose=self.verbose)
+
         # print slack result
         if self.verbose and not prob.status == 'infeasible':
             print("Slack variables: {}".format(self._u[:, self.N:].value.A.flatten()))
@@ -581,6 +523,9 @@ class QPLatPlanner(TrajectoryPlanner):
         if not 'optimal' == prob.status:
             print('Solution not optimal')
 
+        ##########################
+        # Create output trajectory
+        ##########################
         traj = None
         if not prob.status == 'infeasible':
             traj = []
