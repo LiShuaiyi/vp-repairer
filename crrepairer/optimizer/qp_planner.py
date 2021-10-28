@@ -11,7 +11,6 @@ from commonroad.scenario.scenario import Scenario
 from commonroad.planning.planning_problem import PlanningProblem
 
 # trajectory planning tools
-from optimizer.safety_constraints import SafetyConstraints
 from optimizer.constraints import LonConstraints, LatConstraints
 from optimizer.configuration import PlanningConfigurationVehicle
 from optimizer.trajectory import Trajectory, TrajPoint, TrajectoryType
@@ -68,13 +67,17 @@ class QPPlanner:
             self.qp_lat_params = QPLatPARAMS()
 
     def plan_trajectories(self,
-                          target_lanes: [Dict, None]):
+                          c_long: LonConstraints,
+                          c_lat: LatConstraints,
+                          reference: QPLongReference):
+        assert isinstance(c_long, LonConstraints) and isinstance(c_lat, LatConstraints),\
+            "Given type of constraints {}, {} is not supported".format(type(c_long), type(c_lat))
         print('\t\t Longitudinal optimization')
-        traj_lon, status = self._longitudinal_trajectory_planning(target_lanes)
+        traj_lon, status = self._longitudinal_trajectory_planning(c_long, reference)
         if status is not 'optimal':
             raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: failed')
         print('\t\t Lateral optimization')
-        traj_lat, status = self._lateral_trajectory_planning(traj_lon, target_lanes)
+        traj_lat, status = self._lateral_trajectory_planning(traj_lon, c_lat)
         # convert trajectory to cartesian space
         if status is not 'optimal':
             raise ValueError('<QPPlanner/_lateral_trajectory_planning>: failed')
