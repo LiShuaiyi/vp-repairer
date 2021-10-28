@@ -227,7 +227,7 @@ class Trajectory(object):
             self._traj_points[i] = s
 
     def __valid_trajectory(self, traj_points: list):
-        return True
+
         # check inputs
         assert len(traj_points) > 1
 
@@ -425,49 +425,6 @@ class Trajectory(object):
                               obstacle_shape=shape,
                               initial_state=traj.state_list[0])
         return ego
-
-    # @classmethod
-    # def compute_standstill_trajectory(cls, traj: 'Trajectory', t: float) -> 'Trajectory':
-    #     """
-    #     Computes a standstill trajectory for a given trajectory which ends in standstill
-    #     :param traj: The trajectory which ends in standstill
-    #     :param t: The time horizon of the standstill trajectory
-    #     :return: The standstill trajectory
-    #     """
-    #
-    #     assert isinstance(traj, Trajectory), '<Util/concatenate_standstill_trajectory>: Provided trajectory ' \
-    #                                          'is not of type trajectory! type = {}'.format(type(traj))
-    #     assert val.is_positive(t), '<Util/concatenate_standstill_trajectory>: provided time ' \
-    #                                'horizon for standstill trajectory is not valid! t = {}'.format(t)
-    #
-    #     # check if provided trajectory does end with v <= eps
-    #     eps = 0.15  # m/s
-    #     assert np.greater_equal(eps, traj.states[-1].v), '<Util/concatenate_standstill_trajectory>: final velocity' \
-    #                                                      ' of provided trajectory is too high! ' \
-    #                                                      'v_N = {} <= {}'.format(traj.states[-1].v, eps)
-    #
-    #     # create additional time horizon
-    #     horizon = np.arange(0., t, traj.dT) + traj.t_h
-    #
-    #     # create standstill trajectory
-    #     states = []
-    #     state_N = traj.states[-1]
-    #     for i in horizon:
-    #         if True or i == horizon[0]:
-    #             states.append(
-    #                 TrajPoint(i, state_N.position[0], state_N.position[1], state_N.orientation, state_N.v, state_N.a,
-    #                           kappa=state_N.kappa, j=state_N.j, kappa_dot=state_N.kappa_dot))
-    #         else:
-    #             states.append(
-    #                 TrajPoint(i, state_N.position[0], state_N.position[1], state_N.orientation, state_N.v * 0,
-    #                           state_N.a * 0,
-    #                           kappa=state_N.kappa, j=state_N.j * 0, kappa_dot=state_N.kappa_dot * 0))
-    #
-    #     standstill_traj = Trajectory(states, traj.coord_type)
-    #     standstill_traj._u_lon = np.zeros(standstill_traj.N)
-    #     standstill_traj._u_lat = np.zeros(standstill_traj.N)
-    #
-    #     return standstill_traj
 
     @classmethod
     def concatenate_trajectories(cls, pre: 'Trajectory', post: 'Trajectory') -> 'Trajectory':
