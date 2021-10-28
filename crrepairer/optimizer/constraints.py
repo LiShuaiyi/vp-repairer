@@ -15,7 +15,7 @@ class TIConstraints:
     j_y_min = -10.0
     j_y_max = 10.0
     k_max = 0.2
-    a_max = 8.0
+    a_max = 11.0
 
 
 class LonConstraints:
