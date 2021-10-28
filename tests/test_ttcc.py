@@ -98,6 +98,8 @@ class TestTTCC(unittest.TestCase):
     def test_ttcc_1(self):
         ego_id = 1003
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1007))
+        # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         ttcc_object_1 = TTCC(self.scenario, ego_vehicle, ["R_G1"])
         ttcc = ttcc_object_1.generate(CutOffAction.LANECHANGELEFT)
         self.assertEqual(
@@ -106,13 +108,13 @@ class TestTTCC(unittest.TestCase):
 
     def test_ttcc_2(self):
         ego_id = 1003
-        self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
+        # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
         ttcc_object_2 = TTCC(self.scenario, ego_vehicle, ["R_G1"])
         ttcc = ttcc_object_2.generate(CutOffAction.LANECHANGERIGHT)
         self.assertEqual(
             round(ttcc, 1),
-            1.1)
+            0.5)
 
     def test_ttcc_3(self):
         ego_id = 1003

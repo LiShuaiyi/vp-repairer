@@ -6,8 +6,6 @@ from commonroad.common.file_reader import CommonRoadFileReader
 
 from cut_off.ttr import TTR
 from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
-from cut_off.utils import check_velocity_feasibility, visualize_state_list
-from decimal import *
 
 
 class TestTTR(unittest.TestCase):

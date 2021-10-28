@@ -25,6 +25,7 @@ class TTCC(CutOffBase, ABC):
         self._rule_monitor = RuleMonitor(self.world_state, rules)
         self._check_initial = True
         self._ttv = self._calc_ttv()
+        self._visualize = False
 
     @property
     def rule_monitor(self) -> RuleMonitor:
@@ -84,7 +85,7 @@ class TTCC(CutOffBase, ABC):
             if self._visualize:
                 visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
 
-            flag_collision = self._detect_collision(state_list) # bool value
+            flag_collision = self._detect_collision(state_list)  # bool value
             ttv = self._calc_ttv(state_list, mid)
             # if violation-free and collision-free
             if ttv == math.inf and not flag_collision:

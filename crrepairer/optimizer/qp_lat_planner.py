@@ -453,7 +453,10 @@ class QPLatPlanner(TrajectoryPlanner):
 
         return traj, status
 
-    def _cvxpy_plan(self, x_initial: QPLatState, x_ref: QPLatReference, ti: TIConstraints, tv: TVConstraints,
+    def _cvxpy_plan(self, x_initial: QPLatState,
+                    x_ref: QPLatReference,
+                    ti: TIConstraints,
+                    tv: TVConstraints,
                     d_reference=None) -> Trajectory:
         if isinstance(tv, TVConstraints):
             c = tv.lat
