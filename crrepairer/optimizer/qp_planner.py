@@ -8,55 +8,49 @@ from collections import defaultdict
 from commonroad.scenario.trajectory import State, Trajectory
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.scenario import Scenario
+from commonroad.planning.planning_problem import PlanningProblem
 
 # trajectory planning tools
 from optimizer.safety_constraints import SafetyConstraints
+from optimizer.constraints import LonConstraints, LatConstraints
+from optimizer.configuration import PlanningConfigurationVehicle
 from optimizer.trajectory import Trajectory, TrajPoint, TrajectoryType
 from optimizer.qp_lat_planner import QPLatPlanner, QPLatReference, QPLatState, QPLatPARAMS
 from optimizer.qp_long_planner import QPLongPlanner, QPLongReference, QPLongState, QPLongPARAMS
 from optimizer.constraints import TIConstraints
 
-from crmonitor.common.world_state import WorldState
 
 class QPPlanner:
     def __init__(self,
                  initial_state: Union[State, TrajPoint],
                  scenario: Scenario,
-                 ego_id: int,
                  time_horizon: float,
-                 tstcc: int,
-                 tstv: int,
-                 vehicle_configuration,
+                 vehicle_configuration: PlanningConfigurationVehicle,
+                 planning_problem: PlanningProblem,
                  qp_long_parameters: Union[Dict, None] = None,
                  qp_lat_parameters: Union[Dict, None] = None,
                  slack_usage: bool = False,
                  verbose: bool = True):
         if not hasattr(scenario, 'dt'):
-            self.dt = 0.1 # default time step
+            self.dt = 0.1  # default time step
         else:
+            if Decimal(str(time_horizon)) % Decimal(str(self.dt)) != Decimal('0.0'):
+                raise ValueError('<QPPlanner>: the given time step {} is inapproparite,'
+                                 'since time horizon is {}.'.format(scenario.dt, time_horizon))
             self.dt = scenario.dt
         self.t_h = time_horizon
-        if Decimal(str(time_horizon)) % Decimal(str(self.dt)) != Decimal('0.0'):
-            raise ValueError('<QPPlanner>: the given time step {} is inapproparite,'
-                             'since time horizon is {}.'.format(dt, time_horizon))
-        self.tstcc = tstcc
-        self.tstv = tstv
-        self.N = int(time_horizon/self.dt) - self.tstcc
+
+        self.N = int(time_horizon/self.dt)
         self.initial_state = initial_state
         self.vehicle_configuration = vehicle_configuration
 
-        # todo: set desired speed (goal?)
-        self.vehicle_configuration.desired_speed = initial_state.velocity
-        # if vehicle_configuration.reference_point != pycrreach.ReferencePoint.REAR:
-        #     raise ValueError('<QPPlanner>: Reference point must be rear axis!')
-
-        # self.collision_avoidance_constraints = CollisionAvoidanceConstraints(self.reachable_set,
-        #                                                                      self.vehicle_configuration.reference_point)
-        self.world_state = WorldState.create_from_scenario(scenario, ego_id)
-        ego_vehicle = scenario.obstacle_by_id(ego_id)
-        self.initial_trajectory = ego_vehicle.prediction.trajectory
-        scenario.remove_obstacle(ego_vehicle) # remove the initial trajectory (already constained in the world state)
-        self.collision_avoidance_constraints = SafetyConstraints(self.world_state, self.N)
+        if hasattr(planning_problem.goal.state_list[0], "velocity"):
+            if initial_state.velocity > planning_problem.goal.state_list[0].velocity.end:
+                self.vehicle_configuration.desired_speed = planning_problem.goal.state_list[0].velocity.end
+            else:
+                self.vehicle_configuration.desired_speed = initial_state.velocity
+        else:
+            self.vehicle_configuration.desired_speed = initial_state.velocity
 
         self.slack_usage = slack_usage
         self.verbose = verbose
@@ -74,8 +68,7 @@ class QPPlanner:
             self.qp_lat_params = QPLatPARAMS()
 
     def plan_trajectories(self,
-                          target_lanes: [Dict, None],
-                          find_all_trajectories: bool = False):
+                          target_lanes: [Dict, None]):
         print('\t\t Longitudinal optimization')
         traj_lon, status = self._longitudinal_trajectory_planning(target_lanes)
         if status is not 'optimal':
@@ -85,8 +78,6 @@ class QPPlanner:
         # convert trajectory to cartesian space
         if status is not 'optimal':
             raise ValueError('<QPPlanner/_lateral_trajectory_planning>: failed')
-        # except Exception as e:
-        #     print(e)
         return traj_lat
 
     @classmethod
@@ -158,29 +149,19 @@ class QPPlanner:
 
         return traj
 
-    def _longitudinal_trajectory_planning(self, target_lanes):
-        # get longitudinal position constraints from reachable set
-        c_long = self.collision_avoidance_constraints.\
-            longitudinal_position_constraints(
-            self.vehicle_configuration,
-            target_lanes,
-            self.tstcc,
-            self.tstv)
-        #####
+    def _longitudinal_trajectory_planning(self, c_long: LonConstraints, reference: QPLongReference):
+        ##############################
         # Plan longitudinal trajectory
-        #####
-        # Create long planner with t_h, N, dT, slack usage, zero velocity at t_h, longitudinal parameters
-        lon_planner = QPLongPlanner(self.tstcc, self.t_h, self.N, self.dt, slack=False,
+        ##############################
+        lon_planner = QPLongPlanner(self.t_h, self.N, self.dt, slack=False,
                                     qp_long_params=self.qp_long_params)
         lon_planner.verbose = self.verbose  # turn on diagnose solver output
-
         # initial state s,v,a,j,t
         if isinstance(self.initial_state, State):
             if hasattr(self.initial_state, 'acceleration'):
                 a = self.initial_state.acceleration
             else:
                 a = 0.0
-
             x_init = QPLongState(self.vehicle_configuration.initial_position_x,
                                  self.vehicle_configuration.initial_speed_x,
                                  a, 0., 0.)
@@ -194,18 +175,6 @@ class QPPlanner:
             raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: Initial state must be of type {} or '
                              'of type {}. Got type {}.'.format(type(State), type(TrajPoint),
                                                                type(self.initial_state)))
-        x_ref = list()
-        # for s in s_ref: todo: change the reference
-        # states_long = self.world_state.ego_vehicle.states_lon
-        # self.vehicle_configuration.desired_speed =  self.world_state.ego_vehicle.states_lon[0].v
-        # for i in range(len(c_long.s_hard_min)):
-        #     # reference state s,v,a,j,t
-        #     x_ref.append(QPLongState(c_long.s_hard_min[i], self.vehicle_configuration.desired_speed, 0., 0., 0.))
-
-        states_long = self.world_state.ego_vehicle.states_lon
-        for state in states_long.values():
-            x_ref.append(QPLongState(state.s, state.v, 0., 0., 0.))
-        reference = QPLongReference(x_ref[self.tstcc + 1:]) # initial state not included?
 
         traj, status = lon_planner.plan(x_init, reference, self.time_invariant_constraints, c_long)
 
@@ -244,22 +213,16 @@ class QPPlanner:
 
     def _lateral_trajectory_planning(self,
                                      longitudinal_trajectory: Trajectory,
-                                     target_lanes):
-        ######
+                                     c_lat: LatConstraints):
+        #########################
         # Plan lateral trajectory
-        c_lat = self.collision_avoidance_constraints.lateral_position_constraints(
-            self.tstcc,
-            target_lanes,
-            longitudinal_trajectory.cartesian_ptsX(),
-            self.vehicle_configuration)
-        ######
+        #########################
         # create lateral planner with t_h, N, dt, wheelbase, slack usage, lateral parameters
-        lat_planner = QPLatPlanner(self.tstcc, self.tstv, self.t_h, c_lat.N, self.dt,
-                                    self.vehicle_configuration.wheelbase,
-                                    self.slack_usage, self.qp_lat_params)
+        lat_planner = QPLatPlanner(self.t_h, c_lat.N, self.dt,
+                                   self.vehicle_configuration.wheelbase,
+                                   self.slack_usage, self.qp_lat_params)
         lat_planner.verbose = self.verbose
 
-        # d: float, theta: float, kappa: float, theta_ref: float, t = 0., s= None, v= None, a= None
         if isinstance(self.initial_state, State):
             x_init = QPLatState(d=self.vehicle_configuration.initial_position_y,
                                 theta=self.initial_state.orientation,
