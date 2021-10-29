@@ -387,7 +387,6 @@ class Trajectory(object):
             # add time_idx
             state_values['time_step'] = int(round(p.t / self.dT))
             # add steering angle
-            # state_values['steering_angle'] = convert_curvature_to_angle(p.kappa, wheelbase)
 
             state = cr_traj.State(**state_values)
             traj_cr.append(state)

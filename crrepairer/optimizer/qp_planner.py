@@ -1,9 +1,8 @@
 import math
-from typing import List, Dict, Union
+from typing import Dict, Union
 import matplotlib.pyplot as plt
 import numpy as np
 from decimal import Decimal
-from collections import defaultdict
 
 # commonroad-io
 from commonroad.scenario.trajectory import State, Trajectory

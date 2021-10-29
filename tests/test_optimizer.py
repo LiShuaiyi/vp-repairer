@@ -21,16 +21,18 @@ class TestOptimizer(unittest.TestCase):
         self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         self.planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
 
-
     def test_optimizer(self):
         time_horizon = 4.0
         # initial state of vehicle for the optimization problem (longitudinal position, velocity, acceleration, jerk)
         initial_state = self.planning_problem.initial_state
-
         x_0 = np.array([initial_state.position[0],
                         initial_state.velocity,
                         0.0,
                         0.0]).reshape([4, ])
+
+        ##################################
+        # Configuration and reference path
+        ##################################
         vehicle_configuration = PlanningConfigurationVehicle()
         initial_lanelet = self.scenario.lanelet_network.lanelets_in_proximity(initial_state.position, 100)[0]
         reference_path = initial_lanelet.center_vertices
@@ -44,12 +46,15 @@ class TestOptimizer(unittest.TestCase):
                                time_horizon,
                                vehicle_configuration,
                                verbose=True)
-        # extract obstacle from scenario
-        dyn_obstacles = self.scenario.dynamic_obstacles
 
+        ############################
+        # long. and lat. constraints
+        ############################
         # create constraints for longitudinal minimum and maximum position
         s_min = []  # minimum position constraint
         s_max = []  # maximum position constraint
+        # extract obstacle from scenario
+        dyn_obstacles = self.scenario.dynamic_obstacles
         # go through obstacle list and distinguish between following and leading vehicle
         for o in dyn_obstacles:
             if o.initial_state.position[0] < x_0[0]:
@@ -70,11 +75,19 @@ class TestOptimizer(unittest.TestCase):
         d_min = np.array((d_min_single, d_min_single, d_min_single)).transpose()
         d_max = np.array((d_max_single, d_max_single, d_max_single)).transpose()
         c_lat = LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
+
+        ######################################
+        # reference for the long. optimization
+        ######################################
         v_ref = 30
         x_ref = list()
         for i in range(len(s_min)):
             x_ref.append(QPLongState(0, v_ref, 0., 0., 0.))
-        reference = QPLongReference(x_ref) # initial state not included?
+        reference = QPLongReference(x_ref)
+
+        #####################################
+        # trajectory generation and conversion
+        #####################################
         trajectory = qp_planner.plan_trajectories(c_long, c_lat, reference)
         trajectory_cartesian = qp_planner.transform_trajectory_to_cartesian_coordinates(trajectory)
         ego_vehicle = trajectory_cartesian.convert_to_cr_ego_vehicle(

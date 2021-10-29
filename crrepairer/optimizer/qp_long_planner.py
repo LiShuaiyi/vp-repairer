@@ -1,8 +1,5 @@
-import sys
 import numpy as npy
-import matplotlib.pyplot as plt
 from cvxpy import *
-from collections import defaultdict
 from typing import Union, Tuple
 
 from optimizer.abstract import TrajectoryPlanner
@@ -280,6 +277,6 @@ class QPLongPlanner(TrajectoryPlanner):
                 traj.append(TrajPoint(x_initial.t + self.dT * (k + 1), self._x[0, k + 1].value, 0, 0,
                                       self._x[1, k + 1].value if self._x[1, k + 1].value >= 0. else 0.,
                                       self._x[2, k + 1].value, j=self._x[3, k + 1].value))
-            traj = Trajectory(traj, TrajectoryType.FRENET)
+            traj = Trajectory(traj, TrajectoryType.CARTESIAN)
             traj._u_lon = npy.transpose(self._u.value.flatten())[:self.N]
         return traj, prob.status, prob.value

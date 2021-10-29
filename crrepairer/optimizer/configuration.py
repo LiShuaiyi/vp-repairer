@@ -6,8 +6,6 @@ from commonroad.common.validity import is_real_number
 from commonroad.scenario.lanelet import LaneletNetwork
 from commonroad.scenario.scenario import State
 
-# commonroad-collision-checker
-import commonroad_dc.pycrcc as pycrcc
 # commonroad-curvilinear-coordinate-system
 import commonroad_dc.pycrccosy as pycrccosy
 

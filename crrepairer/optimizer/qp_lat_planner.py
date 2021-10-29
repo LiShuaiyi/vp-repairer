@@ -1,9 +1,5 @@
-import math
-import sys
 import numpy as npy
-import matplotlib.pyplot as plt
 
-from collections import defaultdict
 from cvxpy import *
 
 from optimizer.abstract import TrajectoryPlanner
@@ -254,7 +250,7 @@ class QPLatReference(object):
                                               lon_traj: Trajectory,
                                               reference: npy.ndarray,
                                               ti=None) -> 'QPLatReference':
-        assert isinstance(lon_traj, Trajectory) and lon_traj.coord_type is TrajectoryType.FRENET, \
+        assert isinstance(lon_traj, Trajectory) and lon_traj.coord_type is TrajectoryType.CARTESIAN, \
             '<QPLatReference>: Provided longitudinal trajectory is invalid or not in Frenet. traj = {}'.format(lon_traj)
         assert npy.isclose(npy.sum(lon_traj.get_positions()[:, 1]), 0.), \
             '<QPLatReference>: Provided longitudinal trajectory containts lateral information != 0. d = {}'.format(
@@ -469,11 +465,6 @@ class QPLatPlanner(TrajectoryPlanner):
             # Specify time-variant constraints
             ##################################
             constr += [self._x[:, k + 1] == A @ self._x[:, k] + B @ self._u[:, k] + theta * D]  # state transition
-            # print(c_tv.d_hard_max[k], c_tv.d_hard_min[k])
-
-            # if k >= k_lane_change:
-            #     d_optimal = (c_tv.d_hard_min[k] + c_tv.d_hard_max[k]) / 2
-            #     cost += 100 * quad_form(S @ (C @ self._x[:, k + 1] + E * theta) - d_optimal, self._W)
 
             constr += [self._x[0, k + 1] <= c_tv.d_hard_max[k][0]]  # upper lateral bound
             constr += [self._x[0, k + 1] >= c_tv.d_hard_min[k][0]]
@@ -548,7 +539,7 @@ class QPLatPlanner(TrajectoryPlanner):
                               kappa_dot=self._x[3, k + 1].value,
                               lane=-1))
 
-            traj = Trajectory(traj, TrajectoryType.FRENET)
+            traj = Trajectory(traj, TrajectoryType.CARTESIAN)
             traj._u_lon = x_initial.u_lon
             traj._u_lat = npy.transpose(self._u.value.flatten())[:self.N]
         return traj, prob.status, prob.value
