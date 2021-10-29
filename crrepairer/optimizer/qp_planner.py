@@ -1,3 +1,4 @@
+import math
 from typing import List, Dict, Union
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,7 +33,7 @@ class QPPlanner:
         if not hasattr(scenario, 'dt'):
             self.dt = 0.1  # default time step
         else:
-            if Decimal(str(time_horizon)) % Decimal(str(self.dt)) != Decimal('0.0'):
+            if Decimal(str(time_horizon)) % Decimal(str(scenario.dt)) != Decimal('0.0'):
                 raise ValueError('<QPPlanner>: the given time step {} is inapproparite,'
                                  'since time horizon is {}.'.format(scenario.dt, time_horizon))
             self.dt = scenario.dt
@@ -42,7 +43,7 @@ class QPPlanner:
         self.initial_state = planning_problem.initial_state
         self.vehicle_configuration = vehicle_configuration
 
-        if hasattr(planning_problem.goal.state_list[0], "velocity"):
+        if planning_problem.goal.state_list:
             if self.initial_state.velocity > planning_problem.goal.state_list[0].velocity.end:
                 self.vehicle_configuration.desired_speed = planning_problem.goal.state_list[0].velocity.end
             else:
@@ -139,8 +140,7 @@ class QPPlanner:
             self, trajectory: Trajectory):
         cartesian_traj_points = list()
         for state in trajectory.states:
-            cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
-                state.position[0], state.position[1])
+            cart_pos = [state.position[0], state.position[1]]
             cartesian_traj_points.append(TrajPoint(
                t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation, v=state.v, a=state.a,
                kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
@@ -164,8 +164,8 @@ class QPPlanner:
                 a = self.initial_state.acceleration
             else:
                 a = 0.0
-            x_init = QPLongState(self.vehicle_configuration.initial_position_x,
-                                 self.vehicle_configuration.initial_speed_x,
+            x_init = QPLongState(self.initial_state.position[0],
+                                 self.initial_state.velocity * math.cos(self.initial_state.orientation),
                                  a, 0., 0.)
         elif isinstance(self.initial_state, TrajPoint):
             x_init = QPLongState(self.initial_state.position[0],
@@ -175,7 +175,8 @@ class QPPlanner:
                                  0.)
         else:
             raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: Initial state must be of type {} or '
-                             'of type {}. Got type {}.'.format(type(State), type(TrajPoint),
+                             'of type {}. Got type {}.'.format(type(State),
+                                                               type(TrajPoint),
                                                                type(self.initial_state)))
 
         traj, status = lon_planner.plan(x_init, reference, self.time_invariant_constraints, c_long)
@@ -226,7 +227,7 @@ class QPPlanner:
         lat_planner.verbose = self.verbose
 
         if isinstance(self.initial_state, State):
-            x_init = QPLatState(d=self.vehicle_configuration.initial_position_y,
+            x_init = QPLatState(d=self.initial_state.position[1],
                                 theta=self.initial_state.orientation,
                                 kappa=0.,
                                 kappa_dot=0.0,

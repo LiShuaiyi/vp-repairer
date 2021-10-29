@@ -5,17 +5,17 @@ import commonroad.common.validity as val
 
 class TIConstraints:
     a_x_min = -6.0
-    a_x_max = 1.5
+    a_x_max = 6.0
     a_y_min = -8.0
     a_y_max = 8.0
     v_min = 0.0
-    v_max = 22.0
-    j_x_min = -10.0
-    j_x_max = 10.0
+    v_max = 48.0
+    j_x_min = -15.0
+    j_x_max = 15.0
     j_y_min = -10.0
     j_y_max = 10.0
     k_max = 0.2
-    a_max = 11.0
+    a_max = 10.5
 
 
 class LonConstraints:

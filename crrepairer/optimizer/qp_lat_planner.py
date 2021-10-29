@@ -336,14 +336,17 @@ class QPLatPlanner(TrajectoryPlanner):
         self._length = length
 
         # define variables and matrices
-        self._x = Variable((self._n, self.N + 1))  # d, theta, kappa, kappa dot
+        self._x = Variable(shape=(self._n, self.N + 1))  # d, theta, kappa, kappa dot
 
         self._slack = slack
         if self.slack:
-            self._u = Variable((self._m, self.N + self._n_s))
+            self._u = Variable(shape=(self._m, self.N + self._n_s))
         else:
-            self._u = Variable((self._m, self.N))
+            self._u = Variable(shape=(self._m, self.N))
         # -------------------------------------------------------------------------------------------------------------
+
+        # store parameters
+        self._qp_lat_params = qp_lat_params
 
         # cost function matrices for state and input
         self._Q = npy.array(
@@ -363,8 +366,6 @@ class QPLatPlanner(TrajectoryPlanner):
         self._H_Q = npy.identity(self._n_s) * self._qp_lat_params.W_SLACK_Q
         self._H_L = npy.repeat(1, self._n_s) * self._qp_lat_params.W_SLACK_L
 
-        # store parameters
-        self._qp_lat_params = qp_lat_params
 
     @property
     def slack(self):
@@ -384,7 +385,6 @@ class QPLatPlanner(TrajectoryPlanner):
              x_ref: QPLatReference,
              c_ti: TIConstraints,
              c_tv: TVConstraints,
-             k_lane_change: int,
              d_reference=None) -> Trajectory:
         # check if reference has the same size as optimization horizon
         assert x_ref.length() == self.N, "<QPLatPlanner>: reference must have the same length as " \
@@ -397,7 +397,7 @@ class QPLatPlanner(TrajectoryPlanner):
             assert val.is_real_number_vector(d_reference, length=c_tv.N), '<QPLatPlanner/plan>: provided d reference ' \
                                                                         'is not valid! ref = {}'.format(d_reference)
 
-        traj, status, cost = self._cvxpy_plan(x_initial, x_ref, c_ti, c_tv, d_reference, k_lane_change)
+        traj, status, cost = self._cvxpy_plan(x_initial, x_ref, c_ti, c_tv, d_reference)
 
         if not 'optimal' == status:
             print('\t\t\t Status lateral trajectory planner: {}'.format(status))
@@ -409,8 +409,7 @@ class QPLatPlanner(TrajectoryPlanner):
                     x_ref: QPLatReference,
                     c_ti: TIConstraints,
                     c_tv: TVConstraints,
-                    d_reference=None,
-                    k_lane_change=math.inf,) -> Trajectory:
+                    d_reference=None,) -> Trajectory:
         # Prepare constraints
         if isinstance(c_tv, TVConstraints):
             c_tv = c_tv.lat
@@ -472,9 +471,9 @@ class QPLatPlanner(TrajectoryPlanner):
             constr += [self._x[:, k + 1] == A @ self._x[:, k] + B @ self._u[:, k] + theta * D]  # state transition
             # print(c_tv.d_hard_max[k], c_tv.d_hard_min[k])
 
-            if k >= k_lane_change:
-                d_optimal = (c_tv.d_hard_min[k] + c_tv.d_hard_max[k]) / 2
-                cost += 100 * quad_form(S @ (C @ self._x[:, k + 1] + E * theta) - d_optimal, self._W)
+            # if k >= k_lane_change:
+            #     d_optimal = (c_tv.d_hard_min[k] + c_tv.d_hard_max[k]) / 2
+            #     cost += 100 * quad_form(S @ (C @ self._x[:, k + 1] + E * theta) - d_optimal, self._W)
 
             constr += [self._x[0, k + 1] <= c_tv.d_hard_max[k][0]]  # upper lateral bound
             constr += [self._x[0, k + 1] >= c_tv.d_hard_min[k][0]]
@@ -513,11 +512,9 @@ class QPLatPlanner(TrajectoryPlanner):
         # Solve optimization problem
         ############################
         prob = Problem(Minimize(cost), constr)
+        print("Problem is convex:", prob.is_dcp())
         prob.solve(verbose=self.verbose)
 
-        # print slack result
-        if self.verbose and not prob.status == 'infeasible':
-            print("Slack variables: {}".format(self._u[:, self.N:].value.A.flatten()))
 
         # check result
         if not 'optimal' == prob.status:

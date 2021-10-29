@@ -14,7 +14,7 @@ import commonroad.common.validity as val
 
 # Weights
 class QPLongPARAMS:
-    W_S = 4.0  # weight for state deviation
+    W_S = 0 # weight for state deviation
     W_V = 4  # weight for velocity deviation
     W_A = 1  # weight for acceleration deviation
     W_J = 2  # weight for jerk deviation
@@ -137,10 +137,13 @@ class QPLongPlanner(TrajectoryPlanner):
         self._n_c = 1 if self._slack else 0  # self.N # currently only one slack support
         # ------------------------------------------------------------------------------------------------------------#
         # define variables and matrices
-        self._x = Variable((self._n,
-                            self.N + 1))
-        self._u = Variable((self._m,
-                            self.N + self._n_s + self._n_a + self._n_c))
+        self._x = Variable(shape=(self._n,
+                                  self.N + 1))
+        self._u = Variable(shape=(self._m,
+                                  self.N + self._n_s + self._n_a + self._n_c))
+
+        # store parameters
+        self._qp_long_params = qp_long_params
 
         # state transition matrices
         self._A = npy.array(
@@ -154,8 +157,6 @@ class QPLongPlanner(TrajectoryPlanner):
         self._H_Q = npy.identity(self._n_s) * self._qp_long_params.W_S_Q
         self._H_L = npy.repeat(1, self._n_s) * self._qp_long_params.W_S_L
 
-        # store parameters
-        self._qp_long_params = qp_long_params
 
     @property
     def slack(self):
@@ -203,11 +204,6 @@ class QPLongPlanner(TrajectoryPlanner):
         if isinstance(c_tv, LonConstraints):
             c_tv = c_tv
 
-        # check if reference is single state or list
-        ref_len = x_ref.length()
-        if ref_len > 1:
-            assert ref_len == self.N
-
         # initialize cost and constraints
         cost = 0
         constr = []
@@ -217,11 +213,14 @@ class QPLongPlanner(TrajectoryPlanner):
             #########################################
             # Define cost function including reference
             #########################################
-            cost += quad_form(self._x[:, k + 1] - npy.transpose(
-                            [x_ref.reference[k].s, x_ref.reference[k].v,
-                             x_ref.reference[k].a, x_ref.reference[k].j]),self._Q) +\
-                    square(self._u[:, k]) * self._R
-
+            if x_ref:
+                cost += quad_form(self._x[:, k + 1] - npy.transpose(
+                                [x_ref.reference[k].s, x_ref.reference[k].v,
+                                 x_ref.reference[k].a, x_ref.reference[k].j]), self._Q) +\
+                        square(self._u[:, k]) * self._R
+            else:
+                cost += quad_form(self._x[:, k + 1], self._Q) +\
+                        square(self._u[:, k]) * self._R
             ##################################
             # Specify time-variant constraints
             ##################################
@@ -252,6 +251,7 @@ class QPLongPlanner(TrajectoryPlanner):
         # Solve optimization problem
         ############################
         prob = Problem(Minimize(cost), constr)
+        print("Problem is convex:", prob.is_dcp())
         prob.solve(verbose=self.verbose)
         if self.verbose and not prob.status == 'infeasible':
             print('Created optimization with |x|={} and |u|={}'.format(self._x.size, self._u.size))

@@ -273,3 +273,36 @@ def update_goal_state(initial_trajectory: Trajectory):
         time_step=goal_time_step)
     goal_region = GoalRegion([goal_state])
     return goal_region
+
+
+def convert_to_cr_ego_vehicle(
+                                  width: float, length: float,
+                                  wheelbase: float, vehicle_id: int = 0) -> DynamicObstacle:
+    """
+    Converts trajectory object to CommonRoad obstacle with specified width and length
+    :param width: The width of the ego vehicle
+    :param length: The length of the ego vehicle
+    :param vehicle_id: ID of ego vehicle
+    :return: The CommonRoad DynamicObstacle object containing the current trajectory
+    """
+    assert isinstance(width, (
+        int, float)) and width > 0, '<Trajectory>: Provided width of vehicle invalid! width = {}'.format(width)
+    assert isinstance(length, (int, float)) and length > 0, '<Trajectory>: Provided width of vehicle ' \
+                                                            'invalid! width = {}'.format(length)
+
+    # get trajectory
+    traj = self._convert_to_cr_trajectory(wheelbase)
+    for state in traj.state_list:
+        state.time_step += tstcc
+    traj.initial_time_step = initial_trajectory.state_list[0].time_step
+    traj.state_list = initial_trajectory.state_list[0:tstcc - 1] + traj.state_list
+    shape = Rectangle(length, width)
+    pred = TrajectoryPrediction(traj, shape)
+
+    # create new object
+    ego = DynamicObstacle(obstacle_id=vehicle_id,
+                          obstacle_type=ObstacleType.CAR,
+                          prediction=pred,
+                          obstacle_shape=shape,
+                          initial_state=traj.state_list[0])
+    return ego

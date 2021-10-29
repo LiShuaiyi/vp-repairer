@@ -394,9 +394,11 @@ class Trajectory(object):
 
         return cr_traj.Trajectory(0, traj_cr)
 
-    def convert_to_cr_ego_vehicle(self, initial_trajectory, tstcc: int,
-                                  width: float, length: float,
-                                  wheelbase: float, vehicle_id: int = 0) -> DynamicObstacle:
+    def convert_to_cr_ego_vehicle(self,
+                                  width: float,
+                                  length: float,
+                                  wheelbase: float,
+                                  vehicle_id: int = 0) -> DynamicObstacle:
         """
         Converts trajectory object to CommonRoad obstacle with specified width and length
         :param width: The width of the ego vehicle
@@ -411,10 +413,6 @@ class Trajectory(object):
 
         # get trajectory
         traj = self._convert_to_cr_trajectory(wheelbase)
-        for state in traj.state_list:
-            state.time_step += tstcc
-        traj.initial_time_step = initial_trajectory.state_list[0].time_step
-        traj.state_list = initial_trajectory.state_list[0:tstcc-1] + traj.state_list
         shape = Rectangle(length, width)
         pred = TrajectoryPrediction(traj, shape)
 
