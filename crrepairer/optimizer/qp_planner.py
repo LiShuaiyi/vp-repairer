@@ -21,11 +21,10 @@ from optimizer.constraints import TIConstraints
 
 class QPPlanner:
     def __init__(self,
-                 initial_state: Union[State, TrajPoint],
                  scenario: Scenario,
+                 planning_problem: PlanningProblem,
                  time_horizon: float,
                  vehicle_configuration: PlanningConfigurationVehicle,
-                 planning_problem: PlanningProblem,
                  qp_long_parameters: Union[Dict, None] = None,
                  qp_lat_parameters: Union[Dict, None] = None,
                  slack_usage: bool = False,
@@ -40,16 +39,16 @@ class QPPlanner:
         self.t_h = time_horizon
 
         self.N = int(time_horizon/self.dt)
-        self.initial_state = initial_state
+        self.initial_state = planning_problem.initial_state
         self.vehicle_configuration = vehicle_configuration
 
         if hasattr(planning_problem.goal.state_list[0], "velocity"):
-            if initial_state.velocity > planning_problem.goal.state_list[0].velocity.end:
+            if self.initial_state.velocity > planning_problem.goal.state_list[0].velocity.end:
                 self.vehicle_configuration.desired_speed = planning_problem.goal.state_list[0].velocity.end
             else:
-                self.vehicle_configuration.desired_speed = initial_state.velocity
+                self.vehicle_configuration.desired_speed = self.initial_state.velocity
         else:
-            self.vehicle_configuration.desired_speed = initial_state.velocity
+            self.vehicle_configuration.desired_speed = self.initial_state.velocity
 
         self.slack_usage = slack_usage
         self.verbose = verbose

@@ -6,7 +6,7 @@ Class for trajectory planner.
 """
 
 
-def is_valid_duration(tstcc, duration: float, N=None, dT=None):
+def is_valid_duration(duration: float, N=None, dT=None):
     """
     Checks if a specified duration is greater than zero and if a given horizon N is applicable to the duration
     :param duration: The duration
@@ -16,7 +16,7 @@ def is_valid_duration(tstcc, duration: float, N=None, dT=None):
     if N is None:
         return duration > 0.0
     else:
-        factor = duration / (N + tstcc)
+        factor = duration / N
         if dT is None:
             return duration > 0.0 and isinstance(N, int) and N > 0
         else:
@@ -62,9 +62,9 @@ class TrajectoryPlanner(ABC):
         raise Exception("You are not allowed to change the time step of the planner!")
 
     @abstractmethod
-    def plan(self):  # -> commonroad_reach.planning.qp_planner.trajectory.Trajectory:
+    def plan(self):
         """
-        Calculates the trajectory which is based on the initially planned trajctory
+        Plans the trajectory
         :return: The trajectory of the maneuver with respect to the initial state and environment map
         """
         pass
