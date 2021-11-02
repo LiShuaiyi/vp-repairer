@@ -79,7 +79,7 @@ class TestOptimizer(unittest.TestCase):
         ######################################
         # reference for the long. optimization
         ######################################
-        v_ref = 30
+        v_ref = 30  #m/s
         x_ref = list()
         for i in range(len(s_min)):
             x_ref.append(QPLongState(0, v_ref, 0., 0., 0.))

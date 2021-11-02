@@ -10,8 +10,7 @@ The software is written in Python 3.7 and has been tested on Ubuntu 20.04. The c
 * cvxpy>=1.1.15
 * ecos>=2.0.7
 * commonroad-io>=2021.3
-* commonroad-vehicle-models>=2.0.0
-* setuptools>=42.0.1
+* commonroad-vehicle-models>=2.0.0SS
 
 Furthermore, the [CommonRoad Drivability Checker>=2021.1](https://commonroad.in.tum.de/drivability-checker) and [CommonRoad Route Planner>=1.0.0](https://gitlab.lrz.de/tum-cps/commonroad-route-planner) libraries are required.
 

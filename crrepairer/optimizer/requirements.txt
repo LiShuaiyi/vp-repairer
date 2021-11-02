@@ -4,4 +4,4 @@ cvxpy>=1.1.15
 ecos>=2.0.7
 commonroad-io>=2021.3
 commonroad-vehicle-models>=2.0.0
-setuptools>=42.0.1
+
