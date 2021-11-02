@@ -1,21 +1,36 @@
 from typing import Iterable, Union
+from enum import Enum
 
 from crmonitor.evaluation.evaluation import RuleSetEvaluator
 
 
+class MonitorType(Enum):
+    MTL = "metric temporal logic"
+    STL = "signal temporal logic"
+
+
 class RuleMonitor:
-    def __init__(self, world_state, rules: Union[str, Iterable[str]] = ("R_G1", "R_G2", "R_G3")):
+    def __init__(self,
+                 world_state,
+                 rules: Union[str, Iterable[str]],
+                 monitor_type: MonitorType = MonitorType.STL):
         self._rule_eval = RuleSetEvaluator.create_from_config(rules)
         self.world_state = world_state
-        self.rob_rule = None
-        self.rob_predicate = None
-        self.rob_abstraction = None
+        self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
+
+    @property
+    def rule_eval(self):
+        return self._rule_eval
+
+    @property
+    def abstraction_nodes(self):
+        return self._rule_eval.abstraction_nodes
 
     def evaluate_initially(self):
         """
         Evaluate whether the ego vehicle disobeys traffic rules
         """
-        self.rob_rule, self.rob_predicate, self.rob_abstraction = self._rule_eval.\
+        return self._rule_eval.\
             evaluate_incremental(self.world_state,
                                  to_pandas=False)
 

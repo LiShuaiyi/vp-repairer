@@ -1,15 +1,13 @@
 from abc import ABC
-from typing import Iterable, Union, List
 import math
 
-import numpy as np
-from commonroad.scenario.obstacle import State, DynamicObstacle
+from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.scenario import Scenario
-from crmonitor.common.world_state import WorldState
 from cut_off.base import CutOffBase
-from cut_off.monitor import RuleMonitor
-from cut_off.utils import update_ego_vehicle, visualize_state_list, int_round
+from cut_off.utils import visualize_state_list, int_round
 from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
+
+from crmonitor.common.world_state import WorldState
 
 
 class TTR(CutOffBase, ABC):
@@ -17,12 +15,11 @@ class TTR(CutOffBase, ABC):
     Time-To-React.
     """
     def __init__(self,
-                 scenario: Scenario,
-                 ego_vehicle_cr: DynamicObstacle,
+                 world_state: WorldState,
                  dT: float = 0.1):
-        super().__init__(scenario, ego_vehicle_cr, dT)
+        super().__init__(world_state, dT)
         # calculate the time-to-collision as default value
-        self._ttc = self._calc_ttc(ego_vehicle_cr.prediction.trajectory.state_list)
+        self._ttc = self._calc_ttc(world_state.ego_vehicle.states_cr)
         self._visualize = False
 
     @property

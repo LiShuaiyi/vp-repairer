@@ -136,7 +136,7 @@ class SimulationLateral(SimulationBase, ABC):
         Modified from Eq. (11) in Pek, C., Zahn, P. and Althoff, M., Verifying the safety of lane change maneuvers of
          self-driving vehicles based on formalized traffic rules. In IV 2017 (pp. 1477-1483). IEEE.
         """
-        return sqrt(4 * lat_dist / self.parameters.longitudinal.a_max)
+        return sqrt(4 * lat_dist / abs(self._input.acceleration_y))
 
     def set_inputs(self, velocity):
         self._input.acceleration = 0
@@ -181,7 +181,7 @@ class SimulationLateral(SimulationBase, ABC):
                 check_elements(suc_state)
                 self._state_list.append(suc_state)
                 pre_state = suc_state
-                if suc_state.orientation > max_orientation:
+                if abs(suc_state.orientation) > abs(max_orientation):
                     break
             else:
                 self._input.acceleration_y = 0
