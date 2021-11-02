@@ -30,31 +30,27 @@ class CutOffBase(ABC):
         Abstract base class for calculating cut-off states
     """
     def __init__(self,
-                 scenario: Scenario,
-                 ego_vehicle_cr: DynamicObstacle,
+                 world_state: WorldState,
                  dT: float):
-        self.construct_world_state(scenario, ego_vehicle_cr.obstacle_id)
-        self._ego_vehicle = ego_vehicle_cr
+        self.scenario = world_state.scenario
+        self._ego_vehicle = self.scenario.obstacle_by_id(world_state.ego_vehicle.id)
+        self._world_state = world_state
         self._dT = dT
         self._visualize = False
-        if scenario.obstacle_by_id(ego_vehicle_cr.obstacle_id) is not None:
-            scenario.remove_obstacle(ego_vehicle_cr)
-        road_boundary_obstacle, road_boundary_sg_rectangles = boundary.create_road_boundary_obstacle(scenario)
-        scenario.add_objects(road_boundary_obstacle)
-        self._collision_checker = create_collision_checker(scenario)
+        if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:
+            self.scenario.remove_obstacle(self._ego_vehicle)
+        road_boundary_obstacle, road_boundary_sg_rectangles = boundary.create_road_boundary_obstacle(self.scenario)
+        self.scenario.add_objects(road_boundary_obstacle)
+        self._collision_checker = create_collision_checker(self.scenario)
         if self._visualize:
             # visualize scenario and collision objects
             rnd = MPRenderer(figsize=(25, 10))
-            scenario.lanelet_network.draw(rnd)
+            self.scenario.lanelet_network.draw(rnd)
             self._collision_checker.draw(rnd, draw_params={'facecolor': 'blue', 'draw_mesh': True})
             rnd.render()
             plt.show()
-        self.scenario = scenario
         # create the shape of the ego vehicle
         self._shape = self._ego_vehicle.obstacle_shape
-
-    def construct_world_state(self, scenario, ego_id) -> WorldState:
-        self._world_state = WorldState.create_from_scenario(scenario, ego_id)
 
     @property
     def world_state(self) -> WorldState:

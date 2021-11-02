@@ -6,8 +6,9 @@ import numpy as np
 from commonroad.scenario.obstacle import State, DynamicObstacle
 from commonroad.scenario.scenario import Scenario
 from crmonitor.common.world_state import WorldState
+
 from cut_off.base import CutOffBase
-from cut_off.monitor import RuleMonitor
+from encoding.monitor import RuleMonitor
 from cut_off.utils import update_ego_vehicle, visualize_state_list
 from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 
@@ -17,19 +18,13 @@ class TTCC(CutOffBase, ABC):
     Time-To-Compliance.
     """
     def __init__(self,
-                 scenario: Scenario,
-                 ego_vehicle_cr: DynamicObstacle,
-                 rules: Union[str, Iterable[str]],
+                 rule_monitor: RuleMonitor,
                  dT: float = 0.1):
-        super().__init__(scenario, ego_vehicle_cr, dT)
-        self._rule_monitor = RuleMonitor(self.world_state, rules)
+        super().__init__(rule_monitor.world_state, dT)
+        self.rule_monitor = rule_monitor
         self._check_initial = True
         self._ttv = self._calc_ttv()
         self._visualize = False
-
-    @property
-    def rule_monitor(self) -> RuleMonitor:
-        return self._rule_monitor
 
     @property
     def ttv(self) -> float:
@@ -40,7 +35,6 @@ class TTCC(CutOffBase, ABC):
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
         if self._check_initial:
-            self.rule_monitor.evaluate_initially()
             self._check_initial = False
         else:
             self.rule_monitor.world_state.time_step = start_time_step
