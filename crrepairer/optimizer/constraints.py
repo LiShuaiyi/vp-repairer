@@ -16,6 +16,11 @@ class TIConstraints:
     j_y_max = 10.0
     k_max = 0.2
     a_max = 10.5
+    kappa_dot_min = -0.2  # minimum steering rate
+    kappa_dot_max = 0.2  # maximum steering rate
+    kappa_dot_dot_min = -0.2  # minimum steering rate rate
+    kappa_dot_dot_max = 0.2  # maximum steering rate rate
+    kappa_max = 0.20  # maximum curvature
 
 
 class LonConstraints:

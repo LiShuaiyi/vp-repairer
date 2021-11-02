@@ -24,11 +24,6 @@ class QPLatPARAMS:
     W_U = 1  # weight for input deviation
     W_SLACK_L = 5.0  # linear weight for slack variables
     W_SLACK_Q = 2.0  # quadratic weight for slack variables
-    KAPPA_DOT_MIN = -0.2  # minimum steering rate
-    KAPPA_DOT_MAX = 0.2  # maximum steering rate
-    KAPPA_DOT_DOT_MIN = -0.2  # minimum steering rate rate
-    KAPPA_DOT_DOT_MAX = 0.2  # maximum steering rate rate
-    KAPPA_MAX = 0.20  # maximum curvature
 
 
 class QPLatState(object):
@@ -412,31 +407,50 @@ class QPLatPlanner(TrajectoryPlanner):
         else:
             c_tv = c_tv
 
-        # initialize cost and constraints
-        cost = 0
+        ############################
+        # Define optimization problem
+        ############################
+        # Calculate cost function
+        cost = self.cost_function(x_ref, d_reference)
+        # initialize constraints
+        constr = []
+        # Specify time-variant constraints
+        constr += self.tv_constraints(c_tv, c_ti, x_ref)
+        # Set up time-invariant constraints
+        constr += self.ti_constraints(c_ti, x_initial)
+
+        ############################
+        # Solve optimization problem
+        ############################
+        prob = Problem(Minimize(cost), constr)
+        print("Problem is convex:", prob.is_dcp())
+        prob.solve(verbose=self.verbose)
+
+        # check result
+        if not 'optimal' == prob.status:
+            print('Solution not optimal')
+
+        ##########################
+        # Create output trajectory
+        ##########################
+        if not prob.status == 'infeasible':
+            trajectory = self.create_output_trajectory(x_ref, x_initial)
+        else:
+            trajectory = None
+        return trajectory, prob.status, prob.value
+
+    def tv_constraints(self, c_tv: TVConstraints, c_ti: TIConstraints, x_ref):
+        """
+        Specify time-variant transition matrices
+        """
         constr = []
 
         # create all states of the problem along the horizon N
         for k in range(self.N):
-            #########################################
-            # Define cost function including reference
-            #########################################
             v = x_ref.reference[k].v
             a = x_ref.reference[k].a
             theta = x_ref.reference[k].theta
-            kappa = x_ref.reference[k].kappa
 
-            # define cost function including reference
-            x_desired = [0 if d_reference is None else d_reference[k], theta, kappa, 0]
-
-            #########################################
-            # Define cost function including reference
-            #########################################
-            cost += quad_form(self._x[:, k + 1] - x_desired, self._Q) + square(self._u[:, k]) * self._R
-
-            ##########################################
-            # Specify time-variant transition matrices
-            ##########################################
             # x = Ax+Bu+Dz
             A = npy.array(
                 [[1, self.dT * v, (self.dT ** 2) * 0.5 * (v ** 2), (self.dT ** 3) / 6 * (v ** 2)],
@@ -461,86 +475,92 @@ class QPLatPlanner(TrajectoryPlanner):
             # disturbances on output
             E = npy.transpose(npy.array([0, -0.5 * self._length, -self._length, 0, 0]))
 
-            ##################################
-            # Specify time-variant constraints
-            ##################################
             constr += [self._x[:, k + 1] == A @ self._x[:, k] + B @ self._u[:, k] + theta * D]  # state transition
 
             constr += [self._x[0, k + 1] <= c_tv.d_hard_max[k][0]]  # upper lateral bound
             constr += [self._x[0, k + 1] >= c_tv.d_hard_min[k][0]]
-            constr += [self._x[0, k + 1] + 0.5 * self._length * self._x[1, k + 1] <= c_tv.d_hard_max[k][1]]  # upper lateral bound
+            constr += [self._x[0, k + 1] + 0.5 * self._length * self._x[1, k + 1] <= c_tv.d_hard_max[k][
+                1]]  # upper lateral bound
             constr += [self._x[0, k + 1] + 0.5 * self._length * self._x[1, k + 1] >= c_tv.d_hard_min[k][1]]
-            constr += [self._x[0, k + 1] + 1. * self._length * self._x[1, k + 1] <= c_tv.d_hard_max[k][1]]  # upper lateral bound
+            constr += [self._x[0, k + 1] + 1. * self._length * self._x[1, k + 1] <= c_tv.d_hard_max[k][
+                1]]  # upper lateral bound
             constr += [self._x[0, k + 1] + 1. * self._length * self._x[1, k + 1] >= c_tv.d_hard_min[k][1]]
             constr += [S @ (C @ self._x[:, k + 1] + E * theta) <= (c_tv.d_hard_max[k])]  # upper lateral bound
             constr += [S @ (C @ self._x[:, k + 1] + E * theta) >= (c_tv.d_hard_min[k])]  # lower lateral bound
 
             kappa_lim = npy.min([npy.sqrt(c_ti.a_max ** 2 - a ** 2) / (npy.max([v, 0.5]) ** 2),
-                                 self._qp_lat_params.KAPPA_MAX])
+                                 c_ti.kappa_max])
 
             constr += [self._x[2, k + 1] <= kappa_lim + 0.1]  # curvature constraint Kamm's circle
             constr += [self._x[2, k + 1] >= -kappa_lim - 0.1]  # curvature constraint Kamm's circle
-            constr += [self._x[3, k + 1] <= self._qp_lat_params.KAPPA_DOT_MAX]
-            constr += [self._x[3, k + 1] >= self._qp_lat_params.KAPPA_DOT_MIN]
-            constr += [self._u[:, k] <= self._qp_lat_params.KAPPA_DOT_DOT_MAX]  # input constraint
-            constr += [self._u[:, k] >= self._qp_lat_params.KAPPA_DOT_DOT_MIN]  # input constraint
-
             # slack constraints
             if self.slack:
                 # upper lateral bound
                 constr += [S * (C * self._x[:, k + 1] + E * theta) - self._u[self.N] <= (c_tv.d_soft_max[k])]
                 # lower lateral bound
                 constr += [S * (C * self._x[:, k + 1] + E * theta) + self._u[self.N + 1] >= (c_tv.d_soft_min[k])]
+        return constr
 
-        ###################################
-        # Set up time-invariant constraints
-        ###################################
+    def ti_constraints(self, c_ti: TIConstraints, x_initial):
+        """
+        Set up time-invariant constraints.
+        """
+        constr = []
+        constr += [self._x[3, :] <= c_ti.kappa_dot_max]
+        constr += [self._x[3, :] >= c_ti.kappa_dot_min]
+        constr += [self._u[:, :] <= c_ti.kappa_dot_dot_max]  # input constraint
+        constr += [self._u[:, :] >= c_ti.kappa_dot_dot_min]  # input constraint
         constr += [self._x[:, 0] == x_initial.to_array()]
         if self.slack:
             constr += [self._u[:, self.N:].T >= npy.repeat(0, self._n_s)]
+        return constr
 
-        ############################
-        # Solve optimization problem
-        ############################
-        prob = Problem(Minimize(cost), constr)
-        print("Problem is convex:", prob.is_dcp())
-        prob.solve(verbose=self.verbose)
+    def cost_function(self, x_ref, d_reference):
+        """
+        Define cost function including reference.
+        """
+        cost = 0
+        # create all states of the problem along the horizon N
+        for k in range(self.N):
+            #########################################
+            # Define cost function including reference
+            #########################################
 
+            theta = x_ref.reference[k].theta
+            kappa = x_ref.reference[k].kappa
 
-        # check result
-        if not 'optimal' == prob.status:
-            print('Solution not optimal')
+            x_desired = [0 if d_reference is None else d_reference[k], theta, kappa, 0]
+            cost += quad_form(self._x[:, k + 1] - x_desired, self._Q) + square(self._u[:, k]) * self._R
+        return cost
 
-        ##########################
-        # Create output trajectory
-        ##########################
-        traj = None
-        if not prob.status == 'infeasible':
-            traj = []
-            ref = x_ref.reference
-            # add initial state
-            assert x_initial.s is not None and x_initial.v is not None and x_initial.a is not None, \
-                '<QPLateralPlanner>: initial long state information missing!'
+    def create_output_trajectory(self, x_ref, x_initial):
+        """
+        Generates output trajectory.
+        """
+        traj = []
+        ref = x_ref.reference
+        # add initial state
+        assert x_initial.s is not None and x_initial.v is not None and x_initial.a is not None, \
+            '<QPLateralPlanner>: initial long state information missing!'
+        traj.append(
+            TrajPoint(x_initial.t, x_initial.s, x_initial.d, x_initial.theta,
+                      x_initial.v, x_initial.a, j=x_initial.j, kappa=x_initial.kappa, kappa_dot=x_initial.kappa_dot,
+                      lane=-1))
+
+        for k in range(self.N):
             traj.append(
-                TrajPoint(x_initial.t, x_initial.s, x_initial.d, x_initial.theta,
-                          x_initial.v, x_initial.a, j=x_initial.j, kappa=x_initial.kappa, kappa_dot=x_initial.kappa_dot,
+                TrajPoint(t=x_initial.t + (k + 1) * self.dT,
+                          x=ref[k].s,
+                          y=self._x[0, k + 1].value,
+                          theta=self._x[1, k + 1].value,
+                          v=ref[k].v,
+                          a=ref[k].a,
+                          kappa=self._x[2, k + 1].value,
+                          j=ref[k].j,
+                          kappa_dot=self._x[3, k + 1].value,
                           lane=-1))
 
-            for k in range(self.N):
-                traj.append(
-                    TrajPoint(t=x_initial.t + (k + 1) * self.dT,
-                              x=ref[k].s,
-                              y=self._x[0, k + 1].value,
-                              theta=self._x[1, k + 1].value,
-                              v=ref[k].v,
-                              a=ref[k].a,
-                              kappa=self._x[2, k + 1].value,
-                              j=ref[k].j,
-                              kappa_dot=self._x[3, k + 1].value,
-                              lane=-1))
-
-            traj = Trajectory(traj, TrajectoryType.CARTESIAN)
-            traj._u_lon = x_initial.u_lon
-            traj._u_lat = npy.transpose(self._u.value.flatten())[:self.N]
-        return traj, prob.status, prob.value
-
+        traj = Trajectory(traj, TrajectoryType.CARTESIAN)
+        traj._u_lon = x_initial.u_lon
+        traj._u_lat = npy.transpose(self._u.value.flatten())[:self.N]
+        return traj

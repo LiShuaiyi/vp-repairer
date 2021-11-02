@@ -62,9 +62,30 @@ class TrajectoryPlanner(ABC):
         raise Exception("You are not allowed to change the time step of the planner!")
 
     @abstractmethod
-    def plan(self):
+    def plan(self, *args, **kwargs):
         """
         Plans the trajectory
         :return: The trajectory of the maneuver with respect to the initial state and environment map
+        """
+        pass
+
+    @abstractmethod
+    def tv_constraints(self, *args, **kwargs):
+        """
+        Add time-variant constraints
+        """
+        pass
+
+    @abstractmethod
+    def ti_constraints(self, *args, **kwargs):
+        """
+        Add time-invariant constraints
+        """
+        pass
+
+    @abstractmethod
+    def cost_function(self, *args, **kwargs):
+        """
+        Define cost functions
         """
         pass

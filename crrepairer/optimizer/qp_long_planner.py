@@ -201,48 +201,17 @@ class QPLongPlanner(TrajectoryPlanner):
         if isinstance(c_tv, LonConstraints):
             c_tv = c_tv
 
-        # initialize cost and constraints
-        cost = 0
+        ############################
+        # Define optimization problem
+        ############################
+        # Calculate cost function
+        cost = self.cost_function(x_ref)
+        # initialize constraints
         constr = []
-
-        # create all states of the problem along the horizon N
-        for k in range(self.N):
-            #########################################
-            # Define cost function including reference
-            #########################################
-            if x_ref:
-                cost += quad_form(self._x[:, k + 1] - npy.transpose(
-                                [x_ref.reference[k].s, x_ref.reference[k].v,
-                                 x_ref.reference[k].a, x_ref.reference[k].j]), self._Q) +\
-                        square(self._u[:, k]) * self._R
-            else:
-                cost += quad_form(self._x[:, k + 1], self._Q) +\
-                        square(self._u[:, k]) * self._R
-            ##################################
-            # Specify time-variant constraints
-            ##################################
-            # state transition based on kinematic model
-            constr += [self._x[:, k + 1] == self._A @ self._x[:, k] + self._B @ self._u[:, k]]
-            # position constraints
-            if c_tv.s_hard_min[k] != npy.inf:
-                constr += [
-                    self._x[0, k + 1] >= c_tv.s_hard_min[k] + self._qp_long_params.L_ENLARGE]
-            if c_tv.s_hard_max[k] != npy.inf:
-                constr += [self._x[0, k + 1] <= c_tv.s_hard_max[k] - self._qp_long_params.L_ENLARGE]
-            # consider soft position constraints including slack
-            if self._slack_soft_pos:
-                if c_tv.s_soft_min[k] != npy.inf:
-                    constr += [self._x[0, k + 1] + self._u[:, self.N] >= c_tv.s_soft_min[k]]  # position constraints
-                if c_tv.s_soft_max[k] != npy.inf:
-                    constr += [self._x[0, k + 1] - self._u[:, self.N + 1] <= c_tv.s_soft_max[k]]
-
-        ###################################
+        # Specify time-variant constraints
+        constr += self.tv_constraints(c_tv)
         # Set up time-invariant constraints
-        ###################################
-        constr += [self._x[1, :] >= c_ti.v_min, self._x[1, :] <= c_ti.v_max]  # velocity
-        constr += [self._x[2, :] >= c_ti.a_x_min, self._x[2, :] <= c_ti.a_x_max]  # acceleration
-        constr += [self._x[3, :] >= c_ti.j_x_min, self._x[3, :] <= c_ti.j_x_max]  # jerk
-        constr += [self._x[:, 0] == x_initial.to_array()]  # initial state constraint
+        constr += self.ti_constraints(c_ti, x_initial)
 
         ############################
         # Solve optimization problem
@@ -267,16 +236,76 @@ class QPLongPlanner(TrajectoryPlanner):
         ##########################
         # Create output trajectory
         ##########################
-        traj = None
         if not prob.status == 'infeasible':
-            traj = list()
-            # add initial state
-            traj.append(TrajPoint(x_initial.t, x_initial.s, 0, 0,
-                                  x_initial.v, x_initial.a, j=x_initial.j))
-            for k in range(self.N):
-                traj.append(TrajPoint(x_initial.t + self.dT * (k + 1), self._x[0, k + 1].value, 0, 0,
-                                      self._x[1, k + 1].value if self._x[1, k + 1].value >= 0. else 0.,
-                                      self._x[2, k + 1].value, j=self._x[3, k + 1].value))
-            traj = Trajectory(traj, TrajectoryType.CARTESIAN)
-            traj._u_lon = npy.transpose(self._u.value.flatten())[:self.N]
-        return traj, prob.status, prob.value
+            trajectory = self.create_output_trajectory(x_initial)
+        else:
+            trajectory = None
+        return trajectory, prob.status, prob.value
+
+    def tv_constraints(self, c_tv: TVConstraints):
+        """
+        Specify time-variant constraints.
+        """
+        constr = []
+        # create all states of the problem along the horizon N
+        for k in range(self.N):
+            # state transition based on kinematic model
+            constr += [self._x[:, k + 1] == self._A @ self._x[:, k] + self._B @ self._u[:, k]]
+            # position constraints
+            if c_tv.s_hard_min[k] != npy.inf:
+                constr += [
+                    self._x[0, k + 1] >= c_tv.s_hard_min[k] + self._qp_long_params.L_ENLARGE]
+            if c_tv.s_hard_max[k] != npy.inf:
+                constr += [self._x[0, k + 1] <= c_tv.s_hard_max[k] - self._qp_long_params.L_ENLARGE]
+            # consider soft position constraints including slack
+            if self._slack_soft_pos:
+                if c_tv.s_soft_min[k] != npy.inf:
+                    constr += [self._x[0, k + 1] + self._u[:, self.N] >= c_tv.s_soft_min[k]]  # position constraints
+                if c_tv.s_soft_max[k] != npy.inf:
+                    constr += [self._x[0, k + 1] - self._u[:, self.N + 1] <= c_tv.s_soft_max[k]]
+        return constr
+
+    def ti_constraints(self,
+                       c_ti: TIConstraints,
+                       x_initial: QPLongState):
+        """
+        Set up time-invariant constraints.
+        """
+        constr = []
+        constr += [self._x[1, :] >= c_ti.v_min, self._x[1, :] <= c_ti.v_max]  # velocity
+        constr += [self._x[2, :] >= c_ti.a_x_min, self._x[2, :] <= c_ti.a_x_max]  # acceleration
+        constr += [self._x[3, :] >= c_ti.j_x_min, self._x[3, :] <= c_ti.j_x_max]  # jerk
+        constr += [self._x[:, 0] == x_initial.to_array()]  # initial state constraint
+        return constr
+
+    def cost_function(self, x_ref):
+        """
+        Define cost function including reference.
+        """
+        cost = 0
+        for k in range(self.N):
+            if x_ref:
+                cost += quad_form(self._x[:, k + 1] - npy.transpose(
+                    [x_ref.reference[k].s, x_ref.reference[k].v,
+                     x_ref.reference[k].a, x_ref.reference[k].j]), self._Q) + \
+                        square(self._u[:, k]) * self._R
+            else:
+                cost += quad_form(self._x[:, k + 1], self._Q) + \
+                        square(self._u[:, k]) * self._R
+        return cost
+
+    def create_output_trajectory(self, x_initial):
+        """
+        Generates output trajectory.
+        """
+        traj = list()
+        # add initial state
+        traj.append(TrajPoint(x_initial.t, x_initial.s, 0, 0,
+                              x_initial.v, x_initial.a, j=x_initial.j))
+        for k in range(self.N):
+            traj.append(TrajPoint(x_initial.t + self.dT * (k + 1), self._x[0, k + 1].value, 0, 0,
+                                  self._x[1, k + 1].value if self._x[1, k + 1].value >= 0. else 0.,
+                                  self._x[2, k + 1].value, j=self._x[3, k + 1].value))
+        traj = Trajectory(traj, TrajectoryType.CARTESIAN)
+        traj._u_lon = npy.transpose(self._u.value.flatten())[:self.N]
+        return traj
