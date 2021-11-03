@@ -31,6 +31,10 @@ class RuleMonitor:
     def abstraction_nodes(self):
         return self._rule_eval.abstraction_nodes
 
+    @property
+    def predicate_nodes(self):
+        return self._rule_eval.predicate_nodes
+
     def evaluate_initially(self):
         """
         Evaluate whether the ego vehicle disobeys traffic rules

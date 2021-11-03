@@ -27,3 +27,12 @@ class TestMonitor(unittest.TestCase):
         self.assertEqual(
             exp_compliance, rob_value, f"Test failed for ego_id={ego_id}"
         )
+
+    def test_select_predicates(self):
+        ego_id = 1003
+        rule = "R_G1"
+        rule_encoder = RuleEncoder(self.scenario, ego_id, rule)
+        predicates = rule_encoder.select_predicates(ttv=20)
+        self.assertEqual(
+            predicates[0].base_name, "keeps_safe_distance_prec"
+        )

@@ -23,17 +23,15 @@ class RuleEncoder:
                  monitor_type: MonitorType = MonitorType.STL):
         self._world_state = self.construct_world_state(scenario, vehicle_id)
         self._rule_monitor = RuleMonitor(self._world_state, rule_str, monitor_type)
-        self._prop_abs = self.construct_prop_abs()
+        self._abstraction_nodes = self._rule_monitor.abstraction_nodes
         self._abs_robustness = self._rule_monitor.rob_abstraction
+        self._predicate_nodes = self._rule_monitor.predicate_nodes
 
     @staticmethod
     def construct_world_state(scenario: Scenario,
                               ego_id: int) -> WorldState:
         world_state = WorldState.create_from_scenario(scenario, ego_id)
         return world_state
-
-    def construct_prop_abs(self):
-        return self._rule_monitor.abstraction_nodes
 
     @property
     def world_state(self) -> WorldState:
@@ -42,10 +40,25 @@ class RuleEncoder:
     @property
     def prop_abs(self):
         # propositional abstraction
-        return self._prop_abs
+        return self._abstraction_nodes
 
     @property
     def abs_robustness(self):
         # the robustness of propositional abstractions
         return self._abs_robustness
+
+    def select_predicates(self, ttv: int):
+        """
+        Selects the predicates to be repaired
+        """
+        # select the unvisited predicates within the least robust abstraction at time step TTV.
+        abs_robust_ttv = self._abs_robustness.query('time_step == @ttv')
+        abs_rob_min = abs_robust_ttv[abs_robust_ttv.robustness.abs()
+                                     == abs_robust_ttv.robustness.abs().min()].abstraction.values
+        sel_abs_node = next((abs_node for abs_node in self._abstraction_nodes if abs_node.name == abs_rob_min), None)
+        if sel_abs_node is not None:
+            return sel_abs_node.children
+        return None
+
+
 
