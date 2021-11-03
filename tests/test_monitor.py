@@ -1,14 +1,7 @@
 import os
 import unittest
-import math
-from copy import deepcopy
-from typing import List
-from commonroad.common.file_reader import CommonRoadFileReader
-from crmonitor.common.world_state import WorldState
 
-from cut_off.ttcc import TTCC
-from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
-from cut_off.utils import check_velocity_feasibility, visualize_state_list
+from commonroad.common.file_reader import CommonRoadFileReader
 
 from encoding.rule_encoding import RuleEncoder
 
@@ -27,4 +20,10 @@ class TestMonitor(unittest.TestCase):
         ego_id = 1003
         rule = "R_G1"
         rule_encoder = RuleEncoder(self.scenario, ego_id, rule)
-        self.assertEqual(type(rule_encoder.prop_abs.pop()), AbstractionNode)
+        self.assertEqual(len(rule_encoder.prop_abs), 4)
+        self.assertTrue(any([isinstance(abstraction, AbstractionNode) for abstraction in rule_encoder.prop_abs]))
+        exp_compliance = False
+        rob_value = all([r >= 0.0 for r in rule_encoder.abs_robustness["robustness"].values])
+        self.assertEqual(
+            exp_compliance, rob_value, f"Test failed for ego_id={ego_id}"
+        )

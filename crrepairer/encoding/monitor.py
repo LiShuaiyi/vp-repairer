@@ -13,10 +13,15 @@ class RuleMonitor:
     def __init__(self,
                  world_state,
                  rules: Union[str, Iterable[str]],
-                 monitor_type: MonitorType = MonitorType.STL):
+                 monitor_type: MonitorType = MonitorType.STL,
+                 to_pandas: bool = True):
         self._rule_eval = RuleSetEvaluator.create_from_config(rules)
+        self._to_pandas = to_pandas
         self.world_state = world_state
         self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
+        if self._to_pandas:
+            self.rob_rule, self.rob_predicate = self._rule_eval.result2pandas(self.rob_rule, self.rob_predicate)
+            self.rob_abstraction = self._rule_eval.abstraction2pandas(self.rob_abstraction)
 
     @property
     def rule_eval(self):
@@ -41,7 +46,6 @@ class RuleMonitor:
                                    self.rob_predicate,)
 
     def query_rule_rob_all(self):
-        rob_rule, _ = self._rule_eval.result2pandas(self.rob_rule, self.rob_predicate)
-        if rob_rule is None:
+        if self.rob_rule is None:
             raise ValueError("the evaluation procedure is not executed yet")
-        return rob_rule['robustness'].values
+        return self.rob_rule['robustness'].values
