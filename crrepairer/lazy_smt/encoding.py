@@ -1,14 +1,11 @@
+import math
 from typing import List, Dict, Union, Iterable
 
-from encoding.monitor import RuleMonitor, MonitorType
+from lazy_smt.monitor import RuleMonitor, MonitorType
 # CommonRoad STL monitor
 from crmonitor.common.world_state import WorldState
-
+from crmonitor.predicates.rule import PredicateNode
 # CommonRoad Toolbox
-from commonroad.scenario.obstacle import DynamicObstacle, Shape
-from commonroad.scenario.trajectory import State, Trajectory
-from commonroad.prediction.prediction import TrajectoryPrediction
-from commonroad.geometry.shape import Rectangle
 from commonroad.scenario.scenario import Scenario
 
 
@@ -47,10 +44,17 @@ class RuleEncoder:
         # the robustness of propositional abstractions
         return self._abs_robustness
 
-    def select_predicates(self, ttv: int):
+    def sat_encoding(self):
+        """
+        Retrieves SAT encodings from the rule monitor
+        """
+        return self._rule_monitor.sat_formula
+
+    def select_predicates(self, ttv: int) -> List[PredicateNode]:
         """
         Selects the predicates to be repaired
         """
+        assert ttv != math.inf and ttv != - math.inf, "Provided TTV = {} is invalid".format(ttv)
         # select the unvisited predicates within the least robust abstraction at time step TTV.
         abs_robust_ttv = self._abs_robustness.query('time_step == @ttv')
         abs_rob_min = abs_robust_ttv[abs_robust_ttv.robustness.abs()
@@ -59,6 +63,7 @@ class RuleEncoder:
         if sel_abs_node is not None:
             return sel_abs_node.children
         return None
+
 
 
 

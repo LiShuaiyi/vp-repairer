@@ -8,7 +8,7 @@ from commonroad.scenario.scenario import Scenario
 from crmonitor.common.world_state import WorldState
 
 from cut_off.base import CutOffBase
-from encoding.monitor import RuleMonitor
+from lazy_smt.monitor import RuleMonitor
 from cut_off.utils import update_ego_vehicle, visualize_state_list
 from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 

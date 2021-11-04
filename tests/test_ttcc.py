@@ -9,7 +9,7 @@ from cut_off.ttcc import TTCC
 from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
 from cut_off.utils import check_velocity_feasibility, visualize_state_list
 
-from encoding.monitor import RuleMonitor
+from lazy_smt.monitor import RuleMonitor
 
 
 class TestTTCC(unittest.TestCase):

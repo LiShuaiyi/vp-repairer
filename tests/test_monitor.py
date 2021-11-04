@@ -1,9 +1,10 @@
 import os
+import math
 import unittest
 
 from commonroad.common.file_reader import CommonRoadFileReader
 
-from encoding.rule_encoding import RuleEncoder
+from lazy_smt.encoding import RuleEncoder
 
 from crmonitor.predicates.rule import AbstractionNode
 
@@ -32,7 +33,7 @@ class TestMonitor(unittest.TestCase):
         ego_id = 1003
         rule = "R_G1"
         rule_encoder = RuleEncoder(self.scenario, ego_id, rule)
-        predicates = rule_encoder.select_predicates(ttv=20)
+        predicates = rule_encoder.select_predicates(ttv=math.inf)
         self.assertEqual(
             predicates[0].base_name, "keeps_safe_distance_prec"
         )

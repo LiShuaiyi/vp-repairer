@@ -35,6 +35,10 @@ class RuleMonitor:
     def predicate_nodes(self):
         return self._rule_eval.predicate_nodes
 
+    @property
+    def sat_formula(self):
+        return self._rule_eval.sat_formula
+
     def evaluate_initially(self):
         """
         Evaluate whether the ego vehicle disobeys traffic rules
