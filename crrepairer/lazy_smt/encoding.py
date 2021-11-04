@@ -44,6 +44,7 @@ class RuleEncoder:
         # the robustness of propositional abstractions
         return self._abs_robustness
 
+    @property
     def sat_encoding(self):
         """
         Retrieves SAT encodings from the rule monitor

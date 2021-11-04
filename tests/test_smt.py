@@ -1,15 +1,15 @@
 import os
 import math
 import unittest
-
+from sympy.logic.boolalg import is_cnf
 from commonroad.common.file_reader import CommonRoadFileReader
 
 from lazy_smt.encoding import RuleEncoder
-
+from lazy_smt.sat_solver import SATSolver
 from crmonitor.predicates.rule import AbstractionNode
 
 
-class TestMonitor(unittest.TestCase):
+class TestSMTSolver(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
@@ -28,6 +28,10 @@ class TestMonitor(unittest.TestCase):
         self.assertEqual(
             exp_compliance, rob_value, f"Test failed for ego_id={ego_id}"
         )
+        sat_encoding = rule_encoder.sat_encoding
+        sat_solver = SATSolver(sat_encoding)
+        # check whether the formula in the sat solver is CNF or not
+        self.assertTrue(is_cnf(sat_solver.formula))
 
     def test_select_predicates(self):
         ego_id = 1003
