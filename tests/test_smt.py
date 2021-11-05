@@ -35,11 +35,7 @@ class TestSMTSolver(unittest.TestCase):
         )
 
     def test_select_predicates(self):
-        ego_id = 1003
-        rule = "R_G1"
-        ttv = 20
-        rule_encoder = RuleEncoder(ttv, self.scenario, ego_id, rule)
-        predicates = rule_encoder.select_predicates()
+        predicates = self.rule_encoder.select_predicates()
         self.assertEqual(
             predicates[0].base_name, "keeps_safe_distance_prec"
         )

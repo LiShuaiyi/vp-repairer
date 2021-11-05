@@ -3,7 +3,7 @@ from enum import Enum
 from sympy.logic.inference import satisfiable
 
 from crmonitor.predicates.rule import AbstractionNode
-
+from sympy.abc import *
 
 class SATISFIABILITY(Enum):
     SAT = "satisfiable"
@@ -37,7 +37,7 @@ class SATSolver:
         There are multiple choices for the SAT solver. *Pysat* supports the DIMACS CNF as inputs, *z3*: a theorem solver
         from Microsoft Research. Here we use *sympy* for its easy-to-use interface
         """
-        sat_result = satisfiable(self._formula)
+        sat_result = satisfiable(eval(self._formula))
         if sat_result is False:
             return SATISFIABILITY.UNSAT
         else:
@@ -50,5 +50,9 @@ class SATSolver:
         """
         if self._formula[0] is not '(':
             self._formula = '(' + self.formula + ')'
-        self._formula += ' & ~' + abstraction.alphabet
-
+        # if abstraction.ttv_value > 0:
+        #     self._formula += ' & ~' + abstraction.alphabet
+        # else:
+        #     self._formula += ' & ' + abstraction.alphabet
+        self._formula += ' & ' + abstraction.alphabet + '== ' + str(not bool(abstraction.ttv_value))
+        pass
