@@ -5,6 +5,7 @@ from sympy.logic.inference import satisfiable
 from crmonitor.predicates.rule import AbstractionNode
 from sympy.abc import *
 
+
 class SATISFIABILITY(Enum):
     SAT = "satisfiable"
     UNSAT = "unsatisfiable"
@@ -50,9 +51,7 @@ class SATSolver:
         """
         if self._formula[0] is not '(':
             self._formula = '(' + self.formula + ')'
-        # if abstraction.ttv_value > 0:
-        #     self._formula += ' & ~' + abstraction.alphabet
-        # else:
-        #     self._formula += ' & ' + abstraction.alphabet
-        self._formula += ' & ' + abstraction.alphabet + '== ' + str(not bool(abstraction.ttv_value))
-        pass
+        sign = self._formula[self.formula.index(abstraction.alphabet)-1]
+        if sign != '~':
+            sign = ''
+        self._formula += ' & ~' + sign + abstraction.alphabet
