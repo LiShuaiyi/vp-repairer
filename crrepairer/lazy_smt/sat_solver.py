@@ -14,7 +14,7 @@ class SATISFIABILITY(Enum):
 class SATSolver:
     def __init__(self, sat_encoding, abs_robust_ttv):
         self._formula = self.construct_cnf(sat_encoding)
-        self._sat_list = self.check_satisfiability(abs_robust_ttv)
+        self._sat_list = self.check_prior_satisfiability(abs_robust_ttv)
 
     @property
     def formula(self):
@@ -37,7 +37,7 @@ class SATSolver:
         cnf_formula = str(sp.to_cnf(sp_formula))
         return cnf_formula
 
-    def check_satisfiability(self, abs_robust_tv):
+    def check_prior_satisfiability(self, abs_robust_tv):
         def obtain_initial_assignment(robustness_tv):
             ini_assign = list()
             for _, row in abs_robust_tv.iterrows():
