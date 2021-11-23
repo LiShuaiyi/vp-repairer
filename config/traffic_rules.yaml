@@ -1,0 +1,111 @@
+# Traffic rules formalized in metric temporal logic (MTL)
+###
+# .. code-block:: yaml
+#
+#   - R_G1: safe distance preceding, considering cut-in vehicles
+#   - R_G2: unnecessary braking only if safe distance is violated
+#   - R_G3: speed limit
+#   - R_G4: preserves traffic flow
+#   - R_G5: required speed
+#   - R_G6: safe distance to rear vehicle during lane change
+#   - R_G7: recapturing safe distance (also for future cut-in) -> optional, indirectly covered by R_G1
+#   - R_G8: driving rightmost as possible
+#   - R_I1: no standing on interstates
+#   - R_I2: overtaking right-hand side on interstates
+#   - R_I3: prevent u-turn and reversing on interstates
+#   - R_I4: emergency lane
+#   - R_I5: consider entering vehicles
+traffic_rules_forward:
+  R_I5: G((on_main_carriage_way__x_ego & in_front_of__x_ego__x_o & on_access_ramp__x_o & F(on_main_carriage_way__x_o)) -> (~(~(main_carriageway_right_lane__x_ego) & F(main_carriageway_right_lane__x_ego))))
+  R_G7: G(((in_same_lane__x_ego__x_o & in_front_of__x_ego__x_o & ~(keeps_safe_distance_prec__x_ego__x_o)) | F[0, 0.5](in_same_lane__x_ego__x_o & in_front_of__x_ego__x_o & ~(keeps_safe_distance_prec__x_ego__x_o))) -> (brakes_stronger__x_ego__x_o | drives_faster__x_o__x_ego))
+  # R_G8: G((single_lane__x_ego & F(G(single_lane__x_ego))) -> drives_rightmost_general__x_ego) # TODO only when no lane change -> drive rightmost TODO consider orientation for lane change
+  # R_G8: G((single_lane__x_ego & F(G(single_lane__x_ego))) | ~(~single_lane__x_ego U G(single_lane__x_ego)) | ~(single_lane__x_ego U (~single_lane__x_ego & F(~single_lane__x_ego & X(single_lane__x_ego))))) # -> drives_rightmost_general__x_ego) # TODO only when no lane change -> drive rightmost TODO consider orientation for lane change
+  # assumption: vehicle follows lane
+  # new rule lane change has to be finished
+traffic_rules_backward:
+  R_G1: always((in_front_of(time_step, ego_vehicle, other_vehicle, operating_mode) && in_same_lane(time_step, ego_vehicle, other_vehicle) && !once[0, 30](cut_in(time_step, other_vehicle, ego_vehicle)
+    && pre(!cut_in(time_step, other_vehicle, ego_vehicle)))) -> keeps_safe_distance_prec(time_step, ego_vehicle, other_vehicle, operating_mode))
+
+  R_G2: always(!unnecessary_braking(time_step, ego_vehicle, other_vehicles, operating_mode))
+
+  R_G3: always(keeps_lane_speed_limit(time_step, ego_vehicle, operating_mode) && keeps_fov_speed_limit(time_step, ego_vehicle, operating_mode)
+    && keeps_braking_speed_limit(time_step, ego_vehicle, operating_mode) && keeps_type_speed_limit(time_step, ego_vehicle, operating_mode))
+
+  R_G4: always(!slow_leading_vehicle(time_step, ego_vehicle, other_vehicles) -> preserves_traffic_flow(time_step, ego_vehicle, operating_mode))
+
+  R_G5: always(keeps_sign_min_speed_limit(time_step, ego_vehicle, operating_mode))
+
+  R_G6: always(cut_in(time_step, ego_vehicle, other_vehicle) && in_front_of(time_step, other_vehicle, ego_vehicle, operating_mode) -> keeps_safe_distance_prec(time_step, other_vehicle, ego_vehicle, operating_mode))
+
+  R_I1: always(!(in_congestion(time_step, ego_vehicle, other_vehicles) || exist_standing_leading_vehicle(time_step, ego_vehicle, other_vehicles))
+    -> !in_standstill(time_step, ego_vehicle, operating_mode))
+
+  R_I2: always(left_of(time_step, ego_vehicle, other_vehicle) && drives_faster(time_step, ego_vehicle, other_vehicle, operating_mode) -> ((in_congestion(time_step, other_vehicle, other_vehicles) || in_slow_moving_traffic(time_step, other_vehicle, other_vehicles)
+    || in_queue_of_vehicles(time_step, other_vehicle, other_vehicles)) && drives_with_slightly_higher_speed(time_step, ego_vehicle, other_vehicle, operating_mode))
+    || (right_of_broad_lane_marking(time_step, ego_vehicle) && left_of_broad_lane_marking(time_step, other_vehicle))
+    || (on_access_ramp(time_step, ego_vehicle) && !(in_congestion(time_step, other_vehicle, other_vehicles)
+    || in_slow_moving_traffic(time_step, other_vehicle, other_vehicles) || in_queue_of_vehicles(time_step, other_vehicle, other_vehicles)))))
+
+  R_I3: always(!makes_u_turn(time_step, ego_vehicle, operating_mode) && !reverses(time_step, ego_vehicle, operating_mode))
+
+  R_I4: always(in_congestion(time_step, ego_vehicle, other_vehicles) || in_slow_moving_traffic(time_step, ego_vehicle, other_vehicles)
+    -> (interstate_broad_enough(time_step, ego_vehicle) -> !on_shoulder(time_step, ego_vehicle) &&  (in_leftmost_lane(time_step, ego_vehicle, operating_mode)
+    -> drives_leftmost(time_step, ego_vehicle, other_vehicles, operating_mode) && single_lane(time_step, ego_vehicle)) && (!in_leftmost_lane(time_step, ego_vehicle, operating_mode)
+    -> drives_rightmost(time_step, ego_vehicle, other_vehicles, operating_mode))) && (!interstate_broad_enough(time_step, ego_vehicle)
+    -> drives_rightmost(time_step, ego_vehicle, other_vehicles, operating_mode) && in_rightmost_lane(time_step, ego_vehicle, operating_mode) && single_lane(time_step, ego_vehicle)))
+
+# Parameters for traffic rules
+###
+# .. code-block:: yaml
+#
+#   - a_abrupt: acceleration difference which indicates abrupt braking
+#   - min_velocity_dif: minimum velocity difference
+#   - standstill_error: velocity deviation from zero which is still classified to be standstill
+#   - num_veh_congestion: minimum number of slow-moving leading vehicles so that a vehicle can be assumed to be part of a congestion
+#   - max_congestion_velocity: maximum velocity of a vehicle withing a congestion
+#   - max_velocity_limit_free_driving:
+#   - desired_interstate_velocity: desired velocity on interstates
+#   - min_interstate_width: minimum interstate width so that emergency lane can be created
+#   - close_to_lane_border:  indicator if vehicle is close to lane border
+#   - slightly_higher_speed_difference:  indicator for slightly higher speed
+#   - u_turn: angle [rad] indicating u-turn
+#   - country: countries where traffic rules are applied
+traffic_rules_param:
+  j_abrupt: -2 # for ego vehicle emergency profile calculation
+  a_abrupt: -2
+  standstill_error: 0.01
+  min_velocity_dif: 15
+  num_veh_congestion: 3
+  max_congestion_velocity: 2.78
+  num_veh_slow_moving_traffic: 3
+  max_slow_moving_traffic_velocity: 8.33
+  num_veh_queue_of_vehicles: 3
+  max_queue_of_vehicles_velocity: 3
+  max_velocity_limit_free_driving: 16.67
+  desired_interstate_velocity: 36.11
+  min_interstate_width: 7.0
+  close_to_lane_border: 0.2
+  close_to_other_vehicle: 0.5
+  slightly_higher_speed_difference: 5.55
+  u_turn: 1.57
+  country: "DEU"
+  above_centerline_th: 0.1
+
+traffic_rule_sets:
+  F_S0: [R_I5]
+  F_SRI5: [R_I5]
+  F_SRG7: [R_G7]
+  F_SRG8: [R_G8]
+  B_S0: [R_G1, R_G2, R_G3, R_G4, R_G5, R_G6, R_I1, R_I2, R_I3, R_I4]
+  B_SRG1: [R_G1]
+  B_SRG2: [R_G2]
+  B_SRG3: [R_G3]
+  B_SRG4: [R_G4]
+  B_SRG5: [R_G5]
+  B_SRG6: [R_G6]
+  B_SRI1: [R_I1]
+  B_SRI2: [R_I2]
+  B_SRI3: [R_I3]
+  B_SRI4: [R_I4]
+activated_traffic_rule_sets: [B_SRG1]
+vehicle_dependent_rules: [R_G1, R_I2, R_I5, R_G6, R_G7]

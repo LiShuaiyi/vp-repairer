@@ -15,7 +15,7 @@
 #    - time_measuring: activate/deactivate computation time measuring
 simulation_param:
   dt: 0.2
-  evaluation_mode: single_vehicle # single_scenario, single_vehicle, test, statistic
+  evaluation_mode: test # single_scenario, single_vehicle, test, statistic
   ego_vehicle_id: 1008
   scenario_dir: /../scenarios/test_interstate/
   benchmark_id: DEU_test_safe_distance

@@ -2,17 +2,10 @@ import os
 import unittest
 import math
 from copy import deepcopy
-from typing import List
 from commonroad.common.file_reader import CommonRoadFileReader
+
 from crmonitor.common.world_state import WorldState
-
-from cut_off.ttcc import TTCC
-from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
-from cut_off.utils import check_velocity_feasibility, visualize_state_list
-
-from encoding.rule_encoding import RuleEncoder
-
-from crmonitor.predicates.rule import AbstractionNode
+from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
 
 
 class TestMonitor(unittest.TestCase):
@@ -23,8 +16,14 @@ class TestMonitor(unittest.TestCase):
         scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
         self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
 
-    def test_construction(self):
+    # def test_mtl_monitor(self):
+    #     mtl_monitor = MTLRuleMonitor(self.scenario, ["B_SRG1"])
+    #     mtl_monitor.evaluate_initially()
+
+    def test_robustness_monitor(self):
+        pass
+
+    def test_boolean_monitor(self):
         ego_id = 1003
-        rule = "R_G1"
-        rule_encoder = RuleEncoder(self.scenario, ego_id, rule)
-        self.assertEqual(type(rule_encoder.prop_abs.pop()), AbstractionNode)
+        world_state = WorldState.create_from_scenario(self.scenario, ego_id)
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
