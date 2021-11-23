@@ -1,7 +1,7 @@
 import math
 from typing import List, Dict, Union, Iterable
 
-from lazy_smt.monitor import RuleMonitor, MonitorType
+from lazy_smt.monitor import STLRuleMonitor, MonitorType
 # CommonRoad STL monitor
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PredicateNode
@@ -23,7 +23,7 @@ class RuleEncoder:
         assert ttv != math.inf and ttv != - math.inf, "Provided TTV = {} is invalid".format(ttv)
         self._ttv = ttv
         self._world_state = self.construct_world_state(scenario, vehicle_id)
-        self._rule_monitor = RuleMonitor(self._world_state, rule_str, monitor_type)
+        self._rule_monitor = STLRuleMonitor(self._world_state, rule_str, monitor_type)
         self._abs_robustness = self._rule_monitor.rob_abstraction
         self._abs_robust_ttv = None
         self._abstraction_nodes = self.initialize_abs_rob()

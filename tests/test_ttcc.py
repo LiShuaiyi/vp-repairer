@@ -9,7 +9,7 @@ from cut_off.ttcc import TTCC
 from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
 from cut_off.utils import check_velocity_feasibility, visualize_state_list
 
-from lazy_smt.monitor import RuleMonitor
+from lazy_smt.monitor import STLRuleMonitor
 
 
 class TestTTCC(unittest.TestCase):
@@ -23,7 +23,7 @@ class TestTTCC(unittest.TestCase):
     def test_ttv(self):
         ego_id = 1003
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
-        rule_monitor = RuleMonitor(world_state, ["R_G1"])
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
         ttcc_object = TTCC(rule_monitor)
         assert math.isclose(ttcc_object.ttv, 2.0, abs_tol=1e-2)
 
@@ -96,7 +96,7 @@ class TestTTCC(unittest.TestCase):
     def test_ttcc_1(self):
         ego_id = 1003
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
-        rule_monitor = RuleMonitor(world_state, ["R_G1"])
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
         ttcc_object = TTCC(rule_monitor)
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1007))
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
@@ -109,7 +109,7 @@ class TestTTCC(unittest.TestCase):
         ego_id = 1003
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
-        rule_monitor = RuleMonitor(world_state, ["R_G1"])
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
         ttcc_object = TTCC(rule_monitor)
         ttcc = ttcc_object.generate(CutOffAction.LANECHANGERIGHT)
         assert math.isclose(ttcc, 0.5, abs_tol=1e-2)
@@ -117,7 +117,7 @@ class TestTTCC(unittest.TestCase):
     def test_ttcc_3(self):
         ego_id = 1003
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
-        rule_monitor = RuleMonitor(world_state, ["R_G1"])
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
         ttcc_object = TTCC(rule_monitor)
         ttcc = ttcc_object.generate(CutOffAction.BRAKE)
         self.assertEqual(
