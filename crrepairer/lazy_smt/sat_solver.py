@@ -51,6 +51,7 @@ class SATSolver:
         """
         if self._formula[0] is not '(':
             self._formula = '(' + self.formula + ')'
+        # generate counterexample
         sign = self._formula[self.formula.index(abstraction.alphabet)-1]
         if sign != '~':
             sign = ''
