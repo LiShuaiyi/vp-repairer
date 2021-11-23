@@ -22,12 +22,12 @@ class TestSMTSolver(unittest.TestCase):
         self.rule_encoder = RuleEncoder(self.ttv, self.scenario, ego_id, rule)
 
     def test_construction(self):
-        self.assertEqual(len(self.rule_encoder.prop_abs), 4)
-        for node in self.rule_encoder.prop_abs:
+        self.assertEqual(len(self.rule_encoder.subformulae), 4)
+        for node in self.rule_encoder.subformulae:
             self.assertEqual(self.rule_encoder.abs_robust_ttv.query('abstraction == @node.name')["robustness"].values[0],
                              node.ttv_value)
         self.assertTrue(any([isinstance(abstraction, AbstractionNode)
-                             for abstraction in self.rule_encoder.prop_abs]))
+                             for abstraction in self.rule_encoder.subformulae]))
         exp_compliance = False
         rob_value = all([r >= 0.0 for r in self.rule_encoder.abs_robustness["robustness"].values])
         self.assertEqual(
@@ -41,15 +41,15 @@ class TestSMTSolver(unittest.TestCase):
         )
 
     def test_sat_solver(self):
-        sat_encoding = self.rule_encoder.sat_encoding
-        sat_solver = SATSolver(sat_encoding)
+        sat_solver = SATSolver(self.rule_encoder.sat_encoding,
+                               self.rule_encoder.abs_robust_ttv)
         # check whether the formula in the sat solver is CNF or not
         self.assertTrue(is_cnf(sat_solver.formula))
         sat = sat_solver.solve()
         self.assertEqual(
             sat, SATISFIABILITY.SAT
         )
-        abstraction_nodes = self.rule_encoder.prop_abs
+        abstraction_nodes = self.rule_encoder.subformulae
         # after negating all the abstractions
         for abs_node in abstraction_nodes:
             sat_solver.update_formula(abs_node)

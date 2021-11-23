@@ -12,8 +12,9 @@ class SATISFIABILITY(Enum):
 
 
 class SATSolver:
-    def __init__(self, sat_encoding):
+    def __init__(self, sat_encoding, abs_robust_ttv):
         self._formula = self.construct_cnf(sat_encoding)
+        self._sat_list = self.check_satisfiability(abs_robust_ttv)
 
     @property
     def formula(self):
@@ -31,6 +32,26 @@ class SATSolver:
         sp_formula = stl2sympy(stl_formula)
         cnf_formula = str(sp.to_cnf(sp_formula))
         return cnf_formula
+
+    def check_satisfiability(self, abs_robust_tv):
+        def obtain_initial_assignment(robustness_tv):
+            ini_assign = list()
+            for _, row in abs_robust_tv.iterrows():
+                if row['robustness'] > 0:
+                    ini_assign.append(row['alphabet'])
+                else:
+                    ini_assign.append('~' + row['alphabet'])
+            return ini_assign
+        initial_assignment = obtain_initial_assignment(abs_robust_tv)
+        satisfiable_list = list()
+        for i in range(len(initial_assignment)):
+            updated_formula = self._formula + '& ~' + initial_assignment[i]
+            for j in range(len(initial_assignment)):
+                if j is not i:
+                    updated_formula += '&' + initial_assignment[i]
+            if satisfiable(eval(updated_formula)):
+                satisfiable_list.append(initial_assignment[i][-1])
+        return satisfiable_list
 
     def solve(self):
         """

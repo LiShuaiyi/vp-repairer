@@ -43,8 +43,8 @@ class RuleEncoder:
         return self._world_state
 
     @property
-    def prop_abs(self):
-        # propositional abstraction
+    def subformulae(self):
+        # propositional subformulae
         return self._abstraction_nodes
 
     @property
@@ -66,7 +66,7 @@ class RuleEncoder:
         self._abs_robust_ttv = self._abs_robustness.query('time_step == @self._ttv')
         # assign the robustness at ttv
         for node in abs_nodes:
-            node.ttv_value = self._abs_robust_ttv.query('abstraction == @node.name')["robustness"].values[0]
+            node.ttv_value = self._abs_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0]
         return abs_nodes
 
     def select_predicates(self) -> List[PredicateNode]:
