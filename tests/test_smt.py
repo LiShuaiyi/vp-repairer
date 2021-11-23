@@ -24,8 +24,9 @@ class TestSMTSolver(unittest.TestCase):
     def test_construction(self):
         self.assertEqual(len(self.rule_encoder.subformulae), 4)
         for node in self.rule_encoder.subformulae:
-            self.assertEqual(self.rule_encoder.abs_robust_ttv.query('abstraction == @node.name')["robustness"].values[0],
-                             node.ttv_value)
+            self.assertEqual(
+                self.rule_encoder.abs_robust_ttv.query('abstraction == @node.name')["robustness"].values[0],
+                node.ttv_value)
         self.assertTrue(any([isinstance(abstraction, AbstractionNode)
                              for abstraction in self.rule_encoder.subformulae]))
         exp_compliance = False
@@ -57,3 +58,10 @@ class TestSMTSolver(unittest.TestCase):
         self.assertEqual(
             sat, SATISFIABILITY.UNSAT
         )
+
+    def test_satisfiability_checking(self):
+        # initial assignment: a b ~c ~d
+        sat_encoding = '(a | b) & c & ~d'
+        sat_solver = SATSolver(sat_encoding, self.rule_encoder.abs_robust_ttv)
+        self.assertEqual(sat_solver.satisfiable_subformula_list,
+                         ["c"])

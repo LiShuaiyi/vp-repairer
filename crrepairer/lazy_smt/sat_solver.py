@@ -20,6 +20,10 @@ class SATSolver:
     def formula(self):
         return self._formula
 
+    @property
+    def satisfiable_subformula_list(self):
+        return self._sat_list
+
     @staticmethod
     def construct_cnf(stl_formula):
         """
@@ -48,7 +52,7 @@ class SATSolver:
             updated_formula = self._formula + '& ~' + initial_assignment[i]
             for j in range(len(initial_assignment)):
                 if j is not i:
-                    updated_formula += '&' + initial_assignment[i]
+                    updated_formula += '&' + initial_assignment[j]
             if satisfiable(eval(updated_formula)):
                 satisfiable_list.append(initial_assignment[i][-1])
         return satisfiable_list
