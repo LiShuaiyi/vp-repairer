@@ -4,7 +4,7 @@ from typing import Iterable, Union
 from enum import Enum
 
 from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
-from commonroad_monitor.crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
+from crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
 from commonroad.scenario.scenario import Scenario
 
 
@@ -50,6 +50,7 @@ class STLRuleMonitor:
                                  to_pandas=False)
 
     def evaluate_consecutively(self):
+        self._rule_eval.switch_to_boolean()
         self.rob_rule, self.rob_predicate = self._rule_eval.\
             evaluate_consecutively(self.world_state,
                                    self.rob_rule,

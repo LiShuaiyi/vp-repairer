@@ -18,6 +18,7 @@ class TestSMTSolver(unittest.TestCase):
         self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         ego_id = 1003
         rule = "R_G1"
+        rule = "R_G1"
         self.ttv = 20
         self.rule_encoder = RuleEncoder(self.ttv, self.scenario, ego_id, rule)
 

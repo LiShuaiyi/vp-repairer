@@ -18,12 +18,11 @@ class RuleEncoder:
                  ttv: int,
                  scenario: Scenario,
                  vehicle_id: int,
-                 rule_str: Union[str, Iterable[str]],
-                 monitor_type: MonitorType = MonitorType.STL):
+                 rule_str: Union[str, Iterable[str]],):
         assert ttv != math.inf and ttv != - math.inf, "Provided TTV = {} is invalid".format(ttv)
         self._ttv = ttv
         self._world_state = self.construct_world_state(scenario, vehicle_id)
-        self._rule_monitor = STLRuleMonitor(self._world_state, rule_str, monitor_type)
+        self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
         self._abs_robustness = self._rule_monitor.rob_abstraction
         self._abs_robust_ttv = None
         self._abstraction_nodes = self.initialize_abs_rob()
