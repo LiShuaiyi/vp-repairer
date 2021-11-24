@@ -4,7 +4,7 @@ import unittest
 from sympy.logic.boolalg import is_cnf
 from commonroad.common.file_reader import CommonRoadFileReader
 
-from lazy_smt.encoding import RuleEncoder
+from lazy_smt.abstracter import RuleAbstracter
 from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
 from crmonitor.predicates.rule import AbstractionNode
 
@@ -19,7 +19,7 @@ class TestSMTSolver(unittest.TestCase):
         ego_id = 1003
         rule = "R_G1"
         self.ttv = 20
-        self.rule_encoder = RuleEncoder(self.ttv, self.scenario, ego_id, rule)
+        self.rule_encoder = RuleAbstracter(self.ttv, self.scenario, ego_id, rule)
 
     def test_construction(self):
         self.assertEqual(len(self.rule_encoder.subformulae), 4)

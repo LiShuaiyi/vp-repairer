@@ -20,7 +20,7 @@ from optimizer.qp_lat_planner import QPLatPlanner, QPLatReference, QPLatState, Q
 from optimizer.qp_long_planner import QPLongPlanner, QPLongReference, QPLongState, QPLongPARAMS
 from optimizer.constraints import TIConstraints
 
-from cut_off.ttcc import TTCC
+from cut_off.tc import TC
 from cut_off.simulation import CutOffAction
 
 
@@ -49,9 +49,9 @@ class RuleRepairer(TrajectoryRepairer):
         """
         Computes cut-off time step and the corresponding cut-off state based on the action.
         """
-        ttcc_obj = TTCC(self.scenario,
-                        self.ego_vehicle,
-                        self.rule)
+        ttcc_obj = TC(self.scenario,
+                      self.ego_vehicle,
+                      self.rule)
         ttcc = ttcc_obj.generate(action)
         print('\t\t\t Time-to-compliance: {}s \n'.format(ttcc))
         return self.ego_vehicle.state_at_time(int(ttcc/self.dt))

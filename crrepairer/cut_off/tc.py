@@ -13,7 +13,7 @@ from cut_off.utils import update_ego_vehicle, visualize_state_list
 from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 
 
-class TTCC(CutOffBase, ABC):
+class TC(CutOffBase, ABC):
     """
     Time-To-Compliance.
     """
@@ -23,14 +23,14 @@ class TTCC(CutOffBase, ABC):
         super().__init__(rule_monitor.world_state, dT)
         self.rule_monitor = rule_monitor
         self._check_initial = True
-        self._ttv = self._calc_ttv()
+        self._tv = self._calc_tv()
         self._visualize = False
 
     @property
-    def ttv(self) -> float:
-        return self._ttv
+    def tv(self) -> float:
+        return self._tv
 
-    def _calc_ttv(self, updated_states: List[State] = None,
+    def _calc_tv(self, updated_states: List[State] = None,
                  start_time_step: int = None) -> float:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
@@ -47,20 +47,20 @@ class TTCC(CutOffBase, ABC):
         evaluated_robustness = self.rule_monitor.query_rule_rob_all()
         if evaluated_robustness[0] < 0:
             return -math.inf  # all violated
-        ttv = np.argmax(evaluated_robustness < 0)
-        if ttv == 0:
+        tv = np.argmax(evaluated_robustness < 0)
+        if tv == 0:
             return math.inf  # no violation
-        return ttv * self.dT
+        return tv * self.dT
 
     def generate(self, maneuver: CutOffAction, ):
         """
         Generates the TTCC regarding traffic rule violations.
         """
-        ttcc = - math.inf
+        tc = - math.inf
         low = 0
-        if self._ttv == math.inf:
+        if self._tv == math.inf:
             return math.inf
-        high = int(self._ttv / self.dT)
+        high = int(self._tv / self.dT)
         while low < high:
             mid = int((low + high)/2)
             if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
@@ -80,16 +80,16 @@ class TTCC(CutOffBase, ABC):
                 visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
 
             flag_collision = self._detect_collision(state_list)  # bool value
-            ttv = self._calc_ttv(state_list, mid)
+            tv = self._calc_tv(state_list, mid)
             # if violation-free and collision-free
-            if ttv == math.inf and not flag_collision:
+            if tv == math.inf and not flag_collision:
                 low = mid + 1
             else:
                 high = mid
 
         if low != 0:
-            ttcc = (low - 1) * self.dT
-        return ttcc
+            tc = (low - 1) * self.dT
+        return tc
 
 
 

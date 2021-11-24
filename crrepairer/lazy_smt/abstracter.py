@@ -9,7 +9,7 @@ from crmonitor.predicates.rule import PredicateNode
 from commonroad.scenario.scenario import Scenario
 
 
-class RuleEncoder:
+class RuleAbstracter:
     """
     Wrapper class to wrap rule monitors with evaluation functionalities
     """

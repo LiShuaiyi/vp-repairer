@@ -40,7 +40,7 @@ class SATSolver:
     def check_prior_satisfiability(self, abs_robust_tv):
         def obtain_initial_assignment(robustness_tv):
             ini_assign = list()
-            for _, row in abs_robust_tv.iterrows():
+            for _, row in robustness_tv.iterrows():
                 if row['robustness'] > 0:
                     ini_assign.append(row['alphabet'])
                 else:
