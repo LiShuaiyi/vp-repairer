@@ -2,7 +2,7 @@ import sympy as sp
 from enum import Enum
 from sympy.logic.inference import satisfiable
 
-from crmonitor.predicates.rule import AbstractionNode
+from crmonitor.predicates.rule import PropositionNode
 from sympy.abc import *
 
 
@@ -69,7 +69,7 @@ class SATSolver:
         else:
             return SATISFIABILITY.SAT
 
-    def update_formula(self, abstraction: AbstractionNode):
+    def update_formula(self, abstraction: PropositionNode):
         """
         Based on the syntax for sympy, the SAT formula is updated by negating the unsatisfiable abstraction:
         phi_SAT = phi_SAT and (not abs)

@@ -20,7 +20,7 @@ class STLRuleMonitor:
         self._rule_eval = RuleSetEvaluator.create_from_config(rules)
         self.world_state = world_state
         self.rob_rule, self.rob_predicate, rob_abstraction = self.evaluate_initially()
-        self.rob_abstraction = self._rule_eval.abstraction2pandas(rob_abstraction)
+        self.rob_abstraction = self._rule_eval.proposition2pandas(rob_abstraction)
 
     @property
     def type(self):
@@ -32,7 +32,7 @@ class STLRuleMonitor:
 
     @property
     def abstraction_nodes(self):
-        return self._rule_eval.abstraction_nodes
+        return self._rule_eval.proposition_nodes
 
     @property
     def predicate_nodes(self):

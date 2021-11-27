@@ -5,8 +5,11 @@ from sympy.logic.boolalg import is_cnf
 from commonroad.common.file_reader import CommonRoadFileReader
 
 from lazy_smt.abstracter import RuleAbstracter
+from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
 from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
-from crmonitor.predicates.rule import AbstractionNode
+from lazy_smt.t_solver import TSolver, CutOffAction
+from crmonitor.common.world_state import WorldState
+from crmonitor.predicates.rule import PropositionNode
 
 
 class TestSMTSolver(unittest.TestCase):
@@ -27,7 +30,7 @@ class TestSMTSolver(unittest.TestCase):
             self.assertEqual(
                 self.rule_encoder.abs_robust_ttv.query('abstraction == @node.name')["robustness"].values[0],
                 node.ttv_value)
-        self.assertTrue(any([isinstance(abstraction, AbstractionNode)
+        self.assertTrue(any([isinstance(abstraction, PropositionNode)
                              for abstraction in self.rule_encoder.subformulae]))
         exp_compliance = False
         rob_value = all([r >= 0.0 for r in self.rule_encoder.abs_robustness["robustness"].values])
@@ -58,6 +61,19 @@ class TestSMTSolver(unittest.TestCase):
         self.assertEqual(
             sat, SATISFIABILITY.UNSAT
         )
+
+    def test_t_solver(self):
+        ego_id = 1003
+        world_state = WorldState.create_from_scenario(self.scenario, ego_id)
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
+        t_solver = TSolver(rule_monitor)
+        t_solver.assign_proposition(list(self.rule_encoder.subformulae)[0])
+        # safe distance
+        self.assertEqual(t_solver.compliant_maneuvers,
+                         {CutOffAction.BRAKE,
+                          CutOffAction.KICKDOWN,
+                          CutOffAction.LANECHANGELEFT,
+                          CutOffAction.LANECHANGERIGHT})
 
     def test_satisfiability_checking(self):
         # initial assignment: a b ~c ~d
