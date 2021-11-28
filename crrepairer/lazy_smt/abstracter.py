@@ -23,9 +23,9 @@ class RuleAbstracter:
         self._ttv = ttv
         self._world_state = self.construct_world_state(scenario, vehicle_id)
         self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
-        self._abs_robustness = self._rule_monitor.rob_abstraction
-        self._abs_robust_ttv = None
-        self._abstraction_nodes = self.initialize_abs_rob()
+        self._prop_robustness = self._rule_monitor.rob_abstraction
+        self._prop_robust_ttv = None
+        self._prop_nodes = self.initialize_prop_rob()
         self._predicate_nodes = self._rule_monitor.predicate_nodes
 
     @staticmethod
@@ -35,22 +35,26 @@ class RuleAbstracter:
         return world_state
 
     @property
-    def abs_robust_ttv(self):
-        return self._abs_robust_ttv
+    def rule_monitor(self):
+        return self._rule_monitor
+
+    @property
+    def prop_robust_ttv(self):
+        return self._prop_robust_ttv
 
     @property
     def world_state(self) -> WorldState:
         return self._world_state
 
     @property
-    def subformulae(self):
-        # propositional subformulae
-        return self._abstraction_nodes
+    def propositions(self):
+        # propositions
+        return self._prop_nodes
 
     @property
-    def abs_robustness(self):
-        # the robustness of propositional abstractions
-        return self._abs_robustness
+    def prop_robustness(self):
+        # the robustness of propositions
+        return self._prop_robustness
 
     @property
     def sat_encoding(self):
@@ -59,24 +63,24 @@ class RuleAbstracter:
         """
         return self._rule_monitor.sat_formula
 
-    def initialize_abs_rob(self):
-        abs_nodes = self._rule_monitor.abstraction_nodes
-        if self._abs_robustness is None:
+    def initialize_prop_rob(self):
+        prop_nodes = self._rule_monitor.abstraction_nodes
+        if self._prop_robustness is None:
             raise "the robustness of abstractions hasn't been specified"
-        self._abs_robust_ttv = self._abs_robustness.query('time_step == @self._ttv')
+        self._prop_robust_ttv = self._prop_robustness.query('time_step == @self._ttv')
         # assign the robustness at ttv
-        for node in abs_nodes:
-            node.ttv_value = self._abs_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0]
-        return abs_nodes
+        for node in prop_nodes:
+            node.ttv_value = self._prop_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0]
+        return prop_nodes
 
     def select_predicates(self) -> List[PredicateNode]:
         """
         Selects the predicates to be repaired
         """
         # select the unvisited predicates within the least robust abstraction at time step TTV.
-        abs_rob_min = self._abs_robust_ttv[self._abs_robust_ttv.robustness.abs()
-                                           == self._abs_robust_ttv.robustness.abs().min()].abstraction.values
-        sel_abs_node = next((abs_node for abs_node in self._abstraction_nodes if abs_node.name == abs_rob_min), None)
+        abs_rob_min = self._prop_robust_ttv[self._prop_robust_ttv.robustness.abs()
+                                            == self._prop_robust_ttv.robustness.abs().min()].abstraction.values
+        sel_abs_node = next((abs_node for abs_node in self._prop_nodes if abs_node.name == abs_rob_min), None)
         if sel_abs_node is not None:
             return sel_abs_node.children
         return None

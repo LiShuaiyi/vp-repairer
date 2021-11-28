@@ -25,15 +25,15 @@ class TestSMTSolver(unittest.TestCase):
         self.rule_encoder = RuleAbstracter(self.ttv, self.scenario, ego_id, rule)
 
     def test_construction(self):
-        self.assertEqual(len(self.rule_encoder.subformulae), 4)
-        for node in self.rule_encoder.subformulae:
+        self.assertEqual(len(self.rule_encoder.propositions), 4)
+        for node in self.rule_encoder.propositions:
             self.assertEqual(
-                self.rule_encoder.abs_robust_ttv.query('abstraction == @node.name')["robustness"].values[0],
+                self.rule_encoder.prop_robust_ttv.query('abstraction == @node.name')["robustness"].values[0],
                 node.ttv_value)
         self.assertTrue(any([isinstance(abstraction, PropositionNode)
-                             for abstraction in self.rule_encoder.subformulae]))
+                             for abstraction in self.rule_encoder.propositions]))
         exp_compliance = False
-        rob_value = all([r >= 0.0 for r in self.rule_encoder.abs_robustness["robustness"].values])
+        rob_value = all([r >= 0.0 for r in self.rule_encoder.prop_robustness["robustness"].values])
         self.assertEqual(
             exp_compliance, rob_value,
         )
@@ -46,14 +46,14 @@ class TestSMTSolver(unittest.TestCase):
 
     def test_sat_solver(self):
         sat_solver = SATSolver(self.rule_encoder.sat_encoding,
-                               self.rule_encoder.abs_robust_ttv)
+                               self.rule_encoder.prop_robust_ttv)
         # check whether the formula in the sat solver is CNF or not
         self.assertTrue(is_cnf(sat_solver.formula))
         sat = sat_solver.solve()
         self.assertEqual(
             sat, SATISFIABILITY.SAT
         )
-        abstraction_nodes = self.rule_encoder.subformulae
+        abstraction_nodes = self.rule_encoder.propositions
         # after negating all the abstractions
         for abs_node in abstraction_nodes:
             sat_solver.update_formula(abs_node)
@@ -63,11 +63,8 @@ class TestSMTSolver(unittest.TestCase):
         )
 
     def test_t_solver(self):
-        ego_id = 1003
-        world_state = WorldState.create_from_scenario(self.scenario, ego_id)
-        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
-        t_solver = TSolver(rule_monitor)
-        t_solver.assign_proposition(list(self.rule_encoder.subformulae)[0])
+        t_solver = TSolver(self.rule_encoder.rule_monitor)
+        t_solver.assign_proposition(list(self.rule_encoder.propositions)[2])
         # safe distance
         self.assertEqual(t_solver.compliant_maneuvers,
                          {CutOffAction.BRAKE,
@@ -78,6 +75,6 @@ class TestSMTSolver(unittest.TestCase):
     def test_satisfiability_checking(self):
         # initial assignment: a b ~c ~d
         sat_encoding = '(a | b) & c & ~d'
-        sat_solver = SATSolver(sat_encoding, self.rule_encoder.abs_robust_ttv)
+        sat_solver = SATSolver(sat_encoding, self.rule_encoder.prop_robust_ttv)
         self.assertEqual(sat_solver.satisfiable_subformula_list,
                          ["c"])
