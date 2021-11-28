@@ -25,7 +25,7 @@ class TSolver:
         assert self._sel_prop is not None, "<T-Solver>: the subformula needs to be assigned first for the T-solver"
         for predicate in self._sel_prop.children:
             predicate_category = predicate.evaluator.predicate_category
-            if predicate_category is Category.POS:
+            if predicate_category == Category.POS:
                 self._compliant_maneuvers.update([CutOffAction.BRAKE, CutOffAction.KICKDOWN,
                                                   CutOffAction.LANECHANGELEFT,
                                                   CutOffAction.LANECHANGERIGHT])
