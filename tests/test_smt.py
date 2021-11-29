@@ -69,8 +69,15 @@ class TestSMTSolver(unittest.TestCase):
         t_solver.assign_proposition(proposition)
         # safe distance
         self.assertEqual(t_solver.compliant_maneuvers,
-                         {CutOffAction.BRAKE,
-                          CutOffAction.KICKDOWN})
+                         [CutOffAction.BRAKE,
+                          CutOffAction.KICKDOWN])
+        tc = t_solver.search_tc()
+        self.assertEqual(tc, -math.inf)
+        proposition = next((prop for prop in list(self.rule_encoder.propositions)
+                            if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
+        t_solver.assign_proposition(proposition)
+        tc = t_solver.search_tc()
+        self.assertEqual(tc, 0.4)
 
     def test_satisfiability_checking(self):
         # initial assignment: a b ~c ~d

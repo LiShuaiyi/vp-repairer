@@ -1,3 +1,5 @@
+import math
+
 from cut_off.tc import TC
 from cut_off.simulation import CutOffAction
 
@@ -10,7 +12,7 @@ class TSolver:
                  rule_monitor):
         self._sel_prop = PropositionNode()
         self._tc_obj = TC(rule_monitor)
-        self._compliant_maneuvers = set()
+        self._compliant_maneuvers = list()
         self._tc_dict = dict()
 
     @property
@@ -27,23 +29,28 @@ class TSolver:
         for predicate in self._sel_prop.children:
             predicate_category = predicate.evaluator.predicate_category
             if predicate_category == Category.LON_POS:
-                self._compliant_maneuvers.update([CutOffAction.BRAKE,
-                                                  CutOffAction.KICKDOWN])
+                self._compliant_maneuvers = [CutOffAction.BRAKE,
+                                             CutOffAction.KICKDOWN]
             elif predicate_category == Category.LAT_POS:
-                self._compliant_maneuvers.update([CutOffAction.LANECHANGELEFT,
-                                                  CutOffAction.LANECHANGERIGHT])
+                self._compliant_maneuvers = [CutOffAction.LANECHANGELEFT,
+                                             CutOffAction.LANECHANGERIGHT]
                 # todo: set the offset for steer
             elif predicate_category == Category.VEL:
-                self._compliant_maneuvers.update([CutOffAction.BRAKE,
-                                                  CutOffAction.KICKDOWN])
+                self._compliant_maneuvers = [CutOffAction.BRAKE,
+                                             CutOffAction.KICKDOWN]
             elif predicate_category == Category.ACC:
-                self._compliant_maneuvers.update([CutOffAction.STEADYSPEED])
+                self._compliant_maneuvers = [CutOffAction.STEADYSPEED]
             else:
                 raise ValueError('<T-Solver>: the category {} is not specified'
                                  .format(predicate_category))
 
     def search_tc(self):
+        tc_list = list()
         for maneuver in self._compliant_maneuvers:
             if maneuver not in self._tc_dict.keys():
-                tc = TC.generate(maneuver)
-                self._tc_dict[maneuver] = tc
+                tc_maneuver = self._tc_obj.generate(maneuver)
+                tc_list.append(tc_maneuver)
+                self._tc_dict[maneuver] = tc_maneuver
+            else:
+                tc_list.append(self._tc_dict[maneuver])
+        return max(tc_list)

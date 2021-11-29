@@ -52,7 +52,7 @@ class TC(CutOffBase, ABC):
             return math.inf  # no violation
         return tv * self.dT
 
-    def generate(self, maneuver: CutOffAction, ):
+    def generate(self, maneuver: CutOffAction):
         """
         Generates the TTCC regarding traffic rule violations.
         """
