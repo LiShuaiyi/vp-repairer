@@ -26,10 +26,11 @@ class TSolver:
                                            "assigned first for the T-solver"
         for predicate in self._sel_prop.children:
             predicate_category = predicate.evaluator.predicate_category
-            if predicate_category == Category.POS:
+            if predicate_category == Category.LON_POS:
                 self._compliant_maneuvers.update([CutOffAction.BRAKE,
-                                                  CutOffAction.KICKDOWN,
-                                                  CutOffAction.LANECHANGELEFT,
+                                                  CutOffAction.KICKDOWN])
+            elif predicate_category == Category.LAT_POS:
+                self._compliant_maneuvers.update([CutOffAction.LANECHANGELEFT,
                                                   CutOffAction.LANECHANGERIGHT])
                 # todo: set the offset for steer
             elif predicate_category == Category.VEL:
@@ -40,3 +41,9 @@ class TSolver:
             else:
                 raise ValueError('<T-Solver>: the category {} is not specified'
                                  .format(predicate_category))
+
+    def search_tc(self):
+        for maneuver in self._compliant_maneuvers:
+            if maneuver not in self._tc_dict.keys():
+                tc = TC.generate(maneuver)
+                self._tc_dict[maneuver] = tc

@@ -64,13 +64,13 @@ class TestSMTSolver(unittest.TestCase):
 
     def test_t_solver(self):
         t_solver = TSolver(self.rule_encoder.rule_monitor)
-        t_solver.assign_proposition(list(self.rule_encoder.propositions)[2])
+        proposition = next((prop for prop in list(self.rule_encoder.propositions)
+                            if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
+        t_solver.assign_proposition(proposition)
         # safe distance
         self.assertEqual(t_solver.compliant_maneuvers,
                          {CutOffAction.BRAKE,
-                          CutOffAction.KICKDOWN,
-                          CutOffAction.LANECHANGELEFT,
-                          CutOffAction.LANECHANGERIGHT})
+                          CutOffAction.KICKDOWN})
 
     def test_satisfiability_checking(self):
         # initial assignment: a b ~c ~d
