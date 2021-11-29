@@ -21,11 +21,10 @@ class QPRepairer(QPPlanner):
                  cut_off_time_step: int):
         self._scenario = world_state.scenario
         self._ego_vehicle = self._scenario.obstacle_by_id(world_state.ego_vehicle.id)
-        # self._scenario.remove_obstacle(self._ego_vehicle)
+        # remove the existing ego vehicle from the scenario to avoid the conflict
+        self._scenario.remove_obstacle(self._ego_vehicle)
         self._planning_problem = world_state.planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
-        # remove the existing ego vehicle from the scenario to avoid the conflicts
-        # todo: check the time steps
         self._cut_off_state = self._initial_trajectory.state_at_time_step(cut_off_time_step)
         self._settings = self.config_settings()
         self._reformulate_planning_problem()
