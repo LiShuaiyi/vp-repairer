@@ -4,6 +4,7 @@ from typing import Iterable, Union
 from enum import Enum
 
 from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
+from stl_crmonitor.crmonitor.common.world_state import WorldState
 from crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
 from commonroad.scenario.scenario import Scenario
 
@@ -18,7 +19,7 @@ class STLRuleMonitor:
                  world_state,
                  rules: Union[str, Iterable[str]],):
         self._rule_eval = RuleSetEvaluator.create_from_config(rules)
-        self.world_state = world_state
+        self.world_state: WorldState = world_state
         self.rob_rule, self.rob_predicate, rob_abstraction = self.evaluate_initially()
         self.rob_abstraction = self._rule_eval.proposition2pandas(rob_abstraction)
 

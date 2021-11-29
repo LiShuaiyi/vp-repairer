@@ -2,6 +2,7 @@ import math
 
 from cut_off.tc import TC
 from cut_off.simulation import CutOffAction
+from lazy_smt.monitor import STLRuleMonitor
 
 from stl_crmonitor.crmonitor.predicates.predicate import Category
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
@@ -9,9 +10,10 @@ from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
 class TSolver:
     def __init__(self,
-                 rule_monitor):
+                 rule_monitor: STLRuleMonitor):
+        self._rule_monitor = rule_monitor
         self._sel_prop = PropositionNode()
-        self._tc_obj = TC(rule_monitor)
+        self._tc_obj = TC(self.rule_monitor)
         self._compliant_maneuvers = list()
         self._tc_dict = dict()
         self._repairability = False
