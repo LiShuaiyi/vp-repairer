@@ -8,6 +8,7 @@ from lazy_smt.abstracter import RuleAbstracter
 from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
 from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
 from lazy_smt.t_solver import TSolver, CutOffAction
+from repairer.qp_repairer import QPRepairer
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode
 
@@ -18,11 +19,13 @@ class TestSMTSolver(unittest.TestCase):
         root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
         self.scenario_root_path = os.path.join(root_path, "scenarios")
         scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
-        self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
+        self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
+        self.planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         ego_id = 1003
         rule = "R_G1"
         self.ttv = 20
-        self.rule_encoder = RuleAbstracter(self.ttv, self.scenario, ego_id, rule)
+        self.rule_encoder = RuleAbstracter(self.ttv, self.scenario,
+                                           self.planning_problem, ego_id, rule)
 
     def test_construction(self):
         self.assertEqual(len(self.rule_encoder.propositions), 4)
@@ -85,3 +88,9 @@ class TestSMTSolver(unittest.TestCase):
         sat_solver = SATSolver(sat_encoding, self.rule_encoder.prop_robust_ttv)
         self.assertEqual(sat_solver.satisfiable_subformula_list,
                          ["c"])
+
+    def test_construct_qp_repair(self):
+        tv = 4
+        qp_repairer = QPRepairer(self.rule_encoder.world_state,
+                                 tv)
+        self.assertIsInstance(qp_repairer, QPRepairer)

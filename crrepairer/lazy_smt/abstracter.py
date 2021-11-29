@@ -7,6 +7,7 @@ from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PredicateNode
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
+from commonroad.planning.planning_problem import PlanningProblem
 
 
 class RuleAbstracter:
@@ -17,11 +18,14 @@ class RuleAbstracter:
     def __init__(self,
                  ttv: int,
                  scenario: Scenario,
+                 planning_problem: PlanningProblem,
                  vehicle_id: int,
                  rule_str: Union[str, Iterable[str]],):
         assert ttv != math.inf and ttv != - math.inf, "Provided TTV = {} is invalid".format(ttv)
         self._ttv = ttv
-        self._world_state = self.construct_world_state(scenario, vehicle_id)
+        self._world_state = self.construct_world_state(scenario,
+                                                       planning_problem,
+                                                       vehicle_id)
         self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
         self._prop_robustness = self._rule_monitor.rob_abstraction
         self._prop_robust_ttv = None
@@ -30,8 +34,10 @@ class RuleAbstracter:
 
     @staticmethod
     def construct_world_state(scenario: Scenario,
+                              planning_problem: PlanningProblem,
                               ego_id: int) -> WorldState:
-        world_state = WorldState.create_from_scenario(scenario, ego_id)
+        world_state = WorldState.create_from_scenario(scenario, ego_id,
+                                                      planning_problem=planning_problem)
         return world_state
 
     @property
