@@ -14,6 +14,7 @@ class TSolver:
         self._tc_obj = TC(rule_monitor)
         self._compliant_maneuvers = list()
         self._tc_dict = dict()
+        self._repairability = False
 
     @property
     def compliant_maneuvers(self):
@@ -54,3 +55,22 @@ class TSolver:
             else:
                 tc_list.append(self._tc_dict[maneuver])
         return max(tc_list)
+
+    def _optimization_based_repair(self):
+        repaired_trajectory = None
+        return repaired_trajectory
+
+    def check(self, proposition: PropositionNode):
+        self.assign_proposition(proposition)
+        tc = self.search_tc()
+        assert tc != math.inf, "<T-solver>: the trajectory is already rule-compliant," \
+                               "i.e., doesn't need to be repaired"
+        if tc != -math.inf:
+            repaired_traj = self._optimization_based_repair()
+            if repaired_traj is not None:
+                self._repairability = True
+        return self._repairability, repaired_traj
+
+
+
+
