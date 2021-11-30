@@ -21,7 +21,6 @@ class STLRuleMonitor:
         self._rule_eval = RuleSetEvaluator.create_from_config(rules)
         self.world_state: WorldState = world_state
         self.rob_rule, self.rob_predicate, rob_abstraction = self.evaluate_initially()
-        self.rob_abstraction = self._rule_eval.proposition2pandas(rob_abstraction)
 
     @property
     def type(self):
@@ -32,7 +31,7 @@ class STLRuleMonitor:
         return self._rule_eval
 
     @property
-    def abstraction_nodes(self):
+    def proposition_nodes(self):
         return self._rule_eval.proposition_nodes
 
     @property
@@ -49,20 +48,18 @@ class STLRuleMonitor:
         """
         return self._rule_eval.\
             evaluate_incremental(self.world_state,
-                                 to_pandas=False)
+                                 to_pandas=True)
 
     def evaluate_consecutively(self):
         self._rule_eval.switch_to_boolean()
         self.rob_rule, self.rob_predicate = self._rule_eval.\
             evaluate_consecutively(self.world_state,
-                                   self.rob_rule,
-                                   self.rob_predicate,)
+                                   )
 
     def query_rule_rob_all(self):
         if self.rob_rule is None:
             raise ValueError("the evaluation procedure is not executed yet")
-        rob_rule, _ = self._rule_eval.result2pandas(self.rob_rule, self.rob_predicate)
-        return rob_rule['robustness'].values
+        return self.rob_rule['robustness'].values, self.rob_rule["other_ids"].values
 
 
 class MTLRuleMonitor:

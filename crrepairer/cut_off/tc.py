@@ -23,12 +23,16 @@ class TC(CutOffBase, ABC):
         super().__init__(rule_monitor.world_state, dT)
         self.rule_monitor = rule_monitor
         self._check_initial = True
-        self._tv = self._calc_tv()
+        self._tv, self._other_id = self._calc_tv()
         self._visualize = False
 
     @property
     def tv(self) -> float:
         return self._tv
+
+    @property
+    def other_id(self) -> int:
+        return self._other_id
 
     def _calc_tv(self, updated_states: List[State] = None,
                  start_time_step: int = None) -> float:
@@ -44,13 +48,13 @@ class TC(CutOffBase, ABC):
                                start_time_step,
                                self.dT)
             self.rule_monitor.evaluate_consecutively()
-        evaluated_robustness = self.rule_monitor.query_rule_rob_all()
+        evaluated_robustness, evaluated_ids = self.rule_monitor.query_rule_rob_all()
         if evaluated_robustness[0] < 0:
-            return -math.inf  # all violated
+            return -math.inf, evaluated_ids[0][0]  # all violated
         tv = np.argmax(evaluated_robustness < 0)
         if tv == 0:
-            return math.inf  # no violation
-        return tv * self.dT
+            return math.inf, None  # no violation
+        return tv * self.dT, evaluated_ids[tv][0]
 
     def generate(self, maneuver: CutOffAction):
         """
@@ -80,7 +84,7 @@ class TC(CutOffBase, ABC):
                 visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
 
             flag_collision = self._detect_collision(state_list)  # bool value
-            tv = self._calc_tv(state_list, mid)
+            tv, _ = self._calc_tv(state_list, mid)
             # if violation-free and collision-free
             if tv == math.inf and not flag_collision:
                 low = mid + 1

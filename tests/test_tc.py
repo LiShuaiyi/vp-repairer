@@ -105,7 +105,7 @@ class TestTC(unittest.TestCase):
             tc,
             -math.inf)
 
-    def test_ttcc_2(self):
+    def test_tc_2(self):
         ego_id = 1003
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)

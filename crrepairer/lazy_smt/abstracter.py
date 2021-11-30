@@ -70,7 +70,9 @@ class RuleAbstracter:
         return self._rule_monitor.sat_formula
 
     def initialize_prop_rob(self):
-        prop_nodes = self._rule_monitor.abstraction_nodes
+        # obtain the id of violation-relevant vehicle
+
+        prop_nodes = self._rule_monitor.proposition_nodes
         if self._prop_robustness is None:
             raise "the robustness of abstractions hasn't been specified"
         self._prop_robust_ttv = self._prop_robustness.query('time_step == @self._ttv')
