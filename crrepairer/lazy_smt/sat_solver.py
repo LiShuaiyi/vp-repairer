@@ -15,6 +15,7 @@ class SATSolver:
     def __init__(self, sat_encoding, abs_robust_ttv):
         self._formula = self.construct_cnf(sat_encoding)
         self._sat_list = self.check_prior_satisfiability(abs_robust_ttv)
+        self._init_assign = list()
 
     @property
     def formula(self):
@@ -23,6 +24,10 @@ class SATSolver:
     @property
     def satisfiable_subformula_list(self):
         return self._sat_list
+
+    @property
+    def initial_assignment(self):
+        return self._init_assign
 
     @staticmethod
     def construct_cnf(stl_formula):
@@ -38,23 +43,15 @@ class SATSolver:
         return cnf_formula
 
     def check_prior_satisfiability(self, abs_robust_tv):
-        def obtain_initial_assignment(robustness_tv):
-            ini_assign = list()
-            for _, row in robustness_tv.iterrows():
-                if row['robustness'] > 0:
-                    ini_assign.append(row['alphabet'])
-                else:
-                    ini_assign.append('~' + row['alphabet'])
-            return ini_assign
-        initial_assignment = obtain_initial_assignment(abs_robust_tv)
+        self._init_assign = self.obtain_initial_assignment(abs_robust_tv)
         satisfiable_list = list()
-        for i in range(len(initial_assignment)):
-            updated_formula = self._formula + '& ~' + initial_assignment[i]
-            for j in range(len(initial_assignment)):
+        for i in range(len(self._init_assign)):
+            updated_formula = self._formula + '& ~' + self._init_assign[i]
+            for j in range(len(self._init_assign)):
                 if j is not i:
-                    updated_formula += '&' + initial_assignment[j]
+                    updated_formula += '&' + self._init_assign[j]
             if satisfiable(eval(updated_formula)):
-                satisfiable_list.append(initial_assignment[i][-1])
+                satisfiable_list.append(self._init_assign[i][-1])
         return satisfiable_list
 
     def solve(self):
@@ -81,3 +78,13 @@ class SATSolver:
         if sign != '~':
             sign = ''
         self._formula += ' & ~' + sign + abstraction.alphabet
+
+    @staticmethod
+    def obtain_initial_assignment(robustness_tv):
+        ini_assign = list()
+        for _, row in robustness_tv.iterrows():
+            if row['robustness'] > 0:
+                ini_assign.append(row['alphabet'])
+            else:
+                ini_assign.append('~' + row['alphabet'])
+        return ini_assign

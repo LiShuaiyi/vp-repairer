@@ -5,7 +5,7 @@ from enum import Enum
 
 from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
 from stl_crmonitor.crmonitor.common.world_state import WorldState
-from crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
+from mtl_crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
 from commonroad.scenario.scenario import Scenario
 
 
@@ -68,19 +68,31 @@ class STLRuleMonitor:
 class MTLRuleMonitor:
     def __init__(self,
                  scenario: Scenario,
+                 ego_id: int,
                  rule_set: Union[str, Iterable[str]]):
-        self.rule_eval = CommonRoadObstacleEvaluation(os.path.dirname(__file__) + "/../config/")
+        self.rule_eval = CommonRoadObstacleEvaluation(os.path.dirname(__file__) + "/../../config/")
         self.rule_eval.activated_traffic_rule_sets = rule_set
         assert self.rule_eval.simulation_param["evaluation_mode"] == "test", "<MTLRuleMonitor>: the given evaluation " \
                                                                              "mode {} is invalid".\
             format(self.rule_eval.simulation_param["evaluation_mode"])
         self.rule_eval.update_eval_dict()
-        self.scenario = scenario
+        self._scenario = scenario
+        self._ego_id = ego_id
 
     def evaluate_initially(self):
         """
         Evaluate the rule violation initially - if violated, return the corresponding rule-relevant vehicle (if existed)
         """
-        eval_result = self.rule_eval.evaluate_scenario(self.scenario)
-        for ego_id, evaluation in eval_result:
-            pass
+        eval_result = self.rule_eval.evaluate_scenario(self._scenario)
+        ego_result = None
+        for veh_id, evaluation in eval_result:
+            if veh_id == self._ego_id:
+                ego_result = evaluation
+                break
+        violation_boolean = False
+        violation_veh = list()
+        for rule_str, result in ego_result.items():
+            if not result:
+                violation_veh.append(int(rule_str[-4:]))
+                violation_boolean = True
+        return violation_boolean, violation_veh
