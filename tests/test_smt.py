@@ -22,16 +22,18 @@ class TestSMTSolver(unittest.TestCase):
         self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         self.planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         ego_id = 1003
+        other_id = 1004
         rule = "R_G1"
         self.ttv = 20
         self.rule_encoder = RuleAbstracter(self.ttv, self.scenario,
-                                           self.planning_problem, ego_id, rule)
+                                           self.planning_problem,
+                                           ego_id, other_id, rule)
 
     def test_construction(self):
         self.assertEqual(len(self.rule_encoder.propositions), 4)
         for node in self.rule_encoder.propositions:
             self.assertEqual(
-                self.rule_encoder.prop_robust_ttv.query('abstraction == @node.name')["robustness"].values[0],
+                self.rule_encoder.prop_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0],
                 node.ttv_value)
         self.assertTrue(any([isinstance(abstraction, PropositionNode)
                              for abstraction in self.rule_encoder.propositions]))

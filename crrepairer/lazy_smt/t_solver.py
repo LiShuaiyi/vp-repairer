@@ -13,7 +13,7 @@ class TSolver:
                  rule_monitor: STLRuleMonitor):
         self._rule_monitor = rule_monitor
         self._sel_prop = PropositionNode()
-        self._tc_obj = TC(self.rule_monitor)
+        self._tc_obj = TC(self._rule_monitor)
         self._compliant_maneuvers = list()
         self._tc_dict = dict()
         self._repairability = False

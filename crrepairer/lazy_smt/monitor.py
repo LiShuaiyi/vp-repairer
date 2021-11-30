@@ -20,7 +20,7 @@ class STLRuleMonitor:
                  rules: Union[str, Iterable[str]],):
         self._rule_eval = RuleSetEvaluator.create_from_config(rules)
         self.world_state: WorldState = world_state
-        self.rob_rule, self.rob_predicate, rob_abstraction = self.evaluate_initially()
+        self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
 
     @property
     def type(self):
