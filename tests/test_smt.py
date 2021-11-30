@@ -38,7 +38,7 @@ class TestSMTSolver(unittest.TestCase):
         self.assertTrue(any([isinstance(abstraction, PropositionNode)
                              for abstraction in self.rule_encoder.propositions]))
         exp_compliance = False
-        rob_value = all([r >= 0.0 for r in self.rule_encoder.prop_robustness["robustness"].values])
+        rob_value = all([r >= 0.0 for r in self.rule_encoder.prop_robust_all["robustness"].values])
         self.assertEqual(
             exp_compliance, rob_value,
         )

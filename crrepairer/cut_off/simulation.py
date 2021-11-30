@@ -12,7 +12,7 @@ from crmonitor.common.world_state import WorldState
 from cut_off.utils import check_steering_angle_feasibility, check_velocity_feasibility
 
 
-class CutOffAction(Enum):
+class CutOffAction(str, Enum):
     BRAKE = "brake"
     CONSTANT = "constant velocity"
     KICKDOWN = "kick-down"

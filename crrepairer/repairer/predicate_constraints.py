@@ -1,12 +1,116 @@
-from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
+import numpy as np
+
+from collections import defaultdict
 
 from cut_off.simulation import CutOffAction
+from lazy_smt.abstracter import RuleAbstracter
+
+from stl_crmonitor.crmonitor.predicates.predicate import PredInSameLane
+from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
+from stl_crmonitor.crmonitor.common.road_network import Lane
+
+class RuleConstraints:
+    def __init__(self,
+                 tc: int,
+                 tv: int,
+                 N: int,
+                 rule_abstracter: RuleAbstracter,
+                 compliant_maneuver: CutOffAction,
+                 sel_proposition: PropositionNode):
+        self._tc = tc
+        self._tv = tv
+        self._N = N
+        self._rule_abstracter = rule_abstracter
+        self._world_state = self._rule_abstracter.world_state
+        self._other_id = rule_abstracter.other_veh_id
+        self._compliant_maneuver = compliant_maneuver
+        self._sel_prop = sel_proposition
+
+    def set_target_lanes(self):
+        """
+        Set up target lanes for all time steps based on the compliant maneuver.
+        """
+        target_lanes = defaultdict(Lane)
+        cut_off_lane = self._world_state.ego_vehicle.lane[self._tc]
+        if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
+            violation_target_lane = cut_off_lane.adj_left
+        elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
+            violation_target_lane = cut_off_lane.adj_right
+        elif self._compliant_maneuver in (CutOffAction.BRAKE, CutOffAction.CONSTANT, CutOffAction.KICKDOWN):
+            violation_target_lane = cut_off_lane
+        else:
+            raise ValueError('<RuleConstraints>: provided action {} is not valid'.format(self._compliant_maneuver))
+        for time_step in range(self._tc, self._N+1):
+            if time_step >= self._tv:
+                target_lanes[time_step] = violation_target_lane
+            else:
+                target_lanes[time_step] = cut_off_lane
+
+    def add(self):
+        for k in range(self._tc, self._N):
+            s_interval = [-np.inf, np.inf]
+            d_interval = [-np.inf, np.inf]
+            total_assignment = self._rule_abstracter.prop_robust_all.query('time_step == @k')
+            for proposition in self._rule_abstracter.propositions:
+                prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')
+                for predicate in proposition.children:
+                    if self._sel_prop.name == proposition.name:
+                        pass
+                    else:
+                        if predicate.name == PredInSameLane.predicate_name:
+                            constr = self.ConstrInSameLane(k, prop_assignment)
+
+    def add_lat_position(self):
+        pass
+
+    def add_lon_position(self):
+        pass
+
+    def ConstrInSameLane(self, time_step: int, prop_assignment: float):
+        other_veh_lane_id = self._world_state.road_network.find_lane_ids_by_obstacle(self._other_id, time_step)[0]
+        other_veh_lane = self._world_state.road_network.lanes[other_veh_lane_id]
+        if prop_assignment>0:
+            # still in the same lane
+            target_lane = other_veh_lane
+        elif self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
+            target_lane = other_veh_lane.adj_left
+        elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
+            target_lane = other_veh_lane.adj_right
+        else:
+            raise ValueError("<ConstrInSameLane>: the cut off action {} is wrong".format(CutOffAction))
+
+    @staticmethod
+    def lane_lateral_boundary(lane: Lane):
+        pass
 
 
-def add_tv_constraints(compliant_maneuver: CutOffAction,
-                       initial_assignment: list,
+
+    @staticmethod
+    def get_overlap(interval1: list, interval2: list):
+        return [max(interval1[0], interval2[0]), min(interval1[0], interval2[0])]
+
+
+def add_tv_constraints(tc: int,
+                       N: int,
+                       rule_abstracter: RuleAbstracter,
+                       compliant_maneuver: CutOffAction,
                        sel_proposition: PropositionNode):
-    pass
+    # iterate through all propositions and all time steps
+    for k in range(tc, N):
+        s_interval = [-math.inf, math.inf]
+        d_interval = [-math.inf, math.inf]
+        total_assignment = rule_abstracter.prop_robust_all.query('time_step == @k')
+        for proposition in rule_abstracter.propositions:
+            init_assignment = total_assignment.query('alphabet == @proposition.alphabet')
+            for predicate in proposition.children:
+                if sel_proposition.name == proposition.name:
+                    pass
+                else:
+                    if predicate.name == PredInSameLane.predicate_name:
+                        lat_constr =
+
+
+
 
 def target_lane_assignment(target_predicate: BasePredicateEvaluator,
                            tstcc: int,

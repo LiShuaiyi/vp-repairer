@@ -4,7 +4,7 @@ from typing import List, Dict, Union, Iterable
 from lazy_smt.monitor import STLRuleMonitor, MonitorType
 # CommonRoad STL monitor
 from crmonitor.common.world_state import WorldState
-from crmonitor.predicates.rule import PredicateNode
+from crmonitor.predicates.rule import PredicateNode, PropositionNode
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
 from commonroad.planning.planning_problem import PlanningProblem
@@ -60,7 +60,7 @@ class RuleAbstracter:
         return self._world_state
 
     @property
-    def propositions(self):
+    def propositions(self) -> List[PropositionNode]:
         # propositions
         return self._prop_nodes
 
@@ -69,7 +69,7 @@ class RuleAbstracter:
         return self._other_id
 
     @property
-    def prop_robustness(self):
+    def prop_robust_all(self):
         # the robustness of propositions
         return self._prop_rob_all
 
