@@ -100,7 +100,7 @@ class TestTC(unittest.TestCase):
         tc_object = TC(rule_monitor)
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1007))
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
-        tc = tc_object.generate(CutOffAction.LANECHANGELEFT)
+        tc = tc_object.generate([CutOffAction.LANECHANGELEFT])
         self.assertEqual(
             tc,
             -math.inf)
@@ -111,15 +111,33 @@ class TestTC(unittest.TestCase):
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
         rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
         tc_object = TC(rule_monitor)
-        tc = tc_object.generate(CutOffAction.LANECHANGERIGHT)
-        assert math.isclose(tc, 0.5, abs_tol=1e-2)
+        tc = tc_object.generate([CutOffAction.LANECHANGERIGHT])
+        self.assertEqual(
+            round(tc, 1),
+            .4)
 
     def test_tc_3(self):
         ego_id = 1003
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
         rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
         tc_object = TC(rule_monitor)
-        tc = tc_object.generate(CutOffAction.BRAKE)
+        tc = tc_object.generate([CutOffAction.BRAKE])
         self.assertEqual(
             round(tc, 1),
             -math.inf)
+
+    def test_tc_total(self):
+        ego_id = 1003
+        world_state = WorldState.create_from_scenario(self.scenario, ego_id)
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
+        tc_object = TC(rule_monitor)
+        tc = tc_object.generate([CutOffAction.BRAKE,
+                                 CutOffAction.LANECHANGELEFT,
+                                 CutOffAction.LANECHANGERIGHT,
+                                 CutOffAction.KICKDOWN])
+        self.assertEqual(
+            round(tc, 1),
+            .4)
+        self.assertEqual(
+            tc_object.compliant_maneuver, CutOffAction.LANECHANGERIGHT
+        )

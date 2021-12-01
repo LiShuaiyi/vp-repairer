@@ -19,6 +19,10 @@ class TSolver:
         self._repairability = False
 
     @property
+    def tc_object(self):
+        return self._tc_obj
+
+    @property
     def compliant_maneuvers(self):
         return self._compliant_maneuvers
 

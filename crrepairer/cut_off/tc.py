@@ -26,10 +26,22 @@ class TC(CutOffBase, ABC):
         self._tv = rule_monitor.tv * self.dT  # time step -> time
         self._other_id = rule_monitor.other_id
         self._visualize = False
+        self._compliant_maneuver = None
+        self._tc = None
 
     @property
     def tv(self):
         return self._tv
+
+    @property
+    def tc(self):
+        if self._tc is None:
+            raise ValueError("<TC> the tc is not evaluated yet.")
+        return self._tc
+
+    @property
+    def compliant_maneuver(self) -> CutOffAction:
+        return self._compliant_maneuver
 
     def _calc_tv_updated(self, updated_states: List[State] = None,
                          start_time_step: int = None) -> Tuple[float, Any]:
@@ -53,14 +65,27 @@ class TC(CutOffBase, ABC):
             return math.inf, None  # no violation
         return tv * self.dT, evaluated_ids[tv][0]
 
-    def generate(self, maneuver: CutOffAction):
+    def generate(self, cut_off_maneuvers: List[CutOffAction]):
         """
-        Generates the TTCC regarding traffic rule violations.
+        Computes the Time-to-Compliance (with traffic rules).
+        :param cut_off_maneuvers: the given maneuvers of ego vehicle
+        :return: TC, corresponding maneuver
         """
-        tc = - math.inf
+        if self._tv == -math.inf:
+            raise ValueError("<TC>: the trajectory is not repairable since it already disobeys the rules")
+        elif self._tv == math.inf:
+            self._tc = math.inf
+        else:
+            ttm = dict()
+            for maneuver in cut_off_maneuvers:
+                ttm[maneuver] = self.search_ttm(maneuver)
+            self._tc = max(ttm.values())
+            self._compliant_maneuver = max(ttm, key=ttm.get)
+        return self._tc
+
+    def search_ttm(self, maneuver: CutOffAction):
+        ttm = - math.inf
         low = 0
-        if self._tv == math.inf:
-            return math.inf
         high = int(self._tv / self.dT)
         while low < high:
             mid = int((low + high)/2)
@@ -81,7 +106,7 @@ class TC(CutOffBase, ABC):
                 visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
 
             flag_collision = self._detect_collision(state_list)  # bool value
-            tv, _ = self._calc_tv_updated(state_list, mid)
+            tv, _ = self._calc_tv_updated(state_list, mid) # which should be tv instead of ttm
             # if violation-free and collision-free
             if tv == math.inf and not flag_collision:
                 low = mid + 1
@@ -89,9 +114,8 @@ class TC(CutOffBase, ABC):
                 high = mid
 
         if low != 0:
-            tc = (low - 1) * self.dT
-        return tc
-
+            ttm = (low - 1) * self.dT
+        return ttm
 
 
 

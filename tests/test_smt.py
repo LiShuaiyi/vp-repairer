@@ -9,6 +9,7 @@ from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
 from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
 from lazy_smt.t_solver import TSolver, CutOffAction
 from repairer.qp_repairer import QPRepairer
+from repairer.predicate_constraints import RuleConstraints
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode
 
@@ -22,11 +23,10 @@ class TestSMTSolver(unittest.TestCase):
         self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         self.planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         ego_id = 1003
-        other_id = 1004
         rule = "R_G1"
         self.rule_abstracter = RuleAbstracter(self.scenario,
                                               self.planning_problem,
-                                              ego_id, other_id, rule)
+                                              ego_id, rule)
 
     def test_construction(self):
         self.assertEqual(len(self.rule_abstracter.propositions), 4)
@@ -41,6 +41,9 @@ class TestSMTSolver(unittest.TestCase):
         rob_value = all([r >= 0.0 for r in rule_monitor.prop_robust_all["robustness"].values])
         self.assertEqual(
             exp_compliance, rob_value,
+        )
+        self.assertEqual(
+            rule_monitor.other_id, 1004
         )
 
     def test_select_predicates(self):
@@ -96,3 +99,15 @@ class TestSMTSolver(unittest.TestCase):
         qp_repairer = QPRepairer(self.rule_abstracter.world_state,
                                  tv)
         self.assertIsInstance(qp_repairer, QPRepairer)
+
+    def test_rule_constraints(self):
+        t_solver = TSolver(self.rule_abstracter.rule_monitor)
+        tc_object = t_solver.tc_object
+        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
+                            if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
+        t_solver.assign_proposition(proposition)
+        rule_constraints = RuleConstraints(tc_object,
+                                           self.rule_abstracter,
+                                           )
+
+
