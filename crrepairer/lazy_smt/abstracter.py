@@ -16,27 +16,20 @@ class RuleAbstracter:
     """
 
     def __init__(self,
-                 ttv: int,
                  scenario: Scenario,
                  planning_problem: PlanningProblem,
                  vehicle_id: int,
                  other_id: Union[int, None],
                  rule_str: Union[str, Iterable[str]],):
-        assert ttv != math.inf and ttv != - math.inf, "Provided TTV = {} is invalid".format(ttv)
-        self._ttv = ttv
         self._world_state = self.construct_world_state(scenario,
                                                        planning_problem,
                                                        vehicle_id)
         self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
-
-        self._prop_rob_ttv = None
+        self._prop_rob_ttv = self._rule_monitor.prop_robust_ttv
         if other_id is None:
             self._other_id = vehicle_id
         else:
             self._other_id = other_id
-        self._prop_rob_all = self._rule_monitor.rob_abstraction.query('other_id == @self._other_id')
-        self._prop_rob_ttv = self._prop_rob_all.query('time_step == @self._ttv')
-        self._prop_nodes = self.initialize_prop_rob()
         self._predicate_nodes = self._rule_monitor.predicate_nodes
 
     @staticmethod
@@ -62,16 +55,11 @@ class RuleAbstracter:
     @property
     def propositions(self) -> List[PropositionNode]:
         # propositions
-        return self._prop_nodes
+        return self.rule_monitor.proposition_nodes
 
     @property
     def other_veh_id(self):
         return self._other_id
-
-    @property
-    def prop_robust_all(self):
-        # the robustness of propositions
-        return self._prop_rob_all
 
     @property
     def sat_encoding(self):
@@ -80,22 +68,15 @@ class RuleAbstracter:
         """
         return self._rule_monitor.sat_formula
 
-    def initialize_prop_rob(self):
-        # obtain the id of violation-relevant vehicle
-        prop_nodes = self._rule_monitor.proposition_nodes
-        # assign the robustness at ttv
-        for node in prop_nodes:
-            node.ttv_value = self._prop_rob_ttv.query('alphabet == @node.alphabet')["robustness"].values[0]
-        return prop_nodes
-
     def select_predicates(self) -> List[PredicateNode]:
         """
         Selects the predicates to be repaired
         """
         # select the unvisited predicates within the least robust proposition at time step TTV.
         prop_rob_min = self._prop_rob_ttv[self._prop_rob_ttv.robustness.abs()
-                                         == self._prop_rob_ttv.robustness.abs().min()].alphabet.values
-        sel_abs_node = next((abs_node for abs_node in self._prop_nodes if abs_node.alphabet == prop_rob_min), None)
+                                          == self._prop_rob_ttv.robustness.abs().min()].alphabet.values
+        sel_abs_node = next((prop_node for prop_node in self.rule_monitor.proposition_nodes
+                             if prop_node.alphabet == prop_rob_min), None)
         if sel_abs_node is not None:
             return sel_abs_node.children
         return None

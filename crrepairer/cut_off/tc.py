@@ -1,4 +1,4 @@
-from typing import Iterable, Union, List
+from typing import Iterable, Union, List, Any, Tuple
 import math
 from abc import ABC
 
@@ -23,19 +23,16 @@ class TC(CutOffBase, ABC):
         super().__init__(rule_monitor.world_state, dT)
         self.rule_monitor = rule_monitor
         self._check_initial = True
-        self._tv, self._other_id = self._calc_tv()
+        self._tv = rule_monitor.tv * self.dT  # time step -> time
+        self._other_id = rule_monitor.other_id
         self._visualize = False
 
     @property
-    def tv(self) -> float:
+    def tv(self):
         return self._tv
 
-    @property
-    def other_id(self) -> int:
-        return self._other_id
-
-    def _calc_tv(self, updated_states: List[State] = None,
-                 start_time_step: int = None) -> float:
+    def _calc_tv_updated(self, updated_states: List[State] = None,
+                         start_time_step: int = None) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
         if self._check_initial:
@@ -84,7 +81,7 @@ class TC(CutOffBase, ABC):
                 visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
 
             flag_collision = self._detect_collision(state_list)  # bool value
-            tv, _ = self._calc_tv(state_list, mid)
+            tv, _ = self._calc_tv_updated(state_list, mid)
             # if violation-free and collision-free
             if tv == math.inf and not flag_collision:
                 low = mid + 1

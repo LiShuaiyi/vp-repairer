@@ -24,41 +24,41 @@ class TestSMTSolver(unittest.TestCase):
         ego_id = 1003
         other_id = 1004
         rule = "R_G1"
-        self.ttv = 20
-        self.rule_encoder = RuleAbstracter(self.ttv, self.scenario,
-                                           self.planning_problem,
-                                           ego_id, other_id, rule)
+        self.rule_abstracter = RuleAbstracter(self.scenario,
+                                              self.planning_problem,
+                                              ego_id, other_id, rule)
 
     def test_construction(self):
-        self.assertEqual(len(self.rule_encoder.propositions), 4)
-        for node in self.rule_encoder.propositions:
+        self.assertEqual(len(self.rule_abstracter.propositions), 4)
+        rule_monitor = self.rule_abstracter.rule_monitor
+        for node in self.rule_abstracter.propositions:
             self.assertEqual(
-                self.rule_encoder.prop_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0],
+                rule_monitor.prop_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0],
                 node.ttv_value)
         self.assertTrue(any([isinstance(abstraction, PropositionNode)
-                             for abstraction in self.rule_encoder.propositions]))
+                             for abstraction in self.rule_abstracter.propositions]))
         exp_compliance = False
-        rob_value = all([r >= 0.0 for r in self.rule_encoder.prop_robust_all["robustness"].values])
+        rob_value = all([r >= 0.0 for r in rule_monitor.prop_robust_all["robustness"].values])
         self.assertEqual(
             exp_compliance, rob_value,
         )
 
     def test_select_predicates(self):
-        predicates = self.rule_encoder.select_predicates()
+        predicates = self.rule_abstracter.select_predicates()
         self.assertEqual(
             predicates[0].base_name, "keeps_safe_distance_prec"
         )
 
     def test_sat_solver(self):
-        sat_solver = SATSolver(self.rule_encoder.sat_encoding,
-                               self.rule_encoder.prop_robust_ttv)
+        sat_solver = SATSolver(self.rule_abstracter.sat_encoding,
+                               self.rule_abstracter.rule_monitor.prop_robust_ttv)
         # check whether the formula in the sat solver is CNF or not
         self.assertTrue(is_cnf(sat_solver.formula))
         sat = sat_solver.solve()
         self.assertEqual(
             sat, SATISFIABILITY.SAT
         )
-        abstraction_nodes = self.rule_encoder.propositions
+        abstraction_nodes = self.rule_abstracter.propositions
         # after negating all the abstractions
         for abs_node in abstraction_nodes:
             sat_solver.update_formula(abs_node)
@@ -68,8 +68,8 @@ class TestSMTSolver(unittest.TestCase):
         )
 
     def test_t_solver(self):
-        t_solver = TSolver(self.rule_encoder.rule_monitor)
-        proposition = next((prop for prop in list(self.rule_encoder.propositions)
+        t_solver = TSolver(self.rule_abstracter.rule_monitor)
+        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
                             if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
         t_solver.assign_proposition(proposition)
         # safe distance
@@ -78,7 +78,7 @@ class TestSMTSolver(unittest.TestCase):
                           CutOffAction.KICKDOWN])
         tc = t_solver.search_tc()
         self.assertEqual(tc, -math.inf)
-        proposition = next((prop for prop in list(self.rule_encoder.propositions)
+        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
                             if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
         t_solver.assign_proposition(proposition)
         tc = t_solver.search_tc()
@@ -87,12 +87,12 @@ class TestSMTSolver(unittest.TestCase):
     def test_satisfiability_checking(self):
         # initial assignment: a b ~c ~d
         sat_encoding = '(a | b) & c & ~d'
-        sat_solver = SATSolver(sat_encoding, self.rule_encoder.prop_robust_ttv)
+        sat_solver = SATSolver(sat_encoding, self.rule_abstracter.rule_monitor.prop_robust_ttv)
         self.assertEqual(sat_solver.satisfiable_subformula_list,
                          ["c"])
 
     def test_construct_qp_repair(self):
         tv = 4
-        qp_repairer = QPRepairer(self.rule_encoder.world_state,
+        qp_repairer = QPRepairer(self.rule_abstracter.world_state,
                                  tv)
         self.assertIsInstance(qp_repairer, QPRepairer)
