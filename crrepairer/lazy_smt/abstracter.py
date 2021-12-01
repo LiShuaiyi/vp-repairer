@@ -19,17 +19,17 @@ class RuleAbstracter:
                  scenario: Scenario,
                  planning_problem: PlanningProblem,
                  vehicle_id: int,
-                 other_id: Union[int, None],
                  rule_str: Union[str, Iterable[str]],):
         self._world_state = self.construct_world_state(scenario,
                                                        planning_problem,
                                                        vehicle_id)
         self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
         self._prop_rob_ttv = self._rule_monitor.prop_robust_ttv
-        if other_id is None:
+        # if there is no other id
+        if self._rule_monitor.other_id is None or len(self._rule_monitor.other_id) == 0:
             self._other_id = vehicle_id
         else:
-            self._other_id = other_id
+            self._other_id = self._rule_monitor.other_id
         self._predicate_nodes = self._rule_monitor.predicate_nodes
 
     @staticmethod
@@ -47,6 +47,10 @@ class RuleAbstracter:
     @property
     def prop_robust_ttv(self):
         return self._prop_rob_ttv
+
+    @property
+    def prop_robust_all(self):
+        return self._rule_monitor.prop_robust_all
 
     @property
     def world_state(self) -> WorldState:

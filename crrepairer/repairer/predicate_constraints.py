@@ -3,26 +3,24 @@ import numpy as np
 from collections import defaultdict
 
 from cut_off.simulation import CutOffAction
+from cut_off.tc import TC
 from lazy_smt.abstracter import RuleAbstracter
 
 from stl_crmonitor.crmonitor.predicates.predicate import PredInSameLane
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 
+
 class RuleConstraints:
     def __init__(self,
-                 tc: int,
-                 tv: int,
-                 N: int,
+                 tc_object: TC,
                  rule_abstracter: RuleAbstracter,
                  compliant_maneuver: CutOffAction,
                  sel_proposition: PropositionNode):
-        self._tc = tc
-        self._tv = tv
-        self._N = N
+        self._tc_obj = tc_object
         self._rule_abstracter = rule_abstracter
         self._world_state = self._rule_abstracter.world_state
-        self._other_id = rule_abstracter.other_veh_id
+        self._other_id = rule_abstracter.other_veh_id  # if no target vehicle, the other_id stands for the ego
         self._compliant_maneuver = compliant_maneuver
         self._sel_prop = sel_proposition
 
@@ -31,7 +29,7 @@ class RuleConstraints:
         Set up target lanes for all time steps based on the compliant maneuver.
         """
         target_lanes = defaultdict(Lane)
-        cut_off_lane = self._world_state.ego_vehicle.lane[self._tc]
+        cut_off_lane = self._world_state.ego_vehicle.lane[self._tc_obj.tc]
         if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
             violation_target_lane = cut_off_lane.adj_left
         elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
@@ -40,17 +38,18 @@ class RuleConstraints:
             violation_target_lane = cut_off_lane
         else:
             raise ValueError('<RuleConstraints>: provided action {} is not valid'.format(self._compliant_maneuver))
-        for time_step in range(self._tc, self._N+1):
-            if time_step >= self._tv:
+        # todo: check the N
+        for time_step in range(self._tc_obj.tc, self._tc_obj.N+1):
+            if time_step >= self._tc_obj.tv:
                 target_lanes[time_step] = violation_target_lane
             else:
                 target_lanes[time_step] = cut_off_lane
 
     def add(self):
-        for k in range(self._tc, self._N):
+        for k in range(self._tc_obj.tc, self._tc_obj.N):
             s_interval = [-np.inf, np.inf]
             d_interval = [-np.inf, np.inf]
-            total_assignment = self._rule_abstracter.prop_robust_all.query('time_step == @k')
+            total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
             for proposition in self._rule_abstracter.propositions:
                 prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')
                 for predicate in proposition.children:
@@ -89,85 +88,85 @@ class RuleConstraints:
     def get_overlap(interval1: list, interval2: list):
         return [max(interval1[0], interval2[0]), min(interval1[0], interval2[0])]
 
-
-def add_tv_constraints(tc: int,
-                       N: int,
-                       rule_abstracter: RuleAbstracter,
-                       compliant_maneuver: CutOffAction,
-                       sel_proposition: PropositionNode):
-    # iterate through all propositions and all time steps
-    for k in range(tc, N):
-        s_interval = [-math.inf, math.inf]
-        d_interval = [-math.inf, math.inf]
-        total_assignment = rule_abstracter.prop_robust_all.query('time_step == @k')
-        for proposition in rule_abstracter.propositions:
-            init_assignment = total_assignment.query('alphabet == @proposition.alphabet')
-            for predicate in proposition.children:
-                if sel_proposition.name == proposition.name:
-                    pass
-                else:
-                    if predicate.name == PredInSameLane.predicate_name:
-                        lat_constr =
-
-
+#
+# def add_tv_constraints(tc: int,
+#                        N: int,
+#                        rule_abstracter: RuleAbstracter,
+#                        compliant_maneuver: CutOffAction,
+#                        sel_proposition: PropositionNode):
+#     # iterate through all propositions and all time steps
+#     for k in range(tc, N):
+#         s_interval = [-math.inf, math.inf]
+#         d_interval = [-math.inf, math.inf]
+#         total_assignment = rule_abstracter.prop_robust_all.query('time_step == @k')
+#         for proposition in rule_abstracter.propositions:
+#             init_assignment = total_assignment.query('alphabet == @proposition.alphabet')
+#             for predicate in proposition.children:
+#                 if sel_proposition.name == proposition.name:
+#                     pass
+#                 else:
+#                     if predicate.name == PredInSameLane.predicate_name:
+#                         lat_constr =
 
 
-def target_lane_assignment(target_predicate: BasePredicateEvaluator,
-                           tstcc: int,
-                           tstv: int,
-                           N: int,
-                           world_state: WorldState,
-                           maneuver: CutOffAction) -> dict:
-    """
-    :param tstcc: time step to compliance
-    :param tstv: time step to violation
-    """
-    target_lanes = defaultdict(Lane)
-    ego_vehicle = world_state.ego_vehicle
-    cut_off_lanelet, violation_lanelet\
-        = world_state.road_network.lanelet_network.find_lanelet_by_position(
-            [ego_vehicle.states_cr[tstcc].position, ego_vehicle.states_cr[tstv].position]
-        )
-    cut_off_lane = world_state.road_network.find_lane_by_lanelet(
-        cut_off_lanelet[0]
-    )
-    # todo: use the center position? (major occupancy)
-    if maneuver == CutOffAction.LANECHANGELEFT:
-        violation_target_lane = world_state.road_network.find_lane_by_lanelet(
-            violation_lanelet[0]
-        ).adj_left
-    elif maneuver == CutOffAction.LANECHANGERIGHT:
-        violation_target_lane = world_state.road_network.find_lane_by_lanelet(
-            violation_lanelet[0]
-        ).adj_right
-    elif maneuver == CutOffAction.BRAKE or maneuver == CutOffAction.CONSTANT or maneuver == CutOffAction.KICKDOWN:
-        violation_target_lane = world_state.road_network.find_lane_by_lanelet(
-            violation_lanelet[0]
-        )
-    else:
-        raise ValueError('<SAT_INTERFACE>: provided actions {} are not valid '
-                                     'for the predicate {}!'.format(maneuver, target_predicate.predicate_name))
-
-    if target_predicate.predicate_name == PredInSameLane.predicate_name:
-        transition_lane = {cut_off_lane}
-        # lane change procedure
-        # if violation_target_lane.lane_id != cut_off_lane.lane_id:
-        #     transition_lane.add(cut_off_lane)
-        for time_step in range(tstcc, N+1):
-            if time_step >= tstv:
-                target_lanes[time_step] = {violation_target_lane}
-            elif time_step == tstcc:
-                target_lanes[time_step] = {cut_off_lane}
-            else:
-                # transition lanes
-                target_lanes[time_step] = transition_lane
-        # lanelet_assignment: where the shape is on
-        # target_lanes[time_step] = list(world_state.road_network.find_lane_by_obstacle(
-        #     world_state.road_network.lanelet_network.
-        #         find_lanelet_by_position([ego_vehicle.states_cr[time_step].position]),
-        #     list(ego_vehicle.lanelet_assignment[time_step]),
-        # ))
-    elif target_predicate.predicate_name == PredSafeDistPrec.predicate_name:
-        for time_step in range(tstcc, N+1):
-            target_lanes[time_step] = {violation_target_lane}
-    return target_lanes
+#
+#
+# def target_lane_assignment(target_predicate: BasePredicateEvaluator,
+#                            tstcc: int,
+#                            tstv: int,
+#                            N: int,
+#                            world_state: WorldState,
+#                            maneuver: CutOffAction) -> dict:
+#     """
+#     :param tstcc: time step to compliance
+#     :param tstv: time step to violation
+#     """
+#     target_lanes = defaultdict(Lane)
+#     ego_vehicle = world_state.ego_vehicle
+#     cut_off_lanelet, violation_lanelet\
+#         = world_state.road_network.lanelet_network.find_lanelet_by_position(
+#             [ego_vehicle.states_cr[tstcc].position, ego_vehicle.states_cr[tstv].position]
+#         )
+#     cut_off_lane = world_state.road_network.find_lane_by_lanelet(
+#         cut_off_lanelet[0]
+#     )
+#     # todo: use the center position? (major occupancy)
+#     if maneuver == CutOffAction.LANECHANGELEFT:
+#         violation_target_lane = world_state.road_network.find_lane_by_lanelet(
+#             violation_lanelet[0]
+#         ).adj_left
+#     elif maneuver == CutOffAction.LANECHANGERIGHT:
+#         violation_target_lane = world_state.road_network.find_lane_by_lanelet(
+#             violation_lanelet[0]
+#         ).adj_right
+#     elif maneuver == CutOffAction.BRAKE or maneuver == CutOffAction.CONSTANT or maneuver == CutOffAction.KICKDOWN:
+#         violation_target_lane = world_state.road_network.find_lane_by_lanelet(
+#             violation_lanelet[0]
+#         )
+#     else:
+#         raise ValueError('<SAT_INTERFACE>: provided actions {} are not valid '
+#                                      'for the predicate {}!'.format(maneuver, target_predicate.predicate_name))
+#
+#     if target_predicate.predicate_name == PredInSameLane.predicate_name:
+#         transition_lane = {cut_off_lane}
+#         # lane change procedure
+#         # if violation_target_lane.lane_id != cut_off_lane.lane_id:
+#         #     transition_lane.add(cut_off_lane)
+#         for time_step in range(tstcc, N+1):
+#             if time_step >= tstv:
+#                 target_lanes[time_step] = {violation_target_lane}
+#             elif time_step == tstcc:
+#                 target_lanes[time_step] = {cut_off_lane}
+#             else:
+#                 # transition lanes
+#                 target_lanes[time_step] = transition_lane
+#         # lanelet_assignment: where the shape is on
+#         # target_lanes[time_step] = list(world_state.road_network.find_lane_by_obstacle(
+#         #     world_state.road_network.lanelet_network.
+#         #         find_lanelet_by_position([ego_vehicle.states_cr[time_step].position]),
+#         #     list(ego_vehicle.lanelet_assignment[time_step]),
+#         # ))
+#     elif target_predicate.predicate_name == PredSafeDistPrec.predicate_name:
+#         for time_step in range(tstcc, N+1):
+#             target_lanes[time_step] = {violation_target_lane}
+#     return target_lanes
