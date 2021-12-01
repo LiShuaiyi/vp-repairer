@@ -131,8 +131,7 @@ class TestTC(unittest.TestCase):
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
         rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
         tc_object = TC(rule_monitor)
-        tc = tc_object.generate([CutOffAction.BRAKE,
-                                 CutOffAction.LANECHANGELEFT,
+        tc = tc_object.generate([CutOffAction.LANECHANGELEFT,
                                  CutOffAction.LANECHANGERIGHT,
                                  CutOffAction.KICKDOWN])
         self.assertEqual(

@@ -22,7 +22,6 @@ class TC(CutOffBase, ABC):
                  dT: float = 0.1):
         super().__init__(rule_monitor.world_state, dT)
         self.rule_monitor = rule_monitor
-        self._check_initial = True
         self._tv = rule_monitor.tv * self.dT  # time step -> time
         self._other_id = rule_monitor.other_id
         self._visualize = False
@@ -47,16 +46,13 @@ class TC(CutOffBase, ABC):
                          start_time_step: int = None) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
-        if self._check_initial:
-            self._check_initial = False
-        else:
-            self.rule_monitor.world_state.time_step = start_time_step
-            update_ego_vehicle(self.world_state.road_network,
-                               self.world_state.ego_vehicle,
-                               updated_states,
-                               start_time_step,
-                               self.dT)
-            self.rule_monitor.evaluate_consecutively()
+        self.rule_monitor.world_state.time_step = start_time_step
+        update_ego_vehicle(self.world_state.road_network,
+                           self.world_state.ego_vehicle,
+                           updated_states,
+                           start_time_step,
+                           self.dT)
+        self.rule_monitor.evaluate_consecutively()
         evaluated_robustness, evaluated_ids = self.rule_monitor.query_rule_rob_all()
         if evaluated_robustness[0] < 0:
             return -math.inf, evaluated_ids[0][0]  # all violated
@@ -103,7 +99,8 @@ class TC(CutOffBase, ABC):
             state_list = SL.simulate_state_list()
 
             if self._visualize:
-                visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
+                visualize_state_list(self._collision_checker,state_list, self.scenario,
+                                     SL.vehicle_dynamics.shape, time_step=0)
 
             flag_collision = self._detect_collision(state_list)  # bool value
             tv, _ = self._calc_tv_updated(state_list, mid) # which should be tv instead of ttm

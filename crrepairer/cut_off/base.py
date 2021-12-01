@@ -37,7 +37,7 @@ class CutOffBase(ABC):
         self._world_state = world_state
         self._N = self._world_state.num_time_steps
         self._dT = dT
-        self._visualize = False
+        self._visualize = True
         if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:
             self.scenario.remove_obstacle(self._ego_vehicle)
         road_boundary_obstacle, road_boundary_sg_rectangles = boundary.create_road_boundary_obstacle(self.scenario)
@@ -45,11 +45,8 @@ class CutOffBase(ABC):
         self._collision_checker = create_collision_checker(self.scenario)
         if self._visualize:
             # visualize scenario and collision objects
-            rnd = MPRenderer(figsize=(25, 10))
-            self.scenario.lanelet_network.draw(rnd)
-            self._collision_checker.draw(rnd, draw_params={'facecolor': 'blue', 'draw_mesh': True})
-            rnd.render()
-            plt.show()
+            self.rnd = MPRenderer(figsize=(25, 10))
+            self.scenario.lanelet_network.draw(self.rnd)
         # create the shape of the ego vehicle
         self._shape = self._ego_vehicle.obstacle_shape
 
