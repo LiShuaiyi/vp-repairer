@@ -3,6 +3,8 @@ from enum import Enum
 from math import sqrt, atan
 from abc import ABC, abstractmethod
 
+import numpy as np
+
 from commonroad.common.solution import VehicleType
 from commonroad.scenario.obstacle import DynamicObstacle, State
 from commonroad_dc.feasibility.vehicle_dynamics import (KinematicSingleTrackDynamics,
@@ -154,6 +156,7 @@ class SimulationLateral(SimulationBase, ABC):
 
     def set_bang_bang_time(self, ego_s, ego_d, target_lane):
         if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
+            # todo: fix the lane of the ego
             ego_lane_width = self._world_state.ego_vehicle.lane.width(ego_s)
             ego_to_lane_boundary = ego_lane_width/2 - abs(ego_d)
             lateral_distance = ego_to_lane_boundary + target_lane.width(ego_s) / 2
@@ -190,8 +193,10 @@ class SimulationLateral(SimulationBase, ABC):
     def simulate_state_list(self):
         self.set_inputs(self._cut_off_state.velocity)
         target_lane = self.set_target_lane()
-        current_ego_s = self._world_state.ego_vehicle.states_lon[self._cut_off_state.time_step].s
-        current_ego_d = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d
+        current_ego_s, current_ego_d = self._world_state.ego_vehicle.lane.clcs.convert_to_curvilinear_coords(
+            self._cut_off_state.position[0], self._cut_off_state.position[1])
+        # current_ego_s = self._world_state.ego_vehicle.states_lon[self._cut_off_state.time_step].s
+        # current_ego_d = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d
         bang_bang_time = self.set_bang_bang_time(current_ego_s, current_ego_d, target_lane)
         lane_orientation = self._world_state.ego_vehicle.lane.orientation(current_ego_s)
         max_orientation = self.set_maximal_orientation(lane_orientation)

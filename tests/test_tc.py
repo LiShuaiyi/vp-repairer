@@ -114,7 +114,7 @@ class TestTC(unittest.TestCase):
         tc = tc_object.generate([CutOffAction.LANECHANGERIGHT])
         self.assertEqual(
             round(tc, 1),
-            .4)
+            .5)
 
     def test_tc_3(self):
         ego_id = 1003
@@ -136,7 +136,7 @@ class TestTC(unittest.TestCase):
                                  CutOffAction.KICKDOWN])
         self.assertEqual(
             round(tc, 1),
-            .4)
+            .5)
         self.assertEqual(
             tc_object.compliant_maneuver, CutOffAction.LANECHANGERIGHT
         )
