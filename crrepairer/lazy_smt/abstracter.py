@@ -26,7 +26,7 @@ class RuleAbstracter:
         self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
         self._prop_rob_ttv = self._rule_monitor.prop_robust_ttv
         # if there is no other id
-        if self._rule_monitor.other_id is None or len(self._rule_monitor.other_id) == 0:
+        if self._rule_monitor.other_id is None or not isinstance(self._rule_monitor.other_id, int):
             self._other_id = vehicle_id
         else:
             self._other_id = self._rule_monitor.other_id
@@ -77,10 +77,19 @@ class RuleAbstracter:
         Selects the predicates to be repaired
         """
         # select the unvisited predicates within the least robust proposition at time step TTV.
+        sel_prop_node = self.select_proposition()
+        if sel_prop_node is not None:
+            return sel_prop_node.children
+        return None
+
+    def select_proposition(self) -> PropositionNode:
+        """
+        Selects the proposition to be repaired
+        """
+        # select the unvisited predicates within the least robust proposition at time step TTV.
         prop_rob_min = self._prop_rob_ttv[self._prop_rob_ttv.robustness.abs()
                                           == self._prop_rob_ttv.robustness.abs().min()].alphabet.values
-        sel_abs_node = next((prop_node for prop_node in self.rule_monitor.proposition_nodes
+        sel_prop_node = next((prop_node for prop_node in self.propositions
                              if prop_node.alphabet == prop_rob_min), None)
-        if sel_abs_node is not None:
-            return sel_abs_node.children
-        return None
+        self.propositions.remove(sel_prop_node)  # todo: check whether this is correct
+        return sel_prop_node
