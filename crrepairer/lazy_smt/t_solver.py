@@ -52,21 +52,15 @@ class TSolver:
                                  .format(predicate_category))
 
     def search_tc(self):
-        tc_list = list()
-        for maneuver in self._compliant_maneuvers:
-            if maneuver not in self._tc_dict.keys():
-                tc_maneuver = self._tc_obj.generate(maneuver)
-                tc_list.append(tc_maneuver)
-                self._tc_dict[maneuver] = tc_maneuver
-            else:
-                tc_list.append(self._tc_dict[maneuver])
-        return max(tc_list)
+        tc = self.tc_object.generate(self._compliant_maneuvers)
+        return tc
 
     def _optimization_based_repair(self):
         repaired_trajectory = None
         return repaired_trajectory
 
     def check(self, proposition: PropositionNode):
+        repaired_traj = None
         self.assign_proposition(proposition)
         tc = self.search_tc()
         assert tc != math.inf, "<T-solver>: the trajectory is already rule-compliant," \

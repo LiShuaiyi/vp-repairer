@@ -39,6 +39,14 @@ class TC(CutOffBase, ABC):
         return self._tc
 
     @property
+    def tc_time_step(self) -> int:
+        return int(self._tc/self.dT)
+
+    @property
+    def tv_time_step(self) -> int:
+        return int(self._tv / self.dT)
+
+    @property
     def compliant_maneuver(self) -> CutOffAction:
         return self._compliant_maneuver
 

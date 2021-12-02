@@ -10,26 +10,30 @@ from stl_crmonitor.crmonitor.predicates.predicate import PredInSameLane
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 
+from typing import Dict
+
 
 class RuleConstraints:
     def __init__(self,
                  tc_object: TC,
                  rule_abstracter: RuleAbstracter,
-                 compliant_maneuver: CutOffAction,
                  sel_proposition: PropositionNode):
         self._tc_obj = tc_object
         self._rule_abstracter = rule_abstracter
         self._world_state = self._rule_abstracter.world_state
         self._other_id = rule_abstracter.other_veh_id  # if no target vehicle, the other_id stands for the ego
-        self._compliant_maneuver = compliant_maneuver
+        self._compliant_maneuver = tc_object.compliant_maneuver
         self._sel_prop = sel_proposition
 
-    def set_target_lanes(self):
+    def set_target_lanes(self) -> Dict[int, Lane]:
         """
         Set up target lanes for all time steps based on the compliant maneuver.
         """
         target_lanes = defaultdict(Lane)
-        cut_off_lane = self._world_state.ego_vehicle.lane[self._tc_obj.tc]
+        # todo: fix this from stl monitor
+        cut_off_lane = list(self._world_state.road_network.find_lanes_by_lanelets(
+            self._world_state.ego_vehicle.lanelet_assignment[self._tc_obj.tc_time_step]
+        ))[0]
         if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
             violation_target_lane = cut_off_lane.adj_left
         elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
@@ -38,12 +42,12 @@ class RuleConstraints:
             violation_target_lane = cut_off_lane
         else:
             raise ValueError('<RuleConstraints>: provided action {} is not valid'.format(self._compliant_maneuver))
-        # todo: check the N
-        for time_step in range(self._tc_obj.tc, self._tc_obj.N+1):
-            if time_step >= self._tc_obj.tv:
+        for time_step in range(self._tc_obj.tc_time_step, self._tc_obj.N):
+            if time_step >= self._tc_obj.tv_time_step:
                 target_lanes[time_step] = violation_target_lane
             else:
                 target_lanes[time_step] = cut_off_lane
+        return target_lanes
 
     def add(self):
         for k in range(self._tc_obj.tc, self._tc_obj.N):

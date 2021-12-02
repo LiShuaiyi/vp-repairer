@@ -12,6 +12,7 @@ from repairer.qp_repairer import QPRepairer
 from repairer.predicate_constraints import RuleConstraints
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode
+from stl_crmonitor.crmonitor.common.road_network import Lane
 
 
 class TestSMTSolver(unittest.TestCase):
@@ -102,12 +103,23 @@ class TestSMTSolver(unittest.TestCase):
 
     def test_rule_constraints(self):
         t_solver = TSolver(self.rule_abstracter.rule_monitor)
-        tc_object = t_solver.tc_object
         proposition = next((prop for prop in list(self.rule_abstracter.propositions)
-                            if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
+                            if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
         t_solver.assign_proposition(proposition)
+        tc = t_solver.search_tc()
+        tc_object = t_solver.tc_object
+        target_lanes_id_exp = list()
+        for _ in range(tc_object.tc_time_step, tc_object.tv_time_step):
+            target_lanes_id_exp.append(1)
+        for _ in range(tc_object.tv_time_step, tc_object.N):
+            target_lanes_id_exp.append(0)
         rule_constraints = RuleConstraints(tc_object,
                                            self.rule_abstracter,
-                                           )
+                                           proposition)
+        target_lanes = rule_constraints.set_target_lanes()
+        target_lanes_id = list()
+        for lane in target_lanes.values():
+            target_lanes_id.append(lane.lane_id)
+        self.assertEqual(target_lanes_id_exp, target_lanes_id)
 
 
