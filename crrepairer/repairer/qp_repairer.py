@@ -2,9 +2,15 @@ from commonroad_qp_planner.qp_planner import QPPlanner
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up
 from stl_crmonitor.crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
+
+from cut_off.tc import TC
+from repairer.rule_constraints import RuleConstraints
+from lazy_smt.abstracter import RuleAbstracter
 
 from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.trajectory import Trajectory, State
+from commonroad.scenario.scenario import Scenario
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
 from commonroad.geometry.shape import Rectangle
@@ -17,26 +23,29 @@ import numpy as np
 
 class QPRepairer(QPPlanner):
     def __init__(self,
-                 world_state: WorldState,
-                 cut_off_time_step: int):
-        self._scenario = world_state.scenario
-        self._ego_vehicle = self._scenario.obstacle_by_id(world_state.ego_vehicle.id)
+                 rule_abstracter: RuleAbstracter,
+                 tc_object: TC,
+                 sel_proposition: PropositionNode):
+        self._scenario = rule_abstracter.world_state.scenario
+        self._ego_vehicle = self._scenario.obstacle_by_id(rule_abstracter.vehicle_id)
         # remove the existing ego vehicle from the scenario to avoid the conflict
         self._scenario.remove_obstacle(self._ego_vehicle)
-        self._planning_problem = world_state.planning_problem
+        self._planning_problem = rule_abstracter.world_state.planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
-        self._cut_off_state = self._initial_trajectory.state_at_time_step(cut_off_time_step)
+        self._cut_off_state = self._initial_trajectory.state_at_time_step(tc_object.tc_time_step)
         self._settings = self.config_settings()
         self._reformulate_planning_problem()
-        self._time_horizon = len(self._initial_trajectory.state_list) - cut_off_time_step
+        # todo: check time horizon
+        self._time_horizon = tc_object.N - tc_object.tc_time_step
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
                                                                            self._planning_problem)
         self._planning_problem.initial_state = self._cut_off_state
-        super().__init__(world_state.scenario,
+        super().__init__(self._scenario,
                          self._planning_problem,
                          self._time_horizon,
                          self._vehicle_configuration)
+        self._rule_constraints = RuleConstraints(tc_object, rule_abstracter, sel_proposition)
 
     def _reformulate_planning_problem(self,):
         if not hasattr(self._planning_problem, "initial_state"):

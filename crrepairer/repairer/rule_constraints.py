@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from collections import defaultdict
@@ -6,11 +8,14 @@ from cut_off.simulation import CutOffAction
 from cut_off.tc import TC
 from lazy_smt.abstracter import RuleAbstracter
 
-from stl_crmonitor.crmonitor.predicates.predicate import PredInSameLane
+from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
+                                                          PredCutIn, PredSafeDistPrec)
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 
 from typing import Dict
+
+from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 
 
 class RuleConstraints:
@@ -22,8 +27,11 @@ class RuleConstraints:
         self._rule_abstracter = rule_abstracter
         self._world_state = self._rule_abstracter.world_state
         self._other_id = rule_abstracter.other_veh_id  # if no target vehicle, the other_id stands for the ego
+        self._target_vehicle = self._world_state.vehicle_by_id(self._other_id)
         self._compliant_maneuver = tc_object.compliant_maneuver
         self._sel_prop = sel_proposition
+        self._target_lanes = defaultdict(Lane)
+        self._long_constraints = list()
 
     def set_target_lanes(self) -> Dict[int, Lane]:
         """
@@ -32,8 +40,7 @@ class RuleConstraints:
         target_lanes = defaultdict(Lane)
         # todo: fix this from stl monitor
         cut_off_lane = list(self._world_state.road_network.find_lanes_by_lanelets(
-            self._world_state.ego_vehicle.lanelet_assignment[self._tc_obj.tc_time_step]
-        ))[0]
+            self._world_state.ego_vehicle.lanelet_assignment[self._tc_obj.tc_time_step]))[0]
         if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
             violation_target_lane = cut_off_lane.adj_left
         elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
@@ -49,11 +56,10 @@ class RuleConstraints:
                 target_lanes[time_step] = cut_off_lane
         return target_lanes
 
-    def add(self):
+    def add(self, veh_config: PlanningConfigurationVehicle):
         for k in range(self._tc_obj.tc, self._tc_obj.N):
-            s_interval = [-np.inf, np.inf]
-            d_interval = [-np.inf, np.inf]
             total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
+            s_limit = [-math.inf, math.inf]
             for proposition in self._rule_abstracter.propositions:
                 prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')
                 for predicate in proposition.children:
@@ -61,15 +67,23 @@ class RuleConstraints:
                         pass
                     else:
                         if predicate.name == PredInSameLane.predicate_name:
-                            constr = self.ConstrInSameLane(k, prop_assignment)
+                            self.ConstrInSameLane(k, prop_assignment)
+                        elif predicate.name == PredInFrontOf.predicate_name:
+                            s_constr = self.ConstrInFrontOf(k, prop_assignment)
+                            s_limit = self._get_overlap(s_limit, s_constr)
+                        elif predicate.name == PredSafeDistPrec.predicate_name:
+                            s_constr = self.ConstrSafeDist(k, prop_assignment)
+                            s_limit = self._get_overlap(s_limit, s_constr)
+                        elif predicate.name == PredCutIn.predicate_name:
+                            self.ConstrCutIn(k, prop_assignment)
+                        else:
+                            print("<QPRepairer/_rule_constraints>: the provided predicate {} is not supported".
+                                  format(predicate.name))
+                self._long_constraints.append(s_limit)
 
-    def add_lat_position(self):
-        pass
-
-    def add_lon_position(self):
-        pass
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
+        # todo: fix in stl monitor
         other_veh_lane_id = self._world_state.road_network.find_lane_ids_by_obstacle(self._other_id, time_step)[0]
         other_veh_lane = self._world_state.road_network.lanes[other_veh_lane_id]
         if prop_assignment>0:
@@ -80,7 +94,23 @@ class RuleConstraints:
         elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
             target_lane = other_veh_lane.adj_right
         else:
-            raise ValueError("<ConstrInSameLane>: the cut off action {} is wrong".format(CutOffAction))
+            raise ValueError("<QPRepairer/ConstrInSameLane>: the cut off action {} is wrong".format(CutOffAction))
+        self._target_lanes[time_step] = target_lane
+
+    def ConstrInFrontOf(self, time_step: int, prop_assignment: float):
+        if prop_assignment>0:
+            rear_s = self._target_vehicle.rear_s(time_step)
+            return [-math.inf, rear_s]
+        else:
+            front_s = self._target_vehicle.front_s(time_step)
+            return [front_s, math.inf]
+
+    def ConstrSafeDist(self, time_step: int, prop_assignment: float, ):
+        pass
+
+    def ConstrCutIn(self, time_step: int, prop_assignment: float,):
+        print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
+        return None
 
     @staticmethod
     def lane_lateral_boundary(lane: Lane):
@@ -89,7 +119,7 @@ class RuleConstraints:
 
 
     @staticmethod
-    def get_overlap(interval1: list, interval2: list):
+    def _get_overlap(interval1: list, interval2: list):
         return [max(interval1[0], interval2[0]), min(interval1[0], interval2[0])]
 
 #

@@ -25,12 +25,17 @@ class RuleAbstracter:
                                                        vehicle_id)
         self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
         self._prop_rob_ttv = self._rule_monitor.prop_robust_ttv
+        self._vehicle_id = vehicle_id
         # if there is no other id
         if self._rule_monitor.other_id is None or not isinstance(self._rule_monitor.other_id, int):
             self._other_id = vehicle_id
         else:
             self._other_id = self._rule_monitor.other_id
         self._predicate_nodes = self._rule_monitor.predicate_nodes
+
+    @property
+    def vehicle_id(self) -> int:
+        return self._vehicle_id
 
     @staticmethod
     def construct_world_state(scenario: Scenario,

@@ -9,7 +9,7 @@ from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
 from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
 from lazy_smt.t_solver import TSolver, CutOffAction
 from repairer.qp_repairer import QPRepairer
-from repairer.predicate_constraints import RuleConstraints
+from repairer.rule_constraints import RuleConstraints
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
