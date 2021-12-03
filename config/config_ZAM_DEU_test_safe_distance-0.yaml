@@ -11,7 +11,7 @@ vehicle_settings:
     1:  # planning problem ID from CommonRoad scenario file
         reference_point: rear           # reference point of vehicle
         min_speed_x: 0.0                # v_x constraint (see Eq. 6b in Manzinger, 2020)
-        max_speed_x: 22.0
+        max_speed_x: 48.0
         min_speed_y: -4.0               # v_y constraint (see Eq. 6b in Manzinger, 2020)
         max_speed_y: 4.0
         a_max_x: 12.0                   # a_x constraint (see Eq. 6b in Manzinger, 2020)
