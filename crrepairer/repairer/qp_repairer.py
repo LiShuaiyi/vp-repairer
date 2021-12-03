@@ -25,7 +25,7 @@ class QPRepairer(QPPlanner):
     def __init__(self,
                  rule_abstracter: RuleAbstracter,
                  tc_object: TC,
-                 sel_proposition: PropositionNode):
+                 sel_proposition: List[PropositionNode]):
         self._scenario = rule_abstracter.world_state.scenario
         self._ego_vehicle = tc_object.ego_vehicle
         # remove the existing ego vehicle from the scenario to avoid the conflict

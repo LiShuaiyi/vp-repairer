@@ -97,14 +97,17 @@ class TestSMTSolver(unittest.TestCase):
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self.rule_abstracter.rule_monitor)
-        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
+        proposition1 = next((prop for prop in list(self.rule_abstracter.propositions)
                             if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
-        t_solver.assign_proposition(proposition)
+        proposition2 = next((prop for prop in list(self.rule_abstracter.propositions)
+                            if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
+        assign_prop = [proposition1]
+        t_solver.assign_proposition(assign_prop)
         tc = t_solver.search_tc()
         tc_object = t_solver.tc_object
         qp_repairer = QPRepairer(self.rule_abstracter,
                                  tc_object,
-                                 proposition)
+                                 assign_prop)
         self.assertIsInstance(qp_repairer, QPRepairer)
         qp_repairer.repair()
 

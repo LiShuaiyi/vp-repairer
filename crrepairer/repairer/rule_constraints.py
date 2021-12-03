@@ -63,11 +63,8 @@ class RuleConstraints:
             s_limit = [-math.inf, math.inf]
             for proposition in self._rule_abstracter.rule_monitor.proposition_nodes:
                 prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')["robustness"].values[0]
-                if k == 15:
-                    a = 1
-                    pass
                 for predicate in proposition.children:
-                    if self._sel_prop.name == proposition.name and k >= self._tc_obj.tv_time_step:
+                    if proposition in self._sel_prop and k >= self._tc_obj.tv_time_step:
                         prop_assignment = -prop_assignment
                     if predicate.base_name == PredInSameLane.predicate_name:
                         self.ConstrInSameLane(k, prop_assignment)
@@ -87,7 +84,7 @@ class RuleConstraints:
 
     def longitudinal_constraints(self, veh_config: PlanningConfigurationVehicle):
         self._add(veh_config)
-        # self.ConstrCollisionFree()
+        self.ConstrCollisionFree()
         longitudinal_constraints = np.array(self._long_constraints)
         return LonConstraints.construct_constraints(longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
                                                     longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1])
@@ -155,13 +152,12 @@ class RuleConstraints:
             veh_config.a_min_x,
             self._target_vehicle.vehicle_param.get('a_min'),
             0.0  # todo: t react
-        )
+        ) - 10
         safe_dist = max(0., safe_dist)
         if prop_assignment > 0:
             return [-math.inf, self._target_vehicle.rear_s(time_step) - safe_dist]
         else:
-            # return [self._target_vehicle.rear_s(time_step) - safe_dist, math.inf]
-            return [-math.inf, self._target_vehicle.rear_s(time_step) - safe_dist]
+            return [self._target_vehicle.rear_s(time_step) - safe_dist, math.inf]
 
     def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
         print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
