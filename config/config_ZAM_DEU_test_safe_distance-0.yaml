@@ -14,11 +14,11 @@ vehicle_settings:
         max_speed_x: 22.0
         min_speed_y: -4.0               # v_y constraint (see Eq. 6b in Manzinger, 2020)
         max_speed_y: 4.0
-        a_max_x: 3.5                    # a_x constraint (see Eq. 6b in Manzinger, 2020)
-        a_min_x: -6.0
-        a_max_y: 4.0                    # a_y constraint (see Eq. 6b in Manzinger, 2020)
-        a_min_y: -4.0
-        a_max: 9.81
+        a_max_x: 12.0                   # a_x constraint (see Eq. 6b in Manzinger, 2020)
+        a_min_x: -10.0
+        a_max_y: 6.0                    # a_y constraint (see Eq. 6b in Manzinger, 2020)
+        a_min_y: -6.0
+        a_max: 15.0
         j_min_x: -10.0                  # jerk constraint (for planning)
         j_max_x: 10.0
         j_min_y: -10.0

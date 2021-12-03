@@ -16,6 +16,7 @@ from stl_crmonitor.crmonitor.common.road_network import Lane
 from typing import Dict
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
+from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 
 
 class RuleConstraints:
@@ -56,37 +57,79 @@ class RuleConstraints:
                 target_lanes[time_step] = cut_off_lane
         return target_lanes
 
-    def add(self, veh_config: PlanningConfigurationVehicle):
-        for k in range(self._tc_obj.tc, self._tc_obj.N):
+    def _add(self, veh_config: PlanningConfigurationVehicle):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
             s_limit = [-math.inf, math.inf]
-            for proposition in self._rule_abstracter.propositions:
-                prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')
+            for proposition in self._rule_abstracter.rule_monitor.proposition_nodes:
+                prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')["robustness"].values[0]
+                if k == 15:
+                    a = 1
+                    pass
                 for predicate in proposition.children:
-                    if self._sel_prop.name == proposition.name:
-                        pass
+                    if self._sel_prop.name == proposition.name and k >= self._tc_obj.tv_time_step:
+                        prop_assignment = -prop_assignment
+                    if predicate.base_name == PredInSameLane.predicate_name:
+                        self.ConstrInSameLane(k, prop_assignment)
+                    elif predicate.base_name == PredInFrontOf.predicate_name:
+                        s_constr = self.ConstrInFrontOf(k, prop_assignment)
+                        s_limit = self._get_overlap(s_limit, s_constr)
+                    elif predicate.base_name == PredSafeDistPrec.predicate_name:
+                        s_constr = self.ConstrSafeDist(k, prop_assignment, veh_config)
+                        s_limit = self._get_overlap(s_limit, s_constr)
+                    elif predicate.base_name == PredCutIn.predicate_name:
+                        self.ConstrCutIn(k, prop_assignment)
                     else:
-                        if predicate.name == PredInSameLane.predicate_name:
-                            self.ConstrInSameLane(k, prop_assignment)
-                        elif predicate.name == PredInFrontOf.predicate_name:
-                            s_constr = self.ConstrInFrontOf(k, prop_assignment)
-                            s_limit = self._get_overlap(s_limit, s_constr)
-                        elif predicate.name == PredSafeDistPrec.predicate_name:
-                            s_constr = self.ConstrSafeDist(k, prop_assignment)
-                            s_limit = self._get_overlap(s_limit, s_constr)
-                        elif predicate.name == PredCutIn.predicate_name:
-                            self.ConstrCutIn(k, prop_assignment)
-                        else:
-                            print("<QPRepairer/_rule_constraints>: the provided predicate {} is not supported".
-                                  format(predicate.name))
-                self._long_constraints.append(s_limit)
+                        print("<QPRepairer/_rule_constraints>: the provided predicate {} is not supported".
+                              format(predicate.name))
+            self._long_constraints.append(s_limit)
+        pass
 
+    def longitudinal_constraints(self, veh_config: PlanningConfigurationVehicle):
+        self._add(veh_config)
+        # self.ConstrCollisionFree()
+        longitudinal_constraints = np.array(self._long_constraints)
+        return LonConstraints.construct_constraints(longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
+                                                    longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1])
+
+    def _determine_related_veh(self, time_step: int, lane: Lane):
+        preceding_vehicle = None
+        following_vehicle = None
+        dist_pre = np.inf
+        dist_post = -np.inf
+        ego_vehicle = self._world_state.ego_vehicle
+        vehicle_ids = lane.dynamic_obstacles_by_time_step(time_step)
+        vehicle_ids.discard(ego_vehicle.id)
+        for id in vehicle_ids:
+            other_vehicle = self._world_state.vehicle_by_id(id)
+            dist = other_vehicle.states_lon[time_step].s - ego_vehicle.states_lon[time_step].s
+            if 0 < dist < dist_pre:
+                preceding_vehicle = other_vehicle
+                dist_pre = dist
+            elif 0 > dist > dist_post:
+                following_vehicle = other_vehicle
+                dist_post = dist
+            else:
+                continue
+        return preceding_vehicle, following_vehicle
+
+    def ConstrCollisionFree(self):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
+            prec_veh, foll_veh = self._determine_related_veh(k, self._target_lanes[k])
+            index = k - self._tc_obj.tc_time_step
+            if prec_veh is not None:
+                self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
+                                                                  [-math.inf, prec_veh.rear_s(k)])
+            if foll_veh is not None:
+                self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
+                                                                  [foll_veh.front_s(k), math.inf])
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         # todo: fix in stl monitor
-        other_veh_lane_id = self._world_state.road_network.find_lane_ids_by_obstacle(self._other_id, time_step)[0]
-        other_veh_lane = self._world_state.road_network.lanes[other_veh_lane_id]
-        if prop_assignment>0:
+        other_veh_lane = list(self._world_state.road_network.find_lanes_by_lanelets(
+            self._target_vehicle.lanelet_assignment[time_step]
+        ))[0]
+        if prop_assignment > 0:
             # still in the same lane
             target_lane = other_veh_lane
         elif self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
@@ -98,17 +141,29 @@ class RuleConstraints:
         self._target_lanes[time_step] = target_lane
 
     def ConstrInFrontOf(self, time_step: int, prop_assignment: float):
-        if prop_assignment>0:
+        if prop_assignment > 0:
             rear_s = self._target_vehicle.rear_s(time_step)
             return [-math.inf, rear_s]
         else:
             front_s = self._target_vehicle.front_s(time_step)
             return [front_s, math.inf]
 
-    def ConstrSafeDist(self, time_step: int, prop_assignment: float, ):
-        pass
+    def ConstrSafeDist(self, time_step: int, prop_assignment: float, veh_config: PlanningConfigurationVehicle):
+        safe_dist = self.safe_distance(
+            veh_config.desired_speed,
+            self._target_vehicle.states_lon[time_step].v,
+            veh_config.a_min_x,
+            self._target_vehicle.vehicle_param.get('a_min'),
+            0.0  # todo: t react
+        )
+        safe_dist = max(0., safe_dist)
+        if prop_assignment > 0:
+            return [-math.inf, self._target_vehicle.rear_s(time_step) - safe_dist]
+        else:
+            # return [self._target_vehicle.rear_s(time_step) - safe_dist, math.inf]
+            return [-math.inf, self._target_vehicle.rear_s(time_step) - safe_dist]
 
-    def ConstrCutIn(self, time_step: int, prop_assignment: float,):
+    def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
         print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
         return None
 
@@ -116,11 +171,32 @@ class RuleConstraints:
     def lane_lateral_boundary(lane: Lane):
         pass
 
-
-
     @staticmethod
     def _get_overlap(interval1: list, interval2: list):
-        return [max(interval1[0], interval2[0]), min(interval1[0], interval2[0])]
+        return [max(interval1[0], interval2[0]), min(interval1[1], interval2[1])]
+
+    @staticmethod
+    def safe_distance(v_follow: float, v_lead: float,
+                      a_min_follow: float, a_min_lead: float,
+                      t_react_follow: float) -> float:
+        """
+        Calculates safe distance analytically
+
+        :param v_follow: velocity of following vehicle
+        :param v_lead: velocity of leading vehicle
+        :param a_min_follow: minimum acceleration of following vehicle
+        :param a_min_lead: minimum acceleration of leading vehicle
+        :param t_react_follow: reaction time of following vehicle
+        :returns boolean indicating satisfaction
+        """
+
+        assert a_min_follow and 0 > a_min_lead, \
+            '<BrakingPredicateCollection/safe_distance>: acceleration is not valid'
+        d_safe = \
+            (v_lead ** 2) / (-2 * abs(a_min_lead)) - (v_follow ** 2) / (-2 * abs(a_min_follow)) \
+            + v_follow * t_react_follow
+
+        return d_safe
 
 #
 # def add_tv_constraints(tc: int,

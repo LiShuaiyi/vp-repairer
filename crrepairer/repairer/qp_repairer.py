@@ -1,6 +1,6 @@
-from commonroad_qp_planner.qp_planner import QPPlanner
+from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongReference
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
-from commonroad_qp_planner.initialization import set_up
+from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
@@ -27,20 +27,22 @@ class QPRepairer(QPPlanner):
                  tc_object: TC,
                  sel_proposition: PropositionNode):
         self._scenario = rule_abstracter.world_state.scenario
-        self._ego_vehicle = self._scenario.obstacle_by_id(rule_abstracter.vehicle_id)
+        self._ego_vehicle = tc_object.ego_vehicle
         # remove the existing ego vehicle from the scenario to avoid the conflict
-        self._scenario.remove_obstacle(self._ego_vehicle)
         self._planning_problem = rule_abstracter.world_state.planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
-        self._cut_off_state = self._initial_trajectory.state_at_time_step(tc_object.tc_time_step)
+        self._cut_off_time_step = tc_object.tc_time_step
+        self._N = tc_object.N
+        self._cut_off_state = self._initial_trajectory.state_at_time_step(self._cut_off_time_step)
         self._settings = self.config_settings()
         self._reformulate_planning_problem()
         # todo: check time horizon
-        self._time_horizon = tc_object.N - tc_object.tc_time_step
+        self._time_horizon = (self._N - self._cut_off_time_step) * self._scenario.dt
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
                                                                            self._planning_problem)
         self._planning_problem.initial_state = self._cut_off_state
+        # self._planning_problem.initial_state.time_step = 0 # todo: check the time steps
         super().__init__(self._scenario,
                          self._planning_problem,
                          self._time_horizon,
@@ -52,6 +54,26 @@ class QPRepairer(QPPlanner):
             raise ValueError("<QPRepairer>: the initial state needs to be specified")
         self._planning_problem.initial_state = self._ego_vehicle.initial_state
         self._planning_problem.goal = update_goal_state(self._initial_trajectory)
+
+    def repair(self):
+        long_constr = self._rule_constraints.longitudinal_constraints(self._vehicle_configuration)
+        reference_lon = self._formulate_reference()
+        traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon)
+        if status is not 'optimal':
+            raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: failed')
+        print('\t\t Lateral optimization')
+        trajectory, status = self.lateral_trajectory_planning(traj_lon, c_tv.lat)
+        # convert trajectory to cartesian space
+        if status is not 'optimal':
+            raise ValueError('<QPPlanner/_lateral_trajectory_planning>: failed')
+        return trajectory
+
+    def _formulate_reference(self):
+        x_ref = list()
+        for state in self._initial_trajectory.state_list[self._cut_off_time_step:]:
+            pos = convert_pos_curvilinear(state, self._vehicle_configuration)
+            x_ref.append(QPLongState(pos[0], state.velocity, 0., 0., 0.))
+        return QPLongReference(x_ref)
 
     def config_settings(self):
         config_file = 'config_' + str(self._scenario.scenario_id) + '.yaml'

@@ -35,7 +35,7 @@ class CutOffBase(ABC):
         self.scenario = world_state.scenario
         self._ego_vehicle = self.scenario.obstacle_by_id(world_state.ego_vehicle.id)
         self._world_state = world_state
-        self._N = self._world_state.num_time_steps
+        self._N = self._world_state.num_time_steps - 1
         self._dT = dT
         self._visualize = True
         if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:

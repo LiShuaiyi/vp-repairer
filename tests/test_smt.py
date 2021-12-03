@@ -96,10 +96,17 @@ class TestSMTSolver(unittest.TestCase):
                          ["c"])
 
     def test_construct_qp_repair(self):
-        tv = 4
-        qp_repairer = QPRepairer(self.rule_abstracter.world_state,
-                                 tv)
+        t_solver = TSolver(self.rule_abstracter.rule_monitor)
+        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
+                            if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
+        t_solver.assign_proposition(proposition)
+        tc = t_solver.search_tc()
+        tc_object = t_solver.tc_object
+        qp_repairer = QPRepairer(self.rule_abstracter,
+                                 tc_object,
+                                 proposition)
         self.assertIsInstance(qp_repairer, QPRepairer)
+        qp_repairer.repair()
 
     def test_rule_constraints(self):
         t_solver = TSolver(self.rule_abstracter.rule_monitor)
