@@ -18,6 +18,7 @@ from typing import Dict, List
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
+from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 from commonroad.scenario.trajectory import Trajectory
 
@@ -40,6 +41,7 @@ class RuleConstraints:
         self._sel_prop = sel_proposition
         self._target_lanes = defaultdict(Lane)
         self._long_constraints = list()
+        self._lat_constraints = list()
 
     def set_target_lanes(self) -> Dict[int, Lane]:
         """
@@ -95,6 +97,26 @@ class RuleConstraints:
         longitudinal_constraints = np.array(self._long_constraints)
         return LonConstraints.construct_constraints(longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
                                                     longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1])
+
+    def lateral_constraints(self, long_traj: QPTrajectory, ):
+        ego_lane = self._world_state.ego_vehicle.lane # todo, fix
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N+1):
+            target_lane = self._target_lanes[k]
+            index = k - self._tc_obj.tc_time_step
+            lane_width = target_lane.width(long_traj.states[index].position[0])
+            if target_lane == ego_lane:
+                self._lat_constraints.append([-lane_width/2., lane_width/2.])
+            elif target_lane == ego_lane.adj_left:
+                ego_lane_width = ego_lane.width(long_traj.states[index].position[0])
+                self._lat_constraints.append([ego_lane_width/2., ego_lane_width/2. + lane_width])
+            else:
+                ego_lane_width = ego_lane.width(long_traj.states[index].position[0])
+                self._lat_constraints.append([-(ego_lane_width/2. + lane_width), -ego_lane_width/2.])
+        lateral_constraints = np.array(self._lat_constraints)
+        d_min = np.array((lateral_constraints[1:, 0], lateral_constraints[1:, 0], lateral_constraints[1:, 0])).transpose()
+        d_max = np.array((lateral_constraints[1:, 1], lateral_constraints[1:, 1], lateral_constraints[1:, 1])).transpose()
+        return LatConstraints.construct_constraints(d_min, d_max,
+                                                    d_min, d_max)
 
     def _determine_related_veh(self, time_step: int, lane: Lane):
         preceding_vehicle = None

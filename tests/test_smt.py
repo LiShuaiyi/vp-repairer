@@ -2,7 +2,6 @@ import os
 import math
 import unittest
 from sympy.logic.boolalg import is_cnf
-from commonroad.common.file_reader import CommonRoadFileReader
 
 from lazy_smt.abstracter import RuleAbstracter
 from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
@@ -14,6 +13,11 @@ from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 
+from commonroad.common.file_reader import CommonRoadFileReader
+from commonroad.visualization.mp_renderer import MPRenderer
+from commonroad.visualization.param_server import ParamServer
+
+import matplotlib.pyplot as plt
 
 class TestSMTSolver(unittest.TestCase):
     def setUp(self) -> None:
@@ -109,7 +113,36 @@ class TestSMTSolver(unittest.TestCase):
                                  tc_object,
                                  assign_prop)
         self.assertIsInstance(qp_repairer, QPRepairer)
-        qp_repairer.repair()
+        repaired_trajectory = qp_repairer.repair()
+        trajectory_cartesian = qp_repairer.transform_trajectory_to_cartesian_coordinates(repaired_trajectory)
+        ego_vehicle = trajectory_cartesian.convert_to_cr_ego_vehicle(
+            qp_repairer.vehicle_configuration.width, qp_repairer.vehicle_configuration.length,
+            qp_repairer.vehicle_configuration.wheelbase, qp_repairer.vehicle_configuration.vehicle_id)
+        rnd = MPRenderer(figsize=(20, 10))
+        self.scenario.draw(
+            rnd,
+            draw_params=ParamServer({"occupancy": {"draw_occupancies": 1}})
+        )
+        ego_vehicle.draw(rnd,
+                         draw_params=ParamServer(
+                             {"occupancy": {
+                                 "draw_occupancies": 1,
+                                 "shape": {"rectangle": {
+                                     "facecolor": "black",
+                                     "edgecolor": "black"}
+                                 }},
+                                 "dynamic_obstacle":
+                                     {"vehicle_shape": {
+                                         "occupancy": {
+                                             "shape": {"rectangle": {
+                                                 "facecolor": "black",
+                                                 "edgecolor": "black"}
+                                             }}}}}))
+        ego_vehicle.prediction.trajectory.draw(rnd, draw_params={
+            "trajectory": {"shape": {"rectangle": {"facecolor": "black"}}}})
+        rnd.render()
+        plt.show()
+
 
     def test_rule_constraints(self):
         t_solver = TSolver(self.rule_abstracter.rule_monitor)
