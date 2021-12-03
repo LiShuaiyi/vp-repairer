@@ -19,13 +19,14 @@ import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 
 
-def visualize_state_list(state_list: Union[State], scenario, obs_shape):
+def visualize_state_list(collision_checker, state_list: Union[State], scenario, obs_shape, time_step):
     rnd = MPRenderer()
     # scenario.draw(rnd)
-    scenario.lanelet_network.draw(rnd, draw_params={'time_begin': 20, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
+    # scenario.lanelet_network.draw(rnd, draw_params={'time_begin': time_step, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
     trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
-    scenario.draw(rnd, draw_params={'time_begin': 20, 'trajectory': {'draw_trajectory': False}})
-    trajectory.draw(rnd, draw_params={'time_begin': 20, 'trajectory': {'draw_trajectory': True}})
+    # scenario.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': False}})
+    trajectory.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True}})
+    collision_checker.draw(rnd, draw_params={'facecolor': 'blue', 'draw_mesh': True})
     rnd.render()
     plt.show()
 
