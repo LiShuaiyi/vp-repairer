@@ -101,7 +101,7 @@ class TestSMTSolver(unittest.TestCase):
                             if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
         proposition2 = next((prop for prop in list(self.rule_abstracter.propositions)
                             if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
-        assign_prop = [proposition1]
+        assign_prop = [proposition1, proposition2]
         t_solver.assign_proposition(assign_prop)
         tc = t_solver.search_tc()
         tc_object = t_solver.tc_object

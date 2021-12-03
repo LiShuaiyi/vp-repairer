@@ -13,22 +13,29 @@ from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredIn
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 
-from typing import Dict
+from typing import Dict, List
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
+from commonroad_qp_planner.initialization import convert_pos_curvilinear
 
+from commonroad.scenario.trajectory import Trajectory
 
 class RuleConstraints:
     def __init__(self,
                  tc_object: TC,
                  rule_abstracter: RuleAbstracter,
-                 sel_proposition: PropositionNode):
+                 sel_proposition: List[PropositionNode],
+                 veh_config: PlanningConfigurationVehicle,
+                 initial_trajectory: Trajectory):
         self._tc_obj = tc_object
         self._rule_abstracter = rule_abstracter
         self._world_state = self._rule_abstracter.world_state
-        self._other_id = rule_abstracter.other_veh_id  # if no target vehicle, the other_id stands for the ego
+        self._other_id = rule_abstracter.other_veh_id
+        self._ego_id = rule_abstracter.vehicle_id # if no target vehicle, the other_id stands for the ego
+        self._ini_traj = initial_trajectory
         self._target_vehicle = self._world_state.vehicle_by_id(self._other_id)
+        self._veh_config = veh_config
         self._compliant_maneuver = tc_object.compliant_maneuver
         self._sel_prop = sel_proposition
         self._target_lanes = defaultdict(Lane)
@@ -57,7 +64,7 @@ class RuleConstraints:
                 target_lanes[time_step] = cut_off_lane
         return target_lanes
 
-    def _add(self, veh_config: PlanningConfigurationVehicle):
+    def _add(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
             s_limit = [-math.inf, math.inf]
@@ -72,7 +79,7 @@ class RuleConstraints:
                         s_constr = self.ConstrInFrontOf(k, prop_assignment)
                         s_limit = self._get_overlap(s_limit, s_constr)
                     elif predicate.base_name == PredSafeDistPrec.predicate_name:
-                        s_constr = self.ConstrSafeDist(k, prop_assignment, veh_config)
+                        s_constr = self.ConstrSafeDist(k, prop_assignment)
                         s_limit = self._get_overlap(s_limit, s_constr)
                     elif predicate.base_name == PredCutIn.predicate_name:
                         self.ConstrCutIn(k, prop_assignment)
@@ -82,8 +89,8 @@ class RuleConstraints:
             self._long_constraints.append(s_limit)
         pass
 
-    def longitudinal_constraints(self, veh_config: PlanningConfigurationVehicle):
-        self._add(veh_config)
+    def longitudinal_constraints(self):
+        self._add()
         self.ConstrCollisionFree()
         longitudinal_constraints = np.array(self._long_constraints)
         return LonConstraints.construct_constraints(longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
@@ -94,12 +101,12 @@ class RuleConstraints:
         following_vehicle = None
         dist_pre = np.inf
         dist_post = -np.inf
-        ego_vehicle = self._world_state.ego_vehicle
         vehicle_ids = lane.dynamic_obstacles_by_time_step(time_step)
-        vehicle_ids.discard(ego_vehicle.id)
+        vehicle_ids.discard(self._ego_id)
         for id in vehicle_ids:
             other_vehicle = self._world_state.vehicle_by_id(id)
-            dist = other_vehicle.states_lon[time_step].s - ego_vehicle.states_lon[time_step].s
+            ego_lon_s = convert_pos_curvilinear(self._ini_traj.state_at_time_step(time_step,), self._veh_config)[0]
+            dist = other_vehicle.states_lon[time_step].s - ego_lon_s
             if 0 < dist < dist_pre:
                 preceding_vehicle = other_vehicle
                 dist_pre = dist
@@ -145,14 +152,14 @@ class RuleConstraints:
             front_s = self._target_vehicle.front_s(time_step)
             return [front_s, math.inf]
 
-    def ConstrSafeDist(self, time_step: int, prop_assignment: float, veh_config: PlanningConfigurationVehicle):
+    def ConstrSafeDist(self, time_step: int, prop_assignment: float):
         safe_dist = self.safe_distance(
-            veh_config.desired_speed,
+            self._veh_config.desired_speed,
             self._target_vehicle.states_lon[time_step].v,
-            veh_config.a_min_x,
+            self._veh_config.a_min_x,
             self._target_vehicle.vehicle_param.get('a_min'),
             0.0  # todo: t react
-        ) - 10
+        )
         safe_dist = max(0., safe_dist)
         if prop_assignment > 0:
             return [-math.inf, self._target_vehicle.rear_s(time_step) - safe_dist]

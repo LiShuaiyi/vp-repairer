@@ -47,7 +47,11 @@ class QPRepairer(QPPlanner):
                          self._planning_problem,
                          self._time_horizon,
                          self._vehicle_configuration)
-        self._rule_constraints = RuleConstraints(tc_object, rule_abstracter, sel_proposition)
+        self._rule_constraints = RuleConstraints(tc_object,
+                                                 rule_abstracter,
+                                                 sel_proposition,
+                                                 self._vehicle_configuration,
+                                                 self._initial_trajectory)
 
     def _reformulate_planning_problem(self,):
         if not hasattr(self._planning_problem, "initial_state"):
@@ -56,7 +60,7 @@ class QPRepairer(QPPlanner):
         self._planning_problem.goal = update_goal_state(self._initial_trajectory)
 
     def repair(self):
-        long_constr = self._rule_constraints.longitudinal_constraints(self._vehicle_configuration)
+        long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self._formulate_reference()
         traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon)
         if status is not 'optimal':
