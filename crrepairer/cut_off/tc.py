@@ -7,6 +7,7 @@ from commonroad.scenario.obstacle import State, DynamicObstacle
 from commonroad.scenario.scenario import Scenario
 from crmonitor.common.world_state import WorldState
 
+import matplotlib.pyplot as plt
 from cut_off.base import CutOffBase
 from lazy_smt.monitor import STLRuleMonitor
 from cut_off.utils import update_ego_vehicle, visualize_state_list
@@ -107,9 +108,8 @@ class TC(CutOffBase, ABC):
             state_list = SL.simulate_state_list()
 
             if self._visualize:
-                visualize_state_list(self._collision_checker,state_list, self.scenario,
-                                     SL.vehicle_dynamics.shape, time_step=0)
-
+                visualize_state_list(self._collision_checker, state_list, self.scenario,
+                                         SL.vehicle_dynamics.shape)
             flag_collision = self._detect_collision(state_list)  # bool value
             tv, _ = self._calc_tv_updated(state_list, mid) # which should be tv instead of ttm
             # if violation-free and collision-free

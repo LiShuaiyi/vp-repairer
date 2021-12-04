@@ -114,13 +114,13 @@ class RuleConstraints:
         return preceding_vehicle, following_vehicle
 
     def ConstrCollisionFree(self):
-        prec_veh, foll_veh = self._determine_related_veh(self._tc_obj.tc_time_step,
-                                                         self._target_lanes[self._tc_obj.tc_time_step])
-        num_target_lanes = len(self._target_lanes[self._tc_obj.tc_time_step])
+        # prec_veh, foll_veh = self._determine_related_veh(self._tc_obj.tc_time_step,
+        #                                                  self._target_lanes[self._tc_obj.tc_time_step])
+        # num_target_lanes = len(self._target_lanes[self._tc_obj.tc_time_step])
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N+1):
-            if len(self._target_lanes[k]) < num_target_lanes:
-                prec_veh, foll_veh = self._determine_related_veh(k, self._target_lanes[k])
-                num_target_lanes = len(self._target_lanes[k])
+            # if len(self._target_lanes[k]) < num_target_lanes:
+            prec_veh, foll_veh = self._determine_related_veh(k, self._target_lanes[k])
+            # num_target_lanes = len(self._target_lanes[k])
             index = k - self._tc_obj.tc_time_step
             if prec_veh is not None: # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
@@ -140,8 +140,8 @@ class RuleConstraints:
                 target_lane += [other_veh_lane]
         elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
             target_lane = [other_veh_lane.adj_right]
-            if time_step < self._tc_obj.tv_time_step:
-                target_lane += [other_veh_lane]
+            # if time_step < self._tc_obj.tv_time_step:
+            #     target_lane += [other_veh_lane]
         else:
             target_lane = [other_veh_lane]
         target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)

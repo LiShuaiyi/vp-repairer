@@ -19,16 +19,17 @@ import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 
 
-def visualize_state_list(collision_checker, state_list: Union[State], scenario, obs_shape, time_step):
-    rnd = MPRenderer()
-    # scenario.draw(rnd)
-    # scenario.lanelet_network.draw(rnd, draw_params={'time_begin': time_step, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
-    trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
-    # scenario.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': False}})
-    trajectory.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True}})
-    collision_checker.draw(rnd, draw_params={'facecolor': 'blue', 'draw_mesh': True})
-    rnd.render()
-    plt.show()
+def visualize_state_list(collision_checker, state_list: List[State], scenario, obs_shape):
+    for time_step in range(len(state_list)):
+        rnd = MPRenderer()
+        # scenario.draw(rnd)
+        # scenario.lanelet_network.draw(rnd, draw_params={'time_begin': time_step, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
+        trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
+        scenario.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': False}})
+        trajectory.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': False}})
+        # collision_checker.draw(rnd, draw_params={'time_begin': time_step, 'facecolor': 'blue', 'draw_mesh': False})
+        rnd.render()
+        plt.show()
 
 def check_velocity_feasibility(state: State, parameters: VehicleParameters):
     if state.velocity < 0 or \

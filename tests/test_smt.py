@@ -19,6 +19,7 @@ from commonroad.visualization.param_server import ParamServer
 
 import matplotlib.pyplot as plt
 
+
 class TestSMTSolver(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -26,6 +27,7 @@ class TestSMTSolver(unittest.TestCase):
         self.scenario_root_path = os.path.join(root_path, "scenarios")
         scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
         self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
+        # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         self.planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         ego_id = 1003
         rule = "R_G1"
@@ -118,30 +120,32 @@ class TestSMTSolver(unittest.TestCase):
         ego_vehicle = trajectory_cartesian.convert_to_cr_ego_vehicle(
             qp_repairer.vehicle_configuration.width, qp_repairer.vehicle_configuration.length,
             qp_repairer.vehicle_configuration.wheelbase, qp_repairer.vehicle_configuration.vehicle_id)
-        rnd = MPRenderer(figsize=(20, 10))
-        self.scenario.draw(
-            rnd,
-            draw_params=ParamServer({"occupancy": {"draw_occupancies": 1}})
-        )
-        ego_vehicle.draw(rnd,
-                         draw_params=ParamServer(
-                             {"occupancy": {
-                                 "draw_occupancies": 1,
-                                 "shape": {"rectangle": {
-                                     "facecolor": "black",
-                                     "edgecolor": "black"}
-                                 }},
-                                 "dynamic_obstacle":
-                                     {"vehicle_shape": {
-                                         "occupancy": {
-                                             "shape": {"rectangle": {
-                                                 "facecolor": "black",
-                                                 "edgecolor": "black"}
-                                             }}}}}))
-        ego_vehicle.prediction.trajectory.draw(rnd, draw_params={
-            "trajectory": {"shape": {"rectangle": {"facecolor": "black"}}}})
-        rnd.render()
-        plt.show()
+        for time_step in range(ego_vehicle.prediction.final_time_step):
+            rnd = MPRenderer(figsize=(20, 10))
+            self.scenario.draw(
+                rnd,
+                draw_params=ParamServer({"time_begin": time_step, "occupancy": {"draw_occupancies": 1}})
+            )
+            ego_vehicle.draw(rnd,
+                             draw_params=ParamServer(
+                                 {"time_begin": time_step,
+                                  "occupancy": {
+                                      "draw_occupancies": 1,
+                                      "shape": {"rectangle": {
+                                          "facecolor": "black",
+                                          "edgecolor": "black"}
+                                      }},
+                                  "dynamic_obstacle":
+                                      {"vehicle_shape": {
+                                          "occupancy": {
+                                              "shape": {"rectangle": {
+                                                  "facecolor": "black",
+                                                  "edgecolor": "black"}
+                                              }}}}}))
+            ego_vehicle.prediction.trajectory.draw(rnd, draw_params={
+                "trajectory": {"shape": {"rectangle": {"facecolor": "black"}}}})
+            rnd.render()
+            plt.show()
 
 
     def test_rule_constraints(self):
