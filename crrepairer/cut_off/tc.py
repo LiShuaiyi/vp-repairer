@@ -28,6 +28,11 @@ class TC(CutOffBase, ABC):
         self._visualize = False
         self._compliant_maneuver = None
         self._tc = None
+        self._simulation_lateral = None
+
+    @property
+    def simulation_lateral(self) -> Union[SimulationLong, SimulationLateral]:
+        return self._simulation_lateral
 
     @property
     def tv(self):
@@ -103,8 +108,10 @@ class TC(CutOffBase, ABC):
                                        self.ego_vehicle,
                                        mid,
                                        self.world_state)
+                self._simulation_lateral = SL
             else:
                 raise ValueError("<TTCC>: given compliant maneuver {} is not supported".format(maneuver))
+
             state_list = SL.simulate_state_list()
 
             if self._visualize:

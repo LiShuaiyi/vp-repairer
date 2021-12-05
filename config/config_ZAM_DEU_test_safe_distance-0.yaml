@@ -68,9 +68,9 @@ qp_planner:
         W_U: 1.0 # weight for input deviation
         W_SLACK_L: 5.0 # linear weight for slack variables
         W_SLACK_Q: 2.0 # quadratic weight for slack variables
-        KAPPA_DOT_MIN: -0.2 # minimum steering rate
-        KAPPA_DOT_MAX: 0.2 # maximum steering rate
+        KAPPA_DOT_MIN: -0.4 # minimum steering rate
+        KAPPA_DOT_MAX: 0.4 # maximum steering rate
         KAPPA_DOT_DOT_MIN: -100 # minimum steering rate rate
         KAPPA_DOT_DOT_MAX: 100 # maximum steering rate rate
-        KAPPA_MAX: 0.2 # maximum curvature
+        KAPPA_MAX: 0.4 # maximum curvature
 
