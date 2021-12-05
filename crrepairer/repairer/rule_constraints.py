@@ -51,7 +51,7 @@ class RuleConstraints:
         lane_dist = self._world_state.ego_vehicle.lane.width(
             self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
             abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
-        self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(lane_dist)/self._world_state.dt)
+        self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(lane_dist)/self._world_state.dt) + 1
 
     def _add(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
@@ -93,8 +93,8 @@ class RuleConstraints:
             x_curr, y_curr = ego_lane.clcs.convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
             lane_boundary_left = -target_lanes[-1].clcs_left.convert_to_curvilinear_coords(x_curr, y_curr)
             lane_boundary_right = -target_lanes[0].clcs_right.convert_to_curvilinear_coords(x_curr, y_curr)
-            self._lat_constraints.append([lane_boundary_right[1] + self._veh_config.wheelbase/2,
-                                          lane_boundary_left[1]] - self._veh_config.wheelbase/2)
+            self._lat_constraints.append([lane_boundary_right[1] + self._veh_config.wheelbase/2.,
+                                          lane_boundary_left[1] - self._veh_config.wheelbase/2.])
         lateral_constraints = np.array(self._lat_constraints)
         d_min = np.array((lateral_constraints[1:, 0], lateral_constraints[1:, 0], lateral_constraints[1:, 0])).transpose()
         d_max = np.array((lateral_constraints[1:, 1], lateral_constraints[1:, 1], lateral_constraints[1:, 1])).transpose()
