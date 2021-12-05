@@ -116,10 +116,7 @@ class TestSMTSolver(unittest.TestCase):
                                  assign_prop)
         self.assertIsInstance(qp_repairer, QPRepairer)
         repaired_trajectory = qp_repairer.repair()
-        trajectory_cartesian = qp_repairer.transform_trajectory_to_cartesian_coordinates(repaired_trajectory)
-        ego_vehicle = trajectory_cartesian.convert_to_cr_ego_vehicle(
-            qp_repairer.vehicle_configuration.width, qp_repairer.vehicle_configuration.length,
-            qp_repairer.vehicle_configuration.wheelbase, qp_repairer.vehicle_configuration.vehicle_id)
+        ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
         for time_step in range(ego_vehicle.prediction.final_time_step):
             rnd = MPRenderer(figsize=(20, 10))
             self.scenario.draw(
@@ -147,26 +144,26 @@ class TestSMTSolver(unittest.TestCase):
             rnd.render()
             plt.show()
 
-
-    def test_rule_constraints(self):
-        t_solver = TSolver(self.rule_abstracter.rule_monitor)
-        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
-                            if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
-        t_solver.assign_proposition(proposition)
-        tc = t_solver.search_tc()
-        tc_object = t_solver.tc_object
-        target_lanes_id_exp = list()
-        for _ in range(tc_object.tc_time_step, tc_object.tv_time_step):
-            target_lanes_id_exp.append(1)
-        for _ in range(tc_object.tv_time_step, tc_object.N):
-            target_lanes_id_exp.append(0)
-        rule_constraints = RuleConstraints(tc_object,
-                                           self.rule_abstracter,
-                                           proposition)
-        target_lanes = rule_constraints.set_target_lanes()
-        target_lanes_id = list()
-        for lane in target_lanes.values():
-            target_lanes_id.append(lane.lane_id)
-        self.assertEqual(target_lanes_id_exp, target_lanes_id)
-
-
+    #
+    # def test_rule_constraints(self):
+    #     t_solver = TSolver(self.rule_abstracter.rule_monitor)
+    #     proposition = next((prop for prop in list(self.rule_abstracter.propositions)
+    #                         if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
+    #     t_solver.assign_proposition(proposition)
+    #     tc = t_solver.search_tc()
+    #     tc_object = t_solver.tc_object
+    #     target_lanes_id_exp = list()
+    #     for _ in range(tc_object.tc_time_step, tc_object.tv_time_step):
+    #         target_lanes_id_exp.append(1)
+    #     for _ in range(tc_object.tv_time_step, tc_object.N):
+    #         target_lanes_id_exp.append(0)
+    #     rule_constraints = RuleConstraints(tc_object,
+    #                                        self.rule_abstracter,
+    #                                        proposition)
+    #     target_lanes = rule_constraints.set_target_lanes()
+    #     target_lanes_id = list()
+    #     for lane in target_lanes.values():
+    #         target_lanes_id.append(lane.lane_id)
+    #     self.assertEqual(target_lanes_id_exp, target_lanes_id)
+    #
+    #

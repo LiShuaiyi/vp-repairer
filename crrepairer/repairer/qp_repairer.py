@@ -1,6 +1,10 @@
+import math
+
 from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongReference
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
+from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
+from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
@@ -10,7 +14,7 @@ from lazy_smt.abstracter import RuleAbstracter
 
 from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.trajectory import Trajectory, State
-from commonroad.scenario.scenario import Scenario
+from commonroad.scenario.scenario import Scenario, DynamicObstacle, TrajectoryPrediction, ObstacleType
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
 from commonroad.geometry.shape import Rectangle
@@ -71,7 +75,50 @@ class QPRepairer(QPPlanner):
         # convert trajectory to cartesian space
         if status is not 'optimal':
             raise ValueError('<QPPlanner/_lateral_trajectory_planning>: failed')
-        return trajectory
+        cr_trajectory = self.transform_merge_trajectory(trajectory)
+        return cr_trajectory
+
+    def convert_traj_to_ego_vehicle(self,
+                                    cr_trajectory: Trajectory,
+                                    vehicle_id: int = 0) -> DynamicObstacle:
+        """
+        Converts trajectory object to CommonRoad obstacle with specified width and length
+        :param width: The width of the ego vehicle
+        :param length: The length of the ego vehicle
+        :param vehicle_id: ID of ego vehicle
+        :return: The CommonRoad DynamicObstacle object containing the current trajectory
+        """
+       # get trajectory
+        shape = Rectangle(self._vehicle_configuration.length,
+                          self._vehicle_configuration.width)
+        pred = TrajectoryPrediction(cr_trajectory, shape)
+
+        # create new object
+        ego = DynamicObstacle(obstacle_id=vehicle_id,
+                              obstacle_type=ObstacleType.CAR,
+                              prediction=pred,
+                              obstacle_shape=shape,
+                              initial_state=self.planning_problem.initial_state)
+        return ego
+
+    def transform_merge_trajectory(self, trajectory: QPTrajectory):
+        cartesian_traj_points = list()
+        for state in trajectory.states:
+            cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
+                state.position[0], state.position[1])
+            cartesian_traj_points.append(TrajPoint(
+                t=state.t + self._cut_off_time_step*self.dt,
+                x=cart_pos[0], y=cart_pos[1], theta=state.orientation, v=state.v, a=state.a,
+                kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
+        traj = QPTrajectory(cartesian_traj_points, TrajectoryType.CARTESIAN)
+
+        traj._u_lon = trajectory.u_lon
+        traj._u_lat = trajectory.u_lat
+        cr_traj_repaired = traj.convert_to_cr_trajectory(self._vehicle_configuration.wheelbase)
+        remaining_states = self._initial_trajectory.state_list[:self._cut_off_time_step-1]
+
+        cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
+        return cr_traj_repaired
 
     def _formulate_reference(self):
         x_ref = list()
