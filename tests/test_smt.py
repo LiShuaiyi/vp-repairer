@@ -30,6 +30,12 @@ class TestSMTSolver(unittest.TestCase):
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         self.planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         ego_id = 1003
+        obs = self.scenario.obstacle_by_id(1000)
+        obs.initial_state.position[0] += 10.0
+        for state in obs.prediction.trajectory.state_list:
+            state.position[0] += 10.0
+        obs.prediction.occupancy_set = obs.prediction._create_occupancy_set()
+        obs._initial_occupancy_shape.center[0] += 10
         rule = "R_G1"
         self.rule_abstracter = RuleAbstracter(self.scenario,
                                               self.planning_problem,
@@ -121,7 +127,8 @@ class TestSMTSolver(unittest.TestCase):
             rnd = MPRenderer(figsize=(20, 10))
             self.scenario.draw(
                 rnd,
-                draw_params=ParamServer({"time_begin": time_step, "occupancy": {"draw_occupancies": 1}})
+                draw_params=ParamServer({"time_begin": time_step, "occupancy": {
+                                      "draw_occupancies": 1}})
             )
             ego_vehicle.draw(rnd,
                              draw_params=ParamServer(

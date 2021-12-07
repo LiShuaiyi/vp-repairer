@@ -140,6 +140,13 @@ class SimulationLateral(SimulationBase, ABC):
         """
         return sqrt(4 * lat_dist / abs(self._input.acceleration_y))
 
+    def calc_leave_time(self, lat_dist):
+        """
+        Miller, Christina, Christian Pek, and Matthias Althoff. "Efficient mixed-integer programming for longitudinal
+        and lateral motion planning of autonomous vehicles." 2018 IEEE Intelligent Vehicles Symposium (IV). IEEE, 2018.
+        """
+        return sqrt(2 * lat_dist / abs(self._input.acceleration_y))
+
     def set_inputs(self, velocity):
         self._input.acceleration = 0
         v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch

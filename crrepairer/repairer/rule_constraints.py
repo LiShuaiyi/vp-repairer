@@ -51,7 +51,8 @@ class RuleConstraints:
         lane_dist = self._world_state.ego_vehicle.lane.width(
             self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
             abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
-        self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(lane_dist)/self._world_state.dt)
+        self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_leave_time(lane_dist)/self._world_state.dt)
+        pass
 
     def _add(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
@@ -136,10 +137,10 @@ class RuleConstraints:
             index = k - self._tc_obj.tc_time_step
             if prec_veh is not None:  # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [-np.inf, prec_veh.rear_s(k)])
+                                                                  [-np.inf, prec_veh.rear_s(k) - self._veh_config.length])
             if foll_veh is not None:
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [foll_veh.front_s(k), np.inf])
+                                                                  [foll_veh.front_s(k) + self._veh_config.length, np.inf])
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         # todo: fix in stl monitor
