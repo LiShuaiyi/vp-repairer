@@ -136,10 +136,10 @@ class RuleConstraints:
             index = k - self._tc_obj.tc_time_step
             if prec_veh is not None:  # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [-np.inf, prec_veh.rear_s(k) - self._veh_config.length/2])
+                                                                  [-np.inf, prec_veh.rear_s(k)])
             if foll_veh is not None:
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [foll_veh.front_s(k) + self._veh_config.length/2, np.inf])
+                                                                  [foll_veh.front_s(k), np.inf])
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         # todo: fix in stl monitor
