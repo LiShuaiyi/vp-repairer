@@ -51,30 +51,31 @@ class RuleConstraints:
         lane_dist = self._world_state.ego_vehicle.lane.width(
             self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
             abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
-        self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(lane_dist)/self._world_state.dt) + 1
+        self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(lane_dist)/self._world_state.dt)
 
     def _add(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
-            s_limit = [-math.inf, math.inf]
+            s_limit = [-np.inf, np.inf]
             for proposition in self._rule_abstracter.rule_monitor.proposition_nodes:
                 prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')["robustness"].values[0]
                 for predicate in proposition.children:
                     if proposition in self._sel_prop and k >= self._tc_obj.tv_time_step:
                         prop_assignment = -prop_assignment
-                    if predicate.base_name == PredInSameLane.predicate_name:
-                        self.ConstrInSameLane(k, prop_assignment)
-                    elif predicate.base_name == PredInFrontOf.predicate_name:
-                        s_constr = self.ConstrInFrontOf(k, prop_assignment)
-                        s_limit = self._get_overlap(s_limit, s_constr)
-                    elif predicate.base_name == PredSafeDistPrec.predicate_name:
-                        s_constr = self.ConstrSafeDist(k, prop_assignment)
-                        s_limit = self._get_overlap(s_limit, s_constr)
-                    elif predicate.base_name == PredCutIn.predicate_name:
-                        self.ConstrCutIn(k, prop_assignment)
-                    else:
-                        print("<QPRepairer/_rule_constraints>: the provided predicate {} is not supported".
-                              format(predicate.name))
+                    if k < self._tc_obj.tv_time_step or proposition in self._sel_prop:
+                        if predicate.base_name == PredInSameLane.predicate_name:
+                            self.ConstrInSameLane(k, prop_assignment)
+                        elif predicate.base_name == PredInFrontOf.predicate_name:
+                            s_constr = self.ConstrInFrontOf(k, prop_assignment)
+                            s_limit = self._get_overlap(s_limit, s_constr)
+                        elif predicate.base_name == PredSafeDistPrec.predicate_name:
+                            s_constr = self.ConstrSafeDist(k, prop_assignment)
+                            s_limit = self._get_overlap(s_limit, s_constr)
+                        elif predicate.base_name == PredCutIn.predicate_name:
+                            self.ConstrCutIn(k, prop_assignment)
+                        else:
+                            print("<QPRepairer/_rule_constraints>: the provided predicate {} is not supported".
+                                  format(predicate.name))
             self._long_constraints.append(s_limit)
         pass
 
@@ -135,10 +136,10 @@ class RuleConstraints:
             index = k - self._tc_obj.tc_time_step
             if prec_veh is not None:  # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [-math.inf, prec_veh.rear_s(k) - self._veh_config.length/2])
+                                                                  [-np.inf, prec_veh.rear_s(k) - self._veh_config.length/2])
             if foll_veh is not None:
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [foll_veh.front_s(k) + self._veh_config.length/2, math.inf])
+                                                                  [foll_veh.front_s(k) + self._veh_config.length/2, np.inf])
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         # todo: fix in stl monitor
@@ -166,10 +167,10 @@ class RuleConstraints:
     def ConstrInFrontOf(self, time_step: int, prop_assignment: float):
         if prop_assignment > 0:
             rear_s = self._target_vehicle.rear_s(time_step)
-            return [-math.inf, rear_s]
+            return [-np.inf, rear_s]
         else:
             front_s = self._target_vehicle.front_s(time_step)
-            return [front_s, math.inf]
+            return [front_s, np.inf]
 
     def ConstrSafeDist(self, time_step: int, prop_assignment: float):
         safe_dist = self.safe_distance(
@@ -181,9 +182,9 @@ class RuleConstraints:
         )
         safe_dist = max(0., safe_dist)
         if prop_assignment > 0:
-            return [-math.inf, self._target_vehicle.rear_s(time_step) - safe_dist]
+            return [-np.inf, self._target_vehicle.rear_s(time_step) - safe_dist]
         else:
-            return [self._target_vehicle.rear_s(time_step) - safe_dist, math.inf]
+            return [self._target_vehicle.rear_s(time_step) - safe_dist, np.inf]
 
     def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
         print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
