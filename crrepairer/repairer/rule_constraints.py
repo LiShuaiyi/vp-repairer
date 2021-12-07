@@ -52,7 +52,6 @@ class RuleConstraints:
             self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
             abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
         self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_leave_time(lane_dist)/self._world_state.dt)
-        pass
 
     def _add(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
