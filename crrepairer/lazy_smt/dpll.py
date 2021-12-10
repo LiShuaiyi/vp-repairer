@@ -1,0 +1,80 @@
+from sympy.logic.boolalg import is_cnf
+from copy import deepcopy
+from z3 import sat, unsat
+
+class DPLL:
+    def __init__(self, sympy_cnf: str):
+        """
+        Based on the pseudocode in Wikipedia page:
+        https://en.wikipedia.org/wiki/DPLL_algorithm
+        """
+        assert is_cnf(sympy_cnf), "<DPLL>: the given formula {} is not CNF or" \
+                                  " not in the sympy CNF standard".format(sympy_cnf)
+        self._literals = self.get_literal(sympy_cnf)
+        self._cnf = sympy_cnf.replace('(', '').replace(')', '').replace('|', '').split('&')
+        pass
+
+    @property
+    def literals(self):
+        return self._literals
+
+    @property
+    def cnf(self):
+        return self._cnf
+
+    @staticmethod
+    def get_literal(cnf):
+        return [i for i in list(set(cnf)) if i.isalpha()]
+
+    def solve(self):
+        return self._solve(deepcopy(self._cnf))
+
+    def _solve(self, cnf):
+        units = [i for i in cnf if len(i) < 3]
+        if len(units):
+            cnf = self.unit_propagation(cnf, units)
+        if len(cnf) == 0:
+            # if \phi is a consistent set of literals
+            return sat
+        if sum(len(clause) == 0 for clause in cnf):
+            # if \phi contains an empty clause
+            return unsat
+        literals = self.get_literal(''.join(cnf))
+        lit = self.choose_literal(literals)
+        print('<DPLL>: literal ({}) is selected'.format(lit))
+        return self._solve(deepcopy(cnf) + [lit]) or self._solve(deepcopy(cnf) + ['~'+lit])
+
+    def choose_literal(self, literals):
+        return literals[0]
+
+    def unit_propagation(self, cnf, units):
+        for unit in units:
+            if '~' in unit:
+                i = 0
+                while True:
+                    if unit in cnf[i]:
+                        cnf.remove(cnf[i])
+                        i -= 1
+                    elif unit[-1] in cnf[i]:
+                        cnf[i] = cnf[i].replace(unit[-1], '').strip()
+                    i += 1
+                    if i >= len(cnf):
+                        break
+            else:
+                i = 0
+                while True:
+                    if '~'+unit in cnf[i]:
+                        cnf[i] = cnf[i].replace('~'+unit, '').strip()
+                        if '  ' in cnf[i]:
+                            cnf[i] = cnf[i].replace('  ', ' ')
+                    elif unit in cnf[i]:
+                        cnf.remove(cnf[i])
+                        i -= 1
+                    i += 1
+                    if i >= len(cnf):
+                        break
+        return cnf
+
+if __name__ == '__main__':
+    dpll_solver = DPLL('~a | ~b | c | d')
+    print(dpll_solver.solve())
