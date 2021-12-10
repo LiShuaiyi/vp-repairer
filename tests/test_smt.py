@@ -7,6 +7,7 @@ from lazy_smt.abstracter import RuleAbstracter
 from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
 from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
 from lazy_smt.t_solver import TSolver, CutOffAction
+from lazy_smt.dpll import DPLL
 from repairer.qp_repairer import QPRepairer
 from repairer.rule_constraints import RuleConstraints
 from crmonitor.common.world_state import WorldState
@@ -19,6 +20,7 @@ from commonroad.visualization.param_server import ParamServer
 
 import matplotlib.pyplot as plt
 
+from z3 import sat, unsat
 
 class TestSMTSolver(unittest.TestCase):
     def setUp(self) -> None:
@@ -106,6 +108,14 @@ class TestSMTSolver(unittest.TestCase):
         sat_solver = SATSolver(sat_encoding, self.rule_abstracter.rule_monitor.prop_robust_ttv)
         self.assertEqual(sat_solver.satisfiable_subformula_list,
                          ["c"])
+
+    def test_dpll(self):
+        dpll_solver = DPLL('~a | ~b | c | d')
+        self.assertEqual(dpll_solver.solve(),
+                         sat)
+        dpll_solver.update_cnf('~a & a')
+        self.assertEqual(dpll_solver.solve(),
+                         unsat)
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self.rule_abstracter.rule_monitor)

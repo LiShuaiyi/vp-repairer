@@ -2,6 +2,7 @@ from sympy.logic.boolalg import is_cnf
 from copy import deepcopy
 from z3 import sat, unsat
 
+
 class DPLL:
     def __init__(self, sympy_cnf: str):
         """
@@ -11,7 +12,7 @@ class DPLL:
         assert is_cnf(sympy_cnf), "<DPLL>: the given formula {} is not CNF or" \
                                   " not in the sympy CNF standard".format(sympy_cnf)
         self._literals = self.get_literal(sympy_cnf)
-        self._cnf = sympy_cnf.replace('(', '').replace(')', '').replace('|', '').split('&')
+        self._cnf = self._assign_cnf(sympy_cnf)
         pass
 
     @property
@@ -25,6 +26,14 @@ class DPLL:
     @staticmethod
     def get_literal(cnf):
         return [i for i in list(set(cnf)) if i.isalpha()]
+
+    @staticmethod
+    def _assign_cnf(sympy_cnf):
+        return sympy_cnf.replace('(', '').replace(')', '').replace('|', '').split('&')
+
+    def update_cnf(self, cnf):
+        self._cnf = self._assign_cnf(cnf)
+        self._literals = self.get_literal(cnf)
 
     def solve(self):
         return self._solve(deepcopy(self._cnf))
@@ -77,4 +86,5 @@ class DPLL:
 
 if __name__ == '__main__':
     dpll_solver = DPLL('~a | ~b | c | d')
+    dpll_solver.update_cnf('a & ~a')
     print(dpll_solver.solve())
