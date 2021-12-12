@@ -7,7 +7,7 @@ import numpy as np
 
 from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
 from stl_crmonitor.crmonitor.common.world_state import WorldState
-from mtl_crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
+# from mtl_crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
 from commonroad.scenario.scenario import Scenario
 
 
@@ -20,7 +20,8 @@ class STLRuleMonitor:
     def __init__(self,
                  world_state,
                  rules: Union[str, Iterable[str]],):
-        self._rule_eval = RuleSetEvaluator.create_from_config(rules)
+        self._rule_eval = RuleSetEvaluator.create_from_config(rules,
+                                                              dt=world_state.dt)
         self.world_state: WorldState = world_state
         self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
         self._tv, self._other_id = self._cal_tv_initial()
