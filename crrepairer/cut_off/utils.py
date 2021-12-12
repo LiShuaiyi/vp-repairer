@@ -25,8 +25,10 @@ def visualize_state_list(collision_checker, state_list: List[State], scenario, o
         # scenario.draw(rnd)
         # scenario.lanelet_network.draw(rnd, draw_params={'time_begin': time_step, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
         trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
-        scenario.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': False}})
-        trajectory.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': False}})
+        scenario.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True},
+                                        "occupancy": {"draw_occupancies": 1}})
+        trajectory.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True},
+                                        "occupancy": {"draw_occupancies": 1}})
         # collision_checker.draw(rnd, draw_params={'time_begin': time_step, 'facecolor': 'blue', 'draw_mesh': False})
         rnd.render()
         plt.show()

@@ -140,6 +140,8 @@ class TestSMTSolver(unittest.TestCase):
                 draw_params=ParamServer({"time_begin": time_step, "occupancy": {
                                       "draw_occupancies": 1}})
             )
+            self.scenario.remove_obstacle()
+            self.scenario.obstacle_by_id()
             ego_vehicle.draw(rnd,
                              draw_params=ParamServer(
                                  {"time_begin": time_step,
