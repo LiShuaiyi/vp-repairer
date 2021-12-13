@@ -19,7 +19,8 @@ class RuleAbstracter:
                  scenario: Scenario,
                  planning_problem: PlanningProblem,
                  vehicle_id: int,
-                 rule_str: Union[str, Iterable[str]],):
+                 rule_str: Union[str, Iterable[str]],
+                 time_horizon: float = None):
         self._world_state = self.construct_world_state(scenario,
                                                        planning_problem,
                                                        vehicle_id)

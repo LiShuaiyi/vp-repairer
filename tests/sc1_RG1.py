@@ -33,6 +33,8 @@ if __name__ == '__main__':
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 9
     rule = "R_G1"
+    ego_veh = scenario.obstacle_by_id(ego_id)
+    ego_veh.prediction.trajectory.state_list = ego_veh.prediction.trajectory.state_list[:40]
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -46,3 +48,36 @@ if __name__ == '__main__':
     print(tc_object.tv_time_step,
           tc_object.tc_time_step,
           tc_object.compliant_maneuver)
+    qp_repairer = QPRepairer(rule_abstracter,
+                             tc_object,
+                             assign_prop)
+    repaired_trajectory = qp_repairer.repair()
+    ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
+    for time_step in range(ego_vehicle.prediction.final_time_step):
+        rnd = MPRenderer(figsize=(20, 10))
+        scenario.draw(
+            rnd,
+            draw_params=ParamServer({"time_begin": time_step, "occupancy": {
+                "draw_occupancies": 1}})
+        )
+        # scenario.obstacle_by_id()
+        ego_vehicle.draw(rnd,
+                         draw_params=ParamServer(
+                             {"time_begin": time_step,
+                              "occupancy": {
+                                  "draw_occupancies": 1,
+                                  "shape": {"rectangle": {
+                                      "facecolor": "black",
+                                      "edgecolor": "black"}
+                                  }},
+                              "dynamic_obstacle":
+                                  {"vehicle_shape": {
+                                      "occupancy": {
+                                          "shape": {"rectangle": {
+                                              "facecolor": "black",
+                                              "edgecolor": "black"}
+                                          }}}}}))
+        ego_vehicle.prediction.trajectory.draw(rnd, draw_params={
+            "trajectory": {"shape": {"rectangle": {"facecolor": "black"}}}})
+        rnd.render()
+        plt.show()

@@ -42,16 +42,20 @@ class RuleConstraints:
         self._target_lanes = defaultdict(List[Lane])
         self._long_constraints = list()
         self._lat_constraints = list()
-        self._tc_obj.simulation_lateral.set_inputs(self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
-        # self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(
-        #     self._world_state.ego_vehicle.lane.width(
-        #     self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)) / (2 * self._world_state.dt)) \
-        #         + self._tc_obj.tc_time_step
+        self._prec_veh = None
+        self._foll_veh = None
+        if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
+                                        CutOffAction.LANECHANGERIGHT]:
+            self._tc_obj.simulation_lateral.set_inputs(self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
+            # self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(
+            #     self._world_state.ego_vehicle.lane.width(
+            #     self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)) / (2 * self._world_state.dt)) \
+            #         + self._tc_obj.tc_time_step
 
-        lane_dist = self._world_state.ego_vehicle.lane.width(
-            self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
-            abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
-        self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_leave_time(lane_dist)/self._world_state.dt)
+            lane_dist = self._world_state.ego_vehicle.lane.width(
+                self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
+                abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
+            self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_leave_time(lane_dist)/self._world_state.dt)
 
     def _add(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
@@ -62,10 +66,10 @@ class RuleConstraints:
                 for predicate in proposition.children:
                     if proposition in self._sel_prop and k >= self._tc_obj.tv_time_step:
                         prop_assignment = -prop_assignment
+                    if predicate.base_name == PredInSameLane.predicate_name:
+                        self.ConstrInSameLane(k, prop_assignment)
                     if k < self._tc_obj.tv_time_step or proposition in self._sel_prop:
-                        if predicate.base_name == PredInSameLane.predicate_name:
-                            self.ConstrInSameLane(k, prop_assignment)
-                        elif predicate.base_name == PredInFrontOf.predicate_name:
+                        if predicate.base_name == PredInFrontOf.predicate_name:
                             s_constr = self.ConstrInFrontOf(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         elif predicate.base_name == PredSafeDistPrec.predicate_name:
@@ -131,15 +135,16 @@ class RuleConstraints:
         # num_target_lanes = len(self._target_lanes[self._tc_obj.tc_time_step])
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N+1):
             # if len(self._target_lanes[k]) < num_target_lanes:
-            prec_veh, foll_veh = self._determine_related_veh(k, self._target_lanes[k])
+            if k in self._target_lanes:
+                self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
             # num_target_lanes = len(self._target_lanes[k])
             index = k - self._tc_obj.tc_time_step
-            if prec_veh is not None:  # todo fix the length
+            if self._prec_veh is not None:  # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [-np.inf, prec_veh.rear_s(k) - self._veh_config.length])
-            if foll_veh is not None:
+                                                                  [-np.inf, self._prec_veh.rear_s(k) - self._veh_config.length])
+            if self._foll_veh is not None:
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [foll_veh.front_s(k) + self._veh_config.length, np.inf])
+                                                                  [self._foll_veh.front_s(k) + self._veh_config.length, np.inf])
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         # todo: fix in stl monitor

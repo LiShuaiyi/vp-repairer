@@ -41,7 +41,7 @@ class QPRepairer(QPPlanner):
         self._settings = self.config_settings()
         self._reformulate_planning_problem()
         # todo: check time horizon
-        self._time_horizon = (self._N - self._cut_off_time_step) * self._scenario.dt
+        self._time_horizon = round((self._N - self._cut_off_time_step) * self._scenario.dt, 1)
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
                                                                            self._planning_problem)
