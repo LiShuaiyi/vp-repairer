@@ -35,6 +35,35 @@ if __name__ == '__main__':
     rule = "R_G1"
     ego_veh = scenario.obstacle_by_id(ego_id)
     ego_veh.prediction.trajectory.state_list = ego_veh.prediction.trajectory.state_list[:40]
+
+    # for time_step in range(ego_veh.prediction.final_time_step):
+    #     rnd = MPRenderer(figsize=(20, 10))
+    #     scenario.draw(
+    #         rnd,
+    #         draw_params=ParamServer({"time_begin": time_step, "occupancy": {
+    #             "draw_occupancies": 1}})
+    #     )
+    #     # scenario.obstacle_by_id()
+    #     ego_veh.draw(rnd,
+    #                      draw_params=ParamServer(
+    #                          {"time_begin": time_step,
+    #                           "occupancy": {
+    #                               "draw_occupancies": 1,
+    #                               "shape": {"rectangle": {
+    #                                   "facecolor": "black",
+    #                                   "edgecolor": "black"}
+    #                               }},
+    #                           "dynamic_obstacle":
+    #                               {"vehicle_shape": {
+    #                                   "occupancy": {
+    #                                       "shape": {"rectangle": {
+    #                                           "facecolor": "black",
+    #                                           "edgecolor": "black"}
+    #                                       }}}}}))
+    #     ego_veh.prediction.trajectory.draw(rnd, draw_params={
+    #         "trajectory": {"shape": {"rectangle": {"facecolor": "black"}}}})
+    #     rnd.render()
+    #     plt.show()
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -53,14 +82,32 @@ if __name__ == '__main__':
                              assign_prop)
     repaired_trajectory = qp_repairer.repair()
     ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
+    ego_veh.prediction.shape =  ego_vehicle.prediction.shape
     for time_step in range(ego_vehicle.prediction.final_time_step):
-        rnd = MPRenderer(figsize=(20, 10))
+        rnd = MPRenderer(figsize=(40, 10))
         scenario.draw(
             rnd,
             draw_params=ParamServer({"time_begin": time_step, "occupancy": {
-                "draw_occupancies": 1}})
+                "draw_occupancies": 1}, 'dynamic_obstacle': {'show_label': True}})
         )
         # scenario.obstacle_by_id()
+        ego_veh.draw(rnd,
+                         draw_params=ParamServer(
+                             {"time_begin": time_step,
+                              "occupancy": {
+                                  "draw_occupancies": 1,
+                                  "shape": {"rectangle": {
+                                      "facecolor": "green",
+                                      "edgecolor": "green"}
+                                  }},
+                              "dynamic_obstacle":
+                                  {"vehicle_shape": {
+                                      "occupancy": {
+                                          "shape": {"rectangle": {
+                                              "facecolor": "green",
+                                              "edgecolor": "green"}
+                                          }}}}}))
+        # 'dynamic_obstacle': {'show_label': True}}
         ego_vehicle.draw(rnd,
                          draw_params=ParamServer(
                              {"time_begin": time_step,
@@ -76,8 +123,8 @@ if __name__ == '__main__':
                                           "shape": {"rectangle": {
                                               "facecolor": "black",
                                               "edgecolor": "black"}
-                                          }}}}}))
-        ego_vehicle.prediction.trajectory.draw(rnd, draw_params={
+                                          }}}, 'show_label': True}}))
+        ego_vehicle.prediction.trajectory.draw(rnd, draw_params={"time_begin": time_step,
             "trajectory": {"shape": {"rectangle": {"facecolor": "black"}}}})
         rnd.render()
         plt.show()
