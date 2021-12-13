@@ -43,6 +43,7 @@ class CutOffBase(ABC):
         road_boundary_obstacle, road_boundary_sg_rectangles = boundary.create_road_boundary_obstacle(self.scenario)
         self.scenario.add_objects(road_boundary_obstacle)
         self._collision_checker = create_collision_checker(self.scenario)
+        self.scenario.remove_obstacle(road_boundary_obstacle)
         if self._visualize:
             # visualize scenario and collision objects
             self.rnd = MPRenderer(figsize=(25, 10))

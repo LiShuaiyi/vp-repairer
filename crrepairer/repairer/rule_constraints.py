@@ -22,6 +22,7 @@ from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 from commonroad.scenario.trajectory import Trajectory
 
+
 class RuleConstraints:
     def __init__(self,
                  tc_object: TC,
