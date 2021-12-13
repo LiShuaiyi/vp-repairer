@@ -184,11 +184,11 @@ class RuleConstraints:
             self._target_vehicle.states_lon[time_step].v,
             self._veh_config.a_min_x,
             self._target_vehicle.vehicle_param.get('a_min'),
-            0.0  # todo: t react
+            0.4 # todo: t react
         )
         safe_dist = max(0., safe_dist)
         if prop_assignment > 0:
-            return [-np.inf, self._target_vehicle.rear_s(time_step) - safe_dist]
+            return [-np.inf, self._target_vehicle.rear_s(time_step) - safe_dist - self._veh_config.wheelbase]
         else:
             return [self._target_vehicle.rear_s(time_step) - safe_dist, np.inf]
 
