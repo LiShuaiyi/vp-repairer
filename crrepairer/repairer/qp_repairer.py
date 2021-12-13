@@ -98,7 +98,8 @@ class QPRepairer(QPPlanner):
                               obstacle_type=ObstacleType.CAR,
                               prediction=pred,
                               obstacle_shape=shape,
-                              initial_state=self.planning_problem.initial_state)
+                              initial_state=self._ego_vehicle.initial_state)
+        self._ego_vehicle.initial_state
         return ego
 
     def transform_merge_trajectory(self, trajectory: QPTrajectory):
