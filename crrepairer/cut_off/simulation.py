@@ -92,23 +92,30 @@ class SimulationLong(SimulationBase, ABC):
             action)
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
 
-    def set_inputs(self):
+    def set_inputs(self, velocity):
         self._input.acceleration_y = 0
+        v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch
+        if velocity > v_switch:
+            a_max = self._vehicle_dynamics.parameters.longitudinal.a_max * v_switch / velocity
+        else:
+            a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
         if self.action == CutOffAction.BRAKE:
-            self._input.acceleration = - self._vehicle_dynamics.parameters.longitudinal.a_max
+            self._input.acceleration = - a_max
         elif self.action == CutOffAction.KICKDOWN:
-            self._input.acceleration = self._vehicle_dynamics.parameters.longitudinal.a_max
+            self._input.acceleration = a_max
         else:
             self._input.acceleration = 0
 
     def simulate_state_list(self):
-        self.set_inputs()
         pre_state = self._cut_off_state
         while pre_state.time_step < self._time_horizon:
             self._input.time_step = pre_state.time_step
+            self.set_inputs(pre_state.velocity)
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
             if suc_state and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
                 check_elements(suc_state)
+                # if abs(suc_state.orientation) > np.pi/2:
+                #     suc_state.orientation = np.sign(suc_state.orientation)*abs(suc_state.orientation-np.pi/2)
                 self._state_list.append(suc_state)
                 pre_state = suc_state
             else:

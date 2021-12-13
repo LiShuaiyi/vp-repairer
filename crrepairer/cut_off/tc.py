@@ -25,7 +25,7 @@ class TC(CutOffBase, ABC):
         self.rule_monitor = rule_monitor
         self._tv = rule_monitor.tv * self.dT  # time step -> time
         self._other_id = rule_monitor.other_id
-        self._visualize = True
+        self._visualize = False
         self._compliant_maneuver = None
         self._tc = None
         self._simulation_lateral = None
