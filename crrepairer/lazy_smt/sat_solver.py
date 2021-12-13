@@ -2,7 +2,7 @@ import sympy as sp
 from enum import Enum
 from sympy.logic.inference import satisfiable
 
-from crmonitor.predicates.rule import AbstractionNode
+from crmonitor.predicates.rule import PropositionNode
 from sympy.abc import *
 
 
@@ -12,12 +12,22 @@ class SATISFIABILITY(Enum):
 
 
 class SATSolver:
-    def __init__(self, sat_encoding):
+    def __init__(self, sat_encoding, abs_robust_ttv):
         self._formula = self.construct_cnf(sat_encoding)
+        self._sat_list = self.check_prior_satisfiability(abs_robust_ttv)
+        self._init_assign = list()
 
     @property
     def formula(self):
         return self._formula
+
+    @property
+    def satisfiable_subformula_list(self):
+        return self._sat_list
+
+    @property
+    def initial_assignment(self):
+        return self._init_assign
 
     @staticmethod
     def construct_cnf(stl_formula):
@@ -32,6 +42,18 @@ class SATSolver:
         cnf_formula = str(sp.to_cnf(sp_formula))
         return cnf_formula
 
+    def check_prior_satisfiability(self, abs_robust_tv):
+        self._init_assign = self.obtain_initial_assignment(abs_robust_tv)
+        satisfiable_list = list()
+        for i in range(len(self._init_assign)):
+            updated_formula = self._formula + '& ~' + self._init_assign[i]
+            for j in range(len(self._init_assign)):
+                if j is not i:
+                    updated_formula += '&' + self._init_assign[j]
+            if satisfiable(eval(updated_formula)):
+                satisfiable_list.append(self._init_assign[i][-1])
+        return satisfiable_list
+
     def solve(self):
         """
         SAT Solver.
@@ -44,7 +66,7 @@ class SATSolver:
         else:
             return SATISFIABILITY.SAT
 
-    def update_formula(self, abstraction: AbstractionNode):
+    def update_formula(self, abstraction: PropositionNode):
         """
         Based on the syntax for sympy, the SAT formula is updated by negating the unsatisfiable abstraction:
         phi_SAT = phi_SAT and (not abs)
@@ -56,3 +78,13 @@ class SATSolver:
         if sign != '~':
             sign = ''
         self._formula += ' & ~' + sign + abstraction.alphabet
+
+    @staticmethod
+    def obtain_initial_assignment(robustness_tv):
+        ini_assign = list()
+        for _, row in robustness_tv.iterrows():
+            if row['robustness'] > 0:
+                ini_assign.append(row['alphabet'])
+            else:
+                ini_assign.append('~' + row['alphabet'])
+        return ini_assign

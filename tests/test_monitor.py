@@ -16,9 +16,10 @@ class TestMonitor(unittest.TestCase):
         scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
         self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
 
-    # def test_mtl_monitor(self):
-    #     mtl_monitor = MTLRuleMonitor(self.scenario, ["B_SRG1"])
-    #     mtl_monitor.evaluate_initially()
+    def test_mtl_monitor(self):
+        ego_id = 1003
+        mtl_monitor = MTLRuleMonitor(self.scenario, ego_id, ["B_SRG1"])
+        mtl_monitor.evaluate_initially()
 
     def test_robustness_monitor(self):
         pass
