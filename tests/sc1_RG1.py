@@ -27,8 +27,8 @@ from z3 import sat, unsat
 # scenario_id = "DEU_LocationBUpper-1_22_T-1"
 # scenario_id = "ZAM_Zip-1_60_T-1"
 scenario_id = "DEU_Gar-1_1_T-1"
-# file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
-#             + scenario_id + ".xml"
+file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
+            + scenario_id + ".xml"
 # file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
 #             + scenario_id + ".xml"
 file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/" \
