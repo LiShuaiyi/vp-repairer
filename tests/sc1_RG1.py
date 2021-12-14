@@ -23,9 +23,11 @@ import matplotlib.pyplot as plt
 from z3 import sat, unsat
 
 scenario_id = "DEU_LocationBUpper-1_22_T-1"
-
+# scenario_id = "ZAM_Zip-1_60_T-1"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
+# file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/" \
+#             + scenario_id + ".xml"
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
@@ -82,7 +84,7 @@ if __name__ == '__main__':
                              assign_prop)
     repaired_trajectory = qp_repairer.repair()
     ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
-    ego_veh.prediction.shape =  ego_vehicle.prediction.shape
+    ego_veh.prediction.shape = ego_vehicle.prediction.shape
     for time_step in range(ego_vehicle.prediction.final_time_step):
         rnd = MPRenderer(figsize=(40, 10))
         scenario.draw(

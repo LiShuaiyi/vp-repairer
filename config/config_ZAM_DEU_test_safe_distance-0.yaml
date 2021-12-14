@@ -26,7 +26,7 @@ vehicle_settings:
         length: 4.508                   # vehicle length
         width: 1.610                    # vehicle width
         wheelbase: 2.578
-        desired_speed: 30.0             # target speed (for planning)
+        react_time: 0.4
         resampling_reference_path: 1.5  # resampling for curvilinear CoSy
         #overwrite_reference_path: [436, 446, 456, 466, 478]
         max_curvature_reference_path: 0.01  # for curvilinear CoSy

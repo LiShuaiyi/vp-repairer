@@ -67,10 +67,11 @@ class RuleConstraints:
                 for predicate in proposition.children:
                     if proposition in self._sel_prop and k >= self._tc_obj.tv_time_step:
                         prop_assignment = -prop_assignment
-                    if predicate.base_name == PredInSameLane.predicate_name:
-                        self.ConstrInSameLane(k, prop_assignment)
+
                     if k < self._tc_obj.tv_time_step or proposition in self._sel_prop:
-                        if predicate.base_name == PredInFrontOf.predicate_name:
+                        if predicate.base_name == PredInSameLane.predicate_name:
+                            self.ConstrInSameLane(k, prop_assignment)
+                        elif predicate.base_name == PredInFrontOf.predicate_name:
                             s_constr = self.ConstrInFrontOf(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         elif predicate.base_name == PredSafeDistPrec.predicate_name:
@@ -94,13 +95,17 @@ class RuleConstraints:
     def lateral_constraints(self, long_traj: QPTrajectory, ):
         ego_lane = self._world_state.ego_vehicle.lane  # todo, fix
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N+1):
-            target_lanes = self._target_lanes[k]
-            index = k - self._tc_obj.tc_time_step
-            x_curr, y_curr = ego_lane.clcs.convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
-            lane_boundary_left = -target_lanes[-1].clcs_left.convert_to_curvilinear_coords(x_curr, y_curr)
-            lane_boundary_right = -target_lanes[0].clcs_right.convert_to_curvilinear_coords(x_curr, y_curr)
-            self._lat_constraints.append([lane_boundary_right[1] + self._veh_config.wheelbase/2.,
-                                          lane_boundary_left[1] - self._veh_config.wheelbase/2.])
+            if k in self._target_lanes:
+                target_lanes = self._target_lanes[k]
+                index = k - self._tc_obj.tc_time_step
+                x_curr, y_curr = ego_lane.clcs.convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
+                lane_boundary_left = -target_lanes[-1].clcs_left.convert_to_curvilinear_coords(x_curr, y_curr)
+                lane_boundary_right = -target_lanes[0].clcs_right.convert_to_curvilinear_coords(x_curr, y_curr)
+                self._lat_constraints.append([lane_boundary_right[1] + self._veh_config.wheelbase / 2.,
+                                              lane_boundary_left[1] - self._veh_config.wheelbase / 2.])
+            else:
+                self._lat_constraints.append([-np.inf,
+                                              np.inf])
         lateral_constraints = np.array(self._lat_constraints)
         d_min = np.array((lateral_constraints[1:, 0], lateral_constraints[1:, 0], lateral_constraints[1:, 0])).transpose()
         d_max = np.array((lateral_constraints[1:, 1], lateral_constraints[1:, 1], lateral_constraints[1:, 1])).transpose()
@@ -184,7 +189,8 @@ class RuleConstraints:
             self._target_vehicle.states_lon[time_step].v,
             self._veh_config.a_min_x,
             self._target_vehicle.vehicle_param.get('a_min'),
-            0.4 # todo: t react
+            self._veh_config.react_time
+
         )
         safe_dist = max(0., safe_dist)
         if prop_assignment > 0:
