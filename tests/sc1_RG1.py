@@ -14,20 +14,22 @@ from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 
+from vehiclemodels.parameters_vehicle2 import parameters_vehicle2
+
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.visualization.param_server import ParamServer
-
+from commonroad.geometry.shape import Rectangle
 import matplotlib.pyplot as plt
 
 from z3 import sat, unsat
 
 scenario_id = "DEU_LocationBUpper-1_22_T-1"
 # scenario_id = "ZAM_Zip-1_60_T-1"
-file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
-            + scenario_id + ".xml"
-# file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/" \
+# file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
 #             + scenario_id + ".xml"
+file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/" \
+            + scenario_id + ".xml"
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
@@ -36,7 +38,9 @@ if __name__ == '__main__':
     ego_id = 9
     rule = "R_G1"
     ego_veh = scenario.obstacle_by_id(ego_id)
-    ego_veh.prediction.trajectory.state_list = ego_veh.prediction.trajectory.state_list[:40]
+    veh_shape = ego_veh.obstacle_shape
+
+    ego_veh.prediction.trajectory.state_list = ego_veh.prediction.trajectory.state_list[:20]
 
     # for time_step in range(ego_veh.prediction.final_time_step):
     #     rnd = MPRenderer(figsize=(20, 10))
@@ -85,8 +89,9 @@ if __name__ == '__main__':
     repaired_trajectory = qp_repairer.repair()
     ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
     ego_veh.prediction.shape = ego_vehicle.prediction.shape
+    plot_limits = [-380, -200, 0, 20]
     for time_step in range(ego_vehicle.prediction.final_time_step):
-        rnd = MPRenderer(figsize=(40, 10))
+        rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
         scenario.draw(
             rnd,
             draw_params=ParamServer({"time_begin": time_step, "occupancy": {
