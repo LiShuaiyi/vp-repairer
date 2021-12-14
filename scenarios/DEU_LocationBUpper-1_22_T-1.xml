@@ -6417,8 +6417,8 @@
     <type>car</type>
     <shape>
       <rectangle>
-        <length>5.05</length>
-        <width>2.22</width>
+        <length>4.508</length>
+        <width>1.610</width>
       </rectangle>
     </shape>
     <initialState>
