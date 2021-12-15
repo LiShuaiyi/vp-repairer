@@ -14,19 +14,19 @@ vehicle_settings:
         max_speed_x: 48.0
         min_speed_y: -4.0               # v_y constraint (see Eq. 6b in Manzinger, 2020)
         max_speed_y: 4.0
-        a_max_x: 12.0                   # a_x constraint (see Eq. 6b in Manzinger, 2020)
+        a_max_x: 20.0                   # a_x constraint (see Eq. 6b in Manzinger, 2020)
         a_min_x: -10.0
         a_max_y: 6.0                    # a_y constraint (see Eq. 6b in Manzinger, 2020)
         a_min_y: -6.0
         a_max: 15.0
-        j_min_x: -15.0                  # jerk constraint (for planning)
-        j_max_x: 15.0
+        j_min_x: -20.0                  # jerk constraint (for planning)
+        j_max_x: 20.0
         j_min_y: -10.0
         j_max_y: 10.0
         length: 4.508                   # vehicle length
         width: 1.610                    # vehicle width
         wheelbase: 2.578
-        react_time: 0.0
+        react_time: 0.4
         resampling_reference_path: 1.5  # resampling for curvilinear CoSy
         #overwrite_reference_path: [436, 446, 456, 466, 478]
         max_curvature_reference_path: 0.01  # for curvilinear CoSy

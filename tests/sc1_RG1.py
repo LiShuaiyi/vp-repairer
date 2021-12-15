@@ -24,9 +24,10 @@ import matplotlib.pyplot as plt
 
 from z3 import sat, unsat
 
-# scenario_id = "DEU_LocationBUpper-1_22_T-1"
-# scenario_id = "ZAM_Zip-1_60_T-1"
-scenario_id = "DEU_Gar-1_1_T-1"
+scenario_id = "DEU_LocationBUpper-1_22_T-1"
+# scenario_id = "ZAM_Zip-1_67_T-1"
+# scenario_id = "DEU_Gar-1_1_T-1"
+# scenario_id = "ZAM_Tutorial-1_2_T-1"
 file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
             + scenario_id + ".xml"
 # file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
@@ -38,13 +39,17 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 200
+    ego_id = 9
     rule = "R_G1"
+    scenario.remove_obstacle(scenario.obstacle_by_id(3))
+    scenario.remove_obstacle(scenario.obstacle_by_id(4))
+    scenario.remove_obstacle(scenario.obstacle_by_id(5))
+
     ego_veh = scenario.obstacle_by_id(ego_id)
-    veh_shape = ego_veh.obstacle_shape
+    # veh_shape = ego_veh.obstacle_shape
 
-    # ego_veh.prediction.trajectory.state_list = ego_veh.prediction.trajectory.state_list[:20]
-
+    ego_veh.prediction.trajectory.state_list = ego_veh.prediction.trajectory.state_list[:20]
+    #
     # for time_step in range(ego_veh.prediction.final_time_step):
     #     rnd = MPRenderer(figsize=(20, 10))
     #     scenario.draw(
@@ -92,21 +97,22 @@ if __name__ == '__main__':
     repaired_trajectory = qp_repairer.repair()
     ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
     ego_veh.prediction.shape = ego_vehicle.prediction.shape
-    plot_limits = [-10, 100, -8, 8]
+    # plot_limits = [-10, 100, -8, 8]
+    plot_limits = [-380, -180, 0, 20]
     for time_step in range(ego_vehicle.prediction.final_time_step):
         rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
         scenario.draw(
             rnd,
             draw_params=ParamServer({"time_begin": time_step, "trajectory": {
                      "draw_trajectory": False}, "occupancy": {
-                "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': False}})
+                "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
         )
         # scenario.obstacle_by_id()
         ego_veh.draw(rnd,
                          draw_params=ParamServer(
                              {"time_begin": time_step,
                               "occupancy": {
-                                  "draw_occupancies": 0,
+                                  "draw_occupancies": 1,
                                   "shape": {"rectangle": {
                                       "facecolor": "green",
                                       "edgecolor": "green"}
@@ -122,7 +128,7 @@ if __name__ == '__main__':
                          draw_params=ParamServer(
                              {"time_begin": time_step,
                               "occupancy": {
-                                  "draw_occupancies": 0,
+                                  "draw_occupancies": 1,
                                   "shape": {"rectangle": {
                                       "facecolor": "black",
                                       "edgecolor": "black"}
@@ -135,8 +141,9 @@ if __name__ == '__main__':
                                           "shape": {"rectangle": {
                                               "facecolor": "black",
                                               "edgecolor": "black"}
-                                          }}}, 'show_label': False}}))
+                                          }}}, 'show_label': True}}))
         # ego_vehicle.prediction.trajectory.draw(rnd, draw_params={"time_begin": time_step,
         #     "trajectory": {"shape": {"rectangle": {"facecolor": "black"}}}})
         rnd.render()
+        plt.title(str(time_step))
         plt.show()

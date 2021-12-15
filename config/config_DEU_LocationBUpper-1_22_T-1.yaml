@@ -19,8 +19,8 @@ vehicle_settings:
         a_max_y: 6.0                    # a_y constraint (see Eq. 6b in Manzinger, 2020)
         a_min_y: -6.0
         a_max: 15.0
-        j_min_x: -15.0                  # jerk constraint (for planning)
-        j_max_x: 15.0
+        j_min_x: -20.0                  # jerk constraint (for planning)
+        j_max_x: 20.0
         j_min_y: -10.0
         j_max_y: 10.0
         length: 4.508                   # vehicle length
