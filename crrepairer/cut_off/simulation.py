@@ -108,9 +108,9 @@ class SimulationLong(SimulationBase, ABC):
 
     def simulate_state_list(self):
         pre_state = self._cut_off_state
+        self.set_inputs(pre_state.velocity)
         while pre_state.time_step < self._time_horizon:
             self._input.time_step = pre_state.time_step
-            self.set_inputs(pre_state.velocity)
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
             if suc_state and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
                 check_elements(suc_state)
@@ -118,6 +118,7 @@ class SimulationLong(SimulationBase, ABC):
                 #     suc_state.orientation = np.sign(suc_state.orientation)*abs(suc_state.orientation-np.pi/2)
                 self._state_list.append(suc_state)
                 pre_state = suc_state
+                self.set_inputs(pre_state.velocity)
             else:
                 self._input.acceleration = 0
         return self._state_list
