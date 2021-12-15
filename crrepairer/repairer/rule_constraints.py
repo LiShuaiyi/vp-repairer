@@ -185,7 +185,8 @@ class RuleConstraints:
 
     def ConstrSafeDist(self, time_step: int, prop_assignment: float):
         safe_dist = self.safe_distance(
-            self._veh_config.desired_speed,
+            # self._veh_config.desired_speed,
+            self._ini_traj.state_at_time_step(time_step).velocity,
             self._target_vehicle.states_lon[time_step].v,
             self._veh_config.a_min_x,
             self._target_vehicle.vehicle_param.get('a_min'),
@@ -194,9 +195,11 @@ class RuleConstraints:
         )
         safe_dist = max(0., safe_dist)
         if prop_assignment > 0:
-            return [-np.inf, self._target_vehicle.rear_s(time_step) - safe_dist - self._veh_config.wheelbase]
+            return [-np.inf, self._target_vehicle.rear_s(time_step) - safe_dist -
+                    self._veh_config.wheelbase/2 - self._veh_config.length/2]
         else:
-            return [self._target_vehicle.rear_s(time_step) - safe_dist, np.inf]
+            return [self._target_vehicle.rear_s(time_step) - safe_dist
+                - self._veh_config.wheelbase/2 - self._veh_config.length/2, np.inf]
 
     def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
         print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
@@ -227,10 +230,11 @@ class RuleConstraints:
 
         assert a_min_follow and 0 > a_min_lead, \
             '<BrakingPredicateCollection/safe_distance>: acceleration is not valid'
-        d_safe = \
-            (v_lead ** 2) / (-2 * abs(a_min_lead)) - (v_follow ** 2) / (-2 * abs(a_min_follow)) \
+        d_safe = (
+            (v_lead ** 2) / (-2. * np.abs(a_min_lead))
+            - (v_follow ** 2) / (-2. * np.abs(a_min_follow))
             + v_follow * t_react_follow
-
+        )
         return d_safe
 
 #
