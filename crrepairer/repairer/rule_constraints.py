@@ -12,6 +12,7 @@ from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredIn
                                                           PredCutIn, PredSafeDistPrec)
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
+from stl_crmonitor.crmonitor.common.vehicle import Vehicle
 
 from typing import Dict, List
 
@@ -34,9 +35,9 @@ class RuleConstraints:
         self._rule_abstracter = rule_abstracter
         self._world_state = self._rule_abstracter.world_state
         self._other_id = rule_abstracter.other_veh_id
-        self._ego_id = rule_abstracter.vehicle_id # if no target vehicle, the other_id stands for the ego
+        self._ego_id = rule_abstracter.vehicle_id  # if no target vehicle, the other_id stands for the ego
         self._ini_traj = initial_trajectory
-        self._target_vehicle = self._world_state.vehicle_by_id(self._other_id)
+        self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
         self._veh_config = veh_config
         self._compliant_maneuver = tc_object.compliant_maneuver
         self._sel_prop = sel_proposition
@@ -45,6 +46,7 @@ class RuleConstraints:
         self._lat_constraints = list()
         self._prec_veh = None
         self._foll_veh = None
+        self._safe_dis_list = [False for _ in range(self._tc_obj.N + 1 - self._tc_obj.tc_time_step)]
         if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
                                         CutOffAction.LANECHANGERIGHT]:
             self._tc_obj.simulation_lateral.set_inputs(self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
@@ -57,6 +59,10 @@ class RuleConstraints:
                 self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
                 abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
             self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_leave_time(lane_dist)/self._world_state.dt)
+
+    @property
+    def safe_distance_modes(self):
+        return self._safe_dis_list
 
     def _add(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
@@ -75,8 +81,7 @@ class RuleConstraints:
                             s_constr = self.ConstrInFrontOf(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         elif predicate.base_name == PredSafeDistPrec.predicate_name:
-                            s_constr = self.ConstrSafeDist(k, prop_assignment)
-                            s_limit = self._get_overlap(s_limit, s_constr)
+                            self.ConstrSafeDist(k, prop_assignment)
                         elif predicate.base_name == PredCutIn.predicate_name:
                             self.ConstrCutIn(k, prop_assignment)
                         else:
@@ -91,7 +96,8 @@ class RuleConstraints:
         longitudinal_constraints = np.array(self._long_constraints)
         return LonConstraints.construct_constraints(longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
                                                     longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
-                                                    prec_veh=self._world_state.scenario.obstacle_by_id(self._other_id))
+                                                    prec_veh=self._target_vehicle,
+                                                    tc_time_step=self._tc_obj.tc_time_step)
 
     def lateral_constraints(self, long_traj: QPTrajectory, ):
         ego_lane = self._world_state.ego_vehicle.lane  # todo, fix
@@ -148,9 +154,10 @@ class RuleConstraints:
             index = k - self._tc_obj.tc_time_step
             if self._prec_veh is not None:  # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [-np.inf, self._prec_veh.rear_s(k) -
-                                                                   self._veh_config.wheelbase/2 -
-                                                                   self._veh_config.length/2])
+                                                                  [-np.inf, self._prec_veh.rear_s(k)
+                                                                   - self._veh_config.wheelbase/2
+                                                                   - self._veh_config.length/2
+                                                                   ])
             if self._foll_veh is not None:
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
                                                                   [self._foll_veh.front_s(k) +
@@ -190,11 +197,12 @@ class RuleConstraints:
 
     def ConstrSafeDist(self, time_step: int, prop_assignment: float):
         if prop_assignment > 0:
-            return [-np.inf, self._target_vehicle.rear_s(time_step) -
-                    self._veh_config.wheelbase/2 - self._veh_config.length/2]
+                self._safe_dis_list[time_step - self._tc_obj.tc_time_step] = True
+            # return [-np.inf, self._target_vehicle.rear_s(time_step)]
         else:
-            return [self._target_vehicle.rear_s(time_step)
-                    - self._veh_config.wheelbase/2 - self._veh_config.length/2, np.inf]
+            pass
+            # if there is no safe distance requirement,
+            # return [-np.inf, np.inf]
 
     def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
         print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")

@@ -38,6 +38,7 @@ class TestSMTSolver(unittest.TestCase):
             state.position[0] += 10.0
         obs.prediction.occupancy_set = obs.prediction._create_occupancy_set()
         obs._initial_occupancy_shape.center[0] += 10
+        self.scenario.obstacle_by_id(ego_id).prediction.trajectory.state_list = self.scenario.obstacle_by_id(ego_id).prediction.trajectory.state_list[:30]
         rule = "R_G1"
         self.rule_abstracter = RuleAbstracter(self.scenario,
                                               self.planning_problem,

@@ -66,7 +66,9 @@ class QPRepairer(QPPlanner):
     def repair(self):
         long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self._formulate_reference()
-        traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon)
+        traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon,
+                                                                 safe_dis_modes=self._rule_constraints.
+                                                                 safe_distance_modes)
         if status is not 'optimal':
             raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: failed')
         print('\t\t Lateral optimization')
@@ -99,7 +101,6 @@ class QPRepairer(QPPlanner):
                               prediction=pred,
                               obstacle_shape=shape,
                               initial_state=self._ego_vehicle.initial_state)
-        self._ego_vehicle.initial_state
         return ego
 
     def transform_merge_trajectory(self, trajectory: QPTrajectory):
