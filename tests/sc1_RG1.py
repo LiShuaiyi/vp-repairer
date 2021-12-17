@@ -41,9 +41,9 @@ if __name__ == '__main__':
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 9
     rule = "R_G1"
-    scenario.remove_obstacle(scenario.obstacle_by_id(3))
-    scenario.remove_obstacle(scenario.obstacle_by_id(4))
-    scenario.remove_obstacle(scenario.obstacle_by_id(5))
+    # scenario.remove_obstacle(scenario.obstacle_by_id(3))
+    # scenario.remove_obstacle(scenario.obstacle_by_id(4))
+    # scenario.remove_obstacle(scenario.obstacle_by_id(5))
 
     ego_veh = scenario.obstacle_by_id(ego_id)
     # veh_shape = ego_veh.obstacle_shape

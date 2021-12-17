@@ -90,7 +90,8 @@ class RuleConstraints:
         self.ConstrCollisionFree()
         longitudinal_constraints = np.array(self._long_constraints)
         return LonConstraints.construct_constraints(longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
-                                                    longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1])
+                                                    longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
+                                                    prec_veh=self._world_state.scenario.obstacle_by_id(self._other_id))
 
     def lateral_constraints(self, long_traj: QPTrajectory, ):
         ego_lane = self._world_state.ego_vehicle.lane  # todo, fix
@@ -147,10 +148,14 @@ class RuleConstraints:
             index = k - self._tc_obj.tc_time_step
             if self._prec_veh is not None:  # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [-np.inf, self._prec_veh.rear_s(k) - self._veh_config.length])
+                                                                  [-np.inf, self._prec_veh.rear_s(k) -
+                                                                   self._veh_config.wheelbase/2 -
+                                                                   self._veh_config.length/2])
             if self._foll_veh is not None:
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                  [self._foll_veh.front_s(k) + self._veh_config.length, np.inf])
+                                                                  [self._foll_veh.front_s(k) +
+                                                                   self._veh_config.wheelbase/2,
+                                                                   np.inf])
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         # todo: fix in stl monitor
@@ -184,22 +189,12 @@ class RuleConstraints:
             return [front_s, np.inf]
 
     def ConstrSafeDist(self, time_step: int, prop_assignment: float):
-        safe_dist = self.safe_distance(
-            # self._veh_config.desired_speed,
-            self._ini_traj.state_at_time_step(time_step).velocity,
-            self._target_vehicle.states_lon[time_step].v,
-            self._veh_config.a_min_x,
-            self._target_vehicle.vehicle_param.get('a_min'),
-            self._veh_config.react_time
-
-        )
-        safe_dist = max(0., safe_dist)
         if prop_assignment > 0:
-            return [-np.inf, self._target_vehicle.rear_s(time_step) - safe_dist -
+            return [-np.inf, self._target_vehicle.rear_s(time_step) -
                     self._veh_config.wheelbase/2 - self._veh_config.length/2]
         else:
-            return [self._target_vehicle.rear_s(time_step) - safe_dist
-                - self._veh_config.wheelbase/2 - self._veh_config.length/2, np.inf]
+            return [self._target_vehicle.rear_s(time_step)
+                    - self._veh_config.wheelbase/2 - self._veh_config.length/2, np.inf]
 
     def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
         print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
