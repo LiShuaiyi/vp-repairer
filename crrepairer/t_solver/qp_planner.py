@@ -1,20 +1,16 @@
-import math
-
 from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongReference
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
-from stl_crmonitor.crmonitor.common.world_state import WorldState
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
 from cut_off.tc import TC
-from repairer.rule_constraints import RuleConstraints
-from lazy_smt.abstracter import RuleAbstracter
+from t_solver.rule_constraints import RuleConstraints
+from abstraction.abstracter import RuleAbstracter
 
-from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.trajectory import Trajectory, State
-from commonroad.scenario.scenario import Scenario, DynamicObstacle, TrajectoryPrediction, ObstacleType
+from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
 from commonroad.geometry.shape import Rectangle
@@ -22,10 +18,9 @@ from commonroad.geometry.shape import Rectangle
 from typing import List
 import yaml
 import os
-import numpy as np
 
 
-class QPRepairer(QPPlanner):
+class QPPlannerRepair(QPPlanner):
     def __init__(self,
                  rule_abstracter: RuleAbstracter,
                  tc_object: TC,

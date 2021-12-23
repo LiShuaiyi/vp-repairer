@@ -1,28 +1,11 @@
-import os
-import math
-import unittest
-from sympy.logic.boolalg import is_cnf
-
-from lazy_smt.abstracter import RuleAbstracter
-from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
-from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
-from lazy_smt.t_solver import TSolver, CutOffAction
-from lazy_smt.dpll import DPLL
-from repairer.qp_repairer import QPRepairer
-from repairer.rule_constraints import RuleConstraints
-from crmonitor.common.world_state import WorldState
-from crmonitor.predicates.rule import PropositionNode
-from stl_crmonitor.crmonitor.common.road_network import Lane
-
-from vehiclemodels.parameters_vehicle2 import parameters_vehicle2
+from abstraction.abstracter import RuleAbstracter
+from t_solver.t_solver import TSolver
+from t_solver.qp_planner import QPPlannerRepair
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.visualization.param_server import ParamServer
-from commonroad.geometry.shape import Rectangle
 import matplotlib.pyplot as plt
-
-from z3 import sat, unsat
 
 scenario_id = "DEU_LocationBUpper-1_22_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
@@ -91,9 +74,9 @@ if __name__ == '__main__':
     print(tc_object.tv_time_step,
           tc_object.tc_time_step,
           tc_object.compliant_maneuver)
-    qp_repairer = QPRepairer(rule_abstracter,
-                             tc_object,
-                             assign_prop)
+    qp_repairer = QPPlannerRepair(rule_abstracter,
+                                  tc_object,
+                                  assign_prop)
     repaired_trajectory = qp_repairer.repair()
     ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
     ego_veh.prediction.shape = ego_vehicle.prediction.shape

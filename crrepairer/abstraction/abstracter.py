@@ -1,7 +1,7 @@
 import math
 from typing import List, Dict, Union, Iterable
 
-from lazy_smt.monitor import STLRuleMonitor, MonitorType
+from abstraction.monitor import STLRuleMonitor, MonitorType
 # CommonRoad STL monitor
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PredicateNode, PropositionNode

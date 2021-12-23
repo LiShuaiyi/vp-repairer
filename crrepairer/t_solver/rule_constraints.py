@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from cut_off.simulation import CutOffAction
 from cut_off.tc import TC
-from lazy_smt.abstracter import RuleAbstracter
+from abstraction.abstracter import RuleAbstracter
 
 from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
                                                           PredCutIn, PredSafeDistPrec)

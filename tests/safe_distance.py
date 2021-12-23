@@ -2,7 +2,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from commonroad_repair.crrepairer.repairer.rule_constraints import RuleConstraints
 from vehiclemodels.parameters_vehicle2 import parameters_vehicle2
 
 def safe_distance(v_follow, v_lead: float,

@@ -9,7 +9,7 @@ from crmonitor.common.world_state import WorldState
 
 import matplotlib.pyplot as plt
 from cut_off.base import CutOffBase
-from lazy_smt.monitor import STLRuleMonitor
+from abstraction.monitor import STLRuleMonitor
 from cut_off.utils import update_ego_vehicle, visualize_state_list
 from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 

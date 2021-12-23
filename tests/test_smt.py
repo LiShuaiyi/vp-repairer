@@ -4,15 +4,11 @@ import unittest
 from sympy.logic.boolalg import is_cnf
 
 from lazy_smt.abstracter import RuleAbstracter
-from lazy_smt.monitor import STLRuleMonitor, MTLRuleMonitor
-from lazy_smt.sat_solver import SATSolver, SATISFIABILITY
-from lazy_smt.t_solver import TSolver, CutOffAction
-from lazy_smt.dpll import DPLL
-from repairer.qp_repairer import QPRepairer
-from repairer.rule_constraints import RuleConstraints
-from crmonitor.common.world_state import WorldState
+from sat_solver.sat_solver import SATSolver, SATISFIABILITY
+from t_solver.t_solver import TSolver, CutOffAction
+from sat_solver.dpll import DPLL
+from t_solver.qp_planner import QPPlannerRepair
 from crmonitor.predicates.rule import PropositionNode
-from stl_crmonitor.crmonitor.common.road_network import Lane
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
@@ -128,10 +124,10 @@ class TestSMTSolver(unittest.TestCase):
         t_solver.assign_proposition(assign_prop)
         tc = t_solver.search_tc()
         tc_object = t_solver.tc_object
-        qp_repairer = QPRepairer(self.rule_abstracter,
-                                 tc_object,
-                                 assign_prop)
-        self.assertIsInstance(qp_repairer, QPRepairer)
+        qp_repairer = QPPlannerRepair(self.rule_abstracter,
+                                      tc_object,
+                                      assign_prop)
+        self.assertIsInstance(qp_repairer, QPPlannerRepair)
         repaired_trajectory = qp_repairer.repair()
         ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
         for time_step in range(ego_vehicle.prediction.final_time_step):

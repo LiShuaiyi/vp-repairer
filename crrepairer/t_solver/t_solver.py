@@ -3,7 +3,7 @@ from typing import List
 
 from cut_off.tc import TC
 from cut_off.simulation import CutOffAction
-from lazy_smt.monitor import STLRuleMonitor
+from abstraction.monitor import STLRuleMonitor
 
 from stl_crmonitor.crmonitor.predicates.predicate import Category
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
