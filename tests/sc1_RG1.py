@@ -77,7 +77,7 @@ if __name__ == '__main__':
     qp_repairer = QPPlannerRepair(rule_abstracter,
                                   tc_object,
                                   assign_prop)
-    repaired_trajectory = qp_repairer.repair()
+    repaired_trajectory = qp_repairer.plan()
     ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
     ego_veh.prediction.shape = ego_vehicle.prediction.shape
     # plot_limits = [-10, 100, -8, 8]

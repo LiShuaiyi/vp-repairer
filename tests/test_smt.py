@@ -128,7 +128,7 @@ class TestSMTSolver(unittest.TestCase):
                                       tc_object,
                                       assign_prop)
         self.assertIsInstance(qp_repairer, QPPlannerRepair)
-        repaired_trajectory = qp_repairer.repair()
+        repaired_trajectory = qp_repairer.plan()
         ego_vehicle = qp_repairer.convert_traj_to_ego_vehicle(repaired_trajectory)
         for time_step in range(ego_vehicle.prediction.final_time_step):
             rnd = MPRenderer(figsize=(20, 10))

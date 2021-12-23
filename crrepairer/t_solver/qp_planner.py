@@ -35,7 +35,6 @@ class QPPlannerRepair(QPPlanner):
         self._cut_off_state = self._initial_trajectory.state_at_time_step(self._cut_off_time_step)
         self._settings = self.config_settings()
         self._reformulate_planning_problem()
-        # todo: check time horizon
         self._time_horizon = round((self._N - self._cut_off_time_step) * self._scenario.dt, 1)
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
@@ -54,24 +53,24 @@ class QPPlannerRepair(QPPlanner):
 
     def _reformulate_planning_problem(self,):
         if not hasattr(self._planning_problem, "initial_state"):
-            raise ValueError("<QPRepairer>: the initial state needs to be specified")
+            raise ValueError("<QPPlannerRepair>: the initial state needs to be specified")
         self._planning_problem.initial_state = self._ego_vehicle.initial_state
         self._planning_problem.goal = update_goal_state(self._initial_trajectory)
 
-    def repair(self):
+    def plan(self):
         long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self._formulate_reference()
         traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon,
                                                                  safe_dis_modes=self._rule_constraints.
                                                                  safe_distance_modes)
         if status is not 'optimal':
-            raise ValueError('<QPPlanner/_longitudinal_trajectory_planning>: failed')
+            raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
         print('\t\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
         trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr)
         # convert trajectory to cartesian space
         if status is not 'optimal':
-            raise ValueError('<QPPlanner/_lateral_trajectory_planning>: failed')
+            raise ValueError('<QPPlannerRepair/_lateral_trajectory_planning>: failed')
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
 
@@ -85,7 +84,7 @@ class QPPlannerRepair(QPPlanner):
         :param vehicle_id: ID of ego vehicle
         :return: The CommonRoad DynamicObstacle object containing the current trajectory
         """
-       # get trajectory
+        # get trajectory
         shape = Rectangle(self._vehicle_configuration.length,
                           self._vehicle_configuration.width)
         pred = TrajectoryPrediction(cr_trajectory, shape)
