@@ -1,9 +1,7 @@
 from abc import ABC
 from enum import Enum
-from typing import Union, Iterable
 
-from commonroad.scenario.scenario import Scenario, DynamicObstacle
-from commonroad.planning.planning_problem import PlanningProblem
+from commonroad.scenario.scenario import DynamicObstacle
 
 from commonroad_repair.crrepairer.repairer.base import TrajectoryRepair
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
@@ -32,6 +30,13 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     def repair(self, *args, **kwargs):
         while self.sat_solver.solve() == SATISFIABILITY.SAT:
             select_proposition = self.sat_solver.model()
-            self.t_solver.check(select_proposition)
+            repairability, repaired_traj = self.t_solver.check(select_proposition)
+            if repairability:
+                return repaired_traj
+            else:
+                # todo: use propositions with dpll
+                self.sat_solver.update_formula(select_proposition)
+                # todo: check feasibility
+        return None
 
 
