@@ -5,14 +5,14 @@ from copy import deepcopy
 from commonroad.common.file_reader import CommonRoadFileReader
 from crmonitor.common.world_state import WorldState
 
-from cut_off.ttcc import TTCC
+from cut_off.tc import TC
 from cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
 from cut_off.utils import check_velocity_feasibility, visualize_state_list
 
 from lazy_smt.monitor import STLRuleMonitor
 
 
-class TestTTCC(unittest.TestCase):
+class TestTC(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
@@ -20,12 +20,12 @@ class TestTTCC(unittest.TestCase):
         scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
         self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
 
-    def test_ttv(self):
+    def test_tv(self):
         ego_id = 1003
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
         rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
-        ttcc_object = TTCC(rule_monitor)
-        assert math.isclose(ttcc_object.ttv, 2.0, abs_tol=1e-2)
+        tc_object = TC(rule_monitor)
+        assert math.isclose(tc_object.tv, 2.0, abs_tol=1e-2)
 
     def test_simulation_long(self):
         ego_id = 1003
@@ -93,33 +93,50 @@ class TestTTCC(unittest.TestCase):
         # # visualize the scenario and the trajectory
         # visualize_state_list(simulated_state_list2, self.scenario, SL2.parameters)
 
-    def test_ttcc_1(self):
+    def test_tc_1(self):
         ego_id = 1003
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
         rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
-        ttcc_object = TTCC(rule_monitor)
+        tc_object = TC(rule_monitor)
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1007))
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
-        ttcc = ttcc_object.generate(CutOffAction.LANECHANGELEFT)
+        tc = tc_object.generate([CutOffAction.LANECHANGELEFT])
         self.assertEqual(
-            ttcc,
+            tc,
             -math.inf)
 
-    def test_ttcc_2(self):
+    def test_tc_2(self):
         ego_id = 1003
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
         rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
-        ttcc_object = TTCC(rule_monitor)
-        ttcc = ttcc_object.generate(CutOffAction.LANECHANGERIGHT)
-        assert math.isclose(ttcc, 0.5, abs_tol=1e-2)
+        tc_object = TC(rule_monitor)
+        tc = tc_object.generate([CutOffAction.LANECHANGERIGHT])
+        self.assertEqual(
+            round(tc, 1),
+            .5)
 
-    def test_ttcc_3(self):
+    def test_tc_3(self):
         ego_id = 1003
         world_state = WorldState.create_from_scenario(self.scenario, ego_id)
         rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
-        ttcc_object = TTCC(rule_monitor)
-        ttcc = ttcc_object.generate(CutOffAction.BRAKE)
+        tc_object = TC(rule_monitor)
+        tc = tc_object.generate([CutOffAction.BRAKE])
         self.assertEqual(
-            round(ttcc, 1),
+            round(tc, 1),
             -math.inf)
+
+    def test_tc_total(self):
+        ego_id = 1003
+        world_state = WorldState.create_from_scenario(self.scenario, ego_id)
+        rule_monitor = STLRuleMonitor(world_state, ["R_G1"])
+        tc_object = TC(rule_monitor)
+        tc = tc_object.generate([CutOffAction.LANECHANGELEFT,
+                                 CutOffAction.LANECHANGERIGHT,
+                                 CutOffAction.KICKDOWN])
+        self.assertEqual(
+            round(tc, 1),
+            .5)
+        self.assertEqual(
+            tc_object.compliant_maneuver, CutOffAction.LANECHANGERIGHT
+        )

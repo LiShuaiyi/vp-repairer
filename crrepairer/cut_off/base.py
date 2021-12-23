@@ -35,20 +35,19 @@ class CutOffBase(ABC):
         self.scenario = world_state.scenario
         self._ego_vehicle = self.scenario.obstacle_by_id(world_state.ego_vehicle.id)
         self._world_state = world_state
+        self._N = self._world_state.num_time_steps - 1
         self._dT = dT
-        self._visualize = False
+        self._visualize = True
         if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:
             self.scenario.remove_obstacle(self._ego_vehicle)
         road_boundary_obstacle, road_boundary_sg_rectangles = boundary.create_road_boundary_obstacle(self.scenario)
         self.scenario.add_objects(road_boundary_obstacle)
         self._collision_checker = create_collision_checker(self.scenario)
+        self.scenario.remove_obstacle(road_boundary_obstacle)
         if self._visualize:
             # visualize scenario and collision objects
-            rnd = MPRenderer(figsize=(25, 10))
-            self.scenario.lanelet_network.draw(rnd)
-            self._collision_checker.draw(rnd, draw_params={'facecolor': 'blue', 'draw_mesh': True})
-            rnd.render()
-            plt.show()
+            self.rnd = MPRenderer(figsize=(25, 10))
+            self.scenario.lanelet_network.draw(self.rnd)
         # create the shape of the ego vehicle
         self._shape = self._ego_vehicle.obstacle_shape
 
@@ -70,10 +69,18 @@ class CutOffBase(ABC):
 
     @dT.setter
     def dT(self, dT: float):
-        raise Exception("You are not allowed to change the time step of the planner!")
+        raise Exception("You are not allowed to change the time step!")
+
+    @property
+    def N(self) -> int:
+        return self._N
+
+    @N.setter
+    def N(self, N: int):
+        raise Exception("You are not allowed to change the number of time steps!")
 
     @abstractmethod
-    def generate(self):
+    def generate(self,  *args, **kwargs):
         """
         generates the cut off state: time-to-react or time-to-compliance
         """

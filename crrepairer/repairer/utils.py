@@ -291,7 +291,7 @@ def convert_to_cr_ego_vehicle(
                                                             'invalid! width = {}'.format(length)
 
     # get trajectory
-    traj = self._convert_to_cr_trajectory(wheelbase)
+    traj = self.convert_to_cr_trajectory(wheelbase)
     for state in traj.state_list:
         state.time_step += tstcc
     traj.initial_time_step = initial_trajectory.state_list[0].time_step
