@@ -3,7 +3,7 @@ import math
 import unittest
 from sympy.logic.boolalg import is_cnf
 
-from lazy_smt.abstracter import RuleAbstracter
+from abstraction.abstracter import RuleAbstracter
 from sat_solver.sat_solver import SATSolver, SATISFIABILITY
 from t_solver.t_solver import TSolver, CutOffAction
 from sat_solver.dpll import DPLL
@@ -66,13 +66,17 @@ class TestSMTSolver(unittest.TestCase):
 
     def test_sat_solver(self):
         sat_solver = SATSolver(self.rule_abstracter.sat_encoding,
-                               self.rule_abstracter.rule_monitor.prop_robust_ttv)
+                               self.rule_abstracter.propositions,
+                               self.rule_abstracter.prop_robust_ttv)
         # check whether the formula in the sat solver is CNF or not
         self.assertTrue(is_cnf(sat_solver.formula))
         sat = sat_solver.solve()
         self.assertEqual(
             sat, SATISFIABILITY.SAT
         )
+        m = sat_solver.model()
+        self.assertEqual(m.name,
+                         '(keeps_safe_distance_prec__a0_a1 >= 0)')
         abstraction_nodes = self.rule_abstracter.propositions
         # after negating all the abstractions
         for abs_node in abstraction_nodes:
@@ -102,7 +106,9 @@ class TestSMTSolver(unittest.TestCase):
     def test_satisfiability_checking(self):
         # initial assignment: a b ~c ~d
         sat_encoding = '(a | b) & c & ~d'
-        sat_solver = SATSolver(sat_encoding, self.rule_abstracter.rule_monitor.prop_robust_ttv)
+        sat_solver = SATSolver(sat_encoding,
+                               self.rule_abstracter.propositions,
+                               self.rule_abstracter.rule_monitor.prop_robust_ttv)
         self.assertEqual(sat_solver.satisfiable_subformula_list,
                          ["c"])
 

@@ -4,6 +4,8 @@ from typing import List
 from cut_off.tc import TC
 from cut_off.simulation import CutOffAction
 from abstraction.monitor import STLRuleMonitor
+from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
+from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 
 from stl_crmonitor.crmonitor.predicates.predicate import Category
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
@@ -11,10 +13,10 @@ from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
 class TSolver:
     def __init__(self,
-                 rule_monitor: STLRuleMonitor):
-        self._rule_monitor = rule_monitor
+                 rule_abstracter: RuleAbstracter):
+        self._rule_absracter = rule_abstracter
         self._sel_prop = None
-        self._tc_obj = TC(self._rule_monitor)
+        self._tc_obj = TC(rule_abstracter.rule_monitor)
         self._compliant_maneuvers = list()
         self._tc_dict = dict()
         self._repairability = False
@@ -27,7 +29,7 @@ class TSolver:
     def compliant_maneuvers(self):
         return self._compliant_maneuvers
 
-    def assign_proposition(self, proposition: List[PropositionNode]):
+    def assign_proposition(self, proposition: PropositionNode):
         self._sel_prop = proposition
         self._compliant_maneuvers = self.set_compliant_maneuver()
 
@@ -59,7 +61,10 @@ class TSolver:
         return tc
 
     def _optimization_based_repair(self):
-        repaired_trajectory = None
+        qp_planner = QPPlannerRepair(self._rule_absracter,
+                                     self._tc_obj,
+                                     self._sel_prop)
+        repaired_trajectory = qp_planner.plan()
         return repaired_trajectory
 
     def check(self, proposition: PropositionNode):

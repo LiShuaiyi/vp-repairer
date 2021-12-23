@@ -12,9 +12,14 @@ class SATISFIABILITY(Enum):
 
 
 class SATSolver:
-    def __init__(self, sat_encoding, abs_robust_ttv):
+    def __init__(self,
+                 sat_encoding,
+                 prop_nodes,
+                 prop_robust_ttv):
         self._formula = self.construct_cnf(sat_encoding)
-        self._sat_list = self.check_prior_satisfiability(abs_robust_ttv)
+        self._prop_nodes = prop_nodes
+        self._sat_list = self.check_prior_satisfiability(prop_robust_ttv)
+        self._prop_robust_ttv = prop_robust_ttv
         self._init_assign = list()
 
     @property
@@ -66,7 +71,18 @@ class SATSolver:
         else:
             return SATISFIABILITY.SAT
 
-    def update_formula(self, abstraction: PropositionNode):
+    def model(self) -> PropositionNode:
+        """
+        return a satisfiable proposition - based on robustness
+        """
+        # select the unvisited predicates within the least robust proposition at time step TTV.
+        prop_rob_min = self._prop_robust_ttv[self._prop_robust_ttv.robustness.abs()
+                                             == self._prop_robust_ttv.robustness.abs().min()].alphabet.values
+        sel_prop_node = next((prop_node for prop_node in self._prop_nodes
+                              if prop_node.alphabet == prop_rob_min), None)
+        return sel_prop_node
+
+    def update_formula(self, proposition: PropositionNode):
         """
         Based on the syntax for sympy, the SAT formula is updated by negating the unsatisfiable abstraction:
         phi_SAT = phi_SAT and (not abs)
@@ -74,10 +90,10 @@ class SATSolver:
         if self._formula[0] is not '(':
             self._formula = '(' + self.formula + ')'
         # generate counterexample
-        sign = self._formula[self.formula.index(abstraction.alphabet)-1]
+        sign = self._formula[self.formula.index(proposition.alphabet) - 1]
         if sign != '~':
             sign = ''
-        self._formula += ' & ~' + sign + abstraction.alphabet
+        self._formula += ' & ~' + sign + proposition.alphabet
 
     @staticmethod
     def obtain_initial_assignment(robustness_tv):
