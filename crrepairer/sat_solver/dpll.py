@@ -4,14 +4,15 @@ from z3 import sat, unsat
 
 
 class DPLL:
-    def __init__(self, sympy_cnf: str):
+    def __init__(self, sympy_cnf: str,
+                 prop_robust_ttv):
         """
         Based on the pseudocode in Wikipedia page:
         https://en.wikipedia.org/wiki/DPLL_algorithm
         """
         assert is_cnf(sympy_cnf), "<DPLL>: the given formula {} is not CNF or" \
                                   " not in the sympy CNF standard".format(sympy_cnf)
-        self._literals = self.get_literal(sympy_cnf)
+        self._literals = self.get_literal(sympy_cnf, prop_robust_ttv)
         self._cnf = self._assign_cnf(sympy_cnf)
         pass
 
@@ -24,7 +25,13 @@ class DPLL:
         return self._cnf
 
     @staticmethod
-    def get_literal(cnf):
+    def get_literal(cnf, prop_robust_ttv):
+        # use robustness as heuristics to rank the literals
+
+        # select the unvisited predicates within the least robust proposition at time step TTV.
+        prop_rob_min = self._prop_rob_ttv[self._prop_rob_ttv.robustness.abs()
+                                          == self._prop_rob_ttv.robustness.abs().min()].alphabet.values
+
         return [i for i in list(set(cnf)) if i.isalpha()]
 
     @staticmethod

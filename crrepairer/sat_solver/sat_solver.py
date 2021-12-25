@@ -1,6 +1,8 @@
 import sympy as sp
 from enum import Enum
+
 from sympy.logic.inference import satisfiable
+from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
 
 from crmonitor.predicates.rule import PropositionNode
 from sympy.abc import *
@@ -21,6 +23,8 @@ class SATSolver:
         self._sat_list = self.check_prior_satisfiability(prop_robust_ttv)
         self._prop_robust_ttv = prop_robust_ttv
         self._init_assign = list()
+        self._dpll_solver = DPLL(self._formula)
+
 
     @property
     def formula(self):
@@ -65,7 +69,8 @@ class SATSolver:
         There are multiple choices for the SAT solver. *Pysat* supports the DIMACS CNF as inputs, *z3*: a theorem solver
         from Microsoft Research. Here we use *sympy* for its easy-to-use interface
         """
-        sat_result = satisfiable(eval(self._formula))
+        # sat_result = satisfiable(eval(self._formula))
+        sat_result = self._dpll_solver.solve()
         if sat_result is False:
             return SATISFIABILITY.UNSAT
         else:
