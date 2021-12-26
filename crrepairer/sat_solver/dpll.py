@@ -5,7 +5,7 @@ from z3 import sat, unsat
 
 class DPLL:
     def __init__(self, sympy_cnf: str,
-                 prop_robust_ttv):
+                 prop_robust_ttv=None):
         """
         Based on the pseudocode in Wikipedia page:
         https://en.wikipedia.org/wiki/DPLL_algorithm
@@ -14,7 +14,6 @@ class DPLL:
                                   " not in the sympy CNF standard".format(sympy_cnf)
         self._literals = self.get_literal(sympy_cnf, prop_robust_ttv)
         self._cnf = self._assign_cnf(sympy_cnf)
-        pass
 
     @property
     def literals(self):
@@ -26,13 +25,14 @@ class DPLL:
 
     @staticmethod
     def get_literal(cnf, prop_robust_ttv):
+        def robustness_degree(alp):
+            return abs(prop_robust_ttv[prop_robust_ttv['alphabet'] == alp].robustness.values[0])
+        literals = [i for i in list(set(cnf)) if i.isalpha()]
         # use robustness as heuristics to rank the literals
-
-        # select the unvisited predicates within the least robust proposition at time step TTV.
-        prop_rob_min = self._prop_rob_ttv[self._prop_rob_ttv.robustness.abs()
-                                          == self._prop_rob_ttv.robustness.abs().min()].alphabet.values
-
-        return [i for i in list(set(cnf)) if i.isalpha()]
+        if prop_robust_ttv is not None:
+            return sorted(literals, key=robustness_degree)
+        else:
+            return literals
 
     @staticmethod
     def _assign_cnf(sympy_cnf):
@@ -40,7 +40,6 @@ class DPLL:
 
     def update_cnf(self, cnf):
         self._cnf = self._assign_cnf(cnf)
-        self._literals = self.get_literal(cnf)
 
     def solve(self):
         return self._solve(deepcopy(self._cnf))
@@ -55,15 +54,21 @@ class DPLL:
         if sum(len(clause) == 0 for clause in cnf):
             # if \phi contains an empty clause
             return unsat
-        literals = self.get_literal(''.join(cnf))
+        literals = self.get_literal(''.join(cnf), None)
         lit = self.choose_literal(literals)
         print('<DPLL>: literal ({}) is selected'.format(lit))
-        return self._solve(deepcopy(cnf) + [lit]) or self._solve(deepcopy(cnf) + ['~'+lit])
+        if self._solve(deepcopy(cnf) + [lit]):
+            return sat
+        elif self._solve(deepcopy(cnf) + ['~'+lit]):
+            return sat
+        else:
+            return unsat
 
     def choose_literal(self, literals):
         return literals[0]
 
     def unit_propagation(self, cnf, units):
+        print(units)
         for unit in units:
             if '~' in unit:
                 i = 0
@@ -92,6 +97,6 @@ class DPLL:
         return cnf
 
 if __name__ == '__main__':
-    dpll_solver = DPLL('~a | ~b | c | d')
-    dpll_solver.update_cnf('a & ~a')
+    dpll_solver = DPLL('~a | ~b | ~c | ~d')
+    # dpll_solver.update_cnf('a & ~a')
     print(dpll_solver.solve())
