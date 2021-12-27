@@ -14,7 +14,11 @@ class DPLL:
                                   " not in the sympy CNF standard".format(sympy_cnf)
         self._cnf = self._assign_cnf(sympy_cnf)
         self._literals = self.get_literal(self._cnf, prop_robust_ttv)
+        self._model = set()
 
+    @property
+    def model(self):
+        return self._model
 
     @property
     def literals(self):
@@ -60,8 +64,9 @@ class DPLL:
             return sat
         if sum(len(clause) == 0 for clause in cnf):
             # if \phi contains an empty clause
+            self._model = set()
             return unsat
-        literals = self.get_literal(''.join(cnf), None)
+        literals = self.get_literal(cnf, None)
         lit = self.choose_literal(literals)
         print('<DPLL>: literal ({}) is selected'.format(lit))
         if self._solve(deepcopy(cnf) + [lit]):
@@ -69,14 +74,15 @@ class DPLL:
         elif self._solve(deepcopy(cnf) + ['~'+lit]):
             return sat
         else:
+            self._model = set()
             return unsat
 
     def choose_literal(self, literals):
         return literals[0]
 
     def unit_propagation(self, cnf, units):
-        print(units, cnf)
         for unit in units:
+            self._model.add(unit)
             if '~' in unit:
                 i = 0
                 while True:
@@ -104,6 +110,7 @@ class DPLL:
         return cnf
 
 if __name__ == '__main__':
-    dpll_solver = DPLL('(a | b) & ~a')
+    dpll_solver = DPLL('~a | ~b | c | d')
     # dpll_solver.update_cnf('a & ~a')
     print(dpll_solver.solve())
+    print(dpll_solver.model)

@@ -116,9 +116,13 @@ class TestSMTSolver(unittest.TestCase):
         dpll_solver = DPLL('~a | ~b | c | d', self.rule_abstracter.prop_robust_ttv)
         self.assertEqual(dpll_solver.solve(),
                          sat)
+        self.assertEqual(list(dpll_solver.model),
+                         ['~a'])
         dpll_solver.update_cnf('~a & a')
         self.assertEqual(dpll_solver.solve(),
                          unsat)
+        self.assertEqual(dpll_solver.model,
+                         set())
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self.rule_abstracter.rule_monitor)
