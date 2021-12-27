@@ -75,8 +75,7 @@ class TestSMTSolver(unittest.TestCase):
             sat, SATISFIABILITY.SAT
         )
         m = sat_solver.model()
-        self.assertEqual(m.name,
-                         '(keeps_safe_distance_prec__a0_a1 >= 0)')
+        self.assertEqual(list(m), ['d'])
         abstraction_nodes = self.rule_abstracter.propositions
         # after negating all the abstractions
         for abs_node in abstraction_nodes:

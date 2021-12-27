@@ -23,7 +23,7 @@ class SATSolver:
         self._sat_list = self.check_prior_satisfiability(prop_robust_ttv)
         self._prop_robust_ttv = prop_robust_ttv
         self._init_assign = list()
-        self._dpll_solver = DPLL(self._formula)
+        self._dpll_solver = DPLL(self._formula, prop_robust_ttv)
 
 
     @property
@@ -70,22 +70,23 @@ class SATSolver:
         from Microsoft Research. Here we use *sympy* for its easy-to-use interface
         """
         # sat_result = satisfiable(eval(self._formula))
+        self._dpll_solver.update_cnf(self._formula)
         sat_result = self._dpll_solver.solve()
         if sat_result is False:
             return SATISFIABILITY.UNSAT
         else:
             return SATISFIABILITY.SAT
 
-    def model(self) -> PropositionNode:
+    def model(self) -> set:
         """
         return a satisfiable proposition - based on robustness
         """
         # select the unvisited predicates within the least robust proposition at time step TTV.
-        prop_rob_min = self._prop_robust_ttv[self._prop_robust_ttv.robustness.abs()
-                                             == self._prop_robust_ttv.robustness.abs().min()].alphabet.values
-        sel_prop_node = next((prop_node for prop_node in self._prop_nodes
-                              if prop_node.alphabet == prop_rob_min), None)
-        return sel_prop_node
+        # prop_rob_min = self._prop_robust_ttv[self._prop_robust_ttv.robustness.abs()
+        #                                      == self._prop_robust_ttv.robustness.abs().min()].alphabet.values
+        # sel_prop_node = next((prop_node for prop_node in self._prop_nodes
+        #                       if prop_node.alphabet == prop_rob_min), None)
+        return self._dpll_solver.model
 
     def update_formula(self, proposition: PropositionNode):
         """

@@ -13,6 +13,7 @@ class DPLL:
         assert is_cnf(sympy_cnf), "<DPLL>: the given formula {} is not CNF or" \
                                   " not in the sympy CNF standard".format(sympy_cnf)
         self._cnf = self._assign_cnf(sympy_cnf)
+        self._prop_robust_ttv = prop_robust_ttv
         self._literals = self.get_literal(self._cnf, prop_robust_ttv)
         self._model = set()
 
@@ -46,10 +47,12 @@ class DPLL:
 
     @staticmethod
     def _assign_cnf(sympy_cnf):
-        return sympy_cnf.replace('(', '').replace(')', '').replace('|', '').split(' & ')
+        return sympy_cnf.replace('(', '').replace('~~', '').replace(')', '').replace('|', '').split(' & ')
 
     def update_cnf(self, cnf):
         self._cnf = self._assign_cnf(cnf)
+        self._literals = self.get_literal(self._cnf, self._prop_robust_ttv)
+        self._model = set()
 
     def solve(self):
         return self._solve(deepcopy(self._cnf))
@@ -66,7 +69,7 @@ class DPLL:
             # if \phi contains an empty clause
             self._model = set()
             return unsat
-        literals = self.get_literal(cnf, None)
+        literals = self.get_literal(cnf, self._prop_robust_ttv)
         lit = self.choose_literal(literals)
         print('<DPLL>: literal ({}) is selected'.format(lit))
         if self._solve(deepcopy(cnf) + [lit]):
@@ -109,8 +112,9 @@ class DPLL:
                         break
         return cnf
 
+
 if __name__ == '__main__':
-    dpll_solver = DPLL('~a | ~b | c | d')
+    dpll_solver = DPLL('(~a | ~b | c | d) & ~~a & ~~b & ~c & ~d')
     # dpll_solver.update_cnf('a & ~a')
     print(dpll_solver.solve())
     print(dpll_solver.model)
