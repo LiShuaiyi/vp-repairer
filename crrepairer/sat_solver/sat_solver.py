@@ -72,10 +72,7 @@ class SATSolver:
         # sat_result = satisfiable(eval(self._formula))
         self._dpll_solver.update_cnf(self._formula)
         sat_result = self._dpll_solver.solve()
-        if sat_result is False:
-            return SATISFIABILITY.UNSAT
-        else:
-            return SATISFIABILITY.SAT
+        return sat_result
 
     def model(self) -> set:
         """

@@ -114,7 +114,7 @@ class DPLL:
 
 
 if __name__ == '__main__':
-    dpll_solver = DPLL('(~a | ~b | c | d) & ~~a & ~~b & ~c & ~d')
+    dpll_solver = DPLL('(c | d | ~a | ~b) & ~~a & ~d & ~c & ~~b')
     # dpll_solver.update_cnf('a & ~a')
     print(dpll_solver.solve())
     print(dpll_solver.model)

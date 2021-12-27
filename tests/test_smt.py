@@ -70,9 +70,9 @@ class TestSMTSolver(unittest.TestCase):
                                self.rule_abstracter.prop_robust_ttv)
         # check whether the formula in the sat solver is CNF or not
         self.assertTrue(is_cnf(sat_solver.formula))
-        sat = sat_solver.solve()
+        sat_re = sat_solver.solve()
         self.assertEqual(
-            sat, SATISFIABILITY.SAT
+            sat_re, sat
         )
         m = sat_solver.model()
         self.assertEqual(list(m), ['d'])
@@ -80,9 +80,9 @@ class TestSMTSolver(unittest.TestCase):
         # after negating all the abstractions
         for abs_node in abstraction_nodes:
             sat_solver.update_formula(abs_node)
-        sat = sat_solver.solve()
+        sat_re = sat_solver.solve()
         self.assertEqual(
-            sat, SATISFIABILITY.UNSAT
+            sat_re, unsat
         )
 
     def test_t_solver(self):
@@ -116,7 +116,7 @@ class TestSMTSolver(unittest.TestCase):
         self.assertEqual(dpll_solver.solve(),
                          sat)
         self.assertEqual(list(dpll_solver.model),
-                         ['~a'])
+                         ['d'])
         dpll_solver.update_cnf('~a & a')
         self.assertEqual(dpll_solver.solve(),
                          unsat)
