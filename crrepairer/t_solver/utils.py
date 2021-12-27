@@ -1,5 +1,6 @@
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.scenario.trajectory import Trajectory, State
+from commonroad.scenario.obstacle import TrajectoryPrediction, ObstacleType
 from commonroad.planning.goal import GoalRegion
 from commonroad.geometry.shape import Rectangle
 
@@ -274,4 +275,24 @@ def update_goal_state(initial_trajectory: Trajectory):
     goal_region = GoalRegion([goal_state])
     return goal_region
 
+def convert_traj_to_ego_vehicle(shape,
+                                initial_state,
+                                cr_trajectory: Trajectory,
+                                vehicle_id: int = 0) -> DynamicObstacle:
+    """
+    Converts trajectory object to CommonRoad obstacle with specified width and length
+    :param width: The width of the ego vehicle
+    :param length: The length of the ego vehicle
+    :param vehicle_id: ID of ego vehicle
+    :return: The CommonRoad DynamicObstacle object containing the current trajectory
+    """
+    # get trajectory
+    pred = TrajectoryPrediction(cr_trajectory, shape)
 
+    # create new object
+    ego = DynamicObstacle(obstacle_id=vehicle_id,
+                          obstacle_type=ObstacleType.CAR,
+                          prediction=pred,
+                          obstacle_shape=shape,
+                          initial_state=initial_state)
+    return ego

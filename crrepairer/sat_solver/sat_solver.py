@@ -81,9 +81,13 @@ class SATSolver:
         # select the unvisited predicates within the least robust proposition at time step TTV.
         # prop_rob_min = self._prop_robust_ttv[self._prop_robust_ttv.robustness.abs()
         #                                      == self._prop_robust_ttv.robustness.abs().min()].alphabet.values
-        # sel_prop_node = next((prop_node for prop_node in self._prop_nodes
-        #                       if prop_node.alphabet == prop_rob_min), None)
-        return self._dpll_solver.model
+        dpll_model = self._dpll_solver.model
+        prop_list = list()
+        for m in list(dpll_model):
+            sel_prop_node = next((prop_node for prop_node in self._prop_nodes
+                                  if prop_node.alphabet == m), None)
+            prop_list.append(sel_prop_node)
+        return prop_list
 
     def update_formula(self, proposition: PropositionNode):
         """

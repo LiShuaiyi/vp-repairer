@@ -4,6 +4,7 @@ from typing import List
 from cut_off.tc import TC
 from cut_off.simulation import CutOffAction
 from abstraction.monitor import STLRuleMonitor
+from abstraction.monitor import STLRuleMonitor
 from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 
@@ -14,12 +15,13 @@ from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 class TSolver:
     def __init__(self,
                  rule_abstracter: RuleAbstracter):
-        self._rule_absracter = rule_abstracter
         self._sel_prop = None
+        self._rule_abstracter = rule_abstracter
         self._tc_obj = TC(rule_abstracter.rule_monitor)
         self._compliant_maneuvers = list()
         self._tc_dict = dict()
         self._repairability = False
+        self._qp_planner = None
 
     @property
     def tc_object(self):
@@ -29,7 +31,7 @@ class TSolver:
     def compliant_maneuvers(self):
         return self._compliant_maneuvers
 
-    def assign_proposition(self, proposition: PropositionNode):
+    def assign_proposition(self, proposition: List[PropositionNode]):
         self._sel_prop = proposition
         self._compliant_maneuvers = self.set_compliant_maneuver()
 
@@ -61,13 +63,13 @@ class TSolver:
         return tc
 
     def _optimization_based_repair(self):
-        qp_planner = QPPlannerRepair(self._rule_absracter,
+        self._qp_planner = QPPlannerRepair(self._rule_abstracter,
                                      self._tc_obj,
                                      self._sel_prop)
-        repaired_trajectory = qp_planner.plan()
+        repaired_trajectory = self._qp_planner.plan()
         return repaired_trajectory
 
-    def check(self, proposition: PropositionNode):
+    def check(self, proposition: List[PropositionNode]):
         repaired_traj = None
         self.assign_proposition(proposition)
         tc = self.search_tc()
@@ -77,6 +79,7 @@ class TSolver:
             repaired_traj = self._optimization_based_repair()
             if repaired_traj is not None:
                 self._repairability = True
+
         return self._repairability, repaired_traj
 
 
