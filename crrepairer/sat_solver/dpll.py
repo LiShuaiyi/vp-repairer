@@ -12,8 +12,9 @@ class DPLL:
         """
         assert is_cnf(sympy_cnf), "<DPLL>: the given formula {} is not CNF or" \
                                   " not in the sympy CNF standard".format(sympy_cnf)
-        self._literals = self.get_literal(sympy_cnf, prop_robust_ttv)
         self._cnf = self._assign_cnf(sympy_cnf)
+        self._literals = self.get_literal(self._cnf, prop_robust_ttv)
+
 
     @property
     def literals(self):
@@ -26,8 +27,13 @@ class DPLL:
     @staticmethod
     def get_literal(cnf, prop_robust_ttv):
         def robustness_degree(alp):
-            return abs(prop_robust_ttv[prop_robust_ttv['alphabet'] == alp].robustness.values[0])
-        literals = [i for i in list(set(cnf)) if i.isalpha()]
+            return abs(prop_robust_ttv[prop_robust_ttv['alphabet'] == alp[-1]].robustness.values[0])
+        literals = []
+        for sub in cnf:
+            split_cnf = sub.split()
+            for lit in split_cnf:
+                if lit[-1] not in literals and '~' + lit[-1] not in literals:
+                    literals.append(lit)
         # use robustness as heuristics to rank the literals
         if prop_robust_ttv is not None:
             return sorted(literals, key=robustness_degree)
@@ -36,7 +42,7 @@ class DPLL:
 
     @staticmethod
     def _assign_cnf(sympy_cnf):
-        return sympy_cnf.replace('(', '').replace(')', '').replace('|', '').split('&')
+        return sympy_cnf.replace('(', '').replace(')', '').replace('|', '').split(' & ')
 
     def update_cnf(self, cnf):
         self._cnf = self._assign_cnf(cnf)
@@ -45,6 +51,7 @@ class DPLL:
         return self._solve(deepcopy(self._cnf))
 
     def _solve(self, cnf):
+        cnf = list(set(cnf))
         units = [i for i in cnf if len(i) < 3]
         if len(units):
             cnf = self.unit_propagation(cnf, units)
@@ -68,7 +75,7 @@ class DPLL:
         return literals[0]
 
     def unit_propagation(self, cnf, units):
-        print(units)
+        print(units, cnf)
         for unit in units:
             if '~' in unit:
                 i = 0
@@ -97,6 +104,6 @@ class DPLL:
         return cnf
 
 if __name__ == '__main__':
-    dpll_solver = DPLL('~a | ~b | ~c | ~d')
+    dpll_solver = DPLL('(a | b) & ~a')
     # dpll_solver.update_cnf('a & ~a')
     print(dpll_solver.solve())
