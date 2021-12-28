@@ -34,7 +34,7 @@ if __name__ == '__main__':
     ego_initial = scenario.obstacle_by_id(ego_id)
 
     ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:20]
-
+    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:20]
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)

@@ -28,6 +28,8 @@ def visualize_repairing_result(scenario: Scenario,
     :param ref_path: Reference path for planner as polyline [(nx2) np.ndarray] (optional)
     :param save_path: Path to save plot as .png (optional)
     """
+    ego_position = ego_repaired.state_at_time(timestep).position
+    # plot_limits = [ego_position[0]-5, ego_position[0]+70, 7.5, 17.5]
     # create renderer object
     rnd = MPRenderer(figsize=(20, 10), plot_limits=plot_limits)
     # visualize scenario
@@ -40,41 +42,61 @@ def visualize_repairing_result(scenario: Scenario,
     # visualize planning problem
     # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
     # visualize ego vehicle
-    ego_repaired.draw(rnd, draw_params={"time_begin": timestep,
-                                        "dynamic_obstacle": {
-                                            "vehicle_shape": {
-                                                "occupancy": {
-                                                    "shape": {
-                                                        "rectangle": {
-                                                            "facecolor": "#E37222",
-                                                            "edgecolor": '#E37222',
-                                                            "zorder": 50,
-                                                            "opacity": 1
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        })
+
+    ego_initial.draw(rnd,
+                     draw_params=ParamServer(
+                         {"time_begin": timestep, "trajectory": {
+                             "draw_trajectory": False},
+                          "occupancy": {
+                              "draw_occupancies": 1,
+                              "shape": {"rectangle": {
+                                  "facecolor": "#0065bd",
+                                  "edgecolor": "#0065bd"}
+                              }},
+                          "dynamic_obstacle":
+                              {"vehicle_shape": {
+                                  "occupancy": {
+                                      "shape": {"rectangle": {
+                                          "facecolor": "#0065bd",
+                                          "edgecolor": "#0065bd"}
+                                      }}}}}))
+    ego_repaired.draw(rnd,
+                      draw_params=ParamServer(
+                          {"time_begin": timestep, "trajectory": {
+                              "draw_trajectory": False},
+                           "occupancy": {
+                               "draw_occupancies": 1,
+                               "shape": {"rectangle": {
+                                   "facecolor": "green",
+                                   "edgecolor": "green"}
+                               }},
+                           "dynamic_obstacle":
+                               {"vehicle_shape": {
+                                   "occupancy": {
+                                       "shape": {"rectangle": {
+                                           "facecolor": "green",
+                                           "edgecolor": "green"}
+                                       }}}}}))
+
     # render scenario and ego vehicle
     rnd.render()
-
-    pos_x_repaired = []
-    pos_y_repaired = []
-    for state in ego_repaired.prediction.trajectory.state_list:
-        pos_x_repaired.append(state.position[0])
-        pos_y_repaired.append(state.position[1])
-
-    # visualize optimal trajectory
-    rnd.ax.plot(pos_x_repaired, pos_y_repaired, color='g', marker='x', markersize=5, zorder=21, linewidth=1.5,
-                label='repaired trajectory')
-    pos_x_initial = [ego_initial.initial_state.position[0]]
-    pos_y_initial = [ego_initial.initial_state.position[1]]
-    for state in ego_initial.prediction.trajectory.state_list:
-        pos_x_initial.append(state.position[0])
-        pos_y_initial.append(state.position[1])
-    rnd.ax.plot(pos_x_initial, pos_y_initial, color='k', marker='x', markersize=5, zorder=21, linewidth=1.5,
-                label='initial trajectory')
+    #
+    # pos_x_repaired = []
+    # pos_y_repaired = []
+    # for state in ego_repaired.prediction.trajectory.state_list:
+    #     pos_x_repaired.append(state.position[0])
+    #     pos_y_repaired.append(state.position[1])
+    #
+    # # visualize optimal trajectory
+    # rnd.ax.plot(pos_x_repaired, pos_y_repaired, color='g', marker='.', markersize=5, zorder=22, linewidth=1.5,
+    #             label='repaired trajectory')
+    # pos_x_initial = [ego_initial.initial_state.position[0]]
+    # pos_y_initial = [ego_initial.initial_state.position[1]]
+    # for state in ego_initial.prediction.trajectory.state_list:
+    #     pos_x_initial.append(state.position[0])
+    #     pos_y_initial.append(state.position[1])
+    # rnd.ax.plot(pos_x_initial, pos_y_initial, color='k', marker='x', markersize=5, zorder=21, linewidth=1.5,
+    #             label='initial trajectory')
 
     # show plot
     plt.show(block=True)
