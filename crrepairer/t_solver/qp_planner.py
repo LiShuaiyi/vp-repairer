@@ -1,3 +1,6 @@
+import numpy as np
+from commonroad_dc.geometry.util import (compute_pathlength_from_polyline, compute_orientation_from_polyline)
+
 from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongReference
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
@@ -104,10 +107,14 @@ class QPPlannerRepair(QPPlanner):
         for state in trajectory.states:
             cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
                 state.position[0], state.position[1])
+            # convert the orientation here
+            ref_orientation = compute_orientation_from_polyline(self.vehicle_configuration.reference_path)
+            ref_pathlength = compute_pathlength_from_polyline(self.vehicle_configuration.reference_path)
+            orientation_interpolated = np.interp(state.position[0], ref_pathlength, ref_orientation)
             cartesian_traj_points.append(TrajPoint(
-                t=state.t, # + self._cut_off_time_step*self.dt
-                x=cart_pos[0], y=cart_pos[1], theta=state.orientation, v=state.v, a=state.a,
-                kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
+               t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation + orientation_interpolated, v=state.v, a=state.a,
+               kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
+
         traj = QPTrajectory(cartesian_traj_points, TrajectoryType.CARTESIAN)
 
         traj._u_lon = trajectory.u_lon
