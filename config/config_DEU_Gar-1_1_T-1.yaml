@@ -58,7 +58,7 @@ qp_planner:
         L_ENLARGE: 0.0 # add 0.3m to the length of every vehicle for collision avoidance
 
     lateral_parameters:
-        W_D: 0.05 # weight for d deviation
+        W_D: 15. # weight for d deviation
         W_THETA: 15.1 # weight for theta deviation
         W_KAPPA: 40.0 # weight for kappa deviation
         W_D_N: 0.15 # weight for d deviation at end state

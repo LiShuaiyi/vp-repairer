@@ -64,13 +64,15 @@ class QPPlannerRepair(QPPlanner):
                                                                  safe_dis_modes=self._rule_constraints.
                                                                  safe_distance_modes)
         if status is not 'optimal':
-            raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
+            return None
+            # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
         print('\t\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
         trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr)
         # convert trajectory to cartesian space
         if status is not 'optimal':
-            raise ValueError('<QPPlannerRepair/_lateral_trajectory_planning>: failed')
+            return None
+            # raise ValueError('<QPPlannerRepair/_lateral_trajectory_planning>: failed')
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
 
@@ -103,7 +105,7 @@ class QPPlannerRepair(QPPlanner):
             cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
                 state.position[0], state.position[1])
             cartesian_traj_points.append(TrajPoint(
-                t=state.t + self._cut_off_time_step*self.dt,
+                t=state.t, # + self._cut_off_time_step*self.dt
                 x=cart_pos[0], y=cart_pos[1], theta=state.orientation, v=state.v, a=state.a,
                 kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
         traj = QPTrajectory(cartesian_traj_points, TrajectoryType.CARTESIAN)
@@ -111,8 +113,9 @@ class QPPlannerRepair(QPPlanner):
         traj._u_lon = trajectory.u_lon
         traj._u_lat = trajectory.u_lat
         cr_traj_repaired = traj.convert_to_cr_trajectory(self._vehicle_configuration.wheelbase)
-        remaining_states = self._initial_trajectory.state_list[:self._cut_off_time_step-1]
-
+        remaining_states = [self._ego_vehicle.initial_state] + self._initial_trajectory.state_list[:self._cut_off_time_step-1]
+        for state in cr_traj_repaired.state_list:
+            state.time_step += self._cut_off_time_step
         cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
         return cr_traj_repaired
 

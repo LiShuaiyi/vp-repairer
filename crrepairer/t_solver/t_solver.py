@@ -73,6 +73,8 @@ class TSolver:
         repaired_traj = None
         self.assign_proposition(proposition)
         tc = self.search_tc()
+        print("<T-solver>: tc = {}, tv = {}".format(self._tc_obj.tc_time_step, self._tc_obj.tv_time_step))
+
         assert tc != math.inf, "<T-solver>: the trajectory is already rule-compliant," \
                                "i.e., doesn't need to be repaired"
         if tc != -math.inf:

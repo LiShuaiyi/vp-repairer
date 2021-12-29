@@ -3,6 +3,7 @@ from typing import List
 
 # third party
 import matplotlib.pyplot as plt
+import numpy as np
 
 # commonroad-io
 from commonroad.scenario.scenario import Scenario
@@ -10,6 +11,48 @@ from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.visualization.param_server import ParamServer
 
+from commonroad_repair.crrepairer.t_solver.utils import calculate_safe_distance
+
+def visualize_profile(target_vehicle:DynamicObstacle,
+                      ego_initial: DynamicObstacle,
+                      ego_repaired: DynamicObstacle):
+    time_list = []
+    target_pos_list = []
+    ego_ini_pos_list = []
+    ego_rep_pos_list = []
+    safe_dis_ini_list = []
+    safe_dis_rep_list = []
+    ego_ini_vel_list = []
+    ego_rep_vel_list = []
+    for time_step in range(ego_initial.prediction.final_time_step + 1):
+        time_list.append(time_step)
+        target_pos_list.append(target_vehicle.state_at_time(time_step).position)
+        ego_ini_pos_list.append(ego_initial.state_at_time(time_step).position)
+        ego_rep_pos_list.append(ego_repaired.state_at_time(time_step).position)
+        safe_dis_ini_list.append(target_pos_list[time_step][0]-
+                                 target_vehicle.obstacle_shape.length/2-
+                                 calculate_safe_distance(ego_initial.state_at_time(time_step).velocity,
+                                                         target_vehicle.state_at_time(time_step).velocity,
+                                                         -10.5,
+                                                         -10.,
+                                                         0.4) - ego_initial.obstacle_shape.length/2)
+        safe_dis_rep_list.append(target_pos_list[time_step][0] - target_vehicle.obstacle_shape.length/2-
+                                 calculate_safe_distance(ego_repaired.state_at_time(time_step).velocity,
+                                                         target_vehicle.state_at_time(time_step).velocity,
+                                                         -10.5,
+                                                         -10.,
+                                                         0.4) - ego_repaired.obstacle_shape.length/2)
+        ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
+        ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
+    plt.plot(time_list, np.array(ego_ini_pos_list)[:, 0], color='blue', linewidth=0.8,)
+    plt.plot(time_list, np.array(target_pos_list)[:, 0], color='black', linewidth=0.8,)
+    plt.plot(time_list, np.array(ego_rep_pos_list)[:, 0], color='green', linewidth=0.8,)
+    plt.plot(time_list, safe_dis_ini_list, color='red', linewidth=1.,)
+    plt.plot(time_list, safe_dis_rep_list, color='yellow', linewidth=1.,)
+    plt.show()
+    plt.plot(time_list, ego_ini_vel_list, color='blue', linewidth=1.,)
+    plt.plot(time_list, ego_rep_vel_list, color='green', linewidth=1.,)
+    plt.show()
 
 def visualize_repairing_result(scenario: Scenario,
                                ego_initial: DynamicObstacle,
@@ -36,7 +79,7 @@ def visualize_repairing_result(scenario: Scenario,
     scenario.draw(
         rnd,
         draw_params=ParamServer({"time_begin": timestep, "trajectory": {
-            "draw_trajectory": False}, "occupancy": {
+            "draw_trajectory": True}, "occupancy": {
             "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': False}})
     )
     # visualize planning problem

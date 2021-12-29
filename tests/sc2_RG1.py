@@ -10,9 +10,9 @@ from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 
-scenario_id = "DEU_LocationBUpper-1_22_T-1"
+# scenario_id = "DEU_LocationBUpper-1_22_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
-# scenario_id = "DEU_Gar-1_1_T-1"
+scenario_id = "DEU_Gar-1_1_T-1"
 # scenario_id = "ZAM_Tutorial-1_2_T-1"
 file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
             + scenario_id + ".xml"
@@ -25,11 +25,11 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 9
+    ego_id = 200
     rule = "R_G1"
-    scenario.remove_obstacle(scenario.obstacle_by_id(3))
-    scenario.remove_obstacle(scenario.obstacle_by_id(4))
-    scenario.remove_obstacle(scenario.obstacle_by_id(5))
+    # scenario.remove_obstacle(scenario.obstacle_by_id(3))
+    # scenario.remove_obstacle(scenario.obstacle_by_id(4))
+    # scenario.remove_obstacle(scenario.obstacle_by_id(5))
 
     ego_initial = scenario.obstacle_by_id(ego_id)
 
@@ -46,10 +46,10 @@ if __name__ == '__main__':
                                               ego_initial.initial_state,
                                               repaired_traj)
     ego_initial.prediction.shape = ego_vehicle.prediction.shape
-    # plot_limits = [-10, 100, -8, 8]
-    plot_limits = [-380, -150, 7.5, 17.5]
+    plot_limits = [-5, 50, -4.5, 3]
+    # plot_limits = [-380, -150, 7.5, 17.5]
     target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
-    visualize_profile(target_veh, ego_initial, ego_vehicle)
+    # visualize_profile(target_veh, ego_initial, ego_vehicle)
     for time_step in range(ego_vehicle.prediction.final_time_step):
         visualize_repairing_result(scenario, ego_initial,
                                    ego_vehicle, time_step, plot_limits=plot_limits)
