@@ -31,8 +31,13 @@ class TSolver:
     def compliant_maneuvers(self):
         return self._compliant_maneuvers
 
-    def assign_proposition(self, proposition: List[PropositionNode]):
-        self._sel_prop = proposition
+    def assign_proposition(self, propositions: List[PropositionNode], model: list):
+        for prop in propositions:
+            # if not the same value
+            if (prop.ttv_value < 0 and '~' + prop.alphabet in model) or \
+                    (prop.ttv_value > 0 and prop.alphabet in model):
+                propositions.remove(prop)
+        self._sel_prop = propositions
         self._compliant_maneuvers = self.set_compliant_maneuver()
 
     def set_compliant_maneuver(self):
@@ -54,8 +59,10 @@ class TSolver:
                 elif predicate_category == Category.ACC:
                     compliant_maneuver += [CutOffAction.STEADYSPEED]
                 else:
-                    raise ValueError('<T-Solver>: the category {} is not specified'
-                                     .format(predicate_category))
+                    return None
+                    # raise ValueError('<T-Solver>: the category {} is not specified'
+                    #                  .format(predicate_category))
+        print("<TSolver>: compliant maneuver {} is selected".format(compliant_maneuver))
         return compliant_maneuver
 
     def search_tc(self):
@@ -64,14 +71,16 @@ class TSolver:
 
     def _optimization_based_repair(self):
         self._qp_planner = QPPlannerRepair(self._rule_abstracter,
-                                     self._tc_obj,
-                                     self._sel_prop)
+                                           self._tc_obj,
+                                           self._sel_prop)
         repaired_trajectory = self._qp_planner.plan()
         return repaired_trajectory
 
-    def check(self, proposition: List[PropositionNode]):
+    def check(self, proposition: List[PropositionNode], model: list):
         repaired_traj = None
-        self.assign_proposition(proposition)
+        self.assign_proposition(proposition, model)
+        if self._compliant_maneuvers is None:
+            return self._repairability, repaired_traj
         tc = self.search_tc()
         print("<T-solver>: tc = {}, tv = {}".format(self._tc_obj.tc_time_step, self._tc_obj.tv_time_step))
 

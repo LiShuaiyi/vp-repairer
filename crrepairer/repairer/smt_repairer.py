@@ -32,13 +32,12 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
 
     def repair(self, *args, **kwargs):
         while self.sat_solver.solve() == sat:
-            select_proposition = self.sat_solver.model()
-            repairability, repaired_traj = self.t_solver.check(select_proposition)
+            select_proposition, model = self.sat_solver.model()
+            repairability, repaired_traj = self.t_solver.check(select_proposition, list(model))
             if repairability:
                 return repaired_traj
             else:
-                # todo: use propositions with dpll
-                self.sat_solver.update_formula(select_proposition)
+                self.sat_solver.update_formula()
                 # todo: check feasibility
         return None
 

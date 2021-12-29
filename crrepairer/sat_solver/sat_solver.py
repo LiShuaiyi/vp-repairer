@@ -1,4 +1,5 @@
 import sympy as sp
+from typing import List
 from enum import Enum
 
 from sympy.logic.inference import satisfiable
@@ -24,6 +25,7 @@ class SATSolver:
         self._prop_robust_ttv = prop_robust_ttv
         self._init_assign = list()
         self._dpll_solver = DPLL(self._formula, prop_robust_ttv)
+        self._dpll_model = None
 
 
     @property
@@ -74,22 +76,23 @@ class SATSolver:
         sat_result = self._dpll_solver.solve()
         return sat_result
 
-    def model(self) -> set:
+    def model(self) -> (list, str):
         """
         return a satisfiable proposition - based on robustness
         """
         # select the unvisited predicates within the least robust proposition at time step TTV.
         # prop_rob_min = self._prop_robust_ttv[self._prop_robust_ttv.robustness.abs()
         #                                      == self._prop_robust_ttv.robustness.abs().min()].alphabet.values
-        dpll_model = self._dpll_solver.model
+        self._dpll_model = self._dpll_solver.model
         prop_list = list()
-        for m in list(dpll_model):
+        for m in list(self._dpll_model):
             sel_prop_node = next((prop_node for prop_node in self._prop_nodes
-                                  if prop_node.alphabet == m), None)
+                                  if prop_node.alphabet == m[-1]), None)
             prop_list.append(sel_prop_node)
-        return prop_list
+        print("<SATSolver>: model is {}".format(self._dpll_model))
+        return prop_list, self._dpll_model
 
-    def update_formula(self, proposition: PropositionNode):
+    def update_formula(self):
         """
         Based on the syntax for sympy, the SAT formula is updated by negating the unsatisfiable abstraction:
         phi_SAT = phi_SAT and (not abs)
@@ -97,10 +100,14 @@ class SATSolver:
         if self._formula[0] is not '(':
             self._formula = '(' + self.formula + ')'
         # generate counterexample
-        sign = self._formula[self.formula.index(proposition.alphabet) - 1]
-        if sign != '~':
-            sign = ''
-        self._formula += ' & ~' + sign + proposition.alphabet
+        counter_ex = '~' + list(self._dpll_model)[0]
+        if len(list(self._dpll_model)) > 1:
+            counter_ex = '(' + counter_ex
+            for atom in list(self._dpll_model)[1:]:
+                counter_ex += ' | ~' + atom
+            counter_ex += ')'
+        self._formula += ' & ' + counter_ex
+        print("<SATSolver>: the formula is updated to {}".format(self._formula))
 
     @staticmethod
     def obtain_initial_assignment(robustness_tv):
