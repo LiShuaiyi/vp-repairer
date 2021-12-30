@@ -96,7 +96,8 @@ class DPLL:
         elif self._solve(deepcopy(cnf) + ['~'+lit]) == sat:
             return sat
         else:
-            self.back_tracking()
+            self._assign_true = set()
+            self._assign_false = set()
             return unsat
 
     def choose_literal(self, literals):
@@ -136,7 +137,7 @@ class DPLL:
 
 
 if __name__ == '__main__':
-    dpll_solver = DPLL('(c | d | ~a | ~b) & ~d & (~~d | ~c)')
+    dpll_solver = DPLL(' (c | d | ~a | ~b) & ~d & (~~d | ~c) & (~~d | ~~a | ~~c) & (~~d | ~~c | ~a | ~~b)')
     # dpll_solver.update_cnf('a & ~a')
     print(dpll_solver.solve())
     print(dpll_solver.model)
