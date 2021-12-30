@@ -37,7 +37,6 @@ class DPLL:
     @staticmethod
     def get_literal(cnf, prop_robust_ttv):
         def robustness_degree(alp):
-            print(alp)
             return abs(prop_robust_ttv[prop_robust_ttv['alphabet'] == alp[-1]].robustness.values[0])
         literals = []
         for sub in cnf:
