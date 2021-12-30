@@ -46,7 +46,7 @@ if __name__ == '__main__':
                                               ego_initial.initial_state,
                                               repaired_traj)
     ego_initial.prediction.shape = ego_vehicle.prediction.shape
-    plot_limits = [0, 150, 0, 12]
+    plot_limits = [0, 150, -2, 12]
     target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
     # visualize_profile(target_veh, ego_initial, ego_vehicle)
     for time_step in range(ego_vehicle.prediction.final_time_step):

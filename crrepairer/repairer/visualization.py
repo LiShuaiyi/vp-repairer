@@ -140,7 +140,8 @@ def visualize_repairing_result(scenario: Scenario,
         pos_y_initial.append(state.position[1])
     rnd.ax.plot(pos_x_initial[timestep:], pos_y_initial[timestep:], color='#0065bd', marker='x', markersize=7.5, zorder=21, linewidth=1.5,
                 label='initial trajectory')
-
+    plt.xticks([])
+    plt.yticks([])
     # show plot
     plt.show(block=True)
 
