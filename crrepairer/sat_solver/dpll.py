@@ -37,6 +37,7 @@ class DPLL:
     @staticmethod
     def get_literal(cnf, prop_robust_ttv):
         def robustness_degree(alp):
+            print(alp)
             return abs(prop_robust_ttv[prop_robust_ttv['alphabet'] == alp[-1]].robustness.values[0])
         literals = []
         for sub in cnf:
@@ -72,7 +73,6 @@ class DPLL:
             self._assign_false.remove(i)
 
     def _solve(self, cnf):
-        cnf = list(set(cnf))
         units = [i for i in cnf if len(i) < 3]
         units = list(set(units))
         self._new_true = []
@@ -80,6 +80,7 @@ class DPLL:
         self._assign_true = set(self._assign_true)
         self._assign_false = set(self._assign_false)
         if len(units):
+            cnf = [clause.replace('~~', '') for clause in cnf]
             cnf = self.unit_propagation(cnf, units)
         if len(cnf) == 0:
             # if \phi is a consistent set of literals
@@ -115,6 +116,8 @@ class DPLL:
                         i -= 1
                     elif unit[-1] in cnf[i]:
                         cnf[i] = cnf[i].replace(unit[-1], '').strip()
+                        if '  ' in cnf[i]:
+                            cnf[i] = cnf[i].replace('  ', ' ')
                     i += 1
                     if i >= len(cnf):
                         break
@@ -137,7 +140,7 @@ class DPLL:
 
 
 if __name__ == '__main__':
-    dpll_solver = DPLL(' (c | d | ~a | ~b) & ~d & (~~d | ~c) & (~~d | ~~a | ~~c) & (~~d | ~~c | ~a | ~~b)')
-    # dpll_solver.update_cnf('a & ~a')
+    dpll_solver = DPLL('(c | d | ~a | ~b) & ~d & (~~d | ~c) & (~~c | ~~a | ~~d)')
+    # dpll_solver.update_cnf('~b & ')
     print(dpll_solver.solve())
     print(dpll_solver.model)
