@@ -32,12 +32,11 @@ class TSolver:
         return self._compliant_maneuvers
 
     def assign_proposition(self, propositions: List[PropositionNode], model: list):
+        self._sel_prop = list()
         for prop in propositions:
             # if not the same value
-            if (prop.ttv_value < 0 and '~' + prop.alphabet in model) or \
-                    (prop.ttv_value > 0 and prop.alphabet in model):
-                propositions.remove(prop)
-        self._sel_prop = propositions
+            if (prop.ttv_value < 0 and prop.alphabet in model) or (prop.ttv_value > 0 and '~' + prop.alphabet in model):
+                self._sel_prop.append(prop)
         self._compliant_maneuvers = self.set_compliant_maneuver()
 
     def set_compliant_maneuver(self):
@@ -80,10 +79,10 @@ class TSolver:
     def check(self, proposition: List[PropositionNode], model: list):
         repaired_traj = None
         self.assign_proposition(proposition, model)
-        if self._compliant_maneuvers is None:
+        if self.compliant_maneuvers is None:
             return self._repairability, repaired_traj
         tc = self.search_tc()
-        print("<T-solver>: tc = {}, tv = {}".format(self._tc_obj.tc_time_step, self._tc_obj.tv_time_step))
+        print("<T-solver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv))
 
         assert tc != math.inf, "<T-solver>: the trajectory is already rule-compliant," \
                                "i.e., doesn't need to be repaired"
