@@ -23,7 +23,6 @@ class DPLL:
 
     @property
     def model(self):
-        print(self._assign_true, self._assign_false)
         return set.union(self._assign_true, self._assign_false)
 
     @property
@@ -90,7 +89,7 @@ class DPLL:
             return unsat
         literals = self.get_literal(cnf, self._prop_robust_ttv)
         lit = self.choose_literal(literals)
-        print('<DPLL>: literal ({}) is selected'.format(lit))
+        # print('<DPLL>: literal ({}) is selected'.format(lit))
         if self._solve(deepcopy(cnf) + [lit]) == sat:
             return sat
         elif self._solve(deepcopy(cnf) + ['~'+lit]) == sat:

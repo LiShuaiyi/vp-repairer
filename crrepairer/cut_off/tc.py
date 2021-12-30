@@ -129,7 +129,6 @@ class TC(CutOffBase, ABC):
 
         if low != 0:
             ttm = (low - 1) * self.dT
-        print(maneuver, ttm)
         return ttm
 
 
