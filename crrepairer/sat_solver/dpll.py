@@ -15,11 +15,16 @@ class DPLL:
         self._cnf = self._assign_cnf(sympy_cnf)
         self._prop_robust_ttv = prop_robust_ttv
         self._literals = self.get_literal(self._cnf, prop_robust_ttv)
+        self._assign_true = set()
+        self._assign_false = set()
+        self._new_true = []
+        self._new_false = []
         self._model = set()
 
     @property
     def model(self):
-        return self._model
+        print(self._assign_true, self._assign_false)
+        return set.union(self._assign_true, self._assign_false)
 
     @property
     def literals(self):
@@ -52,14 +57,28 @@ class DPLL:
     def update_cnf(self, cnf):
         self._cnf = self._assign_cnf(cnf)
         self._literals = self.get_literal(self._cnf, self._prop_robust_ttv)
-        self._model = set()
+        self._assign_true = set()
+        self._assign_false = set()
+        self._new_true = []
+        self._new_false = []
 
     def solve(self):
         return self._solve(deepcopy(self._cnf))
 
+    def back_tracking(self):
+        for i in self._new_true:
+            self._assign_true.remove(i)
+        for i in self._new_false:
+            self._assign_false.remove(i)
+
     def _solve(self, cnf):
         cnf = list(set(cnf))
         units = [i for i in cnf if len(i) < 3]
+        units = list(set(units))
+        self._new_true = []
+        self._new_false = []
+        self._assign_true = set(self._assign_true)
+        self._assign_false = set(self._assign_false)
         if len(units):
             cnf = self.unit_propagation(cnf, units)
         if len(cnf) == 0:
@@ -67,17 +86,17 @@ class DPLL:
             return sat
         if sum(len(clause) == 0 for clause in cnf):
             # if \phi contains an empty clause
-            self._model = set()
+            self.back_tracking()
             return unsat
         literals = self.get_literal(cnf, self._prop_robust_ttv)
         lit = self.choose_literal(literals)
         print('<DPLL>: literal ({}) is selected'.format(lit))
-        if self._solve(deepcopy(cnf) + [lit]):
+        if self._solve(deepcopy(cnf) + [lit]) == sat:
             return sat
-        elif self._solve(deepcopy(cnf) + ['~'+lit]):
+        elif self._solve(deepcopy(cnf) + ['~'+lit]) == sat:
             return sat
         else:
-            self._model = set()
+            self.back_tracking()
             return unsat
 
     def choose_literal(self, literals):
@@ -85,8 +104,9 @@ class DPLL:
 
     def unit_propagation(self, cnf, units):
         for unit in units:
-            self._model.add(unit)
             if '~' in unit:
+                self._assign_false.add(unit)
+                self._new_false.append(unit)
                 i = 0
                 while True:
                     if unit in cnf[i]:
@@ -98,6 +118,8 @@ class DPLL:
                     if i >= len(cnf):
                         break
             else:
+                self._assign_true.add(unit)
+                self._new_true.append(unit)
                 i = 0
                 while True:
                     if '~'+unit in cnf[i]:
