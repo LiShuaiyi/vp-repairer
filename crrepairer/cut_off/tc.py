@@ -56,15 +56,14 @@ class TC(CutOffBase, ABC):
     def compliant_maneuver(self) -> CutOffAction:
         return self._compliant_maneuver
 
-    def _calc_tv_updated(self, updated_states: List[State] = None,
-                         start_time_step: int = None) -> Tuple[float, Any]:
+    def _calc_tv_updated(self, updated_states: List[State] = None) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
-        self.rule_monitor.world_state.time_step = start_time_step
+        self.rule_monitor.world_state.time_step = 0
         update_ego_vehicle(self.world_state.road_network,
                            self.world_state.ego_vehicle,
                            updated_states,
-                           start_time_step,
+                           0,
                            self.dT)
         self.rule_monitor.evaluate_consecutively()
         evaluated_robustness, evaluated_ids = self.rule_monitor.query_rule_rob_all()
@@ -96,9 +95,9 @@ class TC(CutOffBase, ABC):
     def search_ttm(self, maneuver: CutOffAction):
         ttm = - math.inf
         low = 0
-        high = int(self._tv / self.dT)
+        high = int(round(self._tv / self.dT))
         while low < high:
-            mid = int((low + high)/2)
+            mid = int(round(low + high)/2)
             if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
                 SL = SimulationLong(maneuver,
                                     self.ego_vehicle,
@@ -113,12 +112,15 @@ class TC(CutOffBase, ABC):
                 raise ValueError("<TTCC>: given compliant maneuver {} is not supported".format(maneuver))
 
             state_list = SL.simulate_state_list()
-
-            if self._visualize:
-                visualize_state_list(self._collision_checker, state_list, self.scenario,
-                                         SL.vehicle_dynamics.shape)
-            flag_collision = self._detect_collision(state_list)  # bool value
-            tv, _ = self._calc_tv_updated(state_list, mid) # which should be tv instead of ttm
+            if state_list is None:
+                flag_collision = True
+                tv = -math.inf
+            else:
+                if self._visualize:
+                    visualize_state_list(self._collision_checker, state_list, self.scenario,
+                                             SL.vehicle_dynamics.shape)
+                flag_collision = self._detect_collision(state_list)  # bool value
+                tv, _ = self._calc_tv_updated(state_list) # which should be tv instead of ttm
             # if violation-free and collision-free
             if tv == math.inf and not flag_collision:
                 low = mid + 1
@@ -127,6 +129,7 @@ class TC(CutOffBase, ABC):
 
         if low != 0:
             ttm = (low - 1) * self.dT
+        print(maneuver, ttm)
         return ttm
 
 

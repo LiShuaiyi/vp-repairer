@@ -62,6 +62,7 @@ class TSolver:
                     return None
                     # raise ValueError('<T-Solver>: the category {} is not specified'
                     #                  .format(predicate_category))
+        compliant_maneuver = list(set(compliant_maneuver))
         print("<TSolver>: compliant maneuver {} is selected".format(compliant_maneuver))
         return compliant_maneuver
 

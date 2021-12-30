@@ -208,6 +208,8 @@ class SimulationLateral(SimulationBase, ABC):
     def simulate_state_list(self):
         self.set_inputs(self._cut_off_state.velocity)
         target_lane = self.set_target_lane()
+        if target_lane is None:
+            return None
         current_ego_s, current_ego_d = self._world_state.ego_vehicle.lane.clcs.convert_to_curvilinear_coords(
             self._cut_off_state.position[0], self._cut_off_state.position[1])
         # current_ego_s = self._world_state.ego_vehicle.states_lon[self._cut_off_state.time_step].s
