@@ -131,14 +131,14 @@ def visualize_repairing_result(scenario: Scenario,
         pos_y_repaired.append(state.position[1])
 
     # visualize optimal trajectory
-    rnd.ax.plot(pos_x_repaired, pos_y_repaired, color='#a2ad00', marker='.', markersize=7.5, zorder=22, linewidth=1.5,
+    rnd.ax.plot(pos_x_repaired[timestep:], pos_y_repaired[timestep:], color='#a2ad00', marker='.', markersize=7.5, zorder=22, linewidth=1.5,
                 label='repaired trajectory')
     pos_x_initial = [ego_initial.initial_state.position[0]]
     pos_y_initial = [ego_initial.initial_state.position[1]]
     for state in ego_initial.prediction.trajectory.state_list:
         pos_x_initial.append(state.position[0])
         pos_y_initial.append(state.position[1])
-    rnd.ax.plot(pos_x_initial, pos_y_initial, color='#0065bd', marker='x', markersize=7.5, zorder=21, linewidth=1.5,
+    rnd.ax.plot(pos_x_initial[timestep:], pos_y_initial[timestep:], color='#0065bd', marker='x', markersize=7.5, zorder=21, linewidth=1.5,
                 label='initial trajectory')
 
     # show plot
