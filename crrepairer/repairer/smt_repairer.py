@@ -25,9 +25,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                  ego_vehicle: DynamicObstacle):
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_abstracter = rule_abstracter
-        self.sat_solver = SATSolver(rule_abstracter.sat_encoding,
-                                    rule_abstracter.propositions,
-                                    rule_abstracter.prop_robust_ttv)
+        self.sat_solver = SATSolver(rule_abstracter)
         self.t_solver = TSolver(rule_abstracter)
 
     def repair(self, *args, **kwargs):

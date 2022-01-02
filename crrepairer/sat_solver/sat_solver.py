@@ -6,6 +6,7 @@ from sympy.logic.inference import satisfiable
 from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
 
 from crmonitor.predicates.rule import PropositionNode
+from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from sympy.abc import *
 
 
@@ -16,15 +17,12 @@ class SATISFIABILITY(Enum):
 
 class SATSolver:
     def __init__(self,
-                 sat_encoding,
-                 prop_nodes,
-                 prop_robust_ttv):
-        self._formula = self.construct_cnf(sat_encoding)
-        self._prop_nodes = prop_nodes
-        self._sat_list = self.check_prior_satisfiability(prop_robust_ttv)
-        self._prop_robust_ttv = prop_robust_ttv
+                 rule_abstracter: RuleAbstracter):
+        self._formula = self.construct_cnf(rule_abstracter.sat_encoding)
+        self._prop_nodes = rule_abstracter.propositions
+        self._prop_robust_all = rule_abstracter.prop_robust_all
         self._init_assign = list()
-        self._dpll_solver = DPLL(self._formula, prop_robust_ttv)
+        self._dpll_solver = DPLL(self._formula, self._prop_robust_all, rule_abstracter.rule_monitor.tv_time_step)
         self._dpll_model = None
 
 

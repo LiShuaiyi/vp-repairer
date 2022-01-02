@@ -23,7 +23,7 @@ class TC(CutOffBase, ABC):
                  dT: float = 0.1):
         super().__init__(rule_monitor.world_state, dT)
         self.rule_monitor = rule_monitor
-        self._tv = rule_monitor.tv * self.dT  # time step -> time
+        self._tv = rule_monitor.tv_time_step * self.dT  # time step -> time
         self._other_id = rule_monitor.other_id
         self._visualize = False
         self._compliant_maneuver = None
