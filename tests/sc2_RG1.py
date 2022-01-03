@@ -46,7 +46,8 @@ if __name__ == '__main__':
     plot_limits = [-5, 50, -4.5, 3]
     # plot_limits = [-380, -150, 7.5, 17.5]
     target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
-    visualize_profile(target_veh, ego_initial, ego_vehicle)
+    following_veh = scenario.obstacle_by_id(203)
+    visualize_profile(target_veh, following_veh, ego_initial, ego_vehicle)
     for time_step in range(ego_vehicle.prediction.final_time_step):
         visualize_repairing_result(scenario, ego_initial,
                                    ego_vehicle, time_step, plot_limits=plot_limits)

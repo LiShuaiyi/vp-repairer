@@ -4,6 +4,7 @@ from t_solver.qp_planner import QPPlannerRepair
 from repairer.smt_repairer import SMTTrajectoryRepairer
 from t_solver.utils import convert_traj_to_ego_vehicle
 from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_profile
+from commonroad_repair.crrepairer.t_solver.utils import calculate_safe_distance
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
@@ -33,8 +34,8 @@ if __name__ == '__main__':
     obs._initial_occupancy_shape.center[0] += 10
     ego_initial = scenario.obstacle_by_id(ego_id)
 
-    # ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:20]
-    # ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:20]
+    ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:30]
+    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:30]
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -46,9 +47,10 @@ if __name__ == '__main__':
                                               ego_initial.initial_state,
                                               repaired_traj)
     ego_initial.prediction.shape = ego_vehicle.prediction.shape
-    plot_limits = [0, 150, -2, 12]
+    plot_limits = [0, 120, -2, 12]
     target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
     # visualize_profile(target_veh, ego_initial, ego_vehicle)
     for time_step in range(ego_vehicle.prediction.final_time_step):
+        time_step = 20
         visualize_repairing_result(scenario, ego_initial,
-                                   ego_vehicle, time_step, plot_limits=plot_limits)
+                                   ego_vehicle, time_step, plot_limits=plot_limits, target_veh=target_veh)
