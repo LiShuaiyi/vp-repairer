@@ -1,5 +1,6 @@
 from abc import ABC
 from enum import Enum
+import math
 
 from commonroad.scenario.scenario import DynamicObstacle
 
@@ -25,19 +26,22 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                  ego_vehicle: DynamicObstacle):
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_abstracter = rule_abstracter
-        self.sat_solver = SATSolver(rule_abstracter)
-        self.t_solver = TSolver(rule_abstracter)
+
 
     def repair(self, *args, **kwargs):
-        while self.sat_solver.solve() == sat:
+        if self.rule_abstracter.rule_monitor.tv_time_step == -math.inf:
+            return None
+        sat_solver = SATSolver(self.rule_abstracter)
+        t_solver = TSolver(self.rule_abstracter)
+        while sat_solver.solve() == sat:
             if self.rule_abstracter.propositions is None:
                 return None
-            select_proposition, model = self.sat_solver.model()
-            repairability, repaired_traj = self.t_solver.check(select_proposition, list(model))
+            select_proposition, model = sat_solver.model()
+            repairability, repaired_traj = t_solver.check(select_proposition, list(model))
             if repairability:
                 return repaired_traj
             else:
-                self.sat_solver.update_formula()
+                sat_solver.update_formula()
                 # todo: check feasibility
         return None
 

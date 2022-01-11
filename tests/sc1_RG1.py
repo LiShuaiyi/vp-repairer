@@ -9,8 +9,9 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
+import math
 
-scenario_id = "DEU_LocationBLower-1_1_T-1"
+scenario_id = "DEU_LocationAUpper-56_32_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
 # scenario_id = "DEU_Gar-1_1_T-1"
 # scenario_id = "ZAM_Tutorial-1_2_T-1"
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 9
+    ego_id = 11
     rule = "R_G1"
     # scenario.remove_obstacle(scenario.obstacle_by_id(3))
     # scenario.remove_obstacle(scenario.obstacle_by_id(4))
@@ -38,6 +39,7 @@ if __name__ == '__main__':
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
+
     repairer = SMTTrajectoryRepairer(rule_abstracter,
                                      ego_initial)
     repaired_traj = repairer.repair()
