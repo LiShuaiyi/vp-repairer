@@ -67,6 +67,8 @@ class STLRuleMonitor:
         # obtain the id of violation-relevant vehicle
         prop_nodes = self._rule_eval.proposition_nodes
         # assign the robustness at ttv
+        if self._tv is math.inf:
+            return None
         for node in prop_nodes:
             node.ttv_value = self.prop_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0]
         return prop_nodes

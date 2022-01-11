@@ -1,3 +1,5 @@
+import math
+
 from sympy.logic.boolalg import is_cnf
 from copy import deepcopy
 from z3 import sat, unsat
@@ -48,7 +50,7 @@ class DPLL:
                 if lit[-1] not in literals and '~' + lit[-1] not in literals:
                     literals.append(lit)
         # use robustness as heuristics to rank the literals
-        if prop_robust_all is not None:
+        if prop_robust_all is not None and tv_time_step is not math.inf:
             return sorted(literals, key=robustness_degree)
         else:
             return literals

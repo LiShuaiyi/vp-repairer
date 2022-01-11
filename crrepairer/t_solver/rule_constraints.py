@@ -152,13 +152,13 @@ class RuleConstraints:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
             # num_target_lanes = len(self._target_lanes[k])
             index = k - self._tc_obj.tc_time_step
-            if self._prec_veh is not None:  # todo fix the length
+            if self._prec_veh is not None and k <= self._prec_veh.end_time:  # todo fix the length
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
                                                                   [-np.inf, self._prec_veh.rear_s(k)
                                                                    - self._veh_config.wheelbase/2
                                                                    - self._veh_config.length/2
                                                                    ])
-            if self._foll_veh is not None:
+            if self._foll_veh is not None and k <= self._prec_veh.end_time:
                 self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
                                                                   [self._foll_veh.front_s(k) +
                                                                    self._veh_config.wheelbase/2,

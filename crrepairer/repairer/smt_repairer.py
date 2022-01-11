@@ -30,6 +30,8 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
 
     def repair(self, *args, **kwargs):
         while self.sat_solver.solve() == sat:
+            if self.rule_abstracter.propositions is None:
+                return None
             select_proposition, model = self.sat_solver.model()
             repairability, repaired_traj = self.t_solver.check(select_proposition, list(model))
             if repairability:

@@ -101,17 +101,17 @@ def visualize_repairing_result(scenario: Scenario,
     # visualize planning problem
     # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
     # visualize ego vehicle
-    safe_distance = calculate_safe_distance(ego_initial.state_at_time(timestep).velocity,
-                                            target_veh.state_at_time(timestep).velocity,
-                                            -10.5, -10.0, 0.4)
-    box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
-                 [safe_distance / 2, 0]
-    # -preceding_vehicle.obstacle_shape.width/2
-    # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
-    obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
-    obb.draw(rnd, draw_params={"opacity": 0.2,
-                               "facecolor": "red",
-                               'edgecolor': "red"})
+    # safe_distance = calculate_safe_distance(ego_initial.state_at_time(timestep).velocity,
+    #                                         target_veh.state_at_time(timestep).velocity,
+    #                                         -10.5, -10.0, 0.4)
+    # box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
+    #              [safe_distance / 2, 0]
+    # # -preceding_vehicle.obstacle_shape.width/2
+    # # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
+    # obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
+    # obb.draw(rnd, draw_params={"opacity": 0.2,
+    #                            "facecolor": "red",
+    #                            'edgecolor': "red"})
     ego_initial.draw(rnd,
                      draw_params=ParamServer(
                          {"time_begin": timestep, "trajectory": {
