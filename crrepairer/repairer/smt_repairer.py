@@ -36,9 +36,6 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
 
     @property
     def tc(self):
-        if self._tc not in [math.inf, -math.inf]:
-            return self._tc * self.rule_abstracter.world_state.dt
-        else:
             return self._tc
 
     @property

@@ -153,7 +153,7 @@ class SimulationLateral(SimulationBase, ABC):
         Miller, Christina, Christian Pek, and Matthias Althoff. "Efficient mixed-integer programming for longitudinal
         and lateral motion planning of autonomous vehicles." 2018 IEEE Intelligent Vehicles Symposium (IV). IEEE, 2018.
         """
-        return sqrt(2 * lat_dist / abs(self._input.acceleration_y))
+        return sqrt(2 * abs(lat_dist / self._input.acceleration_y))
 
     def set_inputs(self, velocity):
         self._input.acceleration = 0
