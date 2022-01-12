@@ -35,7 +35,10 @@ class QPPlannerRepair(QPPlanner):
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
         self._cut_off_time_step = tc_object.tc_time_step
         self._N = tc_object.N
-        self._cut_off_state = self._initial_trajectory.state_at_time_step(self._cut_off_time_step)
+        if self._cut_off_time_step == 0:
+            self._cut_off_state = self._ego_vehicle.initial_state
+        else:
+            self._cut_off_state = self._initial_trajectory.state_at_time_step(self._cut_off_time_step)
         self._settings = self.config_settings()
         self._reformulate_planning_problem()
         self._time_horizon = round((self._N - self._cut_off_time_step) * self._scenario.dt, 1)
@@ -120,7 +123,11 @@ class QPPlannerRepair(QPPlanner):
         traj._u_lon = trajectory.u_lon
         traj._u_lat = trajectory.u_lat
         cr_traj_repaired = traj.convert_to_cr_trajectory(self._vehicle_configuration.wheelbase)
-        remaining_states = [self._ego_vehicle.initial_state] + self._initial_trajectory.state_list[:self._cut_off_time_step-1]
+        if self._cut_off_time_step == 0:
+            remaining_states = [self._ego_vehicle.initial_state]
+        else:
+            remaining_states = [self._ego_vehicle.initial_state] + \
+                               self._initial_trajectory.state_list[:self._cut_off_time_step-1]
         for state in cr_traj_repaired.state_list:
             state.time_step += self._cut_off_time_step
         cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
@@ -134,7 +141,8 @@ class QPPlannerRepair(QPPlanner):
         return QPLongReference(x_ref)
 
     def config_settings(self):
-        config_file = 'config_' + str(self._scenario.scenario_id) + '.yaml'
+        config_file = 'config_highd.yaml'
+        # config_file = 'config_' + str(self._scenario.scenario_id) + '.yaml'
         config_dir = os.path.normpath(os.path.join(os.path.dirname(__file__),
                                                    "../../config"))
 

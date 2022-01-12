@@ -11,7 +11,7 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationAUpper-56_32_T-1"
+scenario_id = "DEU_LocationALower-27_28_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
 # scenario_id = "DEU_Gar-1_1_T-1"
 # scenario_id = "ZAM_Tutorial-1_2_T-1"
@@ -26,16 +26,26 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 11
+    ego_id = 15
     rule = "R_G1"
+
+    time_step = 0
+    rnd = MPRenderer(figsize=(40, 10))
+    scenario.draw(
+        rnd,
+        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+                 "draw_trajectory": False}, "occupancy": {
+            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    )
+    rnd.render()
+    plt.title(str(time_step))
+    plt.show()
     # scenario.remove_obstacle(scenario.obstacle_by_id(3))
     # scenario.remove_obstacle(scenario.obstacle_by_id(4))
     # scenario.remove_obstacle(scenario.obstacle_by_id(5))
 
     ego_initial = scenario.obstacle_by_id(ego_id)
 
-    ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list
-    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)

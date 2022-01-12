@@ -40,8 +40,6 @@ class TC(CutOffBase, ABC):
 
     @property
     def tc(self):
-        if self._tc is None:
-            raise ValueError("<TC> the tc is not evaluated yet.")
         return self._tc
 
     @property

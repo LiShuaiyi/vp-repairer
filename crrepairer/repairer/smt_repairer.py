@@ -26,18 +26,37 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                  ego_vehicle: DynamicObstacle):
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_abstracter = rule_abstracter
+        self._model = None
+        self._tc = -math.inf
+        self._tv = -math.inf
 
+    @property
+    def tv(self):
+        return self._tv
+
+    @property
+    def tc(self):
+        if self._tc not in [math.inf, -math.inf]:
+            return self._tc * self.rule_abstracter.world_state.dt
+        else:
+            return self._tc
+
+    @property
+    def model(self):
+        return self._model
 
     def repair(self, *args, **kwargs):
-        if self.rule_abstracter.rule_monitor.tv_time_step == -math.inf:
+        self._tv = self.rule_abstracter.rule_monitor.tv_time_step
+        if self._tv == -math.inf:
             return None
         sat_solver = SATSolver(self.rule_abstracter)
         t_solver = TSolver(self.rule_abstracter)
         while sat_solver.solve() == sat:
             if self.rule_abstracter.propositions is None:
                 return None
-            select_proposition, model = sat_solver.model()
-            repairability, repaired_traj = t_solver.check(select_proposition, list(model))
+            select_proposition, self._model = sat_solver.model()
+            repairability, repaired_traj = t_solver.check(select_proposition, list(self._model))
+            self._tc = t_solver.tc_object.tc
             if repairability:
                 return repaired_traj
             else:
