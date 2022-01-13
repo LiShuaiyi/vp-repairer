@@ -52,7 +52,8 @@ if __name__ == '__main__':
                 writer.writerow([scenario.scenario_id, ego_id, "not repairable", repairer.model, repairer.tv, repairer.tc])
     nr_total = nr_not_repairable+nr_repairable+nr_infeasible
     writer.writerow(["Nr of scenario", str(nr_total),
-                     "Nr of infeasible trajectory", str(nr_infeasible), str(nr_infeasible/nr_total*100)+"%",
-                     "Nr of reparable trajectory", str(nr_repairable), str(nr_repairable/(nr_repairable+nr_not_repairable))*100+"%"])
+                     "Nr of infeasible trajectory", str(nr_infeasible), str(round(nr_infeasible/nr_total, 4)),
+                     "Nr of reparable trajectory", str(nr_repairable), str(round(nr_repairable/(nr_repairable+
+                                                                                                nr_not_repairable), 4))])
     f_r.close()
     f_w.close()
