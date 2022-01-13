@@ -22,6 +22,9 @@ if __name__ == '__main__':
     reader = csv.reader(f_r)
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id","repairability", "model", "TV", "TC"])
+    nr_infeasible = 0
+    nr_repairable = 0
+    nr_not_repairable = 0
     for row in reader:
         if list(row)[2] == 'R_G1':
             scenario_id = list(row)[0]
@@ -36,13 +39,20 @@ if __name__ == '__main__':
                                              ego_id, rule)
             if rule_abstracter.rule_monitor.tv_time_step == -math.inf:
                 writer.writerow([scenario.scenario_id, ego_id, "initial feasibility"])
+                nr_infeasible += 1
                 continue
             repairer = SMTTrajectoryRepairer(rule_abstracter,
                                              ego_initial)
             repaired_traj = repairer.repair()
             if repaired_traj is not None:
+                nr_repairable += 1
                 writer.writerow([scenario.scenario_id, ego_id, "bingo", repairer.model, repairer.tv, repairer.tc])
             else:
+                nr_not_repairable +=1
                 writer.writerow([scenario.scenario_id, ego_id, "not repairable", repairer.model, repairer.tv, repairer.tc])
+    nr_total = nr_not_repairable+nr_repairable+nr_infeasible
+    writer.writerow(["Nr of scenario", str(nr_total),
+                     "Nr of infeasible trajectory", str(nr_infeasible), str(nr_infeasible/nr_total*100)+"%",
+                     "Nr of reparable trajectory", str(nr_repairable), str(nr_repairable/(nr_repairable+nr_not_repairable))*100+"%"])
     f_r.close()
     f_w.close()
