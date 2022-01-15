@@ -120,7 +120,7 @@ class TC(CutOffBase, ABC):
                 flag_collision = self._detect_collision(state_list)  # bool value
                 tv, _ = self._calc_tv_updated(state_list) # which should be tv instead of ttm
             # if violation-free and collision-free
-            if tv == math.inf and not flag_collision:
+            if tv == math.inf: # and not flag_collision:
                 low = mid + 1
             else:
                 high = mid
