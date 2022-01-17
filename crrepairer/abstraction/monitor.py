@@ -96,10 +96,14 @@ class STLRuleMonitor:
         # calculate the time-to-violation: detect violation time using STL monitor
         evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
         if evaluated_robustness[0] < 0:
+            if evaluated_ids[0] is ():
+                return -math.inf, None
             return -math.inf, evaluated_ids[0][0]  # all violated
         tv = np.argmax(evaluated_robustness < 0)
         if tv == 0:
             return math.inf, None  # no violation
+        if evaluated_ids[tv] is ():
+            return tv, self.world_state.ego_vehicle.id
         return tv, evaluated_ids[tv][0]
 
 

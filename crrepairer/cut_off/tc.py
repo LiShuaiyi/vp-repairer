@@ -70,6 +70,8 @@ class TC(CutOffBase, ABC):
         tv = np.argmax(evaluated_robustness < 0)
         if tv == 0:
             return math.inf, None  # no violation
+        if evaluated_ids[tv] is ():
+            return tv * self.dT, self.ego_vehicle.obstacle_id
         return tv * self.dT, evaluated_ids[tv][0]
 
     def generate(self, cut_off_maneuvers: List[CutOffAction]):
