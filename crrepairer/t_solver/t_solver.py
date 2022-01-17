@@ -46,6 +46,7 @@ class TSolver:
         for prop_node in self._sel_prop:
             for predicate in prop_node.children:
                 predicate_category = predicate.evaluator.predicate_category
+                print(predicate_category, predicate.name)
                 if predicate_category == Category.LON_POS:
                     compliant_maneuver += [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
                 elif predicate_category == Category.LAT_POS:
@@ -58,7 +59,7 @@ class TSolver:
                 elif predicate_category == Category.ACC:
                     compliant_maneuver += [CutOffAction.STEADYSPEED]
                 else:
-                    return None
+                    compliant_maneuver = None
                     # raise ValueError('<T-Solver>: the category {} is not specified'
                     #                  .format(predicate_category))
         compliant_maneuver = list(set(compliant_maneuver))
@@ -66,6 +67,9 @@ class TSolver:
         return compliant_maneuver
 
     def search_tc(self):
+        if self._compliant_maneuvers is None:
+            print("<TSolver>: the compliant maneuver is not specified")
+            return -math.inf
         tc = self.tc_object.generate(self._compliant_maneuvers)
         return tc
 

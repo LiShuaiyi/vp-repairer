@@ -9,7 +9,9 @@ from cut_off.tc import TC
 from abstraction.abstracter import RuleAbstracter
 
 from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
-                                                          PredCutIn, PredSafeDistPrec)
+                                                          PredCutIn, PredSafeDistPrec,
+                                                          PredLaneSpeedLimit, PredFovSpeedLimit,
+                                                          PredBrSpeedLimit, PredTypeSpeedLimit)
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 from stl_crmonitor.crmonitor.common.vehicle import Vehicle
@@ -42,8 +44,9 @@ class RuleConstraints:
         self._compliant_maneuver = tc_object.compliant_maneuver
         self._sel_prop = sel_proposition
         self._target_lanes = defaultdict(List[Lane])
-        self._long_constraints = list()
-        self._lat_constraints = list()
+        self._lon_dis_constraints = list()
+        self._lon_vel_constraints = list()
+        self._lat_dis_constraints = list()
         self._prec_veh = None
         self._foll_veh = None
         self._safe_dis_list = [False for _ in range(self._tc_obj.N + 1 - self._tc_obj.tc_time_step)]
@@ -68,6 +71,7 @@ class RuleConstraints:
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
             s_limit = [-np.inf, np.inf]
+            v_limit = [0, np.inf]
             for proposition in self._rule_abstracter.rule_monitor.proposition_nodes:
                 try:
                     prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')["robustness"].values[0]
@@ -87,18 +91,31 @@ class RuleConstraints:
                             self.ConstrSafeDist(k, prop_assignment)
                         elif predicate.base_name == PredCutIn.predicate_name:
                             self.ConstrCutIn(k, prop_assignment)
+                        elif predicate.base_name in (PredFovSpeedLimit.predicate_name,
+                                                     PredBrSpeedLimit.predicate_name,
+                                                     PredTypeSpeedLimit.predicate_name,
+                                                     PredLaneSpeedLimit.predicate_name):
+                            speed_limit = predicate.evaluator.speed_limit
+                            v_constr = self.ConstrSpeedLimit(speed_limit)
+                            v_limit = self._get_overlap(v_limit, v_constr)
                         else:
                             print("<QPRepairer/_rule_constraints>: the provided predicate {} is not supported".
                                   format(predicate.name))
-            self._long_constraints.append(s_limit)
+            self._lon_dis_constraints.append(s_limit)
+            self._lon_vel_constraints.append(v_limit)
         pass
 
     def longitudinal_constraints(self):
         self._add()
         self.ConstrCollisionFree()
-        longitudinal_constraints = np.array(self._long_constraints)
-        return LonConstraints.construct_constraints(longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
-                                                    longitudinal_constraints[1:, 0], longitudinal_constraints[1:, 1],
+        longitudinal_distance_constraints = np.array(self._lon_dis_constraints)
+        longitudinal_velocity_constraints = np.array(self._lon_vel_constraints)
+        return LonConstraints.construct_constraints(longitudinal_distance_constraints[1:, 0],
+                                                    longitudinal_distance_constraints[1:, 1],
+                                                    longitudinal_distance_constraints[1:, 0],
+                                                    longitudinal_distance_constraints[1:, 1],
+                                                    v_min=longitudinal_velocity_constraints[1:, 0],
+                                                    v_max=longitudinal_velocity_constraints[1:, 1],
                                                     prec_veh=self._target_vehicle,
                                                     tc_time_step=self._tc_obj.tc_time_step)
 
@@ -111,12 +128,12 @@ class RuleConstraints:
                 x_curr, y_curr = ego_lane.clcs.convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
                 lane_boundary_left = -target_lanes[-1].clcs_left.convert_to_curvilinear_coords(x_curr, y_curr)
                 lane_boundary_right = -target_lanes[0].clcs_right.convert_to_curvilinear_coords(x_curr, y_curr)
-                self._lat_constraints.append([lane_boundary_right[1] + self._veh_config.wheelbase / 2.,
-                                              lane_boundary_left[1] - self._veh_config.wheelbase / 2.])
+                self._lat_dis_constraints.append([lane_boundary_right[1] + self._veh_config.wheelbase / 2.,
+                                                  lane_boundary_left[1] - self._veh_config.wheelbase / 2.])
             else:
-                self._lat_constraints.append([-np.inf,
-                                              np.inf])
-        lateral_constraints = np.array(self._lat_constraints)
+                self._lat_dis_constraints.append([-np.inf,
+                                                  np.inf])
+        lateral_constraints = np.array(self._lat_dis_constraints)
         d_min = np.array((lateral_constraints[1:, 0], lateral_constraints[1:, 0], lateral_constraints[1:, 0])).transpose()
         d_max = np.array((lateral_constraints[1:, 1], lateral_constraints[1:, 1], lateral_constraints[1:, 1])).transpose()
         return LatConstraints.construct_constraints(d_min, d_max,
@@ -149,6 +166,9 @@ class RuleConstraints:
                 continue
         return preceding_vehicle, following_vehicle
 
+    def ConstrSpeedLimit(self, speed_limit):
+        return [0, speed_limit]
+
     def ConstrCollisionFree(self):
         # prec_veh, foll_veh = self._determine_related_veh(self._tc_obj.tc_time_step,
         #                                                  self._target_lanes[self._tc_obj.tc_time_step])
@@ -161,15 +181,15 @@ class RuleConstraints:
             index = k - self._tc_obj.tc_time_step
             if self._prec_veh is not None:  # todo fix the length
                 if k <= self._prec_veh.end_time:
-                    self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                      [-np.inf, self._prec_veh.rear_s(k)
+                    self._lon_dis_constraints[index] = self._get_overlap(self._lon_dis_constraints[index],
+                                                                         [-np.inf, self._prec_veh.rear_s(k)
                                                                        - self._veh_config.wheelbase/2
                                                                        - self._veh_config.length/2
                                                                        ])
             if self._foll_veh is not None:
                 if k <= self._foll_veh.end_time:
-                    self._long_constraints[index] = self._get_overlap(self._long_constraints[index],
-                                                                      [self._foll_veh.front_s(k) +
+                    self._lon_dis_constraints[index] = self._get_overlap(self._lon_dis_constraints[index],
+                                                                         [self._foll_veh.front_s(k) +
                                                                        self._veh_config.wheelbase/2,
                                                                        np.inf])
 

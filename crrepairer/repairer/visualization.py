@@ -69,6 +69,24 @@ def visualize_profile(target_vehicle: DynamicObstacle,
              markersize=7.5, zorder=21, linewidth=1.5)
     plt.show()
 
+
+def visualize_v_profile(
+                      ego_initial: DynamicObstacle,
+                      ego_repaired: DynamicObstacle):
+    plt.figure(figsize=(20, 8))
+    time_list = []
+    ego_ini_vel_list = []
+    ego_rep_vel_list = []
+    for time_step in range(ego_initial.prediction.final_time_step + 1):
+        time_list.append(time_step)
+        ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
+        ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
+    plt.plot(time_list, ego_ini_vel_list, color='#0065bd', marker='x',
+             markersize=7.5, zorder=21, linewidth=1.5)
+    plt.plot(time_list[13:], ego_rep_vel_list[13:], color='#a2ad00', marker='.',
+             markersize=7.5, zorder=21, linewidth=1.5)
+    plt.show()
+
 def visualize_repairing_result(scenario: Scenario,
                                ego_initial: DynamicObstacle,
                                ego_repaired: DynamicObstacle,
