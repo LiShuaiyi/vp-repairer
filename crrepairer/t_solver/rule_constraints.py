@@ -11,7 +11,8 @@ from abstraction.abstracter import RuleAbstracter
 from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
                                                           PredCutIn, PredSafeDistPrec,
                                                           PredLaneSpeedLimit, PredFovSpeedLimit,
-                                                          PredBrSpeedLimit, PredTypeSpeedLimit)
+                                                          PredBrSpeedLimit, PredTypeSpeedLimit,
+                                                          PredAbruptBreaking)
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 from stl_crmonitor.crmonitor.common.vehicle import Vehicle
@@ -46,6 +47,7 @@ class RuleConstraints:
         self._target_lanes = defaultdict(List[Lane])
         self._lon_dis_constraints = list()
         self._lon_vel_constraints = list()
+        self._lon_acc_constraint = []
         self._lat_dis_constraints = list()
         self._prec_veh = None
         self._foll_veh = None
@@ -68,6 +70,7 @@ class RuleConstraints:
         return self._safe_dis_list
 
     def _add(self):
+        a_limit = [-np.inf, np.inf]
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
             s_limit = [-np.inf, np.inf]
@@ -82,6 +85,8 @@ class RuleConstraints:
                         prop_assignment = -prop_assignment
 
                     if k < self._tc_obj.tv_time_step or proposition in self._sel_prop:
+                        if not hasattr(predicate, 'base_name'):
+                            continue
                         if predicate.base_name == PredInSameLane.predicate_name:
                             self.ConstrInSameLane(k, prop_assignment)
                         elif predicate.base_name == PredInFrontOf.predicate_name:
@@ -98,12 +103,16 @@ class RuleConstraints:
                             speed_limit = predicate.evaluator.speed_limit
                             v_constr = self.ConstrSpeedLimit(speed_limit)
                             v_limit = self._get_overlap(v_limit, v_constr)
+                        elif predicate.base_name == PredAbruptBreaking.predicate_name:
+                            a_abruptly = predicate.evaluator.a_abrupt
+                            a_constr = self.ConstrAccNotAbruptly(a_abruptly)
+                            a_limit = self._get_overlap(a_constr, a_limit)
                         else:
                             print("<QPRepairer/_rule_constraints>: the provided predicate {} is not supported".
                                   format(predicate.name))
             self._lon_dis_constraints.append(s_limit)
             self._lon_vel_constraints.append(v_limit)
-        pass
+        self._lon_acc_constraint = a_limit
 
     def longitudinal_constraints(self):
         self._add()
@@ -116,6 +125,8 @@ class RuleConstraints:
                                                     longitudinal_distance_constraints[1:, 1],
                                                     v_min=longitudinal_velocity_constraints[1:, 0],
                                                     v_max=longitudinal_velocity_constraints[1:, 1],
+                                                    a_min=self._lon_acc_constraint[0],
+                                                    a_max=self._lon_acc_constraint[1],
                                                     prec_veh=self._target_vehicle,
                                                     tc_time_step=self._tc_obj.tc_time_step)
 
@@ -168,6 +179,9 @@ class RuleConstraints:
 
     def ConstrSpeedLimit(self, speed_limit):
         return [0, speed_limit]
+
+    def ConstrAccNotAbruptly(self, a_abrupt):
+        return [a_abrupt, np.inf]
 
     def ConstrCollisionFree(self):
         # prec_veh, foll_veh = self._determine_related_veh(self._tc_obj.tc_time_step,

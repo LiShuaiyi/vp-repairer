@@ -42,10 +42,10 @@ class QPPlannerRepair(QPPlanner):
         self._settings = self.config_settings()
         self._reformulate_planning_problem()
         self._time_horizon = round((self._N - self._cut_off_time_step) * self._scenario.dt, 1)
+        self._planning_problem.initial_state = self._cut_off_state
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
                                                                            self._planning_problem)
-        self._planning_problem.initial_state = self._cut_off_state
         # self._planning_problem.initial_state.time_step = 0 # todo: check the time steps
         super().__init__(self._scenario,
                          self._planning_problem,

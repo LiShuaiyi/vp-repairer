@@ -83,7 +83,28 @@ def visualize_v_profile(
         ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
     plt.plot(time_list, ego_ini_vel_list, color='#0065bd', marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[13:], ego_rep_vel_list[13:], color='#a2ad00', marker='.',
+    plt.plot(time_list, ego_rep_vel_list, color='#a2ad00', marker='.',
+             markersize=7.5, zorder=21, linewidth=1.5)
+    plt.show()
+
+def visualize_a_profile(dt,
+                        ego_initial: DynamicObstacle,
+                        ego_repaired: DynamicObstacle):
+    plt.figure(figsize=(20, 8))
+    time_list = []
+    ego_ini_acc_list = []
+    ego_rep_acc_list = []
+    for time_step in range(ego_initial.prediction.final_time_step):
+        time_list.append(time_step)
+        if hasattr(ego_initial.state_at_time(time_step), 'acceleration'):
+            ego_ini_acc_list.append(ego_initial.state_at_time(time_step).acceleration)
+        else:
+            ego_ini_acc_list.append((ego_initial.state_at_time(time_step+1).velocity -
+                                     ego_initial.state_at_time(time_step).velocity)/dt)
+        ego_rep_acc_list.append(ego_repaired.state_at_time(time_step).acceleration)
+    plt.plot(time_list, ego_ini_acc_list, color='#0065bd', marker='x',
+             markersize=7.5, zorder=21, linewidth=1.5)
+    plt.plot(time_list, ego_rep_acc_list, color='#a2ad00', marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
     plt.show()
 

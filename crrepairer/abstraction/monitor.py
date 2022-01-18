@@ -25,6 +25,8 @@ class STLRuleMonitor:
         self.world_state: WorldState = world_state
         self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
         self._tv, self._other_id = self._cal_tv_initial()
+        if rules == "R_G2":
+            self._other_id = self.world_state.ego_vehicle.id
         self._prop_nodes = self._initialize_prop_rob()
 
     @property
@@ -82,7 +84,7 @@ class STLRuleMonitor:
                                  to_pandas=True)
 
     def evaluate_consecutively(self):
-        self._rule_eval.switch_to_boolean()
+        # self._rule_eval.switch_to_boolean()
         self.rob_rule, self.rob_predicate = self._rule_eval.\
             evaluate_consecutively(self.world_state,
                                    )
