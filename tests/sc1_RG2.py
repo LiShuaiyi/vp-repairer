@@ -11,31 +11,31 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationAUpper-26_21_T-1"
+scenario_id = "DEU_LocationALower-12_14_T-1"
 
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
 
-file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
+# file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 1002
+    ego_id = 28
     rule = "R_G2"
 
     time_step = 0
-    # rnd = MPRenderer(figsize=(40, 10))
-    # scenario.draw(
-    #     rnd,
-    #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-    #              "draw_trajectory": False}, "occupancy": {
-    #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    # )
-    # rnd.render()
-    # plt.title(str(time_step))
-    # plt.show()
+    rnd = MPRenderer(figsize=(40, 10))
+    scenario.draw(
+        rnd,
+        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+                 "draw_trajectory": False}, "occupancy": {
+            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    )
+    rnd.render()
+    plt.title(str(time_step))
+    plt.show()
     ego_initial = scenario.obstacle_by_id(ego_id)
 
     rule_abstracter = RuleAbstracter(scenario,
