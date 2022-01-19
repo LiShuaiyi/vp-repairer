@@ -94,14 +94,13 @@ class SimulationLong(SimulationBase, ABC):
 
     def set_inputs(self, velocity):
         self._input.acceleration_y = 0
-        v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch
-        if velocity > v_switch:
-            a_max = self._vehicle_dynamics.parameters.longitudinal.a_max * v_switch / velocity
-        else:
-            a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
+        a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
         if self.action == CutOffAction.BRAKE:
             self._input.acceleration = - a_max
         elif self.action == CutOffAction.KICKDOWN:
+            v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch
+            if velocity > v_switch:
+                a_max = self._vehicle_dynamics.parameters.longitudinal.a_max * v_switch / velocity
             self._input.acceleration = a_max
         else:
             self._input.acceleration = 0

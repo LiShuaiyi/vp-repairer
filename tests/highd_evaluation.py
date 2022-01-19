@@ -21,7 +21,7 @@ if __name__ == '__main__':
     f_w = open(os.path.dirname(__file__) + "/highD_evaluation_result.csv", 'r+')
     reader = csv.reader(f_r)
     writer = csv.writer(f_w)
-    writer.writerow(["scenario_id", "ego_id","repairability", "model", "TV", "TC"])
+    writer.writerow(["scenario_id", "ego_id", "repairability", "model", "TV", "TC"])
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0

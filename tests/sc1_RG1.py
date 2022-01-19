@@ -11,7 +11,7 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationAUpper-36_20_T-1"
+scenario_id = "DEU_LocationBUpper-2_46_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
 # scenario_id = "DEU_Gar-1_1_T-1"
 # scenario_id = "ZAM_Tutorial-1_2_T-1"
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 8
+    ego_id = 10
     rule = "R_G1"
 
     time_step = 0
