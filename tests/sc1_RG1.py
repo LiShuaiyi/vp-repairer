@@ -14,7 +14,12 @@ import math
 # scenario_id = "DEU_LocationAUpper-26_21_T-1"
 scenario_id = "DEU_LocationAUpper-48_7_T-1"
 scenario_id = "DEU_LocationAUpper-35_3_T-1"
-scenario_id = "DEU_LocationAUpper-44_30_T-1"
+scenario_id = "DEU_LocationAUpper-56_33_T-1"
+scenario_id = "DEU_LocationFLower-60_35_T-1"
+scenario_id = "DEU_LocationALower-54_5_T-1"
+scenario_id = "DEU_LocationBUpper-1_22_T-1"
+scenario_id = "DEU_LocationAUpper-34_9_T-1"
+# scenario_id = "DEU_LocationAUpper-44_30_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
 # scenario_id = "DEU_Gar-1_1_T-1"
 # scenario_id = "ZAM_Tutorial-1_2_T-1"
@@ -29,7 +34,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 15
+    ego_id = 16
     rule = "R_G1"
     ego_initial = scenario.obstacle_by_id(ego_id)
 

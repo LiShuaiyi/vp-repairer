@@ -12,7 +12,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 import csv
 import os
 import math
-
+2
 rule = "R_G1"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/"
 
