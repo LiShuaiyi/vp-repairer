@@ -26,7 +26,7 @@ if __name__ == '__main__':
     nr_repairable = 0
     nr_not_repairable = 0
     for row in reader:
-        if list(row)[3] == 'R_G1':
+        if 'R_G1' in list(row)[3]:
             scenario_id = list(row)[0]
             scenario, planning_problem_set = CommonRoadFileReader(file_path + scenario_id + ".xml").\
                 open(lanelet_assignment=True)

@@ -59,7 +59,7 @@ class TSolver:
                 elif predicate_category == Category.ACC:
                     compliant_maneuver += [CutOffAction.STEADYSPEED]
                 else:
-                    compliant_maneuver = []
+                    pass # general predicate
                     # raise ValueError('<T-Solver>: the category {} is not specified'
                     #                  .format(predicate_category))
         compliant_maneuver = list(set(compliant_maneuver))
