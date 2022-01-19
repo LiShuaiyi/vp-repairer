@@ -11,7 +11,7 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationBUpper-2_46_T-1"
+scenario_id = "DEU_LocationAUpper-26_21_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
 # scenario_id = "DEU_Gar-1_1_T-1"
 # scenario_id = "ZAM_Tutorial-1_2_T-1"
@@ -26,8 +26,9 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 10
+    ego_id = 37
     rule = "R_G1"
+    ego_initial = scenario.obstacle_by_id(ego_id)
 
     time_step = 0
     rnd = MPRenderer(figsize=(40, 10))
@@ -37,6 +38,22 @@ if __name__ == '__main__':
                  "draw_trajectory": False}, "occupancy": {
             "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
     )
+    ego_initial.draw(rnd,
+                     draw_params=ParamServer(
+                         {"time_begin": time_step,
+                          "occupancy": {
+                              "draw_occupancies": 0,
+                              "shape": {"rectangle": {
+                                  "facecolor": "green",
+                                  "edgecolor": "green"}
+                              }},
+                          "dynamic_obstacle":
+                              {"vehicle_shape": {
+                                  "occupancy": {
+                                      "shape": {"rectangle": {
+                                          "facecolor": "green",
+                                          "edgecolor": "green"}
+                                      }}}}}))
     rnd.render()
     plt.title(str(time_step))
     plt.show()
@@ -44,7 +61,6 @@ if __name__ == '__main__':
     # scenario.remove_obstacle(scenario.obstacle_by_id(4))
     # scenario.remove_obstacle(scenario.obstacle_by_id(5))
 
-    ego_initial = scenario.obstacle_by_id(ego_id)
 
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,

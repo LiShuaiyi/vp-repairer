@@ -20,6 +20,7 @@ class STLRuleMonitor:
     def __init__(self,
                  world_state,
                  rules: Union[str, Iterable[str]],):
+        self._rules = rules
         self._rule_eval = RuleSetEvaluator.create_from_config(rules,
                                                               dt=world_state.dt)
         self.world_state: WorldState = world_state
@@ -84,7 +85,8 @@ class STLRuleMonitor:
                                  to_pandas=True)
 
     def evaluate_consecutively(self):
-        # self._rule_eval.switch_to_boolean()
+        if self._rules != "R_G2":
+            self._rule_eval.switch_to_boolean()
         self.rob_rule, self.rob_predicate = self._rule_eval.\
             evaluate_consecutively(self.world_state,
                                    )

@@ -27,7 +27,7 @@ class TC(CutOffBase, ABC):
         self._other_id = rule_monitor.other_id
         self._visualize = False
         self._compliant_maneuver = None
-        self._tc = None
+        self._tc = -math.inf
         self._simulation_lateral = None
 
     @property
@@ -44,6 +44,8 @@ class TC(CutOffBase, ABC):
 
     @property
     def tc_time_step(self) -> int:
+        if self._tc == -math.inf:
+            return self._tc
         return int(self._tc/self.dT)
 
     @property
@@ -80,6 +82,8 @@ class TC(CutOffBase, ABC):
         :param cut_off_maneuvers: the given maneuvers of ego vehicle
         :return: TC, corresponding maneuver
         """
+        if not cut_off_maneuvers:
+            return -math.inf
         if self._tv == -math.inf:
             raise ValueError("<TC>: the trajectory is not repairable since it already disobeys the rules")
         elif self._tv == math.inf:
