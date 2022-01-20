@@ -12,13 +12,13 @@ from commonroad.common.file_reader import CommonRoadFileReader
 import csv
 import os
 import math
-2
-rule = "R_G1"
+
+rule = "R_G3"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/"
 
 if __name__ == '__main__':
     f_r = open(os.path.dirname(__file__) + "/highD_rule_STL.csv", 'r+')
-    f_w = open(os.path.dirname(__file__) + "/highD_evaluation_result_STL.csv", 'r+')
+    f_w = open(os.path.dirname(__file__) + "/highD_evaluation_result_STL_RG" + rule[-1] + ".csv", 'r+')
     reader = csv.reader(f_r)
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id", "repairability", "model", "TV", "TC"])
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     nr_repairable = 0
     nr_not_repairable = 0
     for row in reader:
-        if 'R_G1' in list(row)[3]:
+        if rule in list(row)[3]:
             scenario_id = list(row)[0]
             scenario, planning_problem_set = CommonRoadFileReader(file_path + scenario_id + ".xml").\
                 open(lanelet_assignment=True)

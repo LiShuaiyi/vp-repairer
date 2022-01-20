@@ -11,7 +11,7 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationAUpper-38_40_T-1"
+scenario_id = "DEU_LocationFLower-60_35_T-1"
 
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 14
+    ego_id = 7
     rule = "R_G3"
 
     # time_step = 0
