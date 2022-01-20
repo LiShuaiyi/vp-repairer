@@ -16,13 +16,13 @@ scenario_id = "DEU_LocationALower-12_14_T-1"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
 
-# file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
+file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 28
+    ego_id = 1002
     rule = "R_G2"
 
     time_step = 0

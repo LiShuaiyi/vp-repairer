@@ -244,49 +244,49 @@ def main():
         create_ego_obstacle=True,
         ego_vehicle=ego_vehicle,
         create_video=True)
-    # for time_step in range(ego_vehicle.prediction.final_time_step):
-    #     rnd = MPRenderer(figsize=(40, 10))
-    #     scenario_with_planner.lanelet_network.draw(rnd)
-    #     for obs in scenario_with_planner.dynamic_obstacles:
-    #         obs.draw(rnd, draw_params=ParamServer(
-    #             {"time_begin": time_step,
-    #              "occupancy": {
-    #                  "draw_occupancies": 1,
-    #                  "shape": {"rectangle": {
-    #                      "facecolor": "black",
-    #                      "edgecolor": "black"}
-    #                  }},
-    #              "trajectory": {
-    #                  "draw_trajectory": False},
-    #              "dynamic_obstacle":
-    #                  {"vehicle_shape": {
-    #                      "occupancy": {
-    #                          "shape": {"rectangle": {
-    #                              "facecolor": "black",
-    #                              "edgecolor": "black"}
-    #                          }}}, 'show_label': False}}))
-    #     for obs in scenario.dynamic_obstacles:
-    #         obs.draw(rnd, draw_params=ParamServer(
-    #             {"time_begin": time_step,
-    #              "occupancy": {
-    #                  "draw_occupancies": 1,
-    #                  "shape": {"rectangle": {
-    #                      "facecolor": "blue",
-    #                      "edgecolor": "blue"}
-    #                  }},
-    #              "trajectory": {
-    #                  "draw_trajectory": False},
-    #              "dynamic_obstacle":
-    #                  {"vehicle_shape": {
-    #                      "occupancy": {
-    #                          "shape": {"rectangle": {
-    #                              "facecolor": "blue",
-    #                              "edgecolor": "blue"}
-    #                          }}}, 'show_label': True}}))
-    #
-    #     rnd.render()
-    #     plt.title(str(time_step))
-    #     plt.show()
+    for time_step in range(ego_vehicle.prediction.final_time_step):
+        rnd = MPRenderer(figsize=(40, 10))
+        scenario_with_planner.lanelet_network.draw(rnd)
+        for obs in scenario_with_planner.dynamic_obstacles:
+            obs.draw(rnd, draw_params=ParamServer(
+                {"time_begin": time_step,
+                 "occupancy": {
+                     "draw_occupancies": 1,
+                     "shape": {"rectangle": {
+                         "facecolor": "black",
+                         "edgecolor": "black"}
+                     }},
+                 "trajectory": {
+                     "draw_trajectory": False},
+                 "dynamic_obstacle":
+                     {"vehicle_shape": {
+                         "occupancy": {
+                             "shape": {"rectangle": {
+                                 "facecolor": "black",
+                                 "edgecolor": "black"}
+                             }}}, 'show_label': False}}))
+        for obs in scenario.dynamic_obstacles:
+            obs.draw(rnd, draw_params=ParamServer(
+                {"time_begin": time_step,
+                 "occupancy": {
+                     "draw_occupancies": 1,
+                     "shape": {"rectangle": {
+                         "facecolor": "blue",
+                         "edgecolor": "blue"}
+                     }},
+                 "trajectory": {
+                     "draw_trajectory": False},
+                 "dynamic_obstacle":
+                     {"vehicle_shape": {
+                         "occupancy": {
+                             "shape": {"rectangle": {
+                                 "facecolor": "blue",
+                                 "edgecolor": "blue"}
+                             }}}, 'show_label': True}}))
+
+        rnd.render()
+        plt.title(str(time_step))
+        plt.show()
 
     if scenario_with_planner:
         # write simulated scenario to file

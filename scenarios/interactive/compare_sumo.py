@@ -14,9 +14,10 @@ if __name__ == '__main__':
     file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/interactive/archive/"
 
     # for s in list(glob.glob(os.path.join(file_path, "*.xml"), recursive=True)):
-    s = file_path + 'DEU_LocationELower-24_18_T-1.xml'
+    s = file_path + 'DEU_LocationELower-24_18_I-1.xml'
     scenario, planning_problem_set = \
             CommonRoadFileReader(s).open(lanelet_assignment=True)
+    violating_result = []
     for vehicle in scenario.dynamic_obstacles:
         ego_id = vehicle.obstacle_id
         world = WorldState.create_from_scenario(scenario, ego_obs_id=ego_id)
@@ -26,4 +27,5 @@ if __name__ == '__main__':
         if not rule_robustness.query('robustness<0')["rule_name"].empty:
             for rule in list(set(rule_robustness.query('robustness<0')["rule_name"])):
                 violate += rule
-            print([str(scenario.scenario_id), ego_id, str(violate)])
+            violating_result.append([str(scenario.scenario_id), ego_id, str(violate)])
+        print(violating_result)
