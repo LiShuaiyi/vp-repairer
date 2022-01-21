@@ -1,2 +1,4 @@
 scenario_id,ego_id,repairability,model,TV,TC
 DEU_LocationAUpper-26_50_T-1,8,initial feasibility
+DEU_LocationAUpper-27_20_T-1,19,bingo,{'~a'},42,37
+DEU_LocationAUpper-36_54_T-1,20,bingo,{'~a'},43,36

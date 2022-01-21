@@ -85,8 +85,8 @@ class STLRuleMonitor:
                                  to_pandas=True)
 
     def evaluate_consecutively(self):
-        if self._rules != "R_G2":
-            self._rule_eval.switch_to_boolean()
+        # if self._rules != "R_G2":
+        self._rule_eval.switch_to_boolean()
         self.rob_rule, self.rob_predicate = self._rule_eval.\
             evaluate_consecutively(self.world_state,
                                    )

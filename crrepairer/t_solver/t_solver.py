@@ -45,6 +45,8 @@ class TSolver:
         compliant_maneuver = list()
         for prop_node in self._sel_prop:
             for predicate in prop_node.children:
+                if not hasattr(predicate, "evaluator"):
+                    continue
                 predicate_category = predicate.evaluator.predicate_category
                 print(predicate_category, predicate.name)
                 if predicate_category == Category.LON_POS:

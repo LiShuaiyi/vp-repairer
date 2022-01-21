@@ -11,33 +11,37 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationALower-12_14_T-1"
+scenario_id = "DEU_LocationAUpper-36_54_T-1"
 
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
 
-file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
+# file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 1002
+    ego_id = 20
     rule = "R_G2"
 
-    time_step = 0
-    rnd = MPRenderer(figsize=(40, 10))
-    scenario.draw(
-        rnd,
-        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-                 "draw_trajectory": False}, "occupancy": {
-            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    )
-    rnd.render()
-    plt.title(str(time_step))
-    plt.show()
+    # time_step = 0
+    # rnd = MPRenderer(figsize=(40, 10))
+    # scenario.draw(
+    #     rnd,
+    #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+    #              "draw_trajectory": False}, "occupancy": {
+    #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    # )
+    # rnd.render()
+    # plt.title(str(time_step))
+    # plt.show()
     ego_initial = scenario.obstacle_by_id(ego_id)
-
+    N = ego_initial.prediction.trajectory.final_state.time_step
+    for i in range(ego_initial.prediction.trajectory.final_state.time_step):
+        if ego_initial.state_at_time(i+1).velocity<ego_initial.state_at_time(i).velocity:
+            ego_initial.state_at_time(i).acceleration = -ego_initial.state_at_time(i).acceleration
+    ego_initial.state_at_time(N).acceleration = ego_initial.state_at_time(N-1).acceleration
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -61,7 +65,7 @@ if __name__ == '__main__':
                                                   repaired_traj)
         ego_initial.prediction.shape = ego_vehicle.prediction.shape
         # plot_limits = [-10, 100, -8, 8]
-        plot_limits = None #[-380, -150, 7.5, 17.5]
+        plot_limits = None  #[-380, -150, 7.5, 17.5]
         visualize_a_profile(scenario.dt, ego_initial, ego_vehicle)
         for time_step in range(ego_vehicle.prediction.final_time_step):
             visualize_repairing_result(scenario, ego_initial,
