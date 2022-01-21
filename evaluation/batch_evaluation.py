@@ -23,7 +23,7 @@ if __name__ == '__main__':
     f_w = open(os.path.dirname(__file__) + "/result.csv", 'r+')
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id", "repairability", "model", "TV", "TC"])
-    for csv_file in list(glob.glob("config/*.csv", recursive=True))[2:]:
+    for csv_file in list(glob.glob("config/*.csv", recursive=True)):
         f_r = open(csv_file, 'r+')
         reader = csv.reader(f_r)
         rule = "R_G" + csv_file[-5]

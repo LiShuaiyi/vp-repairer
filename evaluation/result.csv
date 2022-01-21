@@ -2,3 +2,32 @@ scenario_id,ego_id,repairability,model,TV,TC
 DEU_LocationAUpper-26_50_T-1,8,initial feasibility
 DEU_LocationAUpper-27_20_T-1,19,bingo,{'~a'},42,37
 DEU_LocationAUpper-36_54_T-1,20,bingo,{'~a'},43,36
+DEU_LocationAUpper-36_54_T-1,25,bingo,"{'~b', '~a'}",62,56
+DEU_LocationALower-49_35_T-1,16,bingo,"{'~b', '~a'}",18,16
+DEU_LocationAUpper-26_42_T-1,21,initial feasibility
+DEU_LocationALower-34_17_T-1,10,initial feasibility
+DEU_LocationALower-25_56_T-1,6,initial feasibility
+DEU_LocationALower-25_56_T-1,8,bingo,{'~a'},6,2
+DEU_LocationALower-25_56_T-1,17,bingo,{'~a'},42,40
+DEU_LocationAUpper-26_43_T-1,18,initial feasibility
+DEU_LocationAUpper-26_9_T-1,35,bingo,{'~a'},23,18
+DEU_LocationAUpper-26_9_T-1,45,bingo,"{'~b', '~a'}",53,46
+DEU_LocationALower-50_26_T-1,9,initial feasibility
+DEU_LocationALower-50_26_T-1,13,bingo,{'~a'},17,7
+DEU_LocationAUpper-26_41_T-1,21,bingo,{'~a'},73,68
+DEU_LocationAUpper-26_30_T-1,10,bingo,{'~a'},20,16
+DEU_LocationAUpper-26_30_T-1,21,not repairable,"{'~b', '~a'}",40,26
+DEU_LocationALower-27_6_T-1,22,bingo,{'~a'},66,62
+DEU_LocationELower-22_5_T-1,6,initial feasibility
+DEU_LocationAUpper-25_23_T-1,24,bingo,"{'~b', '~a'}",41,34
+DEU_LocationALower-26_29_T-1,24,bingo,"{'~b', '~a'}",31,25
+DEU_LocationAUpper-36_53_T-1,21,bingo,{'~a'},68,65
+DEU_LocationALower-35_39_T-1,14,bingo,{'~a'},24,21
+DEU_LocationBUpper-2_35_T-1,8,initial feasibility
+DEU_LocationAUpper-36_9_T-1,11,bingo,{'~a'},16,8
+DEU_LocationAUpper-36_9_T-1,16,bingo,{'~a'},45,10
+DEU_LocationAUpper-36_9_T-1,20,bingo,"{'~b', '~a'}",44,38
+DEU_LocationAUpper-26_44_T-1,24,bingo,"{'~b', '~a'}",59,24
+DEU_LocationAUpper-12_19_T-1,32,bingo,"{'~b', '~a'}",50,44
+DEU_LocationAUpper-25_6_T-1,12,bingo,{'~a'},4,0
+Nr of scenario,31,Nr of infeasible trajectory,8,0.2581,Nr of reparable trajectory,22,0.9565

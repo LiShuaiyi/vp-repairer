@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import math
 
 scenario_id = "DEU_LocationAUpper-36_54_T-1"
+scenario_id = 'DEU_LocationAUpper-26_30_T-1'
 
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
@@ -22,20 +23,20 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 20
+    ego_id = 21
     rule = "R_G2"
 
-    # time_step = 0
-    # rnd = MPRenderer(figsize=(40, 10))
-    # scenario.draw(
-    #     rnd,
-    #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-    #              "draw_trajectory": False}, "occupancy": {
-    #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    # )
-    # rnd.render()
-    # plt.title(str(time_step))
-    # plt.show()
+    time_step = 0
+    rnd = MPRenderer(figsize=(40, 10))
+    scenario.draw(
+        rnd,
+        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+                 "draw_trajectory": False}, "occupancy": {
+            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    )
+    rnd.render()
+    plt.title(str(time_step))
+    plt.show()
     ego_initial = scenario.obstacle_by_id(ego_id)
     N = ego_initial.prediction.trajectory.final_state.time_step
     for i in range(ego_initial.prediction.trajectory.final_state.time_step):
