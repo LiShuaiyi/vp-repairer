@@ -20,7 +20,7 @@ if __name__ == '__main__':
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0
-    f_w = open(os.path.dirname(__file__) + "/result.csv", 'r+')
+    f_w = open(os.path.dirname(__file__) + "result.csv", 'r+')
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id", "repairability", "model", "TV", "TC"])
     for csv_file in list(glob.glob("config/*.csv", recursive=True)):
