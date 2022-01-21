@@ -5,7 +5,7 @@ from enum import Enum
 from sympy.logic.inference import satisfiable
 from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
 
-from crmonitor.predicates.rule import PropositionNode
+from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from sympy.abc import *
 

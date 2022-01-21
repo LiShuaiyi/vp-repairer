@@ -8,9 +8,9 @@ from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
-from cut_off.tc import TC
-from t_solver.rule_constraints import RuleConstraints
-from abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.cut_off.tc import TC
+from commonroad_repair.crrepairer.t_solver.rule_constraints import RuleConstraints
+from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 
 from commonroad.scenario.trajectory import Trajectory, State
 from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType

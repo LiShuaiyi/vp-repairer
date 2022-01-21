@@ -1,13 +1,13 @@
 import math
 
-from crmonitor.common.world_state import WorldState
-from crmonitor.common.vehicle import Vehicle
-from crmonitor.common.road_network import RoadNetwork
-from crmonitor.common.helper import (_compute_jerk,
-                                     _compute_acceleration,
-                                     update_curvilinear_states_long,
-                                     create_curvilinear_states
-                                     )
+from stl_crmonitor.crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.common.vehicle import Vehicle
+from stl_crmonitor.crmonitor.common.road_network import RoadNetwork
+from stl_crmonitor.crmonitor.common.helper import (_compute_jerk,
+                                                   _compute_acceleration,
+                                                   update_curvilinear_states_long,
+                                                   create_curvilinear_states
+                                                   )
 from typing import List, Union
 from vehiclemodels.parameters_vehicle1 import VehicleParameters
 from commonroad.scenario.obstacle import StaticObstacle, ObstacleType, DynamicObstacle

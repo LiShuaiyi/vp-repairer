@@ -4,9 +4,9 @@ import numpy as np
 
 from collections import defaultdict
 
-from cut_off.simulation import CutOffAction
-from cut_off.tc import TC
-from abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction
+from commonroad_repair.crrepairer.cut_off.tc import TC
+from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 
 from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
                                                           PredCutIn, PredSafeDistPrec,

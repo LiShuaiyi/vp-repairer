@@ -3,11 +3,11 @@ import math
 
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.scenario import Scenario
-from cut_off.base import CutOffBase
-from cut_off.utils import visualize_state_list, int_round
-from cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
+from commonroad_repair.crrepairer.cut_off.base import CutOffBase
+from commonroad_repair.crrepairer.cut_off.utils import visualize_state_list, int_round
+from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 
-from crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.common.world_state import WorldState
 
 
 class TTR(CutOffBase, ABC):

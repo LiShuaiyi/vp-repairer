@@ -10,8 +10,8 @@ from commonroad.scenario.obstacle import DynamicObstacle, State
 from commonroad_dc.feasibility.vehicle_dynamics import (KinematicSingleTrackDynamics,
                                                         PointMassDynamics)
 from commonroad_dc.feasibility.feasibility_checker import input_vector_feasibility, state_transition_feasibility
-from crmonitor.common.world_state import WorldState
-from cut_off.utils import check_steering_angle_feasibility, check_velocity_feasibility
+from stl_crmonitor.crmonitor.common.world_state import WorldState
+from commonroad_repair.crrepairer.cut_off.utils import check_steering_angle_feasibility, check_velocity_feasibility
 
 
 class CutOffAction(str, Enum):

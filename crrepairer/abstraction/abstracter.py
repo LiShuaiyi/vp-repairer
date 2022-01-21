@@ -1,10 +1,10 @@
 import math
 from typing import List, Dict, Union, Iterable
 
-from abstraction.monitor import STLRuleMonitor, MonitorType
+from commonroad_repair.crrepairer.abstraction.monitor import STLRuleMonitor, MonitorType
 # CommonRoad STL monitor
-from crmonitor.common.world_state import WorldState
-from crmonitor.predicates.rule import PredicateNode, PropositionNode
+from stl_crmonitor.crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.predicates.rule import PredicateNode, PropositionNode
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
 from commonroad.planning.planning_problem import PlanningProblem

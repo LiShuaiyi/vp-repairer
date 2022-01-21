@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Union
 import matplotlib.pyplot as plt
 # CommonRoad STL monitor
-from crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.common.world_state import WorldState
 
 # CommonRoad Toolbox
 from commonroad.scenario.obstacle import DynamicObstacle, Shape
@@ -22,7 +22,7 @@ from commonroad_dc.collision.visualization.drawing \
     import draw_collision_timevariantcollisionobject, \
     draw_collision_collisionchecker, draw_collision_rectobb
 
-from cut_off.utils import transfer_state_list_to_prediction
+from commonroad_repair.crrepairer.cut_off.utils import transfer_state_list_to_prediction
 
 
 class CutOffBase(ABC):
