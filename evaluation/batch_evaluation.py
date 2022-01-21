@@ -20,9 +20,9 @@ if __name__ == '__main__':
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0
-    f_w = open(os.path.dirname(__file__) + "result.csv", 'r+')
+    f_w = open("result.csv", 'r+')
     writer = csv.writer(f_w)
-    writer.writerow(["scenario_id", "ego_id", "repairability", "model", "TV", "TC"])
+    writer.writerow(["scenario_id", "ego_id", 'rule', "repairability", "model", "TV", "TC"])
     for csv_file in list(glob.glob("config/*.csv", recursive=True)):
         f_r = open(csv_file, 'r+')
         reader = csv.reader(f_r)
@@ -42,19 +42,22 @@ if __name__ == '__main__':
                                              planning_problem,
                                              ego_id, rule)
             if rule_abstracter.rule_monitor.tv_time_step == -math.inf:
-                writer.writerow([scenario.scenario_id, ego_id, "initial feasibility"])
+                writer.writerow([scenario.scenario_id, ego_id, rule, "initial feasibility"])
                 nr_infeasible += 1
                 continue
             repairer = SMTTrajectoryRepairer(rule_abstracter,
                                              ego_initial)
-            repaired_traj = repairer.repair()
+            try:
+                repaired_traj = repairer.repair()
+            except:
+                repaired_traj = None
             if repaired_traj is not None:
                 nr_repairable += 1
-                writer.writerow([scenario.scenario_id, ego_id, "bingo", repairer.model, repairer.tv, repairer.tc])
+                writer.writerow([scenario.scenario_id, ego_id, rule, "bingo", repairer.model, repairer.tv, repairer.tc])
             else:
                 nr_not_repairable += 1
                 writer.writerow(
-                    [scenario.scenario_id, ego_id, "not repairable", repairer.model, repairer.tv, repairer.tc])
+                    [scenario.scenario_id, ego_id, rule, "not repairable", repairer.model, repairer.tv, repairer.tc])
         f_r.close()
 
     nr_total = nr_not_repairable + nr_repairable + nr_infeasible
