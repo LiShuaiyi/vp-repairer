@@ -9,7 +9,6 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Union
-import seaborn as sns
 
 # commonroad-io
 from commonroad.scenario.obstacle import DynamicObstacle
