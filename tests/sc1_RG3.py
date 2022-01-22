@@ -11,7 +11,7 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationFLower-60_35_T-1"
+scenario_id = "DEU_LocationAUpper-13_23_T-1"
 
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
@@ -20,20 +20,20 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 7
+    ego_id = 18
     rule = "R_G3"
 
-    time_step = 0
-    rnd = MPRenderer(figsize=(40, 10))
-    scenario.draw(
-        rnd,
-        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-                 "draw_trajectory": False}, "occupancy": {
-            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    )
-    rnd.render()
-    plt.title(str(time_step))
-    plt.show()
+    # time_step = 0
+    # rnd = MPRenderer(figsize=(40, 10))
+    # scenario.draw(
+    #     rnd,
+    #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+    #              "draw_trajectory": False}, "occupancy": {
+    #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    # )
+    # rnd.render()
+    # plt.title(str(time_step))
+    # plt.show()
     ego_initial = scenario.obstacle_by_id(ego_id)
 
     rule_abstracter = RuleAbstracter(scenario,
@@ -49,10 +49,10 @@ if __name__ == '__main__':
         ego_initial.prediction.shape = ego_vehicle.prediction.shape
         # plot_limits = [-10, 100, -8, 8]
         plot_limits = None #[-380, -150, 7.5, 17.5]
-        visualize_v_profile(ego_initial, ego_vehicle)
+        # visualize_v_profile(ego_initial, ego_vehicle)
         for time_step in range(ego_vehicle.prediction.final_time_step):
             visualize_repairing_result(scenario, ego_initial,
-                                       ego_vehicle, time_step, target_veh, plot_limits=plot_limits)
+                                       ego_vehicle, time_step, None, plot_limits=plot_limits)
             rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
             scenario.draw(
                 rnd,

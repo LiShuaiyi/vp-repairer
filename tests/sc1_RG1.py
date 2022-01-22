@@ -23,6 +23,9 @@ scenario_id = "DEU_LocationAUpper-34_9_T-1"
 # scenario_id = "ZAM_Zip-1_67_T-1"
 # scenario_id = "DEU_Gar-1_1_T-1"
 # scenario_id = "ZAM_Tutorial-1_2_T-1"
+scenario_id = "DEU_LocationAUpper-52_30_T-1"
+scenario_id = "DEU_LocationAUpper-47_35_T-1"
+scenario_id = "DEU_LocationAUpper-50_32_T-1"
 file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
             + scenario_id + ".xml"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
@@ -34,7 +37,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 16
+    ego_id = 13
     rule = "R_G1"
     ego_initial = scenario.obstacle_by_id(ego_id)
 
@@ -86,7 +89,7 @@ if __name__ == '__main__':
         # plot_limits = [-10, 100, -8, 8]
         plot_limits = [-380, -150, 7.5, 17.5]
         target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
-    # visualize_profile(target_veh, ego_initial, ego_vehicle)
+        # visualize_profile(target_veh, ego_initial, ego_vehicle)
     # for time_step in range(ego_vehicle.prediction.final_time_step):
     #     visualize_repairing_result(scenario, ego_initial,
     #                                ego_vehicle, time_step, target_veh, plot_limits=plot_limits)

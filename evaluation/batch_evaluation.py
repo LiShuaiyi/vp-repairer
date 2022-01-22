@@ -20,10 +20,10 @@ if __name__ == '__main__':
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0
-    f_w = open("result_rg2.csv", 'r+')
+    f_w = open("result_rg1.csv", 'r+')
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id", 'rule', "repairability", "model", "TV", "TC"])
-    for csv_file in list(glob.glob("config/*.csv", recursive=True))[2:]:
+    for csv_file in list(glob.glob("config/*.csv", recursive=True))[1:2]:
         f_r = open(csv_file, 'r+')
         reader = csv.reader(f_r)
         rule = "R_G" + csv_file[-5]
