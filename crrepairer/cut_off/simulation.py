@@ -90,9 +90,11 @@ class SimulationLong(SimulationBase, ABC):
         assert action == CutOffAction.BRAKE or action == CutOffAction.KICKDOWN \
                or action == CutOffAction.STEADYSPEED, "<SimulationLong>: provided action {} is not supported".format(
             action)
+        self.j_limit = 5
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
 
-    def set_inputs(self, velocity):
+    def set_inputs(self, pre_state):
+        velocity = pre_state.velocity
         self._input.acceleration_y = 0
         a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
         if self.action == CutOffAction.BRAKE:
@@ -103,21 +105,23 @@ class SimulationLong(SimulationBase, ABC):
                 a_max = self._vehicle_dynamics.parameters.longitudinal.a_max * v_switch / velocity
             self._input.acceleration = a_max
         else:
-            self._input.acceleration = 0
+            self._input.acceleration = min(0, pre_state.acceleration+self.j_limit*self._dt)
 
     def simulate_state_list(self):
         pre_state = self._cut_off_state
-        self.set_inputs(pre_state.velocity)
+        self.set_inputs(pre_state)
         while pre_state.time_step < self._time_horizon:
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
             if suc_state and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
                 check_elements(suc_state)
+                if not hasattr(suc_state, "acceleration"):
+                    suc_state.acceleration = (suc_state.velocity - pre_state.velocity)/self._dt
                 # if abs(suc_state.orientation) > np.pi/2:
                 #     suc_state.orientation = np.sign(suc_state.orientation)*abs(suc_state.orientation-np.pi/2)
                 self._state_list.append(suc_state)
                 pre_state = suc_state
-                self.set_inputs(pre_state.velocity)
+                self.set_inputs(pre_state)
             else:
                 self._input.acceleration = 0
         return self._state_list
