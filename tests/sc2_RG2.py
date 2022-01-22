@@ -31,8 +31,8 @@ if __name__ == '__main__':
 
     ego_initial = scenario.obstacle_by_id(ego_id)
     # # change the time horizon
-    initial_time_step = 44
-    final_timestep = initial_time_step
+    initial_time_step = 50
+    final_time_step = initial_time_step + 21
     # ego_states_20 = ego_initial.prediction.trajectory.state_list[nr:nr+21]
     # for state in ego_states_20:
     #     state.time_step -= nr + 1
@@ -60,17 +60,17 @@ if __name__ == '__main__':
             ego_initial.state_at_time(i).acceleration = (ego_initial.state_at_time(i+1).velocity-
                                                          ego_initial.state_at_time(i).velocity)/scenario.dt
 
-    time_step = 0
-    rnd = MPRenderer(figsize=(40, 10))
-    scenario.draw(
-        rnd,
-        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-                 "draw_trajectory": False}, "occupancy": {
-            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    )
-    rnd.render()
-    plt.title(str(time_step))
-    plt.show()
+    # time_step = 0
+    # rnd = MPRenderer(figsize=(40, 10))
+    # scenario.draw(
+    #     rnd,
+    #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+    #              "draw_trajectory": False}, "occupancy": {
+    #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    # )
+    # rnd.render()
+    # plt.title(str(time_step))
+    # plt.show()
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -79,14 +79,7 @@ if __name__ == '__main__':
                                      ego_initial)
     repaired_traj = repairer.repair()
 
-    if repaired_traj is not None:
-        ego_vehicle = convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
-                                                  ego_initial.initial_state,
-                                                  repaired_traj)
-        ego_initial.prediction.shape = ego_vehicle.prediction.shape
-        # plot_limits = [-10, 100, -8, 8]
-        plot_limits = [-380, -150, 7.5, 17.5]
-        target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
+    plot_limits = [-50, 10, 3.5, 11.2]
     # visualize_profile(target_veh, ego_initial, ego_vehicle)
     if repaired_traj is not None:
         ego_vehicle = convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
@@ -94,53 +87,53 @@ if __name__ == '__main__':
                                                   repaired_traj)
         ego_initial.prediction.shape = ego_vehicle.prediction.shape
         # plot_limits = [-10, 100, -8, 8]
-        plot_limits = None  #[-380, -150, 7.5, 17.5]
-        visualize_a_profile(scenario.dt, ego_initial, ego_vehicle)
-        for time_step in range(initial_time_step, initial_time_step + 21):
-            # visualize_repairing_result(scenario, ego_initial,
-            #                            ego_vehicle, time_step, target_veh, plot_limits=plot_limits)
-            rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
-            scenario.draw(
-                rnd,
-                draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-                         "draw_trajectory": False}, "occupancy": {
-                    "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-            )
-            # scenario.obstacle_by_id()
-            ego_initial.draw(rnd,
-                             draw_params=ParamServer(
-                                 {"time_begin": time_step,
-                                  "occupancy": {
-                                      "draw_occupancies": 1,
-                                      "shape": {"rectangle": {
-                                          "facecolor": "green",
-                                          "edgecolor": "green"}
-                                      }},
-                                  "dynamic_obstacle":
-                                      {"vehicle_shape": {
-                                          "occupancy": {
-                                              "shape": {"rectangle": {
-                                                  "facecolor": "green",
-                                                  "edgecolor": "green"}
-                                              }}}}}))
-            ego_vehicle.draw(rnd,
-                             draw_params=ParamServer(
-                                 {"time_begin": time_step,
-                                  "occupancy": {
-                                      "draw_occupancies": 1,
-                                      "shape": {"rectangle": {
-                                          "facecolor": "black",
-                                          "edgecolor": "black"}
-                                      }},
-                                  "trajectory": {
-                                      "draw_trajectory": False},
-                                  "dynamic_obstacle":
-                                      {"vehicle_shape": {
-                                          "occupancy": {
-                                              "shape": {"rectangle": {
-                                                  "facecolor": "black",
-                                                  "edgecolor": "black"}
-                                              }}}, 'show_label': True}}))
-            rnd.render()
-            plt.title(str(time_step))
-            plt.show()
+        visualize_a_profile(scenario.dt, ego_initial, ego_vehicle, initial_time_step, final_time_step)
+        for time_step in range(initial_time_step, final_time_step):
+            visualize_repairing_result(scenario, ego_initial,
+                                       ego_vehicle, time_step, None, plot_limits=plot_limits,
+                                       end_time=final_time_step)
+            # rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
+            # scenario.draw(
+            #     rnd,
+            #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+            #              "draw_trajectory": False}, "occupancy": {
+            #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+            # )
+            # # scenario.obstacle_by_id()
+            # ego_initial.draw(rnd,
+            #                  draw_params=ParamServer(
+            #                      {"time_begin": time_step,
+            #                       "occupancy": {
+            #                           "draw_occupancies": 1,
+            #                           "shape": {"rectangle": {
+            #                               "facecolor": "green",
+            #                               "edgecolor": "green"}
+            #                           }},
+            #                       "dynamic_obstacle":
+            #                           {"vehicle_shape": {
+            #                               "occupancy": {
+            #                                   "shape": {"rectangle": {
+            #                                       "facecolor": "green",
+            #                                       "edgecolor": "green"}
+            #                                   }}}}}))
+            # ego_vehicle.draw(rnd,
+            #                  draw_params=ParamServer(
+            #                      {"time_begin": time_step,
+            #                       "occupancy": {
+            #                           "draw_occupancies": 1,
+            #                           "shape": {"rectangle": {
+            #                               "facecolor": "black",
+            #                               "edgecolor": "black"}
+            #                           }},
+            #                       "trajectory": {
+            #                           "draw_trajectory": False},
+            #                       "dynamic_obstacle":
+            #                           {"vehicle_shape": {
+            #                               "occupancy": {
+            #                                   "shape": {"rectangle": {
+            #                                       "facecolor": "black",
+            #                                       "edgecolor": "black"}
+            #                                   }}}, 'show_label': True}}))
+            # rnd.render()
+            # plt.title(str(time_step))
+            # plt.show()
