@@ -126,7 +126,7 @@ def update_ego_vehicle(road_network: RoadNetwork,
     # print(ego_vehicle.lanelet_assignment)
 
     for state in updated_ego_states[cut_off_time:]:
-        acceleration = _compute_acceleration(state_lon.v, state.velocity, dt)
+        acceleration = state.acceleration
         if state.time_step - 1 in ego_vehicle.states_lon:
             previous_acceleration = ego_vehicle.states_lon[state.time_step - 1].a
         else:  # previous state out of projection domain
