@@ -112,8 +112,7 @@ def update_ego_vehicle(road_network: RoadNetwork,
             pre_cut_off_state = ego_initial_state
         else:
             pre_cut_off_state = updated_ego_states[cut_off_time - 2]
-        acceleration = _compute_acceleration(pre_cut_off_state.velocity,
-                                             cut_off_state.velocity, dt, )
+        acceleration = cut_off_state.acceleration
         if not hasattr(pre_cut_off_state, "acceleration"):
             pre_cut_off_state.acceleration = 0
         jerk = _compute_jerk(acceleration, pre_cut_off_state.acceleration, dt)

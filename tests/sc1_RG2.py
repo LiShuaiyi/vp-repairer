@@ -13,7 +13,9 @@ import math
 
 scenario_id = "DEU_LocationAUpper-36_54_T-1"
 scenario_id = 'DEU_LocationAUpper-26_30_T-1'
-
+scenario_id = 'DEU_LocationALower-25_56_T-1'
+scenario_id = "DEU_LocationAUpper-26_9_T-1"
+scenario_id = "DEU_LocationAUpper-36_53_T-1"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
 
