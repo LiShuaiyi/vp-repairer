@@ -13,15 +13,16 @@ import glob
 import csv
 
 from commonroad.common.file_reader import CommonRoadFileReader
-from crmonitor.common.world_state import WorldState
-from crmonitor.evaluation.evaluation import RuleSetEvaluator
+from stl_crmonitor.crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
 
 if __name__ == '__main__':
 
     # the highD-cr scenario directory
-    file_path = "../../highD-dataset/highD-cr-scenarios/"
+    # file_path = "../../highD-dataset/highD-cr-scenarios/"
+    file_path = "../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/"
     # highD_scenario_dir = "/home/yuanfei/commonroad/highD-dataset/sebastian_evaluation/"
-    f_w = open("highD_rule_STL_whole.csv", 'r+')
+    f_w = open("sumo_evaluation.csv", 'r+')
     writer = csv.writer(f_w)
     # _ = f_r.readlines().pop(0)  # pop first line
     writer.writerow(["scenario_id", "ego_id", "rule_STL"])
@@ -31,15 +32,18 @@ if __name__ == '__main__':
         for veh in scenario.dynamic_obstacles:
             ego_id = veh.obstacle_id
             print(scenario.scenario_id, ego_id)
-            world = WorldState.create_from_scenario(scenario, ego_obs_id=ego_id,)
-            evaluator = RuleSetEvaluator.create_from_config(dt=scenario.dt)
-            rule_robustness, _, _ = evaluator.evaluate_incremental(world)
-            if not rule_robustness.query('robustness<0')["rule_name"].empty:
-                violate = []
-                for rule in list(set(rule_robustness.query('robustness<0')["rule_name"])):
-                    violate.append(rule)
-                row = [scenario.scenario_id, ego_id]
-                for v in violate:
-                    row.append(str(v))
-                writer.writerow(row)
+            try:
+                world = WorldState.create_from_scenario(scenario, ego_obs_id=ego_id,)
+                evaluator = RuleSetEvaluator.create_from_config(dt=scenario.dt)
+                rule_robustness, _, _ = evaluator.evaluate_incremental(world)
+                if not rule_robustness.query('robustness<0')["rule_name"].empty:
+                    violate = []
+                    for rule in list(set(rule_robustness.query('robustness<0')["rule_name"])):
+                        violate.append(rule)
+                    row = [scenario.scenario_id, ego_id]
+                    for v in violate:
+                        row.append(str(v))
+                    writer.writerow(row)
+            except:
+                continue
     f_w.close()

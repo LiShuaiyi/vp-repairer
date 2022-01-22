@@ -16,8 +16,9 @@ scenario_id = 'DEU_LocationAUpper-26_30_T-1'
 scenario_id = 'DEU_LocationALower-25_56_T-1'
 scenario_id = "DEU_LocationAUpper-26_9_T-1"
 scenario_id = "DEU_LocationAUpper-36_53_T-1"
-file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
-            + scenario_id + ".xml"
+scenario_id = "ZAM_Zip-1_56_T-1"
+
+file_path = "../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
 
 # file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
 
@@ -25,8 +26,39 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 21
+    ego_id = 2
     rule = "R_G2"
+
+    ego_initial = scenario.obstacle_by_id(ego_id)
+    # # change the time horizon
+    initial_time_step = 44
+    final_timestep = initial_time_step
+    # ego_states_20 = ego_initial.prediction.trajectory.state_list[nr:nr+21]
+    # for state in ego_states_20:
+    #     state.time_step -= nr + 1
+    # ego_initial.initial_state = ego_states_20[0]
+    # ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[nr:nr+21]
+    # for occupancy in ego_initial.prediction.occupancy_set:
+    #     occupancy.time_step -= nr + 1
+    # ego_initial.prediction.trajectory.state_list = ego_states_20[1:]
+    #
+    # for obs in scenario.dynamic_obstacles:
+    #     if obs.obstacle_id != ego_id:
+    #
+    #         states_20 = obs.prediction.trajectory.state_list[nr:nr+21]
+    #         for state in states_20:
+    #             state.time_step -= nr + 1
+    #         obs.initial_state = states_20[0]
+    #         obs.prediction.occupancy_set = obs.prediction.occupancy_set[nr:nr + 21]
+    #         for occupancy in obs.prediction.occupancy_set:
+    #             occupancy.time_step -= nr + 1
+    #         obs.prediction.center_lanelet_assignment = obs.prediction.center_lanelet_assignment[nr:nr + 21]
+    #         obs.prediction.final_time_step = 20
+
+
+    for i in range(ego_initial.prediction.trajectory.final_state.time_step):
+            ego_initial.state_at_time(i).acceleration = (ego_initial.state_at_time(i+1).velocity-
+                                                         ego_initial.state_at_time(i).velocity)/scenario.dt
 
     time_step = 0
     rnd = MPRenderer(figsize=(40, 10))
@@ -39,12 +71,6 @@ if __name__ == '__main__':
     rnd.render()
     plt.title(str(time_step))
     plt.show()
-    ego_initial = scenario.obstacle_by_id(ego_id)
-    N = ego_initial.prediction.trajectory.final_state.time_step
-    for i in range(ego_initial.prediction.trajectory.final_state.time_step):
-        if ego_initial.state_at_time(i+1).velocity<ego_initial.state_at_time(i).velocity:
-            ego_initial.state_at_time(i).acceleration = -ego_initial.state_at_time(i).acceleration
-    ego_initial.state_at_time(N).acceleration = ego_initial.state_at_time(N-1).acceleration
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -70,9 +96,9 @@ if __name__ == '__main__':
         # plot_limits = [-10, 100, -8, 8]
         plot_limits = None  #[-380, -150, 7.5, 17.5]
         visualize_a_profile(scenario.dt, ego_initial, ego_vehicle)
-        for time_step in range(ego_vehicle.prediction.final_time_step):
-            visualize_repairing_result(scenario, ego_initial,
-                                       ego_vehicle, time_step, target_veh, plot_limits=plot_limits)
+        for time_step in range(initial_time_step, initial_time_step + 21):
+            # visualize_repairing_result(scenario, ego_initial,
+            #                            ego_vehicle, time_step, target_veh, plot_limits=plot_limits)
             rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
             scenario.draw(
                 rnd,
