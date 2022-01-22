@@ -55,10 +55,10 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             repairability, repaired_traj = t_solver.check(select_proposition, list(self._model))
             self._tc = t_solver.tc_object.tc_time_step
             if repairability:
-                return repaired_traj
-            else:
-                sat_solver.update_formula()
-                # todo: check feasibility
+                tv, _ = t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
+                if tv == math.inf:
+                    return repaired_traj
+            sat_solver.update_formula()
         return None
 
 

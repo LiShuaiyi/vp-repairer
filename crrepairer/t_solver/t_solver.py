@@ -10,6 +10,7 @@ from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from stl_crmonitor.crmonitor.predicates.predicate import Category
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
+from commonroad.scenario.trajectory import Trajectory
 
 class TSolver:
     def __init__(self,
@@ -81,7 +82,7 @@ class TSolver:
         repaired_trajectory = self._qp_planner.plan()
         return repaired_trajectory
 
-    def check(self, proposition: List[PropositionNode], model: list):
+    def check(self, proposition: List[PropositionNode], model: list) -> (bool, Trajectory):
         repaired_traj = None
         self.assign_proposition(proposition, model)
         if self.compliant_maneuvers is None:
