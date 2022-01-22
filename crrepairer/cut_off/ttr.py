@@ -15,9 +15,8 @@ class TTR(CutOffBase, ABC):
     Time-To-React.
     """
     def __init__(self,
-                 world_state: WorldState,
-                 dT: float = 0.1):
-        super().__init__(world_state, dT)
+                 world_state: WorldState):
+        super().__init__(world_state)
         # calculate the time-to-collision as default value
         self._ttc = self._calc_ttc(world_state.ego_vehicle.states_cr)
         self._visualize = False

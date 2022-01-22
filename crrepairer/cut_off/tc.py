@@ -19,9 +19,8 @@ class TC(CutOffBase, ABC):
     Time-To-Compliance.
     """
     def __init__(self,
-                 rule_monitor: STLRuleMonitor,
-                 dT: float = 0.1):
-        super().__init__(rule_monitor.world_state, dT)
+                 rule_monitor: STLRuleMonitor):
+        super().__init__(rule_monitor.world_state)
         self.rule_monitor = rule_monitor
         self._tv = rule_monitor.tv_time_step * self.dT  # time step -> time
         self._other_id = rule_monitor.other_id
@@ -56,7 +55,7 @@ class TC(CutOffBase, ABC):
     def compliant_maneuver(self) -> CutOffAction:
         return self._compliant_maneuver
 
-    def _calc_tv_updated(self, updated_states: List[State] = None) -> Tuple[float, Any]:
+    def calc_tv_updated(self, updated_states: List[State] = None) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
         self.rule_monitor.world_state.time_step = 0
@@ -124,7 +123,7 @@ class TC(CutOffBase, ABC):
                     visualize_state_list(self._collision_checker, state_list, self.scenario,
                                              SL.vehicle_dynamics.shape)
                 flag_collision = self._detect_collision(state_list)  # bool value
-                tv, _ = self._calc_tv_updated(state_list) # which should be tv instead of ttm
+                tv, _ = self.calc_tv_updated(state_list) # which should be tv instead of ttm
             # if violation-free and collision-free
             if tv == math.inf: # and not flag_collision:
                 low = mid + 1
