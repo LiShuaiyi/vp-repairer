@@ -20,10 +20,10 @@ if __name__ == '__main__':
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0
-    f_w = open("result.csv", 'r+')
+    f_w = open("result_rg2.csv", 'r+')
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id", 'rule', "repairability", "model", "TV", "TC"])
-    for csv_file in list(glob.glob("config/*.csv", recursive=True)):
+    for csv_file in list(glob.glob("config/*.csv", recursive=True))[2:]:
         f_r = open(csv_file, 'r+')
         reader = csv.reader(f_r)
         rule = "R_G" + csv_file[-5]
@@ -36,21 +36,23 @@ if __name__ == '__main__':
                 continue
             planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
             ego_id = int(list(row)[1])
-            print(scenario_id, ego_id)
+            print(rule, scenario_id, ego_id)
             ego_initial = scenario.obstacle_by_id(ego_id)
-            rule_abstracter = RuleAbstracter(scenario,
-                                             planning_problem,
-                                             ego_id, rule)
-            if rule_abstracter.rule_monitor.tv_time_step == -math.inf:
-                writer.writerow([scenario.scenario_id, ego_id, rule, "initial feasibility"])
-                nr_infeasible += 1
-                continue
-            repairer = SMTTrajectoryRepairer(rule_abstracter,
-                                             ego_initial)
             try:
+                rule_abstracter = RuleAbstracter(scenario,
+                                                 planning_problem,
+                                                 ego_id, rule)
+                if rule_abstracter.rule_monitor.tv_time_step == -math.inf:
+                    writer.writerow([scenario.scenario_id, ego_id, rule, "initial feasibility"])
+                    nr_infeasible += 1
+                    continue
+                repairer = SMTTrajectoryRepairer(rule_abstracter,
+                                             ego_initial)
+
                 repaired_traj = repairer.repair()
             except:
                 repaired_traj = None
+                continue
             if repaired_traj is not None:
                 nr_repairable += 1
                 writer.writerow([scenario.scenario_id, ego_id, rule, "bingo", repairer.model, repairer.tv, repairer.tc])

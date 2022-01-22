@@ -1,0 +1,72 @@
+scenario_id,ego_id,rule,repairability,model,TV,TC
+DEU_LocationAUpper-26_50_T-1,8,R_G2,initial feasibility
+DEU_LocationAUpper-27_20_T-1,19,R_G2,bingo,{'~a'},41,40
+DEU_LocationAUpper-36_54_T-1,20,R_G2,bingo,{'~a'},42,41
+DEU_LocationAUpper-36_54_T-1,25,R_G2,bingo,"{'~b', '~a'}",61,60
+DEU_LocationALower-49_35_T-1,16,R_G2,bingo,"{'~b', '~a'}",17,16
+DEU_LocationAUpper-26_42_T-1,21,R_G2,initial feasibility
+DEU_LocationALower-34_17_T-1,10,R_G2,initial feasibility
+DEU_LocationALower-25_56_T-1,6,R_G2,initial feasibility
+DEU_LocationALower-25_56_T-1,8,R_G2,bingo,{'~a'},5,4
+DEU_LocationALower-25_56_T-1,17,R_G2,bingo,{'~a'},41,40
+DEU_LocationAUpper-26_43_T-1,18,R_G2,initial feasibility
+DEU_LocationAUpper-26_9_T-1,35,R_G2,bingo,{'~a'},22,21
+DEU_LocationAUpper-26_9_T-1,45,R_G2,not repairable,"{'~b', '~a'}",52,51
+DEU_LocationALower-50_26_T-1,9,R_G2,initial feasibility
+DEU_LocationALower-50_26_T-1,13,R_G2,bingo,{'~a'},16,15
+DEU_LocationAUpper-26_41_T-1,21,R_G2,bingo,{'~a'},72,71
+DEU_LocationAUpper-26_30_T-1,10,R_G2,bingo,{'~a'},19,18
+DEU_LocationAUpper-26_30_T-1,21,R_G2,not repairable,,inf,-inf
+DEU_LocationALower-27_6_T-1,22,R_G2,bingo,{'~a'},65,64
+DEU_LocationELower-22_5_T-1,6,R_G2,initial feasibility
+DEU_LocationAUpper-25_23_T-1,24,R_G2,bingo,"{'~b', '~a'}",40,39
+DEU_LocationALower-26_29_T-1,24,R_G2,bingo,"{'~b', '~a'}",30,29
+DEU_LocationAUpper-36_53_T-1,21,R_G2,bingo,{'~a'},67,66
+DEU_LocationALower-35_39_T-1,14,R_G2,bingo,{'~a'},23,22
+DEU_LocationBUpper-2_35_T-1,8,R_G2,initial feasibility
+DEU_LocationAUpper-36_9_T-1,11,R_G2,bingo,{'~a'},15,14
+DEU_LocationAUpper-36_9_T-1,16,R_G2,bingo,{'~a'},44,42
+DEU_LocationAUpper-36_9_T-1,20,R_G2,not repairable,"{'~b', '~a'}",43,42
+DEU_LocationAUpper-26_44_T-1,24,R_G2,bingo,"{'~b', '~a'}",58,57
+DEU_LocationAUpper-12_19_T-1,32,R_G2,bingo,"{'~b', '~a'}",49,48
+DEU_LocationAUpper-25_6_T-1,12,R_G2,bingo,{'~a'},3,2
+DEU_LocationAUpper-31_26_T-1,27,R_G2,bingo,"{'~b', '~a'}",6,5
+DEU_LocationAUpper-31_26_T-1,28,R_G2,bingo,{'~a'},23,22
+DEU_LocationAUpper-26_47_T-1,10,R_G2,bingo,{'~a'},29,28
+DEU_LocationAUpper-26_47_T-1,11,R_G2,bingo,{'~a'},38,37
+DEU_LocationALower-34_11_T-1,9,R_G2,bingo,{'~a'},18,17
+DEU_LocationALower-34_11_T-1,14,R_G2,bingo,{'~a'},28,27
+DEU_LocationALower-34_11_T-1,16,R_G2,bingo,"{'~b', '~a'}",37,36
+DEU_LocationALower-34_11_T-1,17,R_G2,bingo,{'~a'},57,56
+DEU_LocationAUpper-27_20_T-1,19,R_G2,bingo,{'~a'},41,40
+DEU_LocationAUpper-35_1_T-1,5,R_G2,bingo,{'~a'},10,9
+DEU_LocationAUpper-35_1_T-1,7,R_G2,bingo,{'~a'},42,41
+DEU_LocationAUpper-35_1_T-1,9,R_G2,bingo,{'~a'},44,42
+DEU_LocationAUpper-35_1_T-1,10,R_G2,bingo,{'~a'},42,41
+DEU_LocationAUpper-26_49_T-1,21,R_G2,bingo,{'~a'},58,57
+DEU_LocationALower-46_41_T-1,13,R_G2,bingo,{'~a'},39,38
+DEU_LocationAUpper-26_29_T-1,14,R_G2,bingo,{'~a'},15,14
+DEU_LocationAUpper-26_29_T-1,19,R_G2,bingo,{'~a'},48,47
+DEU_LocationAUpper-36_8_T-1,5,R_G2,initial feasibility
+DEU_LocationAUpper-36_8_T-1,6,R_G2,bingo,"{'~b', '~a'}",4,3
+DEU_LocationAUpper-36_8_T-1,7,R_G2,bingo,{'~a'},5,4
+DEU_LocationAUpper-36_8_T-1,8,R_G2,bingo,{'~a'},12,11
+DEU_LocationAUpper-36_8_T-1,9,R_G2,bingo,{'~a'},17,16
+DEU_LocationAUpper-36_8_T-1,10,R_G2,bingo,{'~a'},3,2
+DEU_LocationAUpper-36_8_T-1,11,R_G2,bingo,{'~a'},20,19
+DEU_LocationAUpper-36_8_T-1,12,R_G2,bingo,"{'~b', '~a'}",35,34
+DEU_LocationAUpper-36_8_T-1,14,R_G2,bingo,{'~a'},17,16
+DEU_LocationAUpper-36_8_T-1,16,R_G2,bingo,{'~a'},40,39
+DEU_LocationAUpper-36_8_T-1,17,R_G2,bingo,{'~a'},57,56
+DEU_LocationAUpper-36_8_T-1,18,R_G2,bingo,"{'~b', '~a'}",29,28
+DEU_LocationAUpper-36_8_T-1,19,R_G2,bingo,{'~a'},46,45
+DEU_LocationALower-33_39_T-1,25,R_G2,bingo,{'~a'},26,25
+DEU_LocationELower-15_33_T-1,8,R_G2,bingo,{'~a'},24,23
+DEU_LocationEUpper-23_33_T-1,7,R_G2,bingo,{'~a'},13,12
+DEU_LocationELower-21_34_T-1,5,R_G2,initial feasibility
+DEU_LocationELower-21_34_T-1,6,R_G2,bingo,{'~a'},16,15
+DEU_LocationELower-16_20_T-1,8,R_G2,bingo,{'~a'},22,21
+DEU_LocationALower-26_48_T-1,13,R_G2,bingo,{'~a'},16,15
+DEU_LocationALower-26_48_T-1,20,R_G2,bingo,{'~a'},38,37
+DEU_LocationALower-26_48_T-1,25,R_G2,bingo,{'~a'},53,52
+Nr of scenario,70,Nr of infeasible trajectory,10,0.1429,Nr of reparable trajectory,57,0.95

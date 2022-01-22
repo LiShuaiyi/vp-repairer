@@ -23,17 +23,17 @@ if __name__ == '__main__':
     ego_id = 7
     rule = "R_G3"
 
-    # time_step = 0
-    # rnd = MPRenderer(figsize=(40, 10))
-    # scenario.draw(
-    #     rnd,
-    #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-    #              "draw_trajectory": False}, "occupancy": {
-    #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    # )
-    # rnd.render()
-    # plt.title(str(time_step))
-    # plt.show()
+    time_step = 0
+    rnd = MPRenderer(figsize=(40, 10))
+    scenario.draw(
+        rnd,
+        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+                 "draw_trajectory": False}, "occupancy": {
+            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    )
+    rnd.render()
+    plt.title(str(time_step))
+    plt.show()
     ego_initial = scenario.obstacle_by_id(ego_id)
 
     rule_abstracter = RuleAbstracter(scenario,
