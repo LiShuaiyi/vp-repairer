@@ -3,7 +3,8 @@ from t_solver.t_solver import TSolver
 from t_solver.qp_planner import QPPlannerRepair
 from repairer.smt_repairer import SMTTrajectoryRepairer
 from t_solver.utils import convert_traj_to_ego_vehicle
-from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_a_profile, visualize_v_profile
+from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result,\
+    visualize_initial_result, visualize_a_profile, visualize_v_profile
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
@@ -87,11 +88,15 @@ if __name__ == '__main__':
                                                   repaired_traj)
         ego_initial.prediction.shape = ego_vehicle.prediction.shape
         # plot_limits = [-10, 100, -8, 8]
-        visualize_a_profile(scenario.dt, ego_initial, ego_vehicle, initial_time_step, final_time_step)
+        visualize_a_profile(scenario.dt, ego_initial, ego_vehicle, initial_time_step, final_time_step,
+                            int(repairer.tc), int(repairer.tv))
         for time_step in range(initial_time_step, final_time_step):
-            visualize_repairing_result(scenario, ego_initial,
+            visualize_repairing_result(scenario,
                                        ego_vehicle, time_step, None, plot_limits=plot_limits,
-                                       end_time=final_time_step)
+                                       end_time=final_time_step, tc=int(repairer.tc))
+            visualize_initial_result(scenario, ego_initial,
+                                     time_step, None, plot_limits, final_time_step,
+                                     int(repairer.tv))
             # rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
             # scenario.draw(
             #     rnd,

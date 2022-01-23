@@ -113,7 +113,7 @@ class QPPlannerRepair(QPPlanner):
             # convert the orientation here
             ref_orientation = compute_orientation_from_polyline(self.vehicle_configuration.reference_path)
             ref_pathlength = compute_pathlength_from_polyline(self.vehicle_configuration.reference_path)
-            orientation_interpolated = np.interp(state.position[0], ref_pathlength, ref_orientation)
+            orientation_interpolated = 0 # np.interp(state.position[0], ref_pathlength, ref_orientation)
             cartesian_traj_points.append(TrajPoint(
                t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation + orientation_interpolated, v=state.v, a=state.a,
                kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
