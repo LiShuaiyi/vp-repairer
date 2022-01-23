@@ -101,6 +101,7 @@ class RuleConstraints:
                                                      PredTypeSpeedLimit.predicate_name,
                                                      PredLaneSpeedLimit.predicate_name):
                             speed_limit = predicate.evaluator.speed_limit
+                            print(predicate.name, speed_limit)
                             v_constr = self.ConstrSpeedLimit(speed_limit)
                             v_limit = self._get_overlap(v_limit, v_constr)
                         elif predicate.base_name == PredAbruptBreaking.predicate_name:

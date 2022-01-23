@@ -72,8 +72,10 @@ def visualize_profile(target_vehicle: DynamicObstacle,
 
 def visualize_v_profile(
                       ego_initial: DynamicObstacle,
-                      ego_repaired: DynamicObstacle):
-    plt.figure(figsize=(20, 8))
+                      ego_repaired: DynamicObstacle,
+                      tc,
+                      tv):
+    # plt.figure(figsize=(20, 8))
     time_list = []
     ego_ini_vel_list = []
     ego_rep_vel_list = []
@@ -82,12 +84,14 @@ def visualize_v_profile(
         time_list.append(time_step)
         ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
         ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
-    plt.plot(time_list, ego_ini_vel_list, color='#0065bd', marker='x',
+    plt.plot(time_list[:tv+1], ego_ini_vel_list[:tv+1], color='#0065bd', marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list, ego_rep_vel_list, color='#a2ad00', marker='.',
+    plt.plot(time_list[tv:], ego_ini_vel_list[tv:], color='red', marker='x',
+             markersize=7.5, zorder=21, linewidth=1.5)
+    plt.plot(time_list[tc:], ego_rep_vel_list[tc:], color='#a2ad00', marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
     plt.xticks(range(0, 20))
-
+    plt.yticks(range(5, 15, 5))
     plt.show()
 
 def visualize_a_profile(dt,
