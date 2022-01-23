@@ -77,7 +77,8 @@ def visualize_v_profile(
     time_list = []
     ego_ini_vel_list = []
     ego_rep_vel_list = []
-    for time_step in range(ego_initial.prediction.final_time_step + 1):
+    plt.axhline(y=13.88)
+    for time_step in range(ego_initial.prediction.final_time_step):
         time_list.append(time_step)
         ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
         ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)

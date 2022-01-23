@@ -48,11 +48,11 @@ if __name__ == '__main__':
                                                   repaired_traj)
         ego_initial.prediction.shape = ego_vehicle.prediction.shape
         # plot_limits = [-10, 100, -8, 8]
-        plot_limits = None #[-380, -150, 7.5, 17.5]
-        # visualize_v_profile(ego_initial, ego_vehicle)
+        plot_limits = [-20, 40, -6, 2.5]
+        visualize_v_profile(ego_initial, ego_vehicle)
         for time_step in range(ego_vehicle.prediction.final_time_step):
-            visualize_repairing_result(scenario, ego_initial,
-                                       ego_vehicle, time_step, None, plot_limits=plot_limits)
+            # visualize_repairing_result(scenario, ego_initial,
+            #                            ego_vehicle, time_step, None, plot_limits=plot_limits)
             rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
             scenario.draw(
                 rnd,
