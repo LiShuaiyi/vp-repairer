@@ -11,21 +11,23 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-# scenario_id = "DEU_LocationAUpper-26_21_T-1"
-scenario_id = "DEU_LocationAUpper-48_7_T-1"
-scenario_id = "DEU_LocationAUpper-35_3_T-1"
-scenario_id = "DEU_LocationAUpper-56_33_T-1"
-scenario_id = "DEU_LocationFLower-60_35_T-1"
-scenario_id = "DEU_LocationALower-54_5_T-1"
-scenario_id = "DEU_LocationBUpper-1_22_T-1"
-scenario_id = "DEU_LocationAUpper-34_9_T-1"
-# scenario_id = "DEU_LocationAUpper-44_30_T-1"
-# scenario_id = "ZAM_Zip-1_67_T-1"
-# scenario_id = "DEU_Gar-1_1_T-1"
-# scenario_id = "ZAM_Tutorial-1_2_T-1"
-scenario_id = "DEU_LocationAUpper-52_30_T-1"
-scenario_id = "DEU_LocationAUpper-47_35_T-1"
-scenario_id = "DEU_LocationAUpper-50_32_T-1"
+scenario_id = "DEU_LocationAUpper-26_21_T-1"
+scenario_id = 'ZAM_Zip-1_56_T-1'
+# scenario_id = "DEU_LocationFUpper-60_43_T-1"
+# scenario_id = "DEU_LocationAUpper-48_7_T-1"
+# scenario_id = "DEU_LocationAUpper-35_3_T-1"
+# scenario_id = "DEU_LocationAUpper-56_33_T-1"
+# scenario_id = "DEU_LocationFLower-60_35_T-1"
+# scenario_id = "DEU_LocationALower-54_5_T-1"
+# scenario_id = "DEU_LocationBUpper-1_22_T-1"
+# scenario_id = "DEU_LocationAUpper-34_9_T-1"
+# # scenario_id = "DEU_LocationAUpper-44_30_T-1"
+# # scenario_id = "ZAM_Zip-1_67_T-1"
+# # scenario_id = "DEU_Gar-1_1_T-1"
+# # scenario_id = "ZAM_Tutorial-1_2_T-1"
+# scenario_id = "DEU_LocationAUpper-52_30_T-1"
+# scenario_id = "DEU_LocationAUpper-47_35_T-1"
+# scenario_id = "DEU_LocationAUpper-50_32_T-1"
 file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
             + scenario_id + ".xml"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
@@ -37,37 +39,48 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 13
+    ego_id = 37
     rule = "R_G1"
     ego_initial = scenario.obstacle_by_id(ego_id)
 
-    time_step = 0
-    rnd = MPRenderer(figsize=(40, 10))
-    scenario.draw(
-        rnd,
-        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-                 "draw_trajectory": False}, "occupancy": {
-            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    )
-    ego_initial.draw(rnd,
-                     draw_params=ParamServer(
-                         {"time_begin": time_step,
-                          "occupancy": {
+    for time_step in range(20):
+        rnd = MPRenderer(figsize=(40, 10))
+        scenario.draw(
+            rnd,
+            draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+                     "draw_trajectory": False}, "occupancy": {
                               "draw_occupancies": 0,
                               "shape": {"rectangle": {
-                                  "facecolor": "green",
-                                  "edgecolor": "green"}
+                                  "facecolor": "black",
+                                  "edgecolor": "black"}
                               }},
                           "dynamic_obstacle":
                               {"vehicle_shape": {
                                   "occupancy": {
                                       "shape": {"rectangle": {
-                                          "facecolor": "green",
-                                          "edgecolor": "green"}
-                                      }}}}}))
-    rnd.render()
-    plt.title(str(time_step))
-    plt.show()
+                                          "facecolor": "black",
+                                          "edgecolor": "black"}
+                                      }}}}})
+        )
+        ego_initial.draw(rnd,
+                         draw_params=ParamServer(
+                             {"time_begin": time_step,
+                              "occupancy": {
+                                  "draw_occupancies": 1,
+                                  "shape": {"rectangle": {
+                                      "facecolor": "#0065bd",
+                                      "edgecolor": "#0065bd"}
+                                  }},
+                              "dynamic_obstacle":
+                                  {"vehicle_shape": {
+                                      "occupancy": {
+                                          "shape": {"rectangle": {
+                                              "facecolor": "#0065bd",
+                                              "edgecolor": "#0065bd"}
+                                          }}}}}))
+        rnd.render()
+        plt.title(str(time_step))
+        plt.show()
     # scenario.remove_obstacle(scenario.obstacle_by_id(3))
     # scenario.remove_obstacle(scenario.obstacle_by_id(4))
     # scenario.remove_obstacle(scenario.obstacle_by_id(5))

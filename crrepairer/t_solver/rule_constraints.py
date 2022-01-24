@@ -167,7 +167,10 @@ class RuleConstraints:
             else:
                 ego_state = self._ini_traj.state_at_time_step(time_step)
             ego_lon_s = convert_pos_curvilinear(ego_state, self._veh_config)[0]
-            dist = other_vehicle.states_lon[time_step].s - ego_lon_s
+            if time_step in other_vehicle.states_lon:
+                dist = other_vehicle.states_lon[time_step].s - ego_lon_s
+            else:
+                continue
             if 0 < dist < dist_pre:
                 preceding_vehicle = other_vehicle
                 dist_pre = dist
@@ -192,6 +195,10 @@ class RuleConstraints:
             # if len(self._target_lanes[k]) < num_target_lanes:
             if k in self._target_lanes:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
+            else:
+                lanes = self._world_state.road_network.find_lanes_by_lanelets(self._world_state.ego_vehicle.lanelet_assignment[k])
+                self._prec_veh, self._foll_veh = self._determine_related_veh(k, lanes)
+
             # num_target_lanes = len(self._target_lanes[k])
             index = k - self._tc_obj.tc_time_step
             if self._prec_veh is not None:  # todo fix the length
