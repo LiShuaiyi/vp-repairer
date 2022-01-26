@@ -129,7 +129,7 @@ class QPPlannerRepair(QPPlanner):
             remaining_states = [] + \
                                self._initial_trajectory.state_list[:self._cut_off_time_step-1]
         for state in cr_traj_repaired.state_list:
-            state.time_step += self._cut_off_time_step + 1
+            state.time_step += self._cut_off_time_step
         cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
         return cr_traj_repaired
 

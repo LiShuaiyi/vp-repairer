@@ -167,7 +167,7 @@ def visualize_repairing_result(scenario: Scenario,
     # visualize planning problem
     # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
     ego_state_list = [ego_repaired.initial_state] + ego_repaired.prediction.trajectory.state_list
-    safe_distance = calculate_safe_distance(ego_state_list[timestep-1].velocity,
+    safe_distance = calculate_safe_distance(ego_state_list[timestep].velocity,
                                             target_veh.state_at_time(timestep).velocity,
                                             -10.5, -10.0, 0.4)
     box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
