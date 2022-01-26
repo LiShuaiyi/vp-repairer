@@ -3,7 +3,7 @@ from t_solver.t_solver import TSolver
 from t_solver.qp_planner import QPPlannerRepair
 from repairer.smt_repairer import SMTTrajectoryRepairer
 from t_solver.utils import convert_traj_to_ego_vehicle
-from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_profile
+from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_profile, visualize_initial_result
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
@@ -51,11 +51,17 @@ if __name__ == '__main__':
     # following_veh = scenario.obstacle_by_id(203)
     # visualize_profile(target_veh, following_veh, ego_initial, ego_vehicle)
     for time_step in range(21):
-        visualize_repairing_result(scenario,
-                                   ego_vehicle,
-                                   time_step,
-                                   tc=repairer.tc,
-                                   plot_limits=plot_limits,
-                                   target_veh=target_veh,
-                                   ego_initial=ego_initial,
-                                   save_path=figure_path)
+        visualize_initial_result(scenario, ego_initial,
+                                 time_step,
+                                 target_veh=target_veh,
+                                 plot_limits=plot_limits,
+                                 save_path=figure_path,
+                                 tv=int(repairer.tv))
+        # visualize_repairing_result(scenario,
+        #                            ego_vehicle,
+        #                            time_step,
+        #                            tc=repairer.tc,
+        #                            plot_limits=plot_limits,
+        #                            target_veh=target_veh,
+        #                            ego_initial=ego_initial,
+        #                            save_path=figure_path)
