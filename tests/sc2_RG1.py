@@ -21,6 +21,8 @@ file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scen
 file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/" \
             + scenario_id + ".xml"
 
+figure_path = "/home/yuanfei/commonroad/commonroad_repair/tests/figures/"
+
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
@@ -30,8 +32,8 @@ if __name__ == '__main__':
 
     ego_initial = scenario.obstacle_by_id(ego_id)
 
-    ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:20]
-    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:20]
+    ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:21]
+    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:21]
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -48,6 +50,12 @@ if __name__ == '__main__':
     target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
     # following_veh = scenario.obstacle_by_id(203)
     # visualize_profile(target_veh, following_veh, ego_initial, ego_vehicle)
-    for time_step in range(ego_vehicle.prediction.final_time_step):
-        visualize_repairing_result(scenario, ego_initial,
-                                   ego_vehicle, time_step, plot_limits=plot_limits, target_veh=target_veh)
+    for time_step in range(21):
+        visualize_repairing_result(scenario,
+                                   ego_vehicle,
+                                   time_step,
+                                   tc=repairer.tc,
+                                   plot_limits=plot_limits,
+                                   target_veh=target_veh,
+                                   ego_initial=ego_initial,
+                                   save_path=figure_path)

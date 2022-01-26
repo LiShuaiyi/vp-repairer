@@ -52,5 +52,10 @@ if __name__ == '__main__':
     # visualize_profile(target_veh, ego_initial, ego_vehicle)
     for time_step in range(ego_vehicle.prediction.final_time_step):
         time_step = 20
-        visualize_repairing_result(scenario, ego_initial,
-                                   ego_vehicle, time_step, plot_limits=plot_limits, target_veh=target_veh)
+        visualize_repairing_result(scenario,
+                                   ego_vehicle,
+                                   time_step,
+                                   plot_limits=plot_limits,
+                                   target_veh=target_veh,
+                                   ego_initial=ego_initial,
+                                   tc=repairer.tc)

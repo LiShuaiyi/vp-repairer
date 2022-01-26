@@ -129,7 +129,9 @@ def visualize_repairing_result(scenario: Scenario,
                                save_path: str = None,
                                plot_limits = None,
                                end_time=None,
-                               tc=None):
+                               tc=None,
+                               target_veh=None,
+                               ego_initial=None):
     """
     Function to visualize complete planning result from the reactive planner for a given time step
     :param scenario: CommonRoad scenario object
@@ -148,8 +150,11 @@ def visualize_repairing_result(scenario: Scenario,
     scenario.draw(
         rnd,
         draw_params=ParamServer({"time_begin": timestep, "time_end": end_time, "trajectory": {
-            "draw_trajectory": True}, "occupancy": {
-            "draw_occupancies": 0},                            "dynamic_obstacle":
+            "draw_trajectory": True},
+                                 "lanelet": {"fill_lanelet": False},
+                                 "occupancy": {
+            "draw_occupancies": 0},
+                                 "dynamic_obstacle":
                                {
                                    "vehicle_shape": {
                                    "occupancy": {
@@ -161,55 +166,56 @@ def visualize_repairing_result(scenario: Scenario,
     )
     # visualize planning problem
     # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
-    # visualize ego vehicle
-    # safe_distance = calculate_safe_distance(ego_initial.state_at_time(timestep).velocity,
-    #                                         target_veh.state_at_time(timestep).velocity,
-    #                                         -10.5, -10.0, 0.4)
-    # box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
-    #              [safe_distance / 2, 0]
-    # # -preceding_vehicle.obstacle_shape.width/2
-    # # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
-    # obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
-    # obb.draw(rnd, draw_params={"opacity": 0.2,
-    #                            "facecolor": "red",
-    #                            'edgecolor': "red"})
-
-    ego_repaired.draw(rnd,
-                     draw_params=ParamServer(
-                         {"time_begin": timestep, "time_end": tc,"trajectory": {
-                             "draw_trajectory": False},
-                          "occupancy": {
-                              "draw_occupancies": 1,
-                              "shape": {"rectangle": {
-                                  "facecolor": "#0065bd",
-                                  "edgecolor": "#0065bd"}
-                              }},
-                          "dynamic_obstacle":
-                              {"vehicle_shape": {
-                                  "occupancy": {
-                                      "shape": {"rectangle": {
-                                          "facecolor": "#0065bd",
-                                          "edgecolor": "#0065bd"}
-                                      }}}}}))
-    ego_repaired.draw(rnd,
-                      draw_params=ParamServer(
-                          {"time_begin": tc,"time_end": end_time, "trajectory": {
-                              "draw_trajectory": False},
-                           "occupancy": {
-                               "draw_occupancies": 1,
-                               "shape": {"rectangle": {
-                                   "facecolor": "#a2ad00",
-                                   "edgecolor": "#a2ad00"}
-                               }},
-                           "dynamic_obstacle":
-                               {
-                                   "vehicle_shape": {
-                                   "occupancy": {
-                                       "draw_occupancies": 0,
-                                       "shape": {"rectangle": {
-                                           "facecolor": "#a2ad00",
-                                           "edgecolor": "#a2ad00"}
-                                       }}}}}))
+    ego_state_list = [ego_repaired.initial_state] + ego_repaired.prediction.trajectory.state_list
+    safe_distance = calculate_safe_distance(ego_state_list[timestep-1].velocity,
+                                            target_veh.state_at_time(timestep).velocity,
+                                            -10.5, -10.0, 0.4)
+    box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
+                 [safe_distance / 2, 0]
+    # -preceding_vehicle.obstacle_shape.width/2
+    # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
+    obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
+    obb.draw(rnd, draw_params={"opacity": 0.2,
+                               "facecolor": "red",
+                               'edgecolor': "red"})
+    if timestep>=tc:
+        ego_repaired.draw(rnd,
+                         draw_params=ParamServer(
+                             {"time_begin": timestep, "time_end": end_time,"trajectory": {
+                                 "draw_trajectory": False},
+                              "occupancy": {
+                                  "draw_occupancies": 1,
+                                  "shape": {"rectangle": {
+                                      "facecolor": "#a2ad00",
+                                      "edgecolor": "#a2ad00"}
+                                  }},
+                              "dynamic_obstacle":
+                                  {"vehicle_shape": {
+                                      "occupancy": {
+                                          "shape": {"rectangle": {
+                                              "facecolor": "#a2ad00",
+                                              "edgecolor": "#a2ad00"}
+                                          }}}}}))
+    else:
+        ego_repaired.draw(rnd,
+                          draw_params=ParamServer(
+                              {"time_begin": timestep,"time_end": end_time, "trajectory": {
+                                  "draw_trajectory": False},
+                               "occupancy": {
+                                   "draw_occupancies": 1,
+                                   "shape": {"rectangle": {
+                                       "facecolor": "#0065bd",
+                                       "edgecolor": "#0065bd"}
+                                   }},
+                               "dynamic_obstacle":
+                                   {
+                                       "vehicle_shape": {
+                                       "occupancy": {
+                                           "draw_occupancies": 0,
+                                           "shape": {"rectangle": {
+                                               "facecolor": "#0065bd",
+                                               "edgecolor": "#0065bd"}
+                                           }}}}}))
 
     # render scenario and ego vehicle
     rnd.render()
@@ -221,22 +227,27 @@ def visualize_repairing_result(scenario: Scenario,
         pos_y_repaired.append(state.position[1])
 
     # visualize optimal trajectory
-    rnd.ax.plot(pos_x_repaired[timestep:tc+1], pos_y_repaired[timestep:tc+1], color='#0065bd', marker='.', markersize=7.5, zorder=22, linewidth=1.5,
+    if timestep>=tc:
+        rnd.ax.plot(pos_x_repaired[timestep:end_time], pos_y_repaired[timestep:end_time], color='#a2ad00', marker='.',
+                    markersize=7.5, zorder=22, linewidth=1.5,
+                    label='repaired trajectory')
+    else:
+        rnd.ax.plot(pos_x_repaired[timestep:end_time], pos_y_repaired[timestep:end_time], color='#0065bd',
+                marker='x', markersize=7.5, zorder=22, linewidth=1.5,
                 label='repaired trajectory')
-    rnd.ax.plot(pos_x_repaired[tc:end_time], pos_y_repaired[tc:end_time], color='#a2ad00', marker='.', markersize=7.5, zorder=22, linewidth=1.5,
-                label='repaired trajectory')
+
     plt.xticks([])
     plt.yticks([])
-    plt.title(timestep)
+    # plt.title(timestep)
 
     # show the rule-violating region
 
     # show plot
-    plt.show(block=True)
+    # plt.show(block=True)
 
     # save as .png file
     if save_path is not None:
-        plt.savefig(f"{save_path}/{scenario.scenario_id}_{timestep}.png", format='png', dpi=300,
+        plt.savefig(f"{save_path}/{scenario.scenario_id}_{timestep}.svg", format='svg', dpi=300,
                     bbox_inches='tight')
 
 def visualize_initial_result(scenario: Scenario,

@@ -20,10 +20,10 @@ if __name__ == '__main__':
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0
-    f_w = open("result_rg1.csv", 'r+')
+    f_w = open("result_rg3.csv", 'r+')
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id", 'rule', "repairability", "model", "TV", "TC"])
-    for csv_file in list(glob.glob("config/*.csv", recursive=True))[1:2]:
+    for csv_file in list(glob.glob("config/*.csv", recursive=True))[0:1]:
         f_r = open(csv_file, 'r+')
         reader = csv.reader(f_r)
         rule = "R_G" + csv_file[-5]
@@ -42,7 +42,7 @@ if __name__ == '__main__':
                 rule_abstracter = RuleAbstracter(scenario,
                                                  planning_problem,
                                                  ego_id, rule)
-                if rule_abstracter.rule_monitor.tv_time_step == -math.inf:
+                if rule_abstracter.rule_monitor.tv_time_step in (-math.inf, math.inf):
                     writer.writerow([scenario.scenario_id, ego_id, rule, "initial feasibility"])
                     nr_infeasible += 1
                     continue
