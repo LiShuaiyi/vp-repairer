@@ -166,18 +166,19 @@ def visualize_repairing_result(scenario: Scenario,
     )
     # visualize planning problem
     # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
-    ego_state_list = [ego_repaired.initial_state] + ego_repaired.prediction.trajectory.state_list
-    safe_distance = calculate_safe_distance(ego_state_list[timestep].velocity,
-                                            target_veh.state_at_time(timestep).velocity,
-                                            -10.5, -10.0, 0.4)
-    box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
-                 [safe_distance / 2, 0]
-    # -preceding_vehicle.obstacle_shape.width/2
-    # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
-    obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
-    obb.draw(rnd, draw_params={"opacity": 0.2,
-                               "facecolor": "red",
-                               'edgecolor': "red"})
+    if target_veh:
+        ego_state_list = [ego_repaired.initial_state] + ego_repaired.prediction.trajectory.state_list
+        safe_distance = calculate_safe_distance(ego_state_list[timestep].velocity,
+                                                target_veh.state_at_time(timestep).velocity,
+                                                -10.5, -10.0, 0.4)
+        box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
+                     [safe_distance / 2, 0]
+        # -preceding_vehicle.obstacle_shape.width/2
+        # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
+        obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
+        obb.draw(rnd, draw_params={"opacity": 0.2,
+                                   "facecolor": "red",
+                                   'edgecolor': "red"})
     if timestep>=tc:
         ego_repaired.draw(rnd,
                          draw_params=ParamServer(
@@ -245,10 +246,14 @@ def visualize_repairing_result(scenario: Scenario,
     # show plot
     # plt.show(block=True)
 
-    # save as .png file
+    # save as .svg file
     if save_path is not None:
-        plt.savefig(f"{save_path}/{scenario.scenario_id}_{timestep}.svg", format='svg', dpi=300,
-                    bbox_inches='tight')
+        if timestep<10:
+            plt.savefig(f"{save_path}/{0}{timestep}.svg", format='svg', dpi=300,
+                        bbox_inches='tight')
+        else:
+            plt.savefig(f"{save_path}/{timestep}.svg", format='svg', dpi=300,
+                        bbox_inches='tight')
 
 def visualize_initial_result(scenario: Scenario,
                              ego_initial: DynamicObstacle,
@@ -292,18 +297,19 @@ def visualize_initial_result(scenario: Scenario,
     )
     # visualize planning problem
     # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
-    ego_state_list = [ego_initial.initial_state] + ego_initial.prediction.trajectory.state_list
-    safe_distance = calculate_safe_distance(ego_state_list[timestep].velocity,
-                                            target_veh.state_at_time(timestep).velocity,
-                                            -10.5, -10.0, 0.4)
-    box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
-                 [safe_distance / 2, 0]
-    # -preceding_vehicle.obstacle_shape.width/2
-    # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
-    obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
-    obb.draw(rnd, draw_params={"opacity": 0.2,
-                               "facecolor": "red",
-                               'edgecolor': "red"})
+    if target_veh:
+        ego_state_list = [ego_initial.initial_state] + ego_initial.prediction.trajectory.state_list
+        safe_distance = calculate_safe_distance(ego_state_list[timestep].velocity,
+                                                target_veh.state_at_time(timestep).velocity,
+                                                -10.5, -10.0, 0.4)
+        box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
+                     [safe_distance / 2, 0]
+        # -preceding_vehicle.obstacle_shape.width/2
+        # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
+        obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
+        obb.draw(rnd, draw_params={"opacity": 0.2,
+                                   "facecolor": "red",
+                                   'edgecolor': "red"})
     if timestep<tv:
         ego_initial.draw(rnd,
                          draw_params=ParamServer(
@@ -351,11 +357,11 @@ def visualize_initial_result(scenario: Scenario,
 
     if timestep>=tv:
         rnd.ax.plot(pos_x_initial[timestep:end_time], pos_y_initial[timestep:end_time], color='red', marker='x',
-                    markersize=7.5, zorder=22, linewidth=1.5,
+                    markersize=7.5, zorder=35, linewidth=1.5,
                     label='repaired trajectory')
     else:
         rnd.ax.plot(pos_x_initial[timestep:end_time], pos_y_initial[timestep:end_time], color='#0065bd',
-                marker='x', markersize=7.5, zorder=22, linewidth=1.5,
+                marker='x', markersize=7.5, zorder=35, linewidth=1.5,
                 label='repaired trajectory')
     plt.xticks([])
     plt.yticks([])
@@ -366,7 +372,11 @@ def visualize_initial_result(scenario: Scenario,
     # show plot
     # plt.show(block=True)
 
-    # save as .png file
+    # save as .svg file
     if save_path is not None:
-        plt.savefig(f"{save_path}/{scenario.scenario_id}_{timestep}.svg", format='svg', dpi=300,
-                    bbox_inches='tight')
+        if timestep<10:
+            plt.savefig(f"{save_path}/{0}{timestep}.svg", format='svg', dpi=300,
+                        bbox_inches='tight')
+        else:
+            plt.savefig(f"{save_path}/{timestep}.svg", format='svg', dpi=300,
+                        bbox_inches='tight')

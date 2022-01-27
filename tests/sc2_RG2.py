@@ -20,6 +20,7 @@ scenario_id = "DEU_LocationAUpper-36_53_T-1"
 scenario_id = "ZAM_Zip-1_56_T-1"
 
 file_path = "../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
+figure_path = "/home/yuanfei/commonroad/commonroad_repair/tests/figures/"
 
 # file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/test_interstate/DEU_test_unnecessary_braking.xml"
 
@@ -91,54 +92,17 @@ if __name__ == '__main__':
         visualize_a_profile(scenario.dt, ego_initial, ego_vehicle, initial_time_step, final_time_step,
                             int(repairer.tc), int(repairer.tv))
         for time_step in range(initial_time_step, final_time_step):
+            # visualize_repairing_result(scenario,
+            #                            ego_vehicle, time_step, None, plot_limits=plot_limits,
+            #                            end_time=final_time_step, tc=int(repairer.tc))
+            # visualize_initial_result(scenario, ego_initial,
+            #                          time_step, None, plot_limits=plot_limits, end_time=final_time_step,
+            #                          tv=int(repairer.tv), save_path=figure_path)
             visualize_repairing_result(scenario,
-                                       ego_vehicle, time_step, None, plot_limits=plot_limits,
-                                       end_time=final_time_step, tc=int(repairer.tc))
-            visualize_initial_result(scenario, ego_initial,
-                                     time_step, None, plot_limits, final_time_step,
-                                     int(repairer.tv))
-            # rnd = MPRenderer(figsize=(40, 10), plot_limits=plot_limits)
-            # scenario.draw(
-            #     rnd,
-            #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-            #              "draw_trajectory": False}, "occupancy": {
-            #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-            # )
-            # # scenario.obstacle_by_id()
-            # ego_initial.draw(rnd,
-            #                  draw_params=ParamServer(
-            #                      {"time_begin": time_step,
-            #                       "occupancy": {
-            #                           "draw_occupancies": 1,
-            #                           "shape": {"rectangle": {
-            #                               "facecolor": "green",
-            #                               "edgecolor": "green"}
-            #                           }},
-            #                       "dynamic_obstacle":
-            #                           {"vehicle_shape": {
-            #                               "occupancy": {
-            #                                   "shape": {"rectangle": {
-            #                                       "facecolor": "green",
-            #                                       "edgecolor": "green"}
-            #                                   }}}}}))
-            # ego_vehicle.draw(rnd,
-            #                  draw_params=ParamServer(
-            #                      {"time_begin": time_step,
-            #                       "occupancy": {
-            #                           "draw_occupancies": 1,
-            #                           "shape": {"rectangle": {
-            #                               "facecolor": "black",
-            #                               "edgecolor": "black"}
-            #                           }},
-            #                       "trajectory": {
-            #                           "draw_trajectory": False},
-            #                       "dynamic_obstacle":
-            #                           {"vehicle_shape": {
-            #                               "occupancy": {
-            #                                   "shape": {"rectangle": {
-            #                                       "facecolor": "black",
-            #                                       "edgecolor": "black"}
-            #                                   }}}, 'show_label': True}}))
-            # rnd.render()
-            # plt.title(str(time_step))
-            # plt.show()
+                                       ego_vehicle,
+                                       time_step,
+                                       tc=repairer.tc,
+                                       end_time=final_time_step,
+                                       plot_limits=plot_limits,
+                                       ego_initial=ego_initial,
+                                       save_path=figure_path)

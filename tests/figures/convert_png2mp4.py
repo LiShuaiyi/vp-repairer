@@ -1,7 +1,7 @@
 # 1-2
-rule = "R_G1"
-# mode = 'initial'
-mode = 'repaired'
+rule = "R_G2"
+mode = 'initial'
+# mode = 'repaired'
 
 import ffmpeg
 (
