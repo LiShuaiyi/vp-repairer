@@ -16,6 +16,7 @@ scenario_id = "DEU_Muc-4_2_T-1"
 
 file_path = "../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
 
+figure_path = "/home/yuanfei/commonroad/commonroad_repair/tests/figures/"
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
@@ -38,7 +39,7 @@ if __name__ == '__main__':
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:21]
     ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:21]
-    final_time_step = 20
+    final_time_step = 21
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
@@ -54,11 +55,14 @@ if __name__ == '__main__':
         plot_limits = [-20, 35, -5, 2]
         visualize_v_profile(ego_initial, ego_vehicle, int(repairer.tc), int(repairer.tv))
         for time_step in range(ego_vehicle.prediction.final_time_step):
-            # visualize_repairing_result(scenario, ego_initial,
-            #                            ego_vehicle, time_step, None, plot_limits=plot_limits)
+            # visualize_initial_result(scenario, ego_initial,
+            #                          time_step, None, plot_limits=plot_limits, end_time=final_time_step,
+            #                          tv=int(repairer.tv), save_path=figure_path)
             visualize_repairing_result(scenario,
-                                       ego_vehicle, time_step, None, plot_limits=plot_limits,
-                                       end_time=final_time_step, tc=int(repairer.tc))
-            visualize_initial_result(scenario, ego_initial,
-                                     time_step, None, plot_limits, final_time_step,
-                                     int(repairer.tv))
+                                       ego_vehicle,
+                                       time_step,
+                                       tc=repairer.tc,
+                                       end_time=final_time_step,
+                                       plot_limits=plot_limits,
+                                       ego_initial=ego_initial,
+                                       save_path=figure_path)
