@@ -208,12 +208,12 @@ class RuleConstraints:
                                                                        - self._veh_config.wheelbase/2
                                                                        - self._veh_config.length/2
                                                                        ])
-            if self._foll_veh is not None:
-                if k <= self._foll_veh.end_time:
-                    self._lon_dis_constraints[index] = self._get_overlap(self._lon_dis_constraints[index],
-                                                                         [self._foll_veh.front_s(k) +
-                                                                       self._veh_config.wheelbase/2,
-                                                                       np.inf])
+            # if self._foll_veh is not None:
+            #     if k <= self._foll_veh.end_time:
+            #         self._lon_dis_constraints[index] = self._get_overlap(self._lon_dis_constraints[index],
+            #                                                              [self._foll_veh.front_s(k) +
+            #                                                            self._veh_config.wheelbase/2,
+            #                                                            np.inf])
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         # todo: fix in stl monitor
