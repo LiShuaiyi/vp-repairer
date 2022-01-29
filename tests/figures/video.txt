@@ -1,0 +1,49 @@
+(In this work, we propose a novel approach to
+generate traffic rule-compliant trajectories for autonomous vehicles/
+based on a trajectory-repairing framework)
+
+if initially-planned trajectories are rule-violating or/ physically infeasible,
+ we repair the trajectory instead of/ replanning it from scratch.
+
+
+(By making use of the lazy satisfiability modulo theories paradigm,
+we can reason whether and how the trajectory
+can be repaired / given traffic rule formulae in metric temporal logic.)
+
+
+(Let us consider traffic rules for German highways.
+
+With the general rule R_G1,
+
+ the ego vehicle following vehicles within the same lane/
+  must maintain a safe distance /to ensure collision freedom for all of them,
+  even if one or several vehicles suddenly stop.)
+
+
+(In the demonstrated rural scenario, the initially-planned trajectory for the ego vehicle violates the
+safe distance rule.
+In the lazy SMT propagation, we first obtain the proposition to be repaired.
+Then criticality measures are used to automatically select the trajectory section that remains unchanged.
+Afterward, we use optimization-based motion planning algorithms to obtain repaired trajectories.)
+
+With this, the ego vehicle executes a braking maneuver to avoid the violation.
+
+(Our framework works for all the rules starting with the globally temporal operator.
+
+We also show the applicability of our approach with two more rules.
+
+With rule RG2, the ego vehicle is not allowed to brake abruptly without reason.
+
+After a violation is detected, the initial trajectory is modified by our approach
+ with a more reasonable acceleration profile.
+
+ Rule RG3 states that the ego vehicle must adhere to the speed limit obtained from the current environment model
+ and the vehicle type. We show an urban scenario /where the ego vehicle exceeds the lane speed limit.
+
+With the help of convex optimization, a kinematically feasible, comfortable, and rule-compliant trajectory
+is obtained after the initial trajectory branches off.
+
+
+We also evaluate our approach with the highD dataset/ over thousand rule-violating trajectories.
+
+The result shows over 90% of trajectories can be repaired/ to comply with traffic rules using our framework.
