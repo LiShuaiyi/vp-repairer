@@ -46,6 +46,7 @@ class QPPlannerRepair(QPPlanner):
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
                                                                            self._planning_problem)
+        # self._vehicle_configuration.curvilinear_coordinate_system = rule_abstracter.world_state.ego_vehicle.lane.clcs
         # self._planning_problem.initial_state.time_step = 0 # todo: check the time steps
         super().__init__(self._scenario,
                          self._planning_problem,
