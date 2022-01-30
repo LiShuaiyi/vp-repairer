@@ -6,6 +6,7 @@ from commonroad_repair.crrepairer.t_solver.utils import convert_traj_to_ego_vehi
 from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_profile
 from commonroad_repair.crrepairer.t_solver.utils import calculate_safe_distance
 
+from commonroad.scenario.obstacle import ObstacleType
 from commonroad.common.file_reader import CommonRoadFileReader
 
 # other packages
@@ -20,7 +21,8 @@ if __name__ == '__main__':
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0
-    f_w = open("result_rg3.csv", 'r+')
+    # f_w = open("result_rg2.csv", 'r+')
+    f_w = open("result_rg1_not_rep.csv", 'r+')
     writer = csv.writer(f_w)
     writer.writerow(["scenario_id", "ego_id", 'rule', "repairability", "model", "TV", "TC"])
     for csv_file in list(glob.glob("config/*.csv", recursive=True))[0:1]:
@@ -38,6 +40,8 @@ if __name__ == '__main__':
             ego_id = int(list(row)[1])
             print(rule, scenario_id, ego_id)
             ego_initial = scenario.obstacle_by_id(ego_id)
+            if ego_initial.obstacle_type != ObstacleType.CAR:
+                continue
             try:
                 rule_abstracter = RuleAbstracter(scenario,
                                                  planning_problem,

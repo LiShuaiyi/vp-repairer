@@ -1,0 +1,11 @@
+scenario_id,ego_id,rule
+DEU_LocationAUpper-47_35_T-1,17,R_G1
+DEU_LocationAUpper-27_26_T-1,12,R_G1
+DEU_LocationAUpper-35_38_T-1,12,R_G1
+DEU_LocationAUpper-25_52_T-1,9,R_G1
+DEU_LocationALower-48_27_T-1,11,R_G1
+DEU_LocationAUpper-12_28_T-1,24,R_G1
+DEU_LocationAUpper-52_28_T-1,12,R_G1
+DEU_LocationELower-15_33_T-1,12,R_G1
+DEU_LocationFUpper-60_43_T-1,19,R_G1
+DEU_LocationFUpper-60_43_T-1,22,R_G1

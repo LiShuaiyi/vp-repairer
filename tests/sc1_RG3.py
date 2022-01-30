@@ -11,7 +11,7 @@ from commonroad.visualization.param_server import ParamServer
 import matplotlib.pyplot as plt
 import math
 
-scenario_id = "DEU_LocationDUpper-7_23_T-1"
+scenario_id = "DEU_LocationALower-50_36_T-1"
 
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
