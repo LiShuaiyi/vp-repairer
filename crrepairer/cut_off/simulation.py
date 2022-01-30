@@ -110,6 +110,7 @@ class SimulationLong(SimulationBase, ABC):
     def simulate_state_list(self):
         pre_state = self._cut_off_state
         self.set_inputs(pre_state)
+        pre_state.acceleration = self._input.acceleration
         while pre_state.time_step < self._time_horizon:
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)

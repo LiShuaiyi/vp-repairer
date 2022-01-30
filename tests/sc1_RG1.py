@@ -13,7 +13,7 @@ import math
 
 scenario_id = "DEU_LocationAUpper-26_21_T-1"
 scenario_id = "DEU_LocationAUpper-47_35_T-1"
-scenario_id = "DEU_LocationFUpper-60_43_T-1"
+scenario_id = "DEU_LocationFUpper-60_43_T-1" # -22 not repairable
 # scenario_id = "DEU_LocationAUpper-27_26_T-1"
 # scenario_id = "DEU_LocationAUpper-35_38_T-1"
 # scenario_id = "DEU_LocationAUpper-25_52_T-1"
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     scenario.draw(
         rnd,
         draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-                 "draw_trajectory": False}, "occupancy": {
+                 "draw_trajectory": True}, "occupancy": {
             "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
     )
     rnd.render()
