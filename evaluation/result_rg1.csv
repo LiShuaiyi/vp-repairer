@@ -1,577 +1,650 @@
-scenario_id,ego_id,rule,repairability,model,TV,TC
-DEU_LocationALower-41_27_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-41_27_T-1,21,R_G1,bingo,{'d'},26,25
-DEU_LocationALower-42_5_T-1,12,R_G1,bingo,{'d'},19,18
-DEU_LocationALower-42_5_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-31_26_T-1,23,R_G1,bingo,{'d'},8,7
-DEU_LocationAUpper-31_26_T-1,29,R_G1,initial feasibility
-DEU_LocationAUpper-31_26_T-1,30,R_G1,bingo,{'d'},27,26
-DEU_LocationEUpper-16_40_T-1,10,R_G1,bingo,{'d'},53,52
-DEU_LocationALower-47_37_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-45_5_T-1,6,R_G1,initial feasibility
-DEU_LocationAUpper-45_5_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-45_5_T-1,15,R_G1,initial feasibility
-DEU_LocationAUpper-14_1_T-1,6,R_G1,initial feasibility
-DEU_LocationALower-44_47_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-44_47_T-1,15,R_G1,initial feasibility
-DEU_LocationALower-44_47_T-1,20,R_G1,bingo,"{'d', '~c', 'a'}",26,25
-DEU_LocationAUpper-52_30_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-52_30_T-1,22,R_G1,initial feasibility
-DEU_LocationAUpper-52_30_T-1,23,R_G1,bingo,"{'d', '~c', 'a', 'b'}",62,61
-DEU_LocationAUpper-52_30_T-1,24,R_G1,initial feasibility
-DEU_LocationALower-35_51_T-1,12,R_G1,initial feasibility
-DEU_LocationAUpper-48_8_T-1,10,R_G1,bingo,"{'d', 'b'}",2,1
-DEU_LocationAUpper-48_8_T-1,20,R_G1,initial feasibility
-DEU_LocationAUpper-26_47_T-1,13,R_G1,bingo,{'d'},16,15
-DEU_LocationALower-41_22_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-41_22_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-41_22_T-1,21,R_G1,initial feasibility
-DEU_LocationALower-41_22_T-1,26,R_G1,not repairable,"{'a', 'c', 'b', '~d'}",6,-inf
-DEU_LocationALower-41_22_T-1,28,R_G1,initial feasibility
-DEU_LocationALower-14_9_T-1,12,R_G1,bingo,{'d'},11,10
-DEU_LocationALower-14_9_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-14_9_T-1,18,R_G1,bingo,"{'d', '~c', 'a'}",13,12
-DEU_LocationALower-14_9_T-1,23,R_G1,bingo,{'d'},15,14
-DEU_LocationALower-14_9_T-1,26,R_G1,bingo,"{'d', '~c', 'a'}",27,26
-DEU_LocationAUpper-47_35_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-47_35_T-1,17,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",28,26
-DEU_LocationAUpper-47_35_T-1,23,R_G1,bingo,{'d'},64,63
-DEU_LocationCUpper-6_9_T-1,10,R_G1,initial feasibility
-DEU_LocationBUpper-2_46_T-1,9,R_G1,initial feasibility
-DEU_LocationBUpper-2_46_T-1,10,R_G1,bingo,"{'d', 'a'}",13,12
-DEU_LocationBUpper-2_46_T-1,14,R_G1,initial feasibility
-DEU_LocationBUpper-2_46_T-1,15,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",26,25
-DEU_LocationAUpper-27_26_T-1,13,R_G1,bingo,"{'d', '~c', 'a'}",19,18
-DEU_LocationALower-30_11_T-1,14,R_G1,initial feasibility
-DEU_LocationEUpper-21_47_T-1,9,R_G1,bingo,"{'d', 'b'}",2,1
-DEU_LocationCLower-4_22_T-1,9,R_G1,bingo,{'d'},6,5
-DEU_LocationAUpper-47_43_T-1,8,R_G1,initial feasibility
-DEU_LocationAUpper-47_43_T-1,10,R_G1,initial feasibility
-DEU_LocationAUpper-47_43_T-1,15,R_G1,bingo,{'d'},8,7
-DEU_LocationAUpper-47_43_T-1,21,R_G1,bingo,{'d'},3,2
-DEU_LocationAUpper-35_38_T-1,11,R_G1,initial feasibility
-DEU_LocationAUpper-35_38_T-1,12,R_G1,not repairable,"{'a', 'c', 'b', '~d'}",44,42
-DEU_LocationAUpper-35_38_T-1,13,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",42,41
-DEU_LocationAUpper-35_38_T-1,14,R_G1,bingo,{'d'},44,42
-DEU_LocationAUpper-41_16_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-41_16_T-1,15,R_G1,initial feasibility
-DEU_LocationAUpper-35_23_T-1,16,R_G1,bingo,"{'d', 'b'}",12,11
-DEU_LocationAUpper-42_6_T-1,13,R_G1,bingo,{'d'},23,22
-DEU_LocationAUpper-27_15_T-1,16,R_G1,bingo,"{'d', 'a'}",23,21
-DEU_LocationELower-23_45_T-1,7,R_G1,initial feasibility
-DEU_LocationFUpper-60_33_T-1,7,R_G1,bingo,"{'d', 'a', 'b'}",3,2
-DEU_LocationFUpper-60_33_T-1,9,R_G1,bingo,{'d'},29,28
-DEU_LocationFUpper-60_33_T-1,10,R_G1,bingo,{'d'},27,26
-DEU_LocationCLower-4_17_T-1,8,R_G1,initial feasibility
-DEU_LocationCLower-4_17_T-1,13,R_G1,bingo,{'d'},37,36
-DEU_LocationELower-19_47_T-1,6,R_G1,bingo,{'d'},28,27
-DEU_LocationALower-30_50_T-1,16,R_G1,bingo,"{'d', 'a', 'b'}",12,11
-DEU_LocationALower-32_6_T-1,9,R_G1,bingo,{'d'},8,7
-DEU_LocationALower-32_6_T-1,18,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",10,-inf
-DEU_LocationBLower-2_22_T-1,5,R_G1,initial feasibility
-DEU_LocationAUpper-31_51_T-1,17,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",9,7
-DEU_LocationAUpper-31_51_T-1,18,R_G1,initial feasibility
-DEU_LocationALower-31_7_T-1,16,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",21,-inf
-DEU_LocationALower-31_7_T-1,17,R_G1,bingo,{'d'},18,17
-DEU_LocationAUpper-38_18_T-1,14,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",12,-inf
-DEU_LocationAUpper-48_38_T-1,9,R_G1,bingo,{'d'},24,23
-DEU_LocationAUpper-48_38_T-1,13,R_G1,initial feasibility
-DEU_LocationELower-22_26_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-38_57_T-1,19,R_G1,initial feasibility
-DEU_LocationFUpper-58_15_T-1,11,R_G1,initial feasibility
-DEU_LocationFUpper-58_15_T-1,18,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",24,23
-DEU_LocationAUpper-28_14_T-1,14,R_G1,bingo,{'d'},39,38
-DEU_LocationAUpper-25_21_T-1,33,R_G1,bingo,"{'d', 'b'}",7,6
-DEU_LocationALower-50_36_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-50_36_T-1,12,R_G1,bingo,{'d'},22,21
-DEU_LocationALower-50_36_T-1,20,R_G1,initial feasibility
-DEU_LocationELower-18_12_T-1,12,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",15,-inf
-DEU_LocationAUpper-30_30_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-37_25_T-1,11,R_G1,bingo,{'d'},5,4
-DEU_LocationALower-25_15_T-1,22,R_G1,bingo,{'d'},54,53
-DEU_LocationBUpper-2_42_T-1,7,R_G1,initial feasibility
-DEU_LocationBUpper-2_42_T-1,8,R_G1,initial feasibility
-DEU_LocationCLower-4_36_T-1,10,R_G1,bingo,{'d'},38,37
-DEU_LocationELower-17_30_T-1,6,R_G1,initial feasibility
-DEU_LocationAUpper-11_14_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-11_14_T-1,14,R_G1,bingo,{'d'},2,1
-DEU_LocationAUpper-25_43_T-1,30,R_G1,bingo,"{'d', 'a', 'b'}",45,44
-DEU_LocationAUpper-36_58_T-1,11,R_G1,bingo,"{'d', 'a', 'b'}",22,21
-DEU_LocationAUpper-36_58_T-1,18,R_G1,bingo,"{'d', 'a', 'b'}",46,45
-DEU_LocationAUpper-33_43_T-1,14,R_G1,bingo,{'d'},9,8
-DEU_LocationAUpper-33_43_T-1,15,R_G1,bingo,{'d'},9,8
-DEU_LocationAUpper-33_43_T-1,18,R_G1,bingo,{'d'},9,8
-DEU_LocationALower-12_21_T-1,8,R_G1,bingo,{'d'},4,3
-DEU_LocationALower-12_21_T-1,12,R_G1,initial feasibility
-DEU_LocationALower-12_21_T-1,17,R_G1,bingo,{'d'},1,0
-DEU_LocationALower-12_21_T-1,20,R_G1,initial feasibility
-DEU_LocationAUpper-49_15_T-1,14,R_G1,bingo,{'d'},2,1
-DEU_LocationAUpper-48_26_T-1,14,R_G1,initial feasibility
-DEU_LocationAUpper-42_18_T-1,23,R_G1,bingo,"{'d', '~c'}",35,34
-DEU_LocationALower-51_38_T-1,7,R_G1,bingo,{'d'},7,6
-DEU_LocationDUpper-9_37_T-1,9,R_G1,initial feasibility
-DEU_LocationEUpper-23_39_T-1,6,R_G1,initial feasibility
-DEU_LocationALower-25_2_T-1,33,R_G1,bingo,{'d'},6,5
-DEU_LocationALower-25_2_T-1,36,R_G1,bingo,{'d'},41,40
-DEU_LocationAUpper-14_55_T-1,10,R_G1,initial feasibility
-DEU_LocationAUpper-53_8_T-1,11,R_G1,bingo,{'d'},12,11
-DEU_LocationAUpper-35_30_T-1,12,R_G1,bingo,{'d'},16,15
-DEU_LocationAUpper-35_30_T-1,21,R_G1,bingo,{'d'},46,45
-DEU_LocationDLower-7_28_T-1,6,R_G1,bingo,"{'d', 'a'}",7,6
-DEU_LocationAUpper-13_34_T-1,21,R_G1,bingo,{'d'},39,38
-DEU_LocationAUpper-13_34_T-1,22,R_G1,initial feasibility
-DEU_LocationALower-51_21_T-1,17,R_G1,initial feasibility
-DEU_LocationAUpper-51_12_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-56_10_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-56_10_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-26_55_T-1,29,R_G1,initial feasibility
-DEU_LocationALower-26_55_T-1,34,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",29,-inf
-DEU_LocationAUpper-50_32_T-1,13,R_G1,bingo,{'d'},13,12
-DEU_LocationAUpper-50_32_T-1,21,R_G1,initial feasibility
-DEU_LocationAUpper-25_52_T-1,9,R_G1,bingo,"{'d', 'a'}",25,24
-DEU_LocationAUpper-25_52_T-1,27,R_G1,not repairable,"{'a', 'c', 'b', '~d'}",16,-inf
-DEU_LocationAUpper-25_52_T-1,43,R_G1,bingo,"{'d', '~c', 'a', 'b'}",7,6
-DEU_LocationAUpper-29_34_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-27_35_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-27_35_T-1,18,R_G1,initial feasibility
-DEU_LocationALower-33_9_T-1,13,R_G1,initial feasibility
-DEU_LocationALower-33_9_T-1,15,R_G1,bingo,{'d'},1,0
-DEU_LocationEUpper-17_10_T-1,6,R_G1,initial feasibility
-DEU_LocationBUpper-1_21_T-1,5,R_G1,bingo,{'d'},8,7
-DEU_LocationBUpper-1_21_T-1,16,R_G1,not repairable,"{'a', 'c', 'b', '~d'}",9,-inf
-DEU_LocationBUpper-1_21_T-1,17,R_G1,initial feasibility
-DEU_LocationAUpper-37_31_T-1,12,R_G1,bingo,{'d'},40,39
-DEU_LocationALower-43_37_T-1,15,R_G1,bingo,"{'d', 'a'}",21,20
-DEU_LocationALower-43_37_T-1,16,R_G1,bingo,{'d'},42,41
-DEU_LocationALower-53_34_T-1,6,R_G1,bingo,{'d'},1,0
-DEU_LocationAUpper-31_47_T-1,10,R_G1,bingo,{'d'},14,13
-DEU_LocationALower-28_18_T-1,7,R_G1,initial feasibility
-DEU_LocationCUpper-6_17_T-1,10,R_G1,bingo,{'d'},7,6
-DEU_LocationAUpper-50_16_T-1,15,R_G1,bingo,{'d'},15,14
-DEU_LocationAUpper-44_33_T-1,16,R_G1,bingo,{'d'},13,12
-DEU_LocationALower-54_21_T-1,11,R_G1,bingo,{'d'},8,7
-DEU_LocationALower-54_21_T-1,13,R_G1,initial feasibility
-DEU_LocationDLower-8_30_T-1,12,R_G1,bingo,{'d'},5,4
-DEU_LocationEUpper-17_46_T-1,4,R_G1,initial feasibility
-DEU_LocationAUpper-27_19_T-1,6,R_G1,initial feasibility
-DEU_LocationAUpper-27_19_T-1,15,R_G1,bingo,{'d'},1,0
-DEU_LocationAUpper-27_19_T-1,17,R_G1,bingo,{'d'},30,29
-DEU_LocationALower-11_4_T-1,9,R_G1,initial feasibility
-DEU_LocationAUpper-52_16_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-52_16_T-1,20,R_G1,initial feasibility
-DEU_LocationAUpper-52_16_T-1,26,R_G1,initial feasibility
-DEU_LocationAUpper-53_48_T-1,15,R_G1,initial feasibility
-DEU_LocationAUpper-53_48_T-1,20,R_G1,bingo,{'d'},33,32
-DEU_LocationALower-44_12_T-1,15,R_G1,bingo,{'d'},29,28
-DEU_LocationDLower-9_8_T-1,12,R_G1,initial feasibility
-DEU_LocationFLower-59_19_T-1,9,R_G1,bingo,"{'d', '~c', 'a', 'b'}",9,8
-DEU_LocationCUpper-5_40_T-1,8,R_G1,bingo,{'d'},7,6
-DEU_LocationCUpper-5_40_T-1,9,R_G1,initial feasibility
-DEU_LocationCUpper-5_8_T-1,9,R_G1,initial feasibility
-DEU_LocationCUpper-5_8_T-1,12,R_G1,bingo,{'d'},8,7
-DEU_LocationAUpper-56_40_T-1,10,R_G1,bingo,"{'d', 'a'}",9,8
-DEU_LocationAUpper-56_40_T-1,17,R_G1,bingo,"{'d', 'b'}",3,2
-DEU_LocationAUpper-46_37_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-40_43_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-49_20_T-1,20,R_G1,initial feasibility
-DEU_LocationAUpper-49_20_T-1,26,R_G1,initial feasibility
-DEU_LocationCLower-5_26_T-1,7,R_G1,initial feasibility
-DEU_LocationFLower-58_14_T-1,11,R_G1,initial feasibility
-DEU_LocationFLower-58_14_T-1,15,R_G1,bingo,{'d'},50,49
-DEU_LocationAUpper-26_49_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-46_41_T-1,21,R_G1,bingo,"{'d', 'a'}",50,49
-DEU_LocationALower-46_41_T-1,28,R_G1,bingo,{'d'},4,3
-DEU_LocationDUpper-7_29_T-1,12,R_G1,initial feasibility
-DEU_LocationALower-37_35_T-1,12,R_G1,bingo,"{'d', 'b'}",6,5
-DEU_LocationAUpper-26_29_T-1,24,R_G1,bingo,"{'d', 'b'}",3,2
-DEU_LocationAUpper-26_29_T-1,29,R_G1,bingo,{'d'},28,27
-DEU_LocationAUpper-26_29_T-1,32,R_G1,bingo,{'d'},37,36
-DEU_LocationAUpper-26_29_T-1,33,R_G1,initial feasibility
-DEU_LocationAUpper-48_28_T-1,11,R_G1,initial feasibility
-DEU_LocationBUpper-2_32_T-1,5,R_G1,initial feasibility
-DEU_LocationAUpper-49_5_T-1,23,R_G1,bingo,"{'d', 'b'}",20,19
-DEU_LocationAUpper-54_44_T-1,17,R_G1,bingo,{'d'},5,4
-DEU_LocationALower-44_22_T-1,8,R_G1,initial feasibility
-DEU_LocationALower-42_39_T-1,11,R_G1,bingo,{'d'},4,3
-DEU_LocationALower-42_39_T-1,15,R_G1,bingo,{'d'},9,8
-DEU_LocationALower-14_36_T-1,9,R_G1,bingo,{'d'},1,0
-DEU_LocationALower-27_33_T-1,15,R_G1,initial feasibility
-DEU_LocationALower-48_34_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-38_53_T-1,10,R_G1,bingo,{'d'},8,7
-DEU_LocationAUpper-56_36_T-1,13,R_G1,bingo,"{'d', 'a'}",14,13
-DEU_LocationAUpper-56_36_T-1,15,R_G1,bingo,{'d'},18,17
-DEU_LocationAUpper-51_9_T-1,7,R_G1,bingo,{'d'},7,6
-DEU_LocationAUpper-51_9_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-41_35_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-41_35_T-1,18,R_G1,bingo,{'d'},2,1
-DEU_LocationALower-41_35_T-1,20,R_G1,bingo,{'d'},14,13
-DEU_LocationAUpper-37_39_T-1,8,R_G1,bingo,{'d'},7,6
-DEU_LocationALower-39_33_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-39_33_T-1,15,R_G1,bingo,{'d'},51,50
-DEU_LocationELower-18_27_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-11_25_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-29_8_T-1,9,R_G1,bingo,{'d'},10,9
-DEU_LocationALower-29_8_T-1,12,R_G1,initial feasibility
-DEU_LocationALower-29_8_T-1,15,R_G1,bingo,"{'d', '~c', 'a'}",26,25
-DEU_LocationALower-37_26_T-1,6,R_G1,initial feasibility
-DEU_LocationDUpper-9_35_T-1,10,R_G1,initial feasibility
-DEU_LocationDUpper-9_35_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-48_36_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-31_16_T-1,12,R_G1,initial feasibility
-DEU_LocationEUpper-23_4_T-1,5,R_G1,initial feasibility
-DEU_LocationDUpper-10_6_T-1,7,R_G1,initial feasibility
-DEU_LocationALower-46_44_T-1,7,R_G1,initial feasibility
-DEU_LocationALower-44_25_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-44_25_T-1,14,R_G1,bingo,{'d'},25,24
-DEU_LocationAUpper-45_48_T-1,12,R_G1,bingo,"{'d', '~c'}",7,6
-DEU_LocationBUpper-2_15_T-1,8,R_G1,bingo,{'d'},10,9
-DEU_LocationBUpper-2_15_T-1,12,R_G1,initial feasibility
-DEU_LocationCLower-5_35_T-1,19,R_G1,bingo,{'d'},48,47
-DEU_LocationAUpper-51_56_T-1,11,R_G1,initial feasibility
-DEU_LocationAUpper-51_56_T-1,13,R_G1,initial feasibility
-DEU_LocationELower-18_28_T-1,5,R_G1,initial feasibility
-DEU_LocationAUpper-54_38_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-28_35_T-1,12,R_G1,bingo,{'d'},56,55
-DEU_LocationELower-19_46_T-1,8,R_G1,bingo,{'d'},9,8
-DEU_LocationAUpper-39_31_T-1,11,R_G1,bingo,{'d'},11,10
-DEU_LocationAUpper-39_31_T-1,17,R_G1,bingo,{'d'},4,3
-DEU_LocationCUpper-6_48_T-1,9,R_G1,bingo,{'d'},33,32
-DEU_LocationAUpper-54_13_T-1,22,R_G1,bingo,{'d'},34,33
-DEU_LocationAUpper-29_9_T-1,10,R_G1,initial feasibility
-DEU_LocationAUpper-29_9_T-1,15,R_G1,bingo,{'d'},10,9
-DEU_LocationALower-50_32_T-1,7,R_G1,initial feasibility
-DEU_LocationDUpper-8_48_T-1,9,R_G1,initial feasibility
-DEU_LocationEUpper-19_12_T-1,7,R_G1,initial feasibility
-DEU_LocationEUpper-19_12_T-1,12,R_G1,bingo,"{'d', 'a', 'b'}",29,28
-DEU_LocationAUpper-44_53_T-1,17,R_G1,initial feasibility
-DEU_LocationAUpper-48_30_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-48_30_T-1,17,R_G1,initial feasibility
-DEU_LocationCLower-6_29_T-1,14,R_G1,bingo,"{'d', 'b'}",7,6
-DEU_LocationAUpper-13_17_T-1,12,R_G1,initial feasibility
-DEU_LocationAUpper-13_17_T-1,20,R_G1,bingo,"{'d', 'a'}",17,16
-DEU_LocationAUpper-13_17_T-1,22,R_G1,bingo,"{'d', 'a', 'b'}",23,22
-DEU_LocationDUpper-9_25_T-1,7,R_G1,bingo,"{'d', 'a'}",21,20
-DEU_LocationALower-25_29_T-1,20,R_G1,bingo,{'d'},20,19
-DEU_LocationALower-25_29_T-1,27,R_G1,bingo,{'d'},6,5
-DEU_LocationAUpper-31_23_T-1,15,R_G1,initial feasibility
-DEU_LocationAUpper-31_23_T-1,17,R_G1,bingo,"{'d', '~c', 'b'}",6,5
-DEU_LocationALower-45_39_T-1,6,R_G1,initial feasibility
-DEU_LocationALower-45_39_T-1,13,R_G1,bingo,{'d'},10,9
-DEU_LocationEUpper-18_7_T-1,4,R_G1,bingo,{'d'},8,7
-DEU_LocationALower-41_17_T-1,7,R_G1,bingo,{'d'},11,10
-DEU_LocationEUpper-18_29_T-1,4,R_G1,bingo,"{'d', '~c'}",21,20
-DEU_LocationBLower-3_46_T-1,7,R_G1,bingo,{'d'},15,14
-DEU_LocationALower-14_7_T-1,11,R_G1,bingo,{'d'},14,13
-DEU_LocationALower-14_7_T-1,13,R_G1,initial feasibility
-DEU_LocationALower-14_7_T-1,14,R_G1,initial feasibility
-DEU_LocationAUpper-12_35_T-1,18,R_G1,bingo,{'d'},43,42
-DEU_LocationALower-52_7_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-52_7_T-1,15,R_G1,initial feasibility
-DEU_LocationALower-26_18_T-1,24,R_G1,bingo,{'d'},56,55
-DEU_LocationALower-12_29_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-12_29_T-1,27,R_G1,initial feasibility
-DEU_LocationAUpper-46_53_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-38_32_T-1,13,R_G1,initial feasibility
-DEU_LocationALower-38_32_T-1,16,R_G1,bingo,{'d'},29,28
-DEU_LocationAUpper-45_11_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-45_11_T-1,15,R_G1,bingo,"{'d', '~c'}",2,1
-DEU_LocationELower-17_8_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-48_56_T-1,21,R_G1,bingo,{'d'},49,48
-DEU_LocationAUpper-48_56_T-1,23,R_G1,bingo,"{'d', 'a'}",11,10
-DEU_LocationALower-33_5_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-33_5_T-1,23,R_G1,bingo,"{'d', '~c', 'a'}",13,12
-DEU_LocationALower-33_5_T-1,24,R_G1,bingo,"{'d', '~c'}",19,18
-DEU_LocationALower-33_5_T-1,27,R_G1,initial feasibility
-DEU_LocationALower-28_61_T-1,13,R_G1,bingo,{'d'},26,25
-DEU_LocationALower-46_59_T-1,11,R_G1,bingo,{'d'},12,11
-DEU_LocationALower-31_48_T-1,12,R_G1,initial feasibility
-DEU_LocationALower-31_48_T-1,15,R_G1,initial feasibility
-DEU_LocationALower-31_48_T-1,23,R_G1,initial feasibility
-DEU_LocationALower-31_48_T-1,24,R_G1,initial feasibility
-DEU_LocationAUpper-11_19_T-1,10,R_G1,bingo,{'d'},3,2
-DEU_LocationAUpper-44_24_T-1,14,R_G1,initial feasibility
-DEU_LocationAUpper-51_3_T-1,19,R_G1,initial feasibility
-DEU_LocationALower-12_8_T-1,12,R_G1,initial feasibility
-DEU_LocationALower-12_8_T-1,15,R_G1,bingo,{'d'},7,6
-DEU_LocationALower-12_8_T-1,21,R_G1,bingo,{'d'},11,10
-DEU_LocationALower-12_8_T-1,24,R_G1,initial feasibility
-DEU_LocationALower-12_8_T-1,26,R_G1,initial feasibility
-DEU_LocationALower-12_8_T-1,32,R_G1,initial feasibility
-DEU_LocationALower-48_27_T-1,11,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",11,-inf
-DEU_LocationAUpper-35_53_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-35_53_T-1,16,R_G1,bingo,"{'d', 'a', 'b'}",10,9
-DEU_LocationAUpper-30_2_T-1,12,R_G1,bingo,{'d'},1,0
-DEU_LocationAUpper-30_2_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-44_7_T-1,15,R_G1,initial feasibility
-DEU_LocationAUpper-44_7_T-1,18,R_G1,initial feasibility
-DEU_LocationAUpper-44_7_T-1,22,R_G1,initial feasibility
-DEU_LocationALower-47_21_T-1,18,R_G1,initial feasibility
-DEU_LocationAUpper-36_8_T-1,20,R_G1,bingo,{'d'},1,0
-DEU_LocationELower-16_4_T-1,5,R_G1,initial feasibility
-DEU_LocationEUpper-17_6_T-1,7,R_G1,bingo,{'d'},5,4
-DEU_LocationAUpper-45_34_T-1,19,R_G1,bingo,{'d'},29,28
-DEU_LocationAUpper-45_34_T-1,23,R_G1,bingo,{'d'},60,59
-DEU_LocationAUpper-45_24_T-1,18,R_G1,bingo,"{'d', '~c', 'a'}",17,16
-DEU_LocationALower-26_45_T-1,12,R_G1,initial feasibility
-DEU_LocationALower-26_45_T-1,24,R_G1,bingo,"{'d', 'b'}",11,10
-DEU_LocationALower-26_45_T-1,25,R_G1,initial feasibility
-DEU_LocationAUpper-34_13_T-1,10,R_G1,initial feasibility
-DEU_LocationAUpper-34_13_T-1,22,R_G1,initial feasibility
-DEU_LocationALower-31_28_T-1,17,R_G1,bingo,{'d'},6,5
-DEU_LocationALower-31_28_T-1,24,R_G1,initial feasibility
-DEU_LocationAUpper-41_2_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-28_51_T-1,16,R_G1,bingo,{'d'},44,42
-DEU_LocationAUpper-13_7_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-46_43_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-46_43_T-1,26,R_G1,bingo,{'d'},40,39
-DEU_LocationALower-46_50_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-46_50_T-1,10,R_G1,bingo,{'d'},6,5
-DEU_LocationAUpper-33_37_T-1,18,R_G1,bingo,{'d'},19,18
-DEU_LocationALower-47_34_T-1,14,R_G1,bingo,{'d'},11,10
-DEU_LocationAUpper-45_20_T-1,15,R_G1,bingo,{'d'},28,27
-DEU_LocationAUpper-45_20_T-1,21,R_G1,bingo,"{'d', '~c', 'a', 'b'}",17,16
-DEU_LocationAUpper-45_20_T-1,23,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",17,16
-DEU_LocationALower-40_14_T-1,14,R_G1,bingo,{'d'},32,31
-DEU_LocationALower-14_49_T-1,7,R_G1,initial feasibility
-DEU_LocationALower-50_20_T-1,11,R_G1,bingo,{'d'},8,7
-DEU_LocationALower-50_20_T-1,15,R_G1,initial feasibility
-DEU_LocationAUpper-55_3_T-1,9,R_G1,bingo,{'d'},9,8
-DEU_LocationAUpper-26_16_T-1,11,R_G1,bingo,{'d'},17,16
-DEU_LocationELower-16_45_T-1,5,R_G1,initial feasibility
-DEU_LocationALower-25_35_T-1,26,R_G1,initial feasibility
-DEU_LocationALower-13_43_T-1,8,R_G1,initial feasibility
-DEU_LocationALower-13_43_T-1,17,R_G1,initial feasibility
-DEU_LocationAUpper-35_42_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-51_8_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-51_8_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-39_30_T-1,11,R_G1,initial feasibility
-DEU_LocationAUpper-12_28_T-1,17,R_G1,bingo,{'d'},55,54
-DEU_LocationAUpper-12_28_T-1,24,R_G1,bingo,{'d'},37,36
-DEU_LocationAUpper-52_28_T-1,12,R_G1,bingo,"{'d', 'a', 'b'}",25,18
-DEU_LocationAUpper-52_28_T-1,13,R_G1,bingo,{'d'},18,17
-DEU_LocationAUpper-52_28_T-1,14,R_G1,bingo,"{'d', '~c'}",30,29
-DEU_LocationAUpper-52_28_T-1,18,R_G1,initial feasibility
-DEU_LocationCLower-4_32_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-30_53_T-1,18,R_G1,initial feasibility
-DEU_LocationALower-30_53_T-1,19,R_G1,not repairable,"{'a', 'c', 'b', '~d'}",8,7
-DEU_LocationALower-31_12_T-1,13,R_G1,initial feasibility
-DEU_LocationALower-31_12_T-1,17,R_G1,bingo,{'d'},21,20
-DEU_LocationELower-20_20_T-1,5,R_G1,initial feasibility
-DEU_LocationELower-20_20_T-1,10,R_G1,bingo,{'d'},14,13
-DEU_LocationAUpper-11_1_T-1,17,R_G1,bingo,"{'d', 'a'}",65,64
-DEU_LocationEUpper-16_15_T-1,4,R_G1,initial feasibility
-DEU_LocationAUpper-13_35_T-1,24,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",39,-inf
-DEU_LocationAUpper-36_18_T-1,28,R_G1,bingo,{'d'},15,14
-DEU_LocationAUpper-36_18_T-1,29,R_G1,initial feasibility
-DEU_LocationELower-20_48_T-1,12,R_G1,initial feasibility
-DEU_LocationAUpper-49_13_T-1,20,R_G1,bingo,{'d'},49,48
-DEU_LocationAUpper-28_44_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-28_44_T-1,13,R_G1,bingo,{'d'},3,2
-DEU_LocationALower-35_52_T-1,12,R_G1,initial feasibility
-DEU_LocationAUpper-48_27_T-1,17,R_G1,bingo,"{'d', 'a'}",32,31
-DEU_LocationAUpper-57_45_T-1,16,R_G1,bingo,{'d'},20,19
-DEU_LocationALower-33_37_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-33_37_T-1,12,R_G1,initial feasibility
-DEU_LocationCUpper-6_30_T-1,18,R_G1,bingo,"{'d', 'a', 'b'}",17,16
-DEU_LocationDUpper-8_4_T-1,10,R_G1,bingo,{'d'},7,6
-DEU_LocationALower-39_15_T-1,14,R_G1,bingo,"{'d', 'a'}",35,34
-DEU_LocationAUpper-41_3_T-1,12,R_G1,bingo,{'d'},40,39
-DEU_LocationALower-47_28_T-1,11,R_G1,initial feasibility
-DEU_LocationALower-26_1_T-1,16,R_G1,initial feasibility
-DEU_LocationALower-27_47_T-1,8,R_G1,initial feasibility
-DEU_LocationALower-27_47_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-27_47_T-1,17,R_G1,bingo,{'d'},16,15
-DEU_LocationALower-27_47_T-1,27,R_G1,bingo,{'d'},2,1
-DEU_LocationEUpper-15_18_T-1,6,R_G1,bingo,"{'d', 'a'}",34,33
-DEU_LocationEUpper-15_18_T-1,7,R_G1,bingo,{'d'},3,2
-DEU_LocationEUpper-15_18_T-1,10,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",15,-inf
-DEU_LocationELower-18_14_T-1,6,R_G1,initial feasibility
-DEU_LocationELower-18_14_T-1,8,R_G1,initial feasibility
-DEU_LocationALower-33_39_T-1,23,R_G1,initial feasibility
-DEU_LocationAUpper-43_47_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-43_47_T-1,19,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",5,-inf
-DEU_LocationAUpper-53_38_T-1,16,R_G1,bingo,{'d'},29,28
-DEU_LocationAUpper-53_38_T-1,18,R_G1,initial feasibility
-DEU_LocationALower-45_30_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-27_59_T-1,11,R_G1,initial feasibility
-DEU_LocationAUpper-51_52_T-1,14,R_G1,bingo,{'d'},17,16
-DEU_LocationELower-17_39_T-1,13,R_G1,initial feasibility
-DEU_LocationELower-17_39_T-1,16,R_G1,bingo,{'d'},26,25
-DEU_LocationAUpper-43_16_T-1,15,R_G1,initial feasibility
-DEU_LocationEUpper-17_18_T-1,6,R_G1,bingo,{'d'},23,22
-DEU_LocationAUpper-31_16_T-1,12,R_G1,bingo,{'d'},16,15
-DEU_LocationAUpper-47_19_T-1,9,R_G1,initial feasibility
-DEU_LocationAUpper-47_19_T-1,11,R_G1,initial feasibility
-DEU_LocationAUpper-47_19_T-1,12,R_G1,initial feasibility
-DEU_LocationCLower-4_53_T-1,14,R_G1,bingo,{'d'},40,39
-DEU_LocationELower-19_15_T-1,6,R_G1,initial feasibility
-DEU_LocationELower-19_15_T-1,8,R_G1,initial feasibility
-DEU_LocationAUpper-50_55_T-1,18,R_G1,initial feasibility
-DEU_LocationAUpper-50_55_T-1,22,R_G1,bingo,"{'d', '~c', 'a', 'b'}",15,14
-DEU_LocationAUpper-28_8_T-1,12,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",4,3
-DEU_LocationAUpper-28_8_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-32_15_T-1,7,R_G1,initial feasibility
-DEU_LocationALower-45_52_T-1,17,R_G1,bingo,{'d'},11,10
-DEU_LocationALower-29_43_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-29_43_T-1,21,R_G1,initial feasibility
-DEU_LocationFUpper-60_42_T-1,9,R_G1,bingo,"{'d', 'a'}",59,58
-DEU_LocationFUpper-60_42_T-1,11,R_G1,initial feasibility
-DEU_LocationALower-13_28_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-13_28_T-1,22,R_G1,initial feasibility
-DEU_LocationALower-13_28_T-1,23,R_G1,bingo,{'d'},17,16
-DEU_LocationAUpper-55_28_T-1,26,R_G1,bingo,"{'d', 'a'}",1,0
-DEU_LocationALower-11_24_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-40_48_T-1,10,R_G1,initial feasibility
-DEU_LocationAUpper-51_6_T-1,17,R_G1,bingo,{'d'},52,51
-DEU_LocationEUpper-19_46_T-1,8,R_G1,bingo,{'d'},13,12
-DEU_LocationAUpper-57_35_T-1,13,R_G1,initial feasibility
-DEU_LocationELower-15_33_T-1,9,R_G1,bingo,{'d'},34,33
-DEU_LocationFUpper-59_3_T-1,11,R_G1,bingo,"{'d', '~c'}",11,10
-DEU_LocationFUpper-59_3_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-14_3_T-1,8,R_G1,initial feasibility
-DEU_LocationAUpper-25_7_T-1,55,R_G1,initial feasibility
-DEU_LocationAUpper-27_11_T-1,11,R_G1,bingo,"{'d', 'a'}",5,4
-DEU_LocationALower-12_31_T-1,11,R_G1,bingo,{'d'},10,9
-DEU_LocationALower-12_31_T-1,13,R_G1,bingo,"{'d', 'b'}",5,4
-DEU_LocationAUpper-27_45_T-1,12,R_G1,bingo,"{'d', 'b'}",10,9
-DEU_LocationALower-33_50_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-33_50_T-1,18,R_G1,bingo,{'d'},7,6
-DEU_LocationAUpper-32_16_T-1,16,R_G1,bingo,{'d'},43,42
-DEU_LocationALower-30_18_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-26_34_T-1,15,R_G1,bingo,{'d'},17,16
-DEU_LocationALower-26_34_T-1,23,R_G1,initial feasibility
-DEU_LocationAUpper-57_48_T-1,10,R_G1,initial feasibility
-DEU_LocationEUpper-15_36_T-1,5,R_G1,initial feasibility
-DEU_LocationEUpper-15_36_T-1,10,R_G1,bingo,{'d'},28,27
-DEU_LocationEUpper-15_36_T-1,14,R_G1,bingo,"{'d', 'b'}",6,5
-DEU_LocationELower-16_33_T-1,6,R_G1,bingo,{'d'},1,0
-DEU_LocationELower-16_33_T-1,8,R_G1,initial feasibility
-DEU_LocationCLower-4_30_T-1,9,R_G1,initial feasibility
-DEU_LocationDUpper-7_10_T-1,11,R_G1,initial feasibility
-DEU_LocationDUpper-7_10_T-1,15,R_G1,bingo,"{'d', '~c'}",33,32
-DEU_LocationAUpper-53_26_T-1,9,R_G1,initial feasibility
-DEU_LocationAUpper-57_26_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-34_22_T-1,13,R_G1,initial feasibility
-DEU_LocationALower-34_22_T-1,20,R_G1,initial feasibility
-DEU_LocationALower-25_34_T-1,7,R_G1,initial feasibility
-DEU_LocationALower-25_34_T-1,12,R_G1,initial feasibility
-DEU_LocationALower-25_34_T-1,22,R_G1,bingo,{'d'},6,5
-DEU_LocationALower-25_34_T-1,23,R_G1,bingo,{'d'},9,8
-DEU_LocationAUpper-33_56_T-1,11,R_G1,initial feasibility
-DEU_LocationEUpper-17_7_T-1,4,R_G1,bingo,{'d'},6,5
-DEU_LocationAUpper-36_17_T-1,19,R_G1,initial feasibility
-DEU_LocationAUpper-36_17_T-1,21,R_G1,bingo,"{'d', 'a'}",72,71
-DEU_LocationAUpper-36_17_T-1,22,R_G1,bingo,{'d'},29,28
-DEU_LocationFUpper-60_43_T-1,7,R_G1,bingo,{'d'},5,4
-DEU_LocationFUpper-60_43_T-1,16,R_G1,bingo,"{'d', 'a'}",8,2
-DEU_LocationFUpper-60_43_T-1,17,R_G1,initial feasibility
-DEU_LocationFUpper-60_43_T-1,18,R_G1,initial feasibility
-DEU_LocationFUpper-60_43_T-1,19,R_G1,bingo,"{'d', '~c', 'a', 'b'}",15,14
-DEU_LocationFUpper-60_43_T-1,22,R_G1,not repairable,"{'d', '~c', 'a', 'b'}",1,-inf
-DEU_LocationAUpper-13_48_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-13_48_T-1,20,R_G1,initial feasibility
-DEU_LocationAUpper-13_48_T-1,21,R_G1,initial feasibility
-DEU_LocationAUpper-13_48_T-1,22,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",6,-inf
-DEU_LocationAUpper-13_48_T-1,25,R_G1,initial feasibility
-DEU_LocationAUpper-51_31_T-1,12,R_G1,initial feasibility
-DEU_LocationAUpper-51_31_T-1,21,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",6,-inf
-DEU_LocationAUpper-46_57_T-1,13,R_G1,bingo,"{'d', 'a'}",36,35
-DEU_LocationAUpper-46_57_T-1,15,R_G1,bingo,"{'d', 'a'}",53,52
-DEU_LocationAUpper-14_11_T-1,13,R_G1,initial feasibility
-DEU_LocationAUpper-14_11_T-1,14,R_G1,initial feasibility
-DEU_LocationAUpper-14_11_T-1,21,R_G1,bingo,{'d'},6,5
-DEU_LocationAUpper-50_51_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-53_29_T-1,20,R_G1,bingo,{'d'},47,46
-DEU_LocationBLower-2_18_T-1,4,R_G1,initial feasibility
-DEU_LocationDLower-7_22_T-1,7,R_G1,initial feasibility
-DEU_LocationEUpper-17_36_T-1,4,R_G1,initial feasibility
-DEU_LocationEUpper-17_36_T-1,8,R_G1,bingo,{'d'},14,12
-DEU_LocationAUpper-35_49_T-1,13,R_G1,bingo,"{'d', 'b'}",22,21
-DEU_LocationALower-53_36_T-1,10,R_G1,bingo,{'d'},8,7
-DEU_LocationAUpper-52_22_T-1,12,R_G1,bingo,"{'d', '~c', 'a'}",32,31
-DEU_LocationALower-45_35_T-1,11,R_G1,bingo,{'d'},23,22
-DEU_LocationALower-51_9_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-51_9_T-1,11,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",2,-inf
-DEU_LocationALower-36_48_T-1,11,R_G1,bingo,{'d'},40,39
-DEU_LocationELower-23_27_T-1,15,R_G1,bingo,{'d'},32,31
-DEU_LocationALower-33_32_T-1,7,R_G1,initial feasibility
-DEU_LocationALower-33_32_T-1,12,R_G1,bingo,{'d'},22,21
-DEU_LocationAUpper-31_21_T-1,18,R_G1,bingo,"{'d', '~c', 'a', 'b'}",36,34
-DEU_LocationAUpper-54_19_T-1,15,R_G1,bingo,{'d'},12,11
-DEU_LocationAUpper-54_19_T-1,17,R_G1,initial feasibility
-DEU_LocationAUpper-54_19_T-1,25,R_G1,bingo,"{'d', 'b'}",32,31
-DEU_LocationALower-35_11_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-35_11_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-35_11_T-1,21,R_G1,bingo,{'d'},17,16
-DEU_LocationAUpper-29_35_T-1,15,R_G1,bingo,{'d'},43,42
-DEU_LocationAUpper-32_11_T-1,8,R_G1,initial feasibility
-DEU_LocationAUpper-32_11_T-1,11,R_G1,bingo,{'d'},31,30
-DEU_LocationAUpper-32_11_T-1,14,R_G1,bingo,{'d'},32,31
-DEU_LocationAUpper-57_23_T-1,7,R_G1,initial feasibility
-DEU_LocationAUpper-57_23_T-1,9,R_G1,initial feasibility
-DEU_LocationAUpper-57_23_T-1,10,R_G1,bingo,{'d'},21,20
-DEU_LocationAUpper-57_23_T-1,17,R_G1,initial feasibility
-DEU_LocationAUpper-57_23_T-1,19,R_G1,bingo,{'d'},31,30
-DEU_LocationAUpper-40_12_T-1,6,R_G1,initial feasibility
-DEU_LocationAUpper-40_12_T-1,10,R_G1,initial feasibility
-DEU_LocationAUpper-47_44_T-1,11,R_G1,initial feasibility
-DEU_LocationAUpper-43_26_T-1,14,R_G1,initial feasibility
-DEU_LocationAUpper-43_26_T-1,17,R_G1,initial feasibility
-DEU_LocationALower-45_56_T-1,15,R_G1,initial feasibility
-DEU_LocationALower-30_59_T-1,8,R_G1,bingo,{'d'},5,4
-DEU_LocationAUpper-52_13_T-1,6,R_G1,bingo,{'d'},7,6
-DEU_LocationALower-47_27_T-1,17,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",3,-inf
-DEU_LocationALower-35_49_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-35_49_T-1,11,R_G1,initial feasibility
-DEU_LocationALower-42_14_T-1,17,R_G1,bingo,"{'d', 'b'}",20,19
-DEU_LocationALower-26_48_T-1,22,R_G1,initial feasibility
-DEU_LocationELower-19_3_T-1,6,R_G1,bingo,{'d'},7,6
-DEU_LocationELower-19_3_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-25_32_T-1,8,R_G1,initial feasibility
-DEU_LocationALower-25_32_T-1,19,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",16,-inf
-DEU_LocationALower-50_11_T-1,10,R_G1,initial feasibility
-DEU_LocationALower-27_5_T-1,21,R_G1,initial feasibility
-DEU_LocationELower-23_28_T-1,10,R_G1,initial feasibility
-DEU_LocationELower-23_28_T-1,11,R_G1,initial feasibility
-DEU_LocationELower-23_28_T-1,18,R_G1,bingo,{'d'},73,72
-DEU_LocationAUpper-45_25_T-1,15,R_G1,initial feasibility
-DEU_LocationAUpper-45_25_T-1,17,R_G1,not repairable,"{'~a', '~c', 'b', '~d'}",23,-inf
-DEU_LocationAUpper-52_35_T-1,9,R_G1,bingo,{'d'},18,17
-DEU_LocationAUpper-31_27_T-1,18,R_G1,initial feasibility
-DEU_LocationALower-36_26_T-1,13,R_G1,bingo,{'d'},44,42
-DEU_LocationAUpper-32_7_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-32_7_T-1,18,R_G1,initial feasibility
-DEU_LocationAUpper-27_2_T-1,11,R_G1,not repairable,"{'a', 'c', 'b', '~d'}",2,1
-DEU_LocationAUpper-27_2_T-1,13,R_G1,initial feasibility
-DEU_LocationBUpper-1_14_T-1,9,R_G1,initial feasibility
-DEU_LocationBUpper-1_14_T-1,10,R_G1,initial feasibility
-DEU_LocationAUpper-42_49_T-1,6,R_G1,initial feasibility
-DEU_LocationALower-51_55_T-1,9,R_G1,initial feasibility
-DEU_LocationALower-14_5_T-1,17,R_G1,bingo,"{'d', 'b'}",2,1
-DEU_LocationAUpper-43_29_T-1,8,R_G1,initial feasibility
-DEU_LocationAUpper-43_29_T-1,12,R_G1,bingo,{'d'},19,18
-DEU_LocationAUpper-43_29_T-1,14,R_G1,initial feasibility
-DEU_LocationALower-36_33_T-1,9,R_G1,bingo,{'d'},6,5
-DEU_LocationAUpper-40_35_T-1,22,R_G1,bingo,{'d'},47,46
-DEU_LocationFUpper-60_32_T-1,7,R_G1,initial feasibility
-DEU_LocationFUpper-60_32_T-1,12,R_G1,initial feasibility
-DEU_LocationAUpper-29_36_T-1,21,R_G1,bingo,{'d'},35,34
-DEU_LocationAUpper-29_7_T-1,13,R_G1,bingo,{'d'},10,9
-DEU_LocationALower-53_20_T-1,18,R_G1,bingo,"{'d', 'b'}",1,0
-DEU_LocationAUpper-27_54_T-1,16,R_G1,bingo,"{'d', 'b'}",26,25
-DEU_LocationEUpper-24_40_T-1,9,R_G1,bingo,{'d'},2,1
-DEU_LocationALower-48_12_T-1,7,R_G1,initial feasibility
-DEU_LocationALower-48_12_T-1,12,R_G1,bingo,{'d'},41,40
-DEU_LocationALower-14_45_T-1,12,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",3,2
-DEU_LocationAUpper-52_8_T-1,16,R_G1,initial feasibility
-DEU_LocationAUpper-31_26_T-1,27,R_G1,bingo,{'d'},48,47
-DEU_LocationAUpper-31_26_T-1,28,R_G1,not repairable,"{'~c', '~b', 'a', '~d'}",12,11
-DEU_LocationALower-34_11_T-1,17,R_G1,bingo,{'d'},31,30
-DEU_LocationAUpper-36_8_T-1,6,R_G1,initial feasibility
-DEU_LocationAUpper-36_8_T-1,8,R_G1,bingo,"{'d', '~c'}",1,0
-DEU_LocationAUpper-36_8_T-1,9,R_G1,initial feasibility
-DEU_LocationAUpper-36_8_T-1,16,R_G1,bingo,{'d'},17,16
-DEU_LocationELower-21_34_T-1,6,R_G1,initial feasibility
-DEU_LocationALower-26_48_T-1,13,R_G1,bingo,{'d'},5,4
-DEU_LocationALower-26_48_T-1,25,R_G1,bingo,{'d'},37,36
-Nr of scenario,575,Nr of infeasible trajectory,283,0.4922,Nr of reparable trajectory,261,0.8938
+scenario_id,ego_id,rule,repairability,model,TV,TC,
+DEU_LocationALower-41_27_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-41_27_T-1,21,R_G1,bingo,{'d'},26,25,
+DEU_LocationALower-42_5_T-1,12,R_G1,bingo,{'d'},19,18,
+DEU_LocationALower-42_5_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-31_26_T-1,23,R_G1,bingo,{'d'},8,7,
+DEU_LocationAUpper-31_26_T-1,29,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-31_26_T-1,30,R_G1,bingo,{'d'},27,26,
+DEU_LocationEUpper-16_40_T-1,10,R_G1,bingo,{'d'},53,52,
+DEU_LocationALower-47_37_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-45_5_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-45_5_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-45_5_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-14_1_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationALower-44_47_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-44_47_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationALower-44_47_T-1,20,R_G1,bingo,"{'~c', 'd', 'a'}",26,25,
+DEU_LocationAUpper-52_30_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-52_30_T-1,15,R_G1,bingo,{'d'},15,14,
+DEU_LocationAUpper-52_30_T-1,22,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-52_30_T-1,23,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",62,61,
+DEU_LocationAUpper-52_30_T-1,24,R_G1,initial feasibility,,,,
+DEU_LocationALower-35_51_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-48_8_T-1,10,R_G1,bingo,"{'d', 'b'}",2,1,
+DEU_LocationAUpper-48_8_T-1,20,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-26_47_T-1,13,R_G1,bingo,{'d'},16,15,
+DEU_LocationAUpper-42_24_T-1,19,R_G1,bingo,"{'d', 'a'}",41,40,
+DEU_LocationALower-41_22_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-41_22_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-41_22_T-1,21,R_G1,initial feasibility,,,,
+DEU_LocationALower-41_22_T-1,26,R_G1,bingo,{'d'},6,5,
+DEU_LocationALower-41_22_T-1,28,R_G1,initial feasibility,,,,
+DEU_LocationALower-14_9_T-1,12,R_G1,bingo,{'d'},11,10,
+DEU_LocationALower-14_9_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-14_9_T-1,18,R_G1,bingo,"{'~c', 'd', 'a'}",13,12,
+DEU_LocationALower-14_9_T-1,23,R_G1,bingo,{'d'},15,14,
+DEU_LocationALower-14_9_T-1,26,R_G1,bingo,"{'~c', 'd', 'a'}",27,26,
+DEU_LocationAUpper-47_35_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-47_35_T-1,17,R_G1,not repairable,"{'~d', '~b', '~c', 'a'}",28,26,
+DEU_LocationAUpper-47_35_T-1,23,R_G1,bingo,{'d'},64,63,
+DEU_LocationCUpper-6_9_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-2_46_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-2_46_T-1,10,R_G1,bingo,"{'d', 'a'}",13,12,
+DEU_LocationBUpper-2_46_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-2_46_T-1,15,R_G1,bingo,{'d'},26,25,
+DEU_LocationAUpper-27_26_T-1,12,R_G1,not repairable,"{'~d', '~b', '~c', 'a'}",7,5,
+DEU_LocationAUpper-27_26_T-1,13,R_G1,bingo,"{'~c', 'd', 'a'}",19,18,
+DEU_LocationALower-30_11_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationDUpper-9_22_T-1,12,R_G1,bingo,{'d'},5,4,
+DEU_LocationEUpper-21_47_T-1,9,R_G1,bingo,"{'d', 'b'}",2,1,
+DEU_LocationCLower-4_22_T-1,9,R_G1,bingo,{'d'},6,5,
+DEU_LocationAUpper-47_43_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-47_43_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-47_43_T-1,15,R_G1,bingo,{'d'},8,7,
+DEU_LocationAUpper-47_43_T-1,21,R_G1,bingo,{'d'},3,2,
+DEU_LocationAUpper-35_38_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-35_38_T-1,12,R_G1,not repairable,"{'~d', 'c', 'b', 'a'}",44,42,
+DEU_LocationAUpper-35_38_T-1,13,R_G1,bingo,{'d'},42,41,
+DEU_LocationAUpper-35_38_T-1,14,R_G1,bingo,{'d'},44,42,
+DEU_LocationAUpper-41_16_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-41_16_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-35_23_T-1,16,R_G1,bingo,"{'d', 'b'}",12,11,
+DEU_LocationAUpper-42_6_T-1,13,R_G1,bingo,{'d'},23,22,
+DEU_LocationAUpper-27_15_T-1,16,R_G1,bingo,"{'d', 'a'}",23,21,
+DEU_LocationELower-23_45_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-60_33_T-1,7,R_G1,bingo,"{'d', 'b', 'a'}",3,2,
+DEU_LocationFUpper-60_33_T-1,9,R_G1,bingo,{'d'},29,28,
+DEU_LocationFUpper-60_33_T-1,10,R_G1,bingo,{'d'},27,26,
+DEU_LocationCLower-4_17_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationCLower-4_17_T-1,13,R_G1,bingo,{'d'},37,36,
+DEU_LocationELower-19_47_T-1,6,R_G1,bingo,{'d'},28,27,
+DEU_LocationALower-30_50_T-1,16,R_G1,bingo,"{'d', 'b', 'a'}",12,11,
+DEU_LocationALower-32_6_T-1,9,R_G1,bingo,{'d'},8,7,
+DEU_LocationBLower-2_22_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-31_51_T-1,17,R_G1,bingo,{'d'},9,7,
+DEU_LocationAUpper-31_51_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_7_T-1,16,R_G1,bingo,{'d'},21,20,
+DEU_LocationALower-31_7_T-1,17,R_G1,bingo,{'d'},18,17,
+DEU_LocationAUpper-38_18_T-1,14,R_G1,bingo,{'d'},12,11,
+DEU_LocationAUpper-48_38_T-1,9,R_G1,bingo,{'d'},24,23,
+DEU_LocationAUpper-48_38_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationELower-22_26_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-38_57_T-1,19,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-58_15_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-58_15_T-1,18,R_G1,bingo,"{'~c', 'd'}",24,23,
+DEU_LocationAUpper-28_14_T-1,14,R_G1,bingo,{'d'},39,38,
+DEU_LocationAUpper-25_21_T-1,33,R_G1,bingo,"{'d', 'b'}",7,6,
+DEU_LocationALower-50_36_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-50_36_T-1,12,R_G1,bingo,{'d'},22,21,
+DEU_LocationALower-50_36_T-1,20,R_G1,initial feasibility,,,,
+DEU_LocationELower-18_12_T-1,12,R_G1,bingo,{'d'},15,14,
+DEU_LocationAUpper-30_30_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-37_25_T-1,11,R_G1,bingo,{'d'},5,4,
+DEU_LocationALower-25_15_T-1,22,R_G1,bingo,{'d'},54,53,
+DEU_LocationBUpper-2_42_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-2_42_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationCLower-4_36_T-1,10,R_G1,bingo,{'d'},38,37,
+DEU_LocationELower-17_30_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-11_14_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-11_14_T-1,14,R_G1,bingo,{'d'},2,1,
+DEU_LocationAUpper-25_43_T-1,30,R_G1,bingo,"{'d', 'b', 'a'}",45,44,
+DEU_LocationAUpper-38_43_T-1,14,R_G1,bingo,"{'d', 'b', 'a'}",2,1,
+DEU_LocationAUpper-36_58_T-1,11,R_G1,bingo,"{'d', 'b', 'a'}",22,21,
+DEU_LocationAUpper-36_58_T-1,16,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",24,23,
+DEU_LocationAUpper-36_58_T-1,18,R_G1,bingo,"{'d', 'b', 'a'}",46,45,
+DEU_LocationAUpper-33_43_T-1,14,R_G1,bingo,{'d'},9,8,
+DEU_LocationAUpper-33_43_T-1,15,R_G1,bingo,{'d'},9,8,
+DEU_LocationAUpper-33_43_T-1,18,R_G1,bingo,{'d'},9,8,
+DEU_LocationALower-12_21_T-1,8,R_G1,bingo,{'d'},4,3,
+DEU_LocationALower-12_21_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-12_21_T-1,17,R_G1,bingo,{'d'},1,0,
+DEU_LocationALower-12_21_T-1,20,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-49_15_T-1,14,R_G1,bingo,{'d'},2,1,
+DEU_LocationAUpper-48_26_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-42_18_T-1,15,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",34,31,
+DEU_LocationAUpper-42_18_T-1,23,R_G1,bingo,"{'~c', 'd'}",35,34,
+DEU_LocationALower-51_38_T-1,7,R_G1,bingo,{'d'},7,6,
+DEU_LocationDUpper-9_37_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-23_39_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationALower-25_2_T-1,33,R_G1,bingo,{'d'},6,5,
+DEU_LocationALower-25_2_T-1,36,R_G1,bingo,{'d'},41,40,
+DEU_LocationAUpper-14_55_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-34_34_T-1,17,R_G1,bingo,{'d'},14,13,
+DEU_LocationAUpper-53_8_T-1,11,R_G1,bingo,{'d'},12,11,
+DEU_LocationAUpper-35_30_T-1,12,R_G1,bingo,{'d'},16,15,
+DEU_LocationAUpper-35_30_T-1,21,R_G1,bingo,{'d'},46,45,
+DEU_LocationDLower-7_28_T-1,6,R_G1,bingo,"{'d', 'a'}",7,6,
+DEU_LocationAUpper-13_34_T-1,21,R_G1,bingo,{'d'},39,38,
+DEU_LocationAUpper-13_34_T-1,22,R_G1,initial feasibility,,,,
+DEU_LocationALower-51_21_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-51_21_T-1,23,R_G1,bingo,"{'d', 'b', 'a'}",7,6,
+DEU_LocationELower-24_38_T-1,7,R_G1,bingo,"{'~c', 'd', 'a'}",13,12,
+DEU_LocationAUpper-51_12_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-56_10_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-56_10_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-26_55_T-1,29,R_G1,initial feasibility,,,,
+DEU_LocationALower-26_55_T-1,34,R_G1,bingo,{'d'},29,28,
+DEU_LocationAUpper-50_32_T-1,13,R_G1,bingo,{'d'},13,12,
+DEU_LocationAUpper-50_32_T-1,21,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-16_7_T-1,4,R_G1,bingo,"{'d', 'a'}",1,0,
+DEU_LocationALower-35_26_T-1,22,R_G1,bingo,{'d'},12,11,
+DEU_LocationAUpper-25_52_T-1,9,R_G1,not repairable,"{'~d', 'c', 'b', 'a'}",25,24,
+DEU_LocationAUpper-25_52_T-1,27,R_G1,bingo,"{'d', 'b'}",16,15,
+DEU_LocationAUpper-25_52_T-1,33,R_G1,bingo,{'d'},85,84,
+DEU_LocationAUpper-25_52_T-1,43,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",7,6,
+DEU_LocationAUpper-29_34_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-27_35_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-27_35_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationALower-33_9_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationALower-33_9_T-1,15,R_G1,bingo,{'d'},1,0,
+DEU_LocationEUpper-17_10_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-1_21_T-1,5,R_G1,bingo,{'d'},8,7,
+DEU_LocationBUpper-1_21_T-1,16,R_G1,bingo,{'d'},9,8,
+DEU_LocationBUpper-1_21_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-1_21_T-1,18,R_G1,bingo,"{'d', 'b', 'a'}",29,28,
+DEU_LocationAUpper-37_31_T-1,12,R_G1,bingo,{'d'},40,39,
+DEU_LocationALower-43_37_T-1,15,R_G1,bingo,"{'d', 'a'}",21,20,
+DEU_LocationALower-43_37_T-1,16,R_G1,bingo,{'d'},42,41,
+DEU_LocationALower-53_34_T-1,6,R_G1,bingo,{'d'},1,0,
+DEU_LocationAUpper-31_47_T-1,10,R_G1,bingo,{'d'},14,13,
+DEU_LocationALower-28_18_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationCUpper-6_17_T-1,10,R_G1,bingo,{'d'},7,6,
+DEU_LocationAUpper-50_16_T-1,15,R_G1,bingo,{'d'},15,14,
+DEU_LocationAUpper-44_33_T-1,16,R_G1,bingo,{'d'},13,12,
+DEU_LocationALower-54_21_T-1,11,R_G1,bingo,{'d'},8,7,
+DEU_LocationALower-54_21_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationDLower-8_30_T-1,12,R_G1,bingo,{'d'},5,4,
+DEU_LocationEUpper-17_46_T-1,4,R_G1,initial feasibility,,,,
+DEU_LocationALower-35_31_T-1,11,R_G1,bingo,"{'d', 'a'}",18,17,
+DEU_LocationAUpper-27_19_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-27_19_T-1,15,R_G1,bingo,{'d'},1,0,
+DEU_LocationAUpper-27_19_T-1,17,R_G1,bingo,{'d'},30,29,
+DEU_LocationALower-11_4_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-24_48_T-1,11,R_G1,bingo,"{'d', 'b', 'a'}",24,23,
+DEU_LocationAUpper-52_16_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-52_16_T-1,20,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-52_16_T-1,26,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-53_48_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-53_48_T-1,20,R_G1,bingo,{'d'},33,32,
+DEU_LocationALower-44_12_T-1,15,R_G1,bingo,{'d'},29,28,
+DEU_LocationDLower-9_8_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationFLower-59_19_T-1,9,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",9,8,
+DEU_LocationCUpper-5_40_T-1,8,R_G1,bingo,{'d'},7,6,
+DEU_LocationCUpper-5_40_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationCUpper-5_8_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationCUpper-5_8_T-1,12,R_G1,bingo,{'d'},8,7,
+DEU_LocationAUpper-56_40_T-1,10,R_G1,bingo,"{'d', 'a'}",9,8,
+DEU_LocationAUpper-56_40_T-1,17,R_G1,bingo,"{'d', 'b'}",3,2,
+DEU_LocationAUpper-46_37_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-40_43_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-49_20_T-1,20,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-49_20_T-1,26,R_G1,initial feasibility,,,,
+DEU_LocationCLower-5_26_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationELower-16_11_T-1,8,R_G1,repairable,"{'~d', '~b', '~c', 'a'}",17,16,max velocity fixed
+DEU_LocationFLower-58_14_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationFLower-58_14_T-1,15,R_G1,bingo,{'d'},50,49,
+DEU_LocationAUpper-26_49_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-46_41_T-1,21,R_G1,bingo,"{'d', 'a'}",50,49,
+DEU_LocationALower-46_41_T-1,28,R_G1,bingo,{'d'},4,3,
+DEU_LocationDUpper-7_29_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-37_35_T-1,12,R_G1,bingo,"{'d', 'b'}",6,5,
+DEU_LocationAUpper-26_29_T-1,24,R_G1,bingo,"{'d', 'b'}",3,2,
+DEU_LocationAUpper-26_29_T-1,29,R_G1,bingo,{'d'},28,27,
+DEU_LocationAUpper-26_29_T-1,32,R_G1,bingo,{'d'},37,36,
+DEU_LocationAUpper-26_29_T-1,33,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-52_12_T-1,22,R_G1,bingo,"{'d', 'b', 'a'}",8,7,
+DEU_LocationAUpper-48_28_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-2_32_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-49_5_T-1,23,R_G1,bingo,"{'d', 'b'}",20,19,
+DEU_LocationAUpper-54_44_T-1,17,R_G1,bingo,{'d'},5,4,
+DEU_LocationALower-44_22_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationALower-42_39_T-1,11,R_G1,bingo,{'d'},4,3,
+DEU_LocationALower-42_39_T-1,15,R_G1,bingo,{'d'},9,8,
+DEU_LocationALower-14_36_T-1,9,R_G1,bingo,{'d'},1,0,
+DEU_LocationALower-27_33_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationALower-48_34_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-38_53_T-1,10,R_G1,bingo,{'d'},8,7,
+DEU_LocationAUpper-56_36_T-1,13,R_G1,bingo,"{'d', 'a'}",14,13,
+DEU_LocationAUpper-56_36_T-1,14,R_G1,bingo,{'d'},4,3,
+DEU_LocationAUpper-56_36_T-1,15,R_G1,bingo,{'d'},18,17,
+DEU_LocationAUpper-51_9_T-1,7,R_G1,bingo,{'d'},7,6,
+DEU_LocationAUpper-51_9_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-41_35_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-41_35_T-1,18,R_G1,bingo,{'d'},2,1,
+DEU_LocationALower-41_35_T-1,20,R_G1,bingo,{'d'},14,13,
+DEU_LocationAUpper-37_39_T-1,8,R_G1,bingo,{'d'},7,6,
+DEU_LocationALower-39_33_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-39_33_T-1,15,R_G1,bingo,{'d'},51,50,
+DEU_LocationELower-18_27_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-11_25_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-29_8_T-1,9,R_G1,bingo,{'d'},10,9,
+DEU_LocationALower-29_8_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-29_8_T-1,15,R_G1,bingo,"{'~c', 'd', 'a'}",26,25,
+DEU_LocationALower-37_26_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-24_11_T-1,8,R_G1,bingo,{'d'},4,3,
+DEU_LocationDUpper-9_35_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationDUpper-9_35_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-48_36_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_16_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-23_4_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-31_9_T-1,12,R_G1,bingo,"{'d', 'a'}",28,27,
+DEU_LocationDUpper-10_6_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationALower-46_44_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationALower-44_25_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-44_25_T-1,14,R_G1,bingo,{'d'},25,24,
+DEU_LocationAUpper-45_48_T-1,12,R_G1,bingo,"{'~c', 'd'}",7,6,
+DEU_LocationBUpper-2_15_T-1,8,R_G1,bingo,{'d'},10,9,
+DEU_LocationBUpper-2_15_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationCLower-5_35_T-1,19,R_G1,bingo,{'d'},48,47,
+DEU_LocationALower-27_51_T-1,10,R_G1,bingo,{'d'},4,3,
+DEU_LocationAUpper-51_56_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-51_56_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationELower-18_28_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-54_38_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-28_35_T-1,12,R_G1,bingo,{'d'},56,55,
+DEU_LocationELower-19_46_T-1,8,R_G1,bingo,{'d'},9,8,
+DEU_LocationAUpper-39_31_T-1,11,R_G1,bingo,{'d'},11,10,
+DEU_LocationAUpper-39_31_T-1,17,R_G1,bingo,{'d'},4,3,
+DEU_LocationCUpper-6_48_T-1,9,R_G1,bingo,{'d'},33,32,
+DEU_LocationAUpper-54_13_T-1,22,R_G1,bingo,{'d'},34,33,
+DEU_LocationAUpper-29_9_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-29_9_T-1,15,R_G1,bingo,{'d'},10,9,
+DEU_LocationALower-50_32_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationDUpper-8_48_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-19_12_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-19_12_T-1,12,R_G1,bingo,"{'d', 'b', 'a'}",29,28,
+DEU_LocationAUpper-44_53_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-48_30_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-48_30_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationCLower-6_29_T-1,14,R_G1,bingo,"{'d', 'b'}",7,6,
+DEU_LocationAUpper-13_17_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-13_17_T-1,20,R_G1,bingo,"{'d', 'a'}",17,16,
+DEU_LocationAUpper-13_17_T-1,22,R_G1,bingo,"{'d', 'b', 'a'}",23,22,
+DEU_LocationDUpper-9_25_T-1,7,R_G1,bingo,"{'d', 'a'}",21,20,
+DEU_LocationALower-25_29_T-1,20,R_G1,bingo,{'d'},20,19,
+DEU_LocationALower-25_29_T-1,27,R_G1,bingo,{'d'},6,5,
+DEU_LocationAUpper-31_23_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-31_23_T-1,17,R_G1,bingo,"{'~c', 'd', 'b'}",6,5,
+DEU_LocationALower-45_39_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationALower-45_39_T-1,13,R_G1,bingo,{'d'},10,9,
+DEU_LocationEUpper-18_7_T-1,4,R_G1,bingo,{'d'},8,7,
+DEU_LocationALower-41_17_T-1,7,R_G1,bingo,{'d'},11,10,
+DEU_LocationEUpper-18_29_T-1,4,R_G1,bingo,"{'~c', 'd'}",21,20,
+DEU_LocationBLower-3_46_T-1,7,R_G1,bingo,{'d'},15,14,
+DEU_LocationALower-14_7_T-1,11,R_G1,bingo,{'d'},14,13,
+DEU_LocationALower-14_7_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationALower-14_7_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-12_35_T-1,18,R_G1,bingo,{'d'},43,42,
+DEU_LocationALower-52_7_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-52_7_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationALower-26_18_T-1,24,R_G1,bingo,{'d'},56,55,
+DEU_LocationALower-12_29_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-12_29_T-1,21,R_G1,bingo,{'d'},15,14,
+DEU_LocationALower-12_29_T-1,27,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-46_53_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-38_32_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationALower-38_32_T-1,16,R_G1,bingo,{'d'},29,28,
+DEU_LocationAUpper-45_11_T-1,9,R_G1,bingo,"{'d', 'a'}",10,9,
+DEU_LocationAUpper-45_11_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-45_11_T-1,15,R_G1,bingo,"{'~c', 'd'}",2,1,
+DEU_LocationELower-17_8_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-48_56_T-1,21,R_G1,bingo,{'d'},49,48,
+DEU_LocationAUpper-48_56_T-1,23,R_G1,bingo,"{'d', 'a'}",11,10,
+DEU_LocationALower-33_5_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-33_5_T-1,23,R_G1,bingo,"{'~c', 'd', 'a'}",13,12,
+DEU_LocationALower-33_5_T-1,24,R_G1,bingo,"{'~c', 'd'}",19,18,
+DEU_LocationALower-33_5_T-1,27,R_G1,initial feasibility,,,,
+DEU_LocationALower-28_61_T-1,13,R_G1,bingo,{'d'},26,25,
+DEU_LocationALower-46_53_T-1,8,R_G1,bingo,"{'d', 'a'}",3,2,
+DEU_LocationALower-46_59_T-1,11,R_G1,bingo,{'d'},12,11,
+DEU_LocationALower-31_48_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_48_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_48_T-1,23,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_48_T-1,24,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-11_19_T-1,10,R_G1,bingo,{'d'},3,2,
+DEU_LocationAUpper-44_24_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-51_3_T-1,19,R_G1,initial feasibility,,,,
+DEU_LocationALower-12_8_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-12_8_T-1,15,R_G1,bingo,{'d'},7,6,
+DEU_LocationALower-12_8_T-1,20,R_G1,bingo,"{'~c', 'd', 'a'}",31,30,
+DEU_LocationALower-12_8_T-1,21,R_G1,bingo,{'d'},11,10,
+DEU_LocationALower-12_8_T-1,24,R_G1,initial feasibility,,,,
+DEU_LocationALower-12_8_T-1,26,R_G1,initial feasibility,,,,
+DEU_LocationALower-12_8_T-1,32,R_G1,initial feasibility,,,,
+DEU_LocationALower-48_27_T-1,11,R_G1,not repairable,"{'~c', '~a', 'b', '~d'}",11,-inf,
+DEU_LocationAUpper-35_53_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-35_53_T-1,16,R_G1,bingo,"{'d', 'b', 'a'}",10,9,
+DEU_LocationAUpper-30_2_T-1,12,R_G1,bingo,{'d'},1,0,
+DEU_LocationAUpper-30_2_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-44_7_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-44_7_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-44_7_T-1,22,R_G1,initial feasibility,,,,
+DEU_LocationALower-47_21_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationALower-47_21_T-1,19,R_G1,bingo,{'d'},33,32,
+DEU_LocationALower-47_21_T-1,25,R_G1,bingo,{'d'},33,32,
+DEU_LocationAUpper-36_8_T-1,20,R_G1,bingo,{'d'},1,0,
+DEU_LocationELower-16_4_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-16_18_T-1,5,R_G1,bingo,"{'~a', 'b'}",10,9,
+DEU_LocationEUpper-16_18_T-1,6,R_G1,bingo,"{'d', 'a'}",40,39,
+DEU_LocationEUpper-17_6_T-1,7,R_G1,bingo,{'d'},5,4,
+DEU_LocationALower-51_35_T-1,14,R_G1,bingo,"{'d', 'b', 'a'}",19,18,
+DEU_LocationAUpper-45_34_T-1,19,R_G1,bingo,{'d'},29,28,
+DEU_LocationAUpper-45_34_T-1,23,R_G1,bingo,{'d'},60,59,
+DEU_LocationAUpper-45_24_T-1,18,R_G1,bingo,"{'~c', 'd', 'a'}",17,16,
+DEU_LocationALower-26_45_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-26_45_T-1,24,R_G1,bingo,"{'d', 'b'}",11,10,
+DEU_LocationALower-26_45_T-1,25,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-34_13_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-34_13_T-1,21,R_G1,bingo,"{'d', 'a'}",27,26,
+DEU_LocationAUpper-34_13_T-1,22,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_28_T-1,17,R_G1,bingo,{'d'},6,5,
+DEU_LocationALower-31_28_T-1,24,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_28_T-1,25,R_G1,bingo,{'d'},5,4,
+DEU_LocationAUpper-41_2_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-28_51_T-1,16,R_G1,bingo,{'d'},44,42,
+DEU_LocationFLower-59_20_T-1,16,R_G1,bingo,{'d'},17,16,
+DEU_LocationAUpper-13_7_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-46_43_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-46_43_T-1,17,R_G1,bingo,{'d'},28,27,
+DEU_LocationAUpper-46_43_T-1,26,R_G1,bingo,{'d'},40,39,
+DEU_LocationALower-46_50_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-46_50_T-1,10,R_G1,bingo,{'d'},6,5,
+DEU_LocationAUpper-33_37_T-1,18,R_G1,bingo,{'d'},19,18,
+DEU_LocationALower-47_34_T-1,14,R_G1,bingo,{'d'},11,10,
+DEU_LocationAUpper-45_20_T-1,15,R_G1,bingo,{'d'},28,27,
+DEU_LocationAUpper-45_20_T-1,21,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",17,16,
+DEU_LocationAUpper-45_20_T-1,23,R_G1,bingo,{'d'},17,16,
+DEU_LocationALower-40_14_T-1,14,R_G1,bingo,{'d'},32,31,
+DEU_LocationALower-14_49_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationALower-14_49_T-1,15,R_G1,bingo,{'d'},14,10,
+DEU_LocationALower-50_20_T-1,11,R_G1,bingo,{'d'},8,7,
+DEU_LocationALower-50_20_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-55_3_T-1,9,R_G1,bingo,{'d'},9,8,
+DEU_LocationAUpper-26_16_T-1,11,R_G1,bingo,{'d'},17,16,
+DEU_LocationELower-16_45_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationALower-25_35_T-1,26,R_G1,initial feasibility,,,,
+DEU_LocationALower-13_43_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationALower-13_43_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-35_42_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-51_8_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-51_8_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-39_45_T-1,15,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",9,7,
+DEU_LocationAUpper-39_45_T-1,20,R_G1,bingo,"{'~c', '~a'}",34,32,
+DEU_LocationAUpper-39_30_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-39_30_T-1,15,R_G1,bingo,"{'~c', 'd', 'a'}",12,11,
+DEU_LocationAUpper-12_28_T-1,17,R_G1,bingo,{'d'},55,54,
+DEU_LocationAUpper-12_28_T-1,24,R_G1,not repairable,"{'~d', '~c', '~a', 'b'}",37,-inf,
+DEU_LocationAUpper-39_7_T-1,16,R_G1,bingo,"{'d', 'a'}",12,11,
+DEU_LocationAUpper-52_28_T-1,12,R_G1,not repairable,"{'~d', 'c', 'b', 'a'}",25,18,
+DEU_LocationAUpper-52_28_T-1,13,R_G1,bingo,{'d'},18,17,
+DEU_LocationAUpper-52_28_T-1,14,R_G1,bingo,"{'~c', 'd'}",30,29,
+DEU_LocationAUpper-52_28_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationCLower-4_32_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-30_53_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationALower-30_53_T-1,19,R_G1,bingo,"{'d', 'b', 'a'}",8,7,
+DEU_LocationALower-31_12_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationALower-31_12_T-1,17,R_G1,bingo,{'d'},21,20,
+DEU_LocationELower-20_20_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationELower-20_20_T-1,10,R_G1,bingo,{'d'},14,13,
+DEU_LocationAUpper-11_1_T-1,17,R_G1,bingo,"{'d', 'a'}",65,64,
+DEU_LocationEUpper-16_15_T-1,4,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-13_35_T-1,24,R_G1,bingo,{'d'},39,38,
+DEU_LocationAUpper-13_35_T-1,26,R_G1,bingo,{'d'},62,61,
+DEU_LocationAUpper-36_18_T-1,28,R_G1,bingo,{'d'},15,14,
+DEU_LocationAUpper-36_18_T-1,29,R_G1,initial feasibility,,,,
+DEU_LocationELower-20_48_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-12_3_T-1,21,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",11,10,
+DEU_LocationAUpper-49_13_T-1,20,R_G1,bingo,{'d'},49,48,
+DEU_LocationAUpper-28_44_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-28_44_T-1,13,R_G1,bingo,{'d'},3,2,
+DEU_LocationALower-35_52_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-48_27_T-1,17,R_G1,bingo,"{'d', 'a'}",32,31,
+DEU_LocationAUpper-57_45_T-1,16,R_G1,bingo,{'d'},20,19,
+DEU_LocationALower-33_37_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-33_37_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationCUpper-6_30_T-1,18,R_G1,bingo,"{'d', 'b', 'a'}",17,16,
+DEU_LocationDUpper-8_4_T-1,10,R_G1,bingo,{'d'},7,6,
+DEU_LocationALower-39_15_T-1,14,R_G1,bingo,"{'d', 'a'}",35,34,
+DEU_LocationAUpper-41_3_T-1,12,R_G1,bingo,{'d'},40,39,
+DEU_LocationALower-47_28_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationALower-26_1_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationALower-27_47_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationALower-27_47_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-27_47_T-1,17,R_G1,bingo,{'d'},16,15,
+DEU_LocationALower-27_47_T-1,25,R_G1,bingo,{'d'},56,55,
+DEU_LocationALower-27_47_T-1,27,R_G1,bingo,{'d'},2,1,
+DEU_LocationEUpper-15_18_T-1,6,R_G1,bingo,"{'d', 'a'}",34,33,
+DEU_LocationEUpper-15_18_T-1,7,R_G1,bingo,{'d'},3,2,
+DEU_LocationEUpper-15_18_T-1,10,R_G1,bingo,{'d'},15,14,
+DEU_LocationALower-38_8_T-1,20,R_G1,bingo,{'d'},29,28,
+DEU_LocationELower-18_14_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationELower-18_14_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationALower-33_39_T-1,23,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-43_47_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-43_47_T-1,19,R_G1,bingo,{'d'},5,4,
+DEU_LocationAUpper-53_38_T-1,16,R_G1,bingo,{'d'},29,28,
+DEU_LocationAUpper-53_38_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationALower-45_30_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-27_59_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-52_10_T-1,15,R_G1,bingo,{'d'},26,25,
+DEU_LocationAUpper-51_52_T-1,14,R_G1,bingo,{'d'},17,16,
+DEU_LocationELower-17_39_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationELower-17_39_T-1,16,R_G1,bingo,{'d'},26,25,
+DEU_LocationAUpper-43_16_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-17_18_T-1,6,R_G1,bingo,{'d'},23,22,
+DEU_LocationAUpper-31_16_T-1,12,R_G1,bingo,{'d'},16,15,
+DEU_LocationAUpper-47_19_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-47_19_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-47_19_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-29_56_T-1,17,R_G1,bingo,"{'d', 'b'}",16,15,
+DEU_LocationCLower-4_53_T-1,14,R_G1,bingo,{'d'},40,39,
+DEU_LocationELower-19_15_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationELower-19_15_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-50_55_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-50_55_T-1,22,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",15,14,
+DEU_LocationAUpper-28_8_T-1,12,R_G1,bingo,"{'~c', 'd'}",4,3,
+DEU_LocationAUpper-28_8_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-32_15_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationALower-45_52_T-1,17,R_G1,bingo,{'d'},11,10,
+DEU_LocationALower-29_43_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-29_43_T-1,21,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-60_42_T-1,9,R_G1,bingo,"{'d', 'a'}",59,58,
+DEU_LocationFUpper-60_42_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationALower-44_44_T-1,13,R_G1,bingo,"{'d', 'b', 'a'}",1,0,
+DEU_LocationALower-13_28_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-13_28_T-1,22,R_G1,initial feasibility,,,,
+DEU_LocationALower-13_28_T-1,23,R_G1,bingo,{'d'},17,16,
+DEU_LocationAUpper-55_28_T-1,26,R_G1,bingo,"{'d', 'a'}",1,0,
+DEU_LocationALower-11_24_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-40_48_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-40_48_T-1,20,R_G1,bingo,"{'d', 'b', 'a'}",19,18,
+DEU_LocationAUpper-51_6_T-1,17,R_G1,bingo,{'d'},52,51,
+DEU_LocationAUpper-12_10_T-1,34,R_G1,bingo,{'d'},35,34,
+DEU_LocationEUpper-19_46_T-1,8,R_G1,bingo,{'d'},13,12,
+DEU_LocationAUpper-57_35_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationELower-15_33_T-1,9,R_G1,bingo,{'d'},34,33,
+DEU_LocationELower-15_33_T-1,12,R_G1,not repairable,"{'~d', '~b', '~c', 'a'}",3,-inf,
+DEU_LocationFUpper-59_3_T-1,11,R_G1,bingo,"{'~c', 'd'}",11,10,
+DEU_LocationFUpper-59_3_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-14_3_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-25_7_T-1,55,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-27_11_T-1,11,R_G1,bingo,"{'d', 'a'}",5,4,
+DEU_LocationALower-12_31_T-1,11,R_G1,bingo,{'d'},10,9,
+DEU_LocationALower-12_31_T-1,13,R_G1,bingo,"{'d', 'b'}",5,4,
+DEU_LocationAUpper-27_45_T-1,12,R_G1,bingo,"{'d', 'b'}",10,9,
+DEU_LocationALower-33_50_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-33_50_T-1,18,R_G1,bingo,{'d'},7,6,
+DEU_LocationAUpper-32_16_T-1,16,R_G1,bingo,{'d'},43,42,
+DEU_LocationALower-30_18_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-26_34_T-1,15,R_G1,bingo,{'d'},17,16,
+DEU_LocationALower-26_34_T-1,23,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-57_48_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-15_36_T-1,5,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-15_36_T-1,10,R_G1,bingo,{'d'},28,27,
+DEU_LocationEUpper-15_36_T-1,14,R_G1,bingo,"{'d', 'b'}",6,5,
+DEU_LocationELower-16_33_T-1,6,R_G1,bingo,{'d'},1,0,
+DEU_LocationELower-16_33_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationCLower-4_30_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationDUpper-7_10_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationDUpper-7_10_T-1,15,R_G1,bingo,"{'~c', 'd'}",33,32,
+DEU_LocationAUpper-53_26_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-53_26_T-1,10,R_G1,bingo,"{'d', 'b', 'a'}",29,28,
+DEU_LocationAUpper-57_26_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-34_22_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationALower-34_22_T-1,20,R_G1,initial feasibility,,,,
+DEU_LocationALower-25_34_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationALower-25_34_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationALower-25_34_T-1,22,R_G1,bingo,{'d'},6,5,
+DEU_LocationALower-25_34_T-1,23,R_G1,bingo,{'d'},9,8,
+DEU_LocationAUpper-33_56_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-17_7_T-1,4,R_G1,bingo,{'d'},6,5,
+DEU_LocationEUpper-17_7_T-1,6,R_G1,bingo,"{'d', 'a'}",22,21,
+DEU_LocationAUpper-36_17_T-1,19,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-36_17_T-1,21,R_G1,bingo,"{'d', 'a'}",72,71,
+DEU_LocationAUpper-36_17_T-1,22,R_G1,bingo,{'d'},29,28,
+DEU_LocationFUpper-60_43_T-1,7,R_G1,bingo,{'d'},5,4,
+DEU_LocationFUpper-60_43_T-1,16,R_G1,bingo,"{'d', 'a'}",8,2,
+DEU_LocationFUpper-60_43_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-60_43_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-60_43_T-1,19,R_G1,not repairable,"{'~c', 'd', 'b', 'a'}",15,14,
+DEU_LocationFUpper-60_43_T-1,22,R_G1,not repairable,"{'~c', 'd', 'b', 'a'}",1,-inf,
+DEU_LocationAUpper-13_48_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-13_48_T-1,20,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-13_48_T-1,21,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-13_48_T-1,22,R_G1,bingo,{'d'},6,5,
+DEU_LocationAUpper-13_48_T-1,25,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-51_31_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-51_31_T-1,21,R_G1,bingo,{'d'},6,5,
+DEU_LocationAUpper-46_57_T-1,13,R_G1,bingo,"{'d', 'a'}",36,35,
+DEU_LocationAUpper-46_57_T-1,15,R_G1,bingo,"{'d', 'a'}",53,52,
+DEU_LocationAUpper-14_11_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-14_11_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-14_11_T-1,21,R_G1,bingo,{'d'},6,5,
+DEU_LocationAUpper-50_51_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-53_29_T-1,20,R_G1,bingo,{'d'},47,46,
+DEU_LocationBLower-2_18_T-1,4,R_G1,initial feasibility,,,,
+DEU_LocationDLower-7_22_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-17_36_T-1,4,R_G1,initial feasibility,,,,
+DEU_LocationEUpper-17_36_T-1,8,R_G1,bingo,{'d'},14,12,
+DEU_LocationBUpper-2_19_T-1,16,R_G1,bingo,"{'d', 'a'}",15,14,
+DEU_LocationAUpper-35_49_T-1,13,R_G1,bingo,"{'d', 'b'}",22,21,
+DEU_LocationALower-53_36_T-1,10,R_G1,bingo,{'d'},8,7,
+DEU_LocationAUpper-52_22_T-1,11,R_G1,bingo,"{'~c', '~a'}",24,20,
+DEU_LocationAUpper-52_22_T-1,12,R_G1,bingo,"{'~c', 'd', 'a'}",32,31,
+DEU_LocationALower-45_35_T-1,11,R_G1,bingo,{'d'},23,22,
+DEU_LocationALower-51_9_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-51_9_T-1,11,R_G1,bingo,{'d'},2,1,
+DEU_LocationALower-36_48_T-1,11,R_G1,bingo,{'d'},40,39,
+DEU_LocationELower-23_27_T-1,15,R_G1,bingo,{'d'},32,31,
+DEU_LocationELower-23_27_T-1,19,R_G1,bingo,{'d'},26,25,
+DEU_LocationALower-33_32_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationALower-33_32_T-1,12,R_G1,bingo,{'d'},22,21,
+DEU_LocationAUpper-31_21_T-1,18,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",36,34,
+DEU_LocationAUpper-54_19_T-1,15,R_G1,bingo,{'d'},12,11,
+DEU_LocationAUpper-54_19_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-54_19_T-1,25,R_G1,bingo,"{'d', 'b'}",32,31,
+DEU_LocationALower-35_11_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-35_11_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-35_11_T-1,20,R_G1,bingo,"{'d', 'b'}",3,2,
+DEU_LocationALower-35_11_T-1,21,R_G1,bingo,{'d'},17,16,
+DEU_LocationAUpper-29_35_T-1,15,R_G1,bingo,{'d'},43,42,
+DEU_LocationAUpper-32_11_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-32_11_T-1,11,R_G1,bingo,{'d'},31,30,
+DEU_LocationAUpper-32_11_T-1,14,R_G1,bingo,{'d'},32,31,
+DEU_LocationAUpper-57_23_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-57_23_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-57_23_T-1,10,R_G1,bingo,{'d'},21,20,
+DEU_LocationAUpper-57_23_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-57_23_T-1,19,R_G1,bingo,{'d'},31,30,
+DEU_LocationAUpper-40_12_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-40_12_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-47_44_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-43_26_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-43_26_T-1,17,R_G1,initial feasibility,,,,
+DEU_LocationALower-45_56_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationALower-30_59_T-1,8,R_G1,bingo,{'d'},5,4,
+DEU_LocationAUpper-52_13_T-1,6,R_G1,bingo,{'d'},7,6,
+DEU_LocationALower-47_27_T-1,17,R_G1,bingo,{'d'},3,2,
+DEU_LocationALower-35_49_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationALower-35_49_T-1,10,R_G1,bingo,{'d'},17,16,
+DEU_LocationALower-35_49_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationALower-42_14_T-1,13,R_G1,bingo,"{'d', 'b', 'a'}",2,1,
+DEU_LocationALower-42_14_T-1,17,R_G1,bingo,"{'d', 'b'}",20,19,
+DEU_LocationALower-26_48_T-1,22,R_G1,initial feasibility,,,,
+DEU_LocationELower-19_3_T-1,6,R_G1,bingo,{'d'},7,6,
+DEU_LocationELower-19_3_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-25_32_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationALower-25_32_T-1,10,R_G1,bingo,{'d'},7,6,
+DEU_LocationALower-25_32_T-1,19,R_G1,bingo,{'d'},16,15,
+DEU_LocationALower-50_11_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationALower-27_5_T-1,21,R_G1,initial feasibility,,,,
+DEU_LocationELower-23_28_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationELower-23_28_T-1,11,R_G1,initial feasibility,,,,
+DEU_LocationELower-23_28_T-1,18,R_G1,bingo,{'d'},73,72,
+DEU_LocationAUpper-45_25_T-1,15,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-45_25_T-1,17,R_G1,bingo,{'d'},23,22,
+DEU_LocationAUpper-52_35_T-1,9,R_G1,bingo,{'d'},18,17,
+DEU_LocationAUpper-31_27_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationALower-36_26_T-1,13,R_G1,bingo,{'d'},44,42,
+DEU_LocationAUpper-32_7_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-32_7_T-1,18,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-27_2_T-1,11,R_G1,bingo,"{'d', 'b', 'a'}",2,1,
+DEU_LocationAUpper-27_2_T-1,13,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-1_14_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationBUpper-1_14_T-1,10,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-42_49_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationALower-51_55_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationDLower-8_41_T-1,13,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",13,12,
+DEU_LocationALower-14_5_T-1,17,R_G1,bingo,"{'d', 'b'}",2,1,
+DEU_LocationAUpper-43_29_T-1,8,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-43_29_T-1,12,R_G1,bingo,{'d'},19,18,
+DEU_LocationAUpper-43_29_T-1,14,R_G1,initial feasibility,,,,
+DEU_LocationALower-36_33_T-1,9,R_G1,bingo,{'d'},6,5,
+DEU_LocationALower-36_33_T-1,12,R_G1,bingo,{'d'},9,8,
+DEU_LocationAUpper-40_35_T-1,22,R_G1,bingo,{'d'},47,46,
+DEU_LocationFUpper-60_32_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-60_32_T-1,12,R_G1,initial feasibility,,,,
+DEU_LocationFUpper-60_32_T-1,13,R_G1,bingo,"{'~c', 'd', 'b', 'a'}",6,5,
+DEU_LocationAUpper-29_36_T-1,21,R_G1,bingo,{'d'},35,34,
+DEU_LocationAUpper-29_7_T-1,13,R_G1,bingo,{'d'},10,9,
+DEU_LocationALower-53_20_T-1,18,R_G1,bingo,"{'d', 'b'}",1,0,
+DEU_LocationAUpper-27_54_T-1,16,R_G1,bingo,"{'d', 'b'}",26,25,
+DEU_LocationEUpper-24_40_T-1,9,R_G1,bingo,{'d'},2,1,
+DEU_LocationALower-48_12_T-1,7,R_G1,initial feasibility,,,,
+DEU_LocationALower-48_12_T-1,12,R_G1,bingo,{'d'},41,40,
+DEU_LocationALower-14_45_T-1,12,R_G1,bingo,{'d'},3,2,
+DEU_LocationAUpper-52_8_T-1,16,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-31_26_T-1,27,R_G1,bingo,{'d'},48,47,
+DEU_LocationAUpper-31_26_T-1,28,R_G1,bingo,{'d'},12,11,
+DEU_LocationALower-34_11_T-1,17,R_G1,bingo,{'d'},31,30,
+DEU_LocationAUpper-36_8_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-36_8_T-1,8,R_G1,bingo,"{'~c', 'd'}",1,0,
+DEU_LocationAUpper-36_8_T-1,9,R_G1,initial feasibility,,,,
+DEU_LocationAUpper-36_8_T-1,16,R_G1,bingo,{'d'},17,16,
+DEU_LocationELower-21_34_T-1,6,R_G1,initial feasibility,,,,
+DEU_LocationALower-26_48_T-1,13,R_G1,bingo,{'d'},5,4,
+DEU_LocationALower-26_48_T-1,25,R_G1,bingo,{'d'},37,36,
+Nr of scenario,636,Nr of infeasible trajectory,283,0.445,Nr of reparable trajectory,342,0.9688
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+"W_S = 0.5  # weight for state deviation
+W_V = 0.8  # weight for velocity deviation
+W_A = 0.5  # weight for acceleration deviation
+W_J = 0.2  # weight for jerk deviation",,,,,,,

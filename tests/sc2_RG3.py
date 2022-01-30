@@ -25,17 +25,18 @@ if __name__ == '__main__':
     ego_id = 202
     rule = "R_G3"
 
-    # time_step = 0
-    # rnd = MPRenderer(figsize=(40, 10))
-    # scenario.draw(
-    #     rnd,
-    #     draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-    #              "draw_trajectory": False}, "occupancy": {
-    #         "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
-    # )
-    # rnd.render()
-    # plt.title(str(time_step))
-    # plt.show()
+    time_step = 0
+    rnd = MPRenderer(figsize=(40, 10))
+    scenario.draw(
+        rnd,
+        draw_params=ParamServer({"time_begin": time_step, "trajectory": {
+                 "draw_trajectory": False}, "occupancy": {
+            "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
+    )
+    planning_problem.initial_state.draw(rnd)
+    rnd.render()
+    plt.title(str(time_step))
+    plt.show()
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:21]
     ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:21]
