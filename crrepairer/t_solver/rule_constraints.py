@@ -208,7 +208,8 @@ class RuleConstraints:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
             else:
                 lanes = self._world_state.road_network.find_lanes_by_lanelets(self._world_state.ego_vehicle.lanelet_assignment[k])
-                self._prec_veh, self._foll_veh = self._determine_related_veh(k, lanes)
+                if lanes:
+                    self._prec_veh, self._foll_veh = self._determine_related_veh(k, lanes)
 
             # num_target_lanes = len(self._target_lanes[k])
             index = k - self._tc_obj.tc_time_step
