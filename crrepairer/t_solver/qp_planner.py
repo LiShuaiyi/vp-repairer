@@ -75,6 +75,7 @@ class QPPlannerRepair(QPPlanner):
             # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
         print('\t\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
+        lat_constr.select_proposition = long_constr.select_proposition
         trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr)
         # convert trajectory to cartesian space
         if status is not 'optimal':

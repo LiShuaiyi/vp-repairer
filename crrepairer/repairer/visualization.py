@@ -244,7 +244,7 @@ def visualize_repairing_result(scenario: Scenario,
     # show the rule-violating region
 
     # show plot
-    # plt.show(block=True)
+    plt.show(block=True)
 
     # save as .svg file
     if save_path is not None:
@@ -370,7 +370,7 @@ def visualize_initial_result(scenario: Scenario,
     # show the rule-violating region
 
     # show plot
-    # plt.show(block=True)
+    plt.show(block=True)
 
     # save as .svg file
     if save_path is not None:

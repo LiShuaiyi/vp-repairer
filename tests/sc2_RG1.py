@@ -55,7 +55,7 @@ if __name__ == '__main__':
                                  time_step,
                                  target_veh=target_veh,
                                  plot_limits=plot_limits,
-                                 save_path=figure_path,
+                                 # save_path=figure_path,
                                  tv=int(repairer.tv))
         # visualize_repairing_result(scenario,
         #                            ego_vehicle,
