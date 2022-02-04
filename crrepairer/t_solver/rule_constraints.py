@@ -129,7 +129,8 @@ class RuleConstraints:
                                                     a_min=self._lon_acc_constraint[0],
                                                     a_max=self._lon_acc_constraint[1],
                                                     prec_veh=self._target_vehicle,
-                                                    tc_time_step=self._tc_obj.tc_time_step)
+                                                    tc_time_step=self._tc_obj.tc_time_step,
+                                                    select_proposition=self._sel_prop)
 
     def lateral_constraints(self, long_traj: QPTrajectory, ):
         self._lat_dis_constraints = []
