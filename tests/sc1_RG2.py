@@ -31,6 +31,11 @@ scenario_id = "DEU_LocationCUpper-5_38_T-1"
 scenario_id = "DEU_LocationAUpper-36_60_T-1"
 scenario_id = "DEU_LocationAUpper-26_32_T-1"
 scenario_id = "DEU_LocationAUpper-36_61_T-1"
+scenario_id = "DEU_LocationAUpper-36_60_T-1"
+scenario_id = "DEU_LocationAUpper-26_32_T-1"
+scenario_id = "DEU_LocationAUpper-36_61_T-1"
+scenario_id = "DEU_LocationAUpper-36_62_T-1"
+scenario_id = "DEU_LocationAUpper-36_46_T-1"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
 
@@ -40,7 +45,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 24
+    ego_id = 18
     rule = "R_G2"
 
     time_step = 0

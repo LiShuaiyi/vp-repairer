@@ -45,8 +45,18 @@ scenario_id = "DEU_LocationDLower-10_14_T-1"
 scenario_id = "DEU_LocationFUpper-59_18_T-1"
 scenario_id = "DEU_LocationALower-11_14_T-1"
 scenario_id = "DEU_LocationEUpper-21_31_T-1"
-scenario_id = "DEU_LocationAUpper-25_51_T-1"
-scenario_id = "DEU_LocationAUpper-42_5_T-1"
+scenario_id = "DEU_LocationCUpper-6_23_T-1"
+
+# scenario_id = "DEU_LocationAUpper-25_51_T-1"
+# scenario_id = "DEU_LocationAUpper-25_51_T-1"
+# scenario_id = "DEU_LocationAUpper-42_5_T-1"
+# scenario_id = "DEU_LocationFUpper-59_18_T-1"
+# scenario_id = "DEU_LocationALower-13_31_T-1"
+# scenario_id = "DEU_LocationALower-11_14_T-1"
+# scenario_id = "DEU_LocationCLower-6_45_T-1"
+# scenario_id = "DEU_LocationFUpper-60_43_T-1"
+# scenario_id = "DEU_LocationDLower-10_14_T-1"
+# scenario_id = "DEU_LocationAUpper-25_51_T-1"
 file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
             + scenario_id + ".xml"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
@@ -58,7 +68,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 9
+    ego_id = 11
     rule = "R_G1"
     ego_initial = scenario.obstacle_by_id(ego_id)
     time_step = 0
