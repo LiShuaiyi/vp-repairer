@@ -72,5 +72,5 @@ qp_planner:
         KAPPA_DOT_MAX: 0.4 # maximum steering rate
         KAPPA_DOT_DOT_MIN: -100 # minimum steering rate rate
         KAPPA_DOT_DOT_MAX: 100 # maximum steering rate rate
-        KAPPA_MAX: 0.4 # maximum curvature
+        KAPPA_MAX: 0.5 # maximum curvature
 
