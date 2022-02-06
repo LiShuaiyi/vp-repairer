@@ -148,8 +148,8 @@ def update_ego_vehicle(road_network: RoadNetwork,
         # use the shape lanelet assignment
         ego_vehicle.lanelet_assignment[state.time_step] = \
         set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
-    if ego_vehicle.end_time > len(updated_ego_states):
-        for time_step in range(len(updated_ego_states)+1, ego_vehicle.end_time+1):
+    if ego_vehicle.end_time > updated_ego_states[-1].time_step:
+        for time_step in range(updated_ego_states[-1].time_step+1, ego_vehicle.end_time+1):
             del ego_vehicle.states_lon[time_step]
             del ego_vehicle.states_lat[time_step]
             del ego_vehicle.states_cr[time_step]
