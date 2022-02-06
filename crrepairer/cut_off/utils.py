@@ -35,7 +35,7 @@ def visualize_state_list(collision_checker, state_list: List[State], scenario, o
 
 def check_velocity_feasibility(state: State, parameters: VehicleParameters):
     if state.velocity < 0 or \
-            state.velocity > parameters.longitudinal.v_max:
+            state.velocity > 60:#parameters.longitudinal.v_max:
         return False
     return True
 
