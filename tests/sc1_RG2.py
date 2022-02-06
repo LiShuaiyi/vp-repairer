@@ -19,6 +19,18 @@ scenario_id = "DEU_LocationAUpper-36_53_T-1"
 scenario_id = "DEU_LocationAUpper-35_1_T-1"
 scenario_id = "DEU_LocationAUpper-26_9_T-1"
 scenario_id = "DEU_LocationAUpper-25_23_T-1"
+scenario_id = "DEU_LocationELower-18_22_T-1"
+scenario_id = "DEU_LocationAUpper-26_9_T-1"
+scenario_id = "DEU_LocationAUpper-25_23_T-1"
+scenario_id = "DEU_LocationAUpper-36_60_T-1"
+scenario_id = "DEU_LocationAUpper-36_46_T-1"
+scenario_id = "DEU_LocationAUpper-36_46_T-1"
+scenario_id = "DEU_LocationAUpper-26_32_T-1"
+scenario_id = "DEU_LocationAUpper-36_46_T-1"
+scenario_id = "DEU_LocationCUpper-5_38_T-1"
+scenario_id = "DEU_LocationAUpper-36_60_T-1"
+scenario_id = "DEU_LocationAUpper-26_32_T-1"
+scenario_id = "DEU_LocationAUpper-36_61_T-1"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
 
@@ -36,7 +48,7 @@ if __name__ == '__main__':
     scenario.draw(
         rnd,
         draw_params=ParamServer({"time_begin": time_step, "trajectory": {
-                 "draw_trajectory": False}, "occupancy": {
+                 "draw_trajectory": True}, "occupancy": {
             "draw_occupancies": 0}, 'dynamic_obstacle': {'show_label': True}})
     )
     rnd.render()

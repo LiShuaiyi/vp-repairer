@@ -17,6 +17,7 @@ scenario_id = 'DEU_LocationAUpper-26_30_T-1'
 scenario_id = 'DEU_LocationALower-25_56_T-1'
 scenario_id = "DEU_LocationAUpper-26_9_T-1"
 scenario_id = "DEU_LocationAUpper-36_53_T-1"
+scenario_id = "DEU_LocationELower-18_22_T-1"
 scenario_id = "ZAM_Zip-1_56_T-1"
 
 file_path = "../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
