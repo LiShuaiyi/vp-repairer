@@ -13,7 +13,8 @@ import math
 
 scenario_id = "DEU_LocationAUpper-26_21_T-1"
 scenario_id = "DEU_LocationAUpper-47_35_T-1"
-scenario_id = "DEU_LocationFUpper-60_43_T-1" # -22 not repairable
+scenario_id = "DEU_LocationFUpper-60_43_T-1"
+scenario_id = "DEU_LocationAUpper-47_35_T-1" # -22 not repairable
 # scenario_id = "DEU_LocationAUpper-27_26_T-1"
 # scenario_id = "DEU_LocationAUpper-35_38_T-1"
 # scenario_id = "DEU_LocationAUpper-25_52_T-1"
@@ -36,6 +37,10 @@ scenario_id = "DEU_LocationFUpper-60_43_T-1" # -22 not repairable
 # scenario_id = "DEU_LocationAUpper-52_30_T-1"
 # scenario_id = "DEU_LocationAUpper-47_35_T-1"
 # scenario_id = "DEU_LocationAUpper-50_32_T-1"
+scenario_id = "DEU_LocationAUpper-27_26_T-1"
+scenario_id = "DEU_LocationAUpper-42_18_T-1"
+scenario_id = "DEU_LocationFUpper-60_43_T-1"
+#
 file_path = "/home/yuanfei/commonroad/commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" \
             + scenario_id + ".xml"
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \

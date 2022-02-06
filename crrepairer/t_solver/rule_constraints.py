@@ -54,16 +54,18 @@ class RuleConstraints:
         self._safe_dis_list = [False for _ in range(self._tc_obj.N + 1 - self._tc_obj.tc_time_step)]
         if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
                                         CutOffAction.LANECHANGERIGHT]:
-            self._tc_obj.simulation_lateral.set_inputs(self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
+            self._tc_obj.simulation_lateral.set_inputs(
+                self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
             # self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_total_time(
             #     self._world_state.ego_vehicle.lane.width(
             #     self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)) / (2 * self._world_state.dt)) \
             #         + self._tc_obj.tc_time_step
 
             lane_dist = self._world_state.ego_vehicle.lane.width(
-                self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s)/2 - \
-                abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width/2
-            self._t_min_change_lane = int(self._tc_obj.simulation_lateral.calc_leave_time(lane_dist)/self._world_state.dt)
+                self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s) / 2 - \
+                        abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width / 2
+            self._t_min_change_lane = int(
+                self._tc_obj.simulation_lateral.calc_leave_time(lane_dist) / self._world_state.dt)
 
     @property
     def safe_distance_modes(self):
@@ -77,7 +79,8 @@ class RuleConstraints:
             v_limit = [0, np.inf]
             for proposition in self._rule_abstracter.rule_monitor.proposition_nodes:
                 try:
-                    prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')["robustness"].values[0]
+                    prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')["robustness"].values[
+                        0]
                 except:
                     continue
                 for predicate in proposition.children:
@@ -134,30 +137,30 @@ class RuleConstraints:
 
     def lateral_constraints(self, long_traj: QPTrajectory, ):
         self._lat_dis_constraints = []
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N+1):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             d_min = -np.inf
             d_max = np.inf
             if k in self._target_lanes:
                 target_lanes = self._target_lanes[k]
                 index = k - self._tc_obj.tc_time_step
-                if target_lanes[0]:
+                for lane in target_lanes:
                     # x_curr, y_curr = ego_lane.clcs.convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
-                    lane_boundary_left = target_lanes[-1].clcs_left.convert_to_cartesian_coords(long_traj.states[index].
-                                                                                                 position[0], 0.)
-                    lane_boundary_right = target_lanes[0].clcs_right.convert_to_cartesian_coords(long_traj.states[index].
-                                                                                                  position[0], 0.)
-                    d_max = self._veh_config.curvilinear_coordinate_system.\
-                        convert_to_curvilinear_coords(lane_boundary_left[0], lane_boundary_left[1])[1]  \
-                            - self._veh_config.wheelbase / 2.
-                    d_min = self._veh_config.curvilinear_coordinate_system.\
-                        convert_to_curvilinear_coords(lane_boundary_right[0], lane_boundary_right[1])[1] \
-                            + self._veh_config.wheelbase / 2.
+                    lane_boundary_left = lane.clcs_left.convert_to_cartesian_coords(long_traj.states[index].
+                                                                                    position[0], 0.)
+                    lane_boundary_right = lane.clcs_right.convert_to_cartesian_coords(long_traj.states[index].
+                                                                                      position[0], 0.)
+                    d_max = min(self._veh_config.curvilinear_coordinate_system. \
+                                convert_to_curvilinear_coords(lane_boundary_left[0], lane_boundary_left[1])[1], d_max)
+                    d_min = max(self._veh_config.curvilinear_coordinate_system. \
+                                convert_to_curvilinear_coords(lane_boundary_right[0], lane_boundary_right[1])[1], d_min)
 
             self._lat_dis_constraints.append([d_min,
                                               d_max])
         lateral_constraints = np.array(self._lat_dis_constraints)
-        d_min = np.array((lateral_constraints[1:, 0], lateral_constraints[1:, 0], lateral_constraints[1:, 0])).transpose()
-        d_max = np.array((lateral_constraints[1:, 1], lateral_constraints[1:, 1], lateral_constraints[1:, 1])).transpose()
+        d_min = np.array(
+            (lateral_constraints[1:, 0], lateral_constraints[1:, 0], lateral_constraints[1:, 0])).transpose()
+        d_max = np.array(
+            (lateral_constraints[1:, 1], lateral_constraints[1:, 1], lateral_constraints[1:, 1])).transpose()
         return LatConstraints.construct_constraints(d_min, d_max,
                                                     d_min, d_max)
 
@@ -203,12 +206,15 @@ class RuleConstraints:
         # prec_veh, foll_veh = self._determine_related_veh(self._tc_obj.tc_time_step,
         #                                                  self._target_lanes[self._tc_obj.tc_time_step])
         # num_target_lanes = len(self._target_lanes[self._tc_obj.tc_time_step])
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N+1):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             # if len(self._target_lanes[k]) < num_target_lanes:
             if k in self._target_lanes:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
             else:
-                lanes = self._world_state.road_network.find_lanes_by_lanelets(self._world_state.ego_vehicle.lanelet_assignment[k])
+                lanelet = self._world_state.scenario.lanelet_network.find_lanelet_by_position(
+                    [self._world_state.ego_vehicle.states_cr[k].position])[0]
+                lanes = self._world_state.road_network.find_lanes_by_lanelets(lanelet)
+                # lanes = self._world_state.road_network.find_lanes_by_lanelets(self._world_state.ego_vehicle.lanelet_assignment[k])
                 if lanes:
                     self._prec_veh, self._foll_veh = self._determine_related_veh(k, lanes)
 
@@ -218,9 +224,9 @@ class RuleConstraints:
                 if k <= self._prec_veh.end_time:
                     self._lon_dis_constraints[index] = self._get_overlap(self._lon_dis_constraints[index],
                                                                          [-np.inf, self._prec_veh.rear_s(k)
-                                                                       - self._veh_config.wheelbase/2
-                                                                       - self._veh_config.length/2
-                                                                       ])
+                                                                          - self._veh_config.wheelbase / 2
+                                                                          - self._veh_config.length / 2
+                                                                          ])
             # if self._foll_veh is not None:
             #     if k <= self._foll_veh.end_time:
             #         self._lon_dis_constraints[index] = self._get_overlap(self._lon_dis_constraints[index],
@@ -271,8 +277,8 @@ class RuleConstraints:
 
     def ConstrSafeDist(self, time_step: int, prop_assignment: float):
         if prop_assignment > 0:
-                self._safe_dis_list[time_step - self._tc_obj.tc_time_step] = True
-            # return [-np.inf, self._target_vehicle.rear_s(time_step)]
+            self._safe_dis_list[time_step - self._tc_obj.tc_time_step] = True
+        # return [-np.inf, self._target_vehicle.rear_s(time_step)]
         else:
             pass
             # if there is no safe distance requirement,
@@ -308,8 +314,8 @@ class RuleConstraints:
         assert a_min_follow and 0 > a_min_lead, \
             '<BrakingPredicateCollection/safe_distance>: acceleration is not valid'
         d_safe = (
-            (v_lead ** 2) / (-2. * np.abs(a_min_lead))
-            - (v_follow ** 2) / (-2. * np.abs(a_min_follow))
-            + v_follow * t_react_follow
+                (v_lead ** 2) / (-2. * np.abs(a_min_lead))
+                - (v_follow ** 2) / (-2. * np.abs(a_min_follow))
+                + v_follow * t_react_follow
         )
         return d_safe
