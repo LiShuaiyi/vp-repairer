@@ -19,7 +19,6 @@ class TSolver:
         self._rule_abstracter = rule_abstracter
         self._tc_obj = TC(rule_abstracter.rule_monitor)
         self._compliant_maneuvers = list()
-        self._tc_dict = dict()
         self._repairability = False
         self._qp_planner = None
 

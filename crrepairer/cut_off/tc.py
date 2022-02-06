@@ -1,4 +1,5 @@
 from typing import Iterable, Union, List, Any, Tuple
+from collections import defaultdict
 import math
 from abc import ABC
 
@@ -27,6 +28,7 @@ class TC(CutOffBase, ABC):
         self._visualize = False
         self._compliant_maneuver = None
         self._tc = -math.inf
+        self._tc_dict = defaultdict(float)
         self._simulation_lateral = None
 
     @property
@@ -90,7 +92,12 @@ class TC(CutOffBase, ABC):
         else:
             ttm = dict()
             for maneuver in cut_off_maneuvers:
-                ttm[maneuver] = self.search_ttm(maneuver)
+                if maneuver not in self._tc_dict:
+                    ttm[maneuver] = self.search_ttm(maneuver)
+                    self._tc_dict[maneuver] = ttm[maneuver]
+                else:
+                    ttm[maneuver] = self._tc_dict[maneuver]
+
             self._tc = max(ttm.values())
             self._compliant_maneuver = max(ttm, key=ttm.get)
         return self._tc
