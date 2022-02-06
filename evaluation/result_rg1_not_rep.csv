@@ -1,6 +1,11 @@
-scenario_id,ego_id,rule,repairability,model,TV,TC
-DEU_LocationAUpper-42_18_T-1,15,R_G1,bingo,"{'~c', 'a', 'd', 'b'}",34,31
-DEU_LocationFUpper-60_43_T-1,19,R_G1,bingo,"{'~c', 'a', 'd', 'b'}",15,14
-DEU_LocationFUpper-60_43_T-1,22,R_G1,not repairable,"{'~c', 'a', 'd', 'b'}",1,-inf
-DEU_LocationAUpper-31_21_T-1,18,R_G1,bingo,"{'~c', 'a', 'd', 'b'}",36,34
-Nr of scenario,4,Nr of infeasible trajectory,0,0.0,Nr of reparable trajectory,3,0.75
+scenario_id,ego_id,rule,repairability,model,TV,TC,
+DEU_LocationAUpper-25_51_T-1,25,R_G1,not repairable,"{'b', 'a', '~c', 'd'}",26,12,
+DEU_LocationAUpper-42_5_T-1,9,R_G1,not repairable,"{'b', 'a', 'c', '~d'}",26,-inf,
+DEU_LocationALower-11_14_T-1,20,R_G1,not repairable,"{'b', 'a', 'c', '~d'}",20,-inf,
+DEU_LocationCLower-6_45_T-1,9,R_G1,not repairable,"{'b', 'a', '~c', 'd'}",2,-inf,
+Nr of scenario,14,Nr of infeasible trajectory,0,0,Nr of reparable trajectory,1,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,0.0714

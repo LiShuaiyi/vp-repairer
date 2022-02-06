@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib
 
-success_rate = [94.92, 95.19, 91.29]
+success_rate = [99.7, 95.19, 91.29]
 
 if __name__ == '__main__':
     plt.barh(range(3), success_rate, height=0.7, color='gray', alpha=0.75)
