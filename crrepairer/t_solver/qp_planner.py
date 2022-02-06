@@ -58,7 +58,7 @@ class QPPlannerRepair(QPPlanner):
                                                  self._vehicle_configuration,
                                                  self._initial_trajectory)
 
-    def _reformulate_planning_problem(self,):
+    def _reformulate_planning_problem(self, ):
         if not hasattr(self._planning_problem, "initial_state"):
             raise ValueError("<QPPlannerRepair>: the initial state needs to be specified")
         self._planning_problem.initial_state = self._ego_vehicle.initial_state
@@ -76,13 +76,23 @@ class QPPlannerRepair(QPPlanner):
         print('\t\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
         lat_constr.select_proposition = long_constr.select_proposition
-        trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr)
+        d_reference = self.construct_d_reference()[1:]
+        trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr, d_reference)
         # convert trajectory to cartesian space
         if status is not 'optimal':
             return None
             # raise ValueError('<QPPlannerRepair/_lateral_trajectory_planning>: failed')
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
+
+    def construct_d_reference(self):
+        d_reference = []
+        for k in range(self._cut_off_time_step, self._cut_off_time_step + self.N + 1):
+            initial_position = self._initial_trajectory.state_at_time_step(k).position
+            d_k = self._vehicle_configuration.curvilinear_coordinate_system. \
+                convert_to_curvilinear_coords(initial_position[0], initial_position[1])[1]
+            d_reference.append(d_k)
+        return d_reference
 
     def convert_traj_to_ego_vehicle(self,
                                     cr_trajectory: Trajectory,
@@ -115,10 +125,11 @@ class QPPlannerRepair(QPPlanner):
             # convert the orientation here
             ref_orientation = compute_orientation_from_polyline(self.vehicle_configuration.reference_path)
             ref_pathlength = compute_pathlength_from_polyline(self.vehicle_configuration.reference_path)
-            orientation_interpolated = 0 # np.interp(state.position[0], ref_pathlength, ref_orientation)
+            orientation_interpolated = 0  # np.interp(state.position[0], ref_pathlength, ref_orientation)
             cartesian_traj_points.append(TrajPoint(
-               t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation + orientation_interpolated, v=state.v, a=state.a,
-               kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
+                t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation + orientation_interpolated, v=state.v,
+                a=state.a,
+                kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
 
         traj = QPTrajectory(cartesian_traj_points, TrajectoryType.CARTESIAN)
 
@@ -129,7 +140,7 @@ class QPPlannerRepair(QPPlanner):
             remaining_states = []
         else:
             remaining_states = [] + \
-                               self._initial_trajectory.state_list[:self._cut_off_time_step-1]
+                               self._initial_trajectory.state_list[:self._cut_off_time_step - 1]
         for state in cr_traj_repaired.state_list:
             state.time_step += self._cut_off_time_step
         cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
