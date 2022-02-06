@@ -1,4 +1,5 @@
 scenario_id,ego_id,rule
 DEU_LocationAUpper-42_18_T-1,15,R_G1
-DEU_LocationFUpper-60_43_T-1,16,R_G1
+DEU_LocationFUpper-60_43_T-1,19,R_G1
 DEU_LocationFUpper-60_43_T-1,22,R_G1
+DEU_LocationAUpper-31_21_T-1,18,R_G1

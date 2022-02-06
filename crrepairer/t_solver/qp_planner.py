@@ -65,6 +65,8 @@ class QPPlannerRepair(QPPlanner):
         self._planning_problem.goal = update_goal_state(self._initial_trajectory)
 
     def plan(self):
+        print('\t\t Longitudinal optimization')
+
         long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self._formulate_reference()
         traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon,
