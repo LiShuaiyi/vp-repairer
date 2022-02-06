@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import math
 
 scenario_id = "DEU_LocationALower-50_36_T-1"
+scenario_id = "DEU_LocationALower-27_39_T-1"
 
 file_path = "/home/yuanfei/commonroad/highD-dataset/highD-cr-scenarios/" \
             + scenario_id + ".xml"
@@ -20,7 +21,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 9
+    ego_id = 22
     rule = "R_G3"
 
     time_step = 0

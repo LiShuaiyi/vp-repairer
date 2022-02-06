@@ -1,0 +1,12 @@
+scenario_id,ego_id,rule,,,,
+DEU_LocationALower-39_47_T-1,9,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",13,12
+DEU_LocationALower-50_36_T-1,20,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",8,7
+DEU_LocationALower-44_9_T-1,15,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",40,39
+DEU_LocationALower-39_20_T-1,15,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",27,26
+DEU_LocationALower-43_37_T-1,15,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",25,24
+DEU_LocationALower-45_40_T-1,11,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",16,15
+DEU_LocationALower-45_40_T-1,12,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",19,18
+DEU_LocationAUpper-37_43_T-1,10,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",6,5
+DEU_LocationALower-44_25_T-1,15,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",35,34
+DEU_LocationALower-13_30_T-1,9,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",12,11
+DEU_LocationALower-45_39_T-1,24,R_G3,not repairable,"{'a', 'c', 'b', 'd'}",45,44
