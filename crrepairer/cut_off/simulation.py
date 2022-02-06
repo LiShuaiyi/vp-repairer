@@ -114,7 +114,8 @@ class SimulationLong(SimulationBase, ABC):
         while pre_state.time_step < self._time_horizon:
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
-            if suc_state and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
+            # todo: fix the speed limit
+            if suc_state: # and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
                 check_elements(suc_state)
                 if not hasattr(suc_state, "acceleration"):
                     suc_state.acceleration = (suc_state.velocity - pre_state.velocity)/self._dt
