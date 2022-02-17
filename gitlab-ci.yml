@@ -50,7 +50,9 @@ build_and_test_python_3_7:
   rules:
     - if: '$CI_COMMIT_BRANCH == "development" || $CI_PIPELINE_SOURCE == "merge_request_event"'
   before_script:
-    - source activate cr37
+    - conda init bash
+    - conda env create -f environment.yml
+    - source activate cr-py37
     - *python-prepare
     - *install-drivability-checker
   script:
