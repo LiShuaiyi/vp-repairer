@@ -1,0 +1,3 @@
+scenario_id,ego_id,rule,repairability,model,TV,TC
+DEU_LocationFUpper-60_43_T-1,22,R_G1,not repairable,"{'d', 'b', 'a', '~c'}",1,-inf
+DEU_LocationCUpper-6_23_T-1,11,R_G1,not repairable,"{'~d', 'b', '~a', '~c'}",2,-inf

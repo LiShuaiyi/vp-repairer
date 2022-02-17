@@ -1,0 +1,5 @@
+scenario_id,ego_id,repairability,model,TV,TC
+DEU_LocationALower-33_8_T-1,6,bingo,{'~a'},13,9
+DEU_LocationALower-27_27_T-1,11,bingo,{'~a'},23,22
+DEU_LocationAUpper-36_38_T-1,17,bingo,{'~a'},49,42
+Nr of scenario,3,Nr of infeasible trajectory,0,0.0,Nr of reparable trajectory,3,1.0

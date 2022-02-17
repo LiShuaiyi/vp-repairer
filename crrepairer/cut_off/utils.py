@@ -1,13 +1,13 @@
 import math
 
-from crmonitor.common.world_state import WorldState
-from crmonitor.common.vehicle import Vehicle
-from crmonitor.common.road_network import RoadNetwork
-from crmonitor.common.helper import (_compute_jerk,
-                                     _compute_acceleration,
-                                     update_curvilinear_states_long,
-                                     create_curvilinear_states
-                                     )
+from stl_crmonitor.crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.common.vehicle import Vehicle
+from stl_crmonitor.crmonitor.common.road_network import RoadNetwork
+from stl_crmonitor.crmonitor.common.helper import (_compute_jerk,
+                                                   _compute_acceleration,
+                                                   update_curvilinear_states_long,
+                                                   create_curvilinear_states
+                                                   )
 from typing import List, Union
 from vehiclemodels.parameters_vehicle1 import VehicleParameters
 from commonroad.scenario.obstacle import StaticObstacle, ObstacleType, DynamicObstacle
@@ -19,19 +19,23 @@ import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 
 
-def visualize_state_list(state_list: Union[State], scenario, obs_shape):
-    rnd = MPRenderer()
-    # scenario.draw(rnd)
-    scenario.lanelet_network.draw(rnd, draw_params={'time_begin': 20, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
-    trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
-    scenario.draw(rnd, draw_params={'time_begin': 20, 'trajectory': {'draw_trajectory': False}})
-    trajectory.draw(rnd, draw_params={'time_begin': 20, 'trajectory': {'draw_trajectory': True}})
-    rnd.render()
-    plt.show()
+def visualize_state_list(collision_checker, state_list: List[State], scenario, obs_shape):
+    for time_step in range(len(state_list)):
+        rnd = MPRenderer()
+        # scenario.draw(rnd)
+        # scenario.lanelet_network.draw(rnd, draw_params={'time_begin': time_step, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
+        trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
+        scenario.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True},
+                                        "occupancy": {"draw_occupancies": 1}})
+        trajectory.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True},
+                                        "occupancy": {"draw_occupancies": 1}})
+        # collision_checker.draw(rnd, draw_params={'time_begin': time_step, 'facecolor': 'blue', 'draw_mesh': False})
+        rnd.render()
+        plt.show()
 
 def check_velocity_feasibility(state: State, parameters: VehicleParameters):
     if state.velocity < 0 or \
-            state.velocity > parameters.longitudinal.v_max:
+            state.velocity > 60:#parameters.longitudinal.v_max:
         return False
     return True
 
@@ -108,8 +112,7 @@ def update_ego_vehicle(road_network: RoadNetwork,
             pre_cut_off_state = ego_initial_state
         else:
             pre_cut_off_state = updated_ego_states[cut_off_time - 2]
-        acceleration = _compute_acceleration(pre_cut_off_state.velocity,
-                                             cut_off_state.velocity, dt, )
+        acceleration = cut_off_state.acceleration
         if not hasattr(pre_cut_off_state, "acceleration"):
             pre_cut_off_state.acceleration = 0
         jerk = _compute_jerk(acceleration, pre_cut_off_state.acceleration, dt)
@@ -122,7 +125,7 @@ def update_ego_vehicle(road_network: RoadNetwork,
     # print(ego_vehicle.lanelet_assignment)
 
     for state in updated_ego_states[cut_off_time:]:
-        acceleration = _compute_acceleration(state_lon.v, state.velocity, dt)
+        acceleration = state.acceleration
         if state.time_step - 1 in ego_vehicle.states_lon:
             previous_acceleration = ego_vehicle.states_lon[state.time_step - 1].a
         else:  # previous state out of projection domain
@@ -145,8 +148,8 @@ def update_ego_vehicle(road_network: RoadNetwork,
         # use the shape lanelet assignment
         ego_vehicle.lanelet_assignment[state.time_step] = \
         set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
-    if ego_vehicle.end_time > len(updated_ego_states):
-        for time_step in range(len(updated_ego_states)+1, ego_vehicle.end_time+1):
+    if ego_vehicle.end_time > updated_ego_states[-1].time_step:
+        for time_step in range(updated_ego_states[-1].time_step+1, ego_vehicle.end_time+1):
             del ego_vehicle.states_lon[time_step]
             del ego_vehicle.states_lat[time_step]
             del ego_vehicle.states_cr[time_step]
