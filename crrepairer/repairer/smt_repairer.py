@@ -1,5 +1,4 @@
 from abc import ABC
-from enum import Enum
 import math
 
 from commonroad.scenario.scenario import DynamicObstacle
@@ -9,7 +8,7 @@ from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from commonroad_repair.crrepairer.sat_solver.sat_solver import SATSolver
 from commonroad_repair.crrepairer.t_solver.t_solver import TSolver
 
-from z3 import sat, unsat
+from z3 import sat
 from enum import Enum
 
 

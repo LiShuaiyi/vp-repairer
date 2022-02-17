@@ -1,4 +1,3 @@
-import abc
 import math
 import os.path
 from typing import Iterable, Union, Tuple, Any
@@ -7,7 +6,7 @@ import numpy as np
 
 from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
 from stl_crmonitor.crmonitor.common.world_state import WorldState
-# from mtl_crmonitor.common.commonroad_evaluation import CommonRoadObstacleEvaluation
+
 from commonroad.scenario.scenario import Scenario
 
 

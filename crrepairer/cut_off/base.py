@@ -2,25 +2,20 @@ import math
 from abc import ABC, abstractmethod
 from typing import Union
 import matplotlib.pyplot as plt
+
 # CommonRoad STL monitor
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 
 # CommonRoad Toolbox
 from commonroad.scenario.obstacle import DynamicObstacle, Shape
-from commonroad.scenario.scenario import Scenario
-from commonroad.scenario.trajectory import State, Trajectory
-from commonroad.prediction.prediction import TrajectoryPrediction
-from commonroad.geometry.shape import Rectangle
+from commonroad.scenario.trajectory import State
 import commonroad_dc.pycrcc as pycrcc
-from commonroad_dc.collision.trajectory_queries import trajectory_queries
 from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch import create_collision_checker, \
     create_collision_object
 import commonroad_dc.boundary.boundary as boundary
-from commonroad_dc.boundary.boundary import create_road_boundary_obstacle
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad_dc.collision.visualization.drawing \
-    import draw_collision_timevariantcollisionobject, \
-    draw_collision_collisionchecker, draw_collision_rectobb
+    import draw_collision_rectobb
 
 from commonroad_repair.crrepairer.cut_off.utils import transfer_state_list_to_prediction
 

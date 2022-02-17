@@ -3,7 +3,6 @@ from typing import List
 
 from commonroad_repair.crrepairer.cut_off.tc import TC
 from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction
-from commonroad_repair.crrepairer.abstraction.monitor import STLRuleMonitor
 from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 
