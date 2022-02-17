@@ -1,8 +1,6 @@
 from abc import ABC
 import math
 
-from commonroad.scenario.obstacle import DynamicObstacle
-from commonroad.scenario.scenario import Scenario
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase
 from commonroad_repair.crrepairer.cut_off.utils import visualize_state_list, int_round
 from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong

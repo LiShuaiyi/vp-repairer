@@ -4,9 +4,7 @@ import math
 from abc import ABC
 
 import numpy as np
-from commonroad.scenario.obstacle import State, DynamicObstacle
-from commonroad.scenario.scenario import Scenario
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from commonroad.scenario.obstacle import State
 
 import matplotlib.pyplot as plt
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase

@@ -1,20 +1,16 @@
 import math
 
-from stl_crmonitor.crmonitor.common.world_state import WorldState
 from stl_crmonitor.crmonitor.common.vehicle import Vehicle
 from stl_crmonitor.crmonitor.common.road_network import RoadNetwork
 from stl_crmonitor.crmonitor.common.helper import (_compute_jerk,
-                                                   _compute_acceleration,
                                                    update_curvilinear_states_long,
                                                    create_curvilinear_states
                                                    )
-from typing import List, Union
+from typing import List
 from vehiclemodels.parameters_vehicle1 import VehicleParameters
-from commonroad.scenario.obstacle import StaticObstacle, ObstacleType, DynamicObstacle
+from commonroad.scenario.obstacle import ObstacleType, DynamicObstacle
 from commonroad.scenario.trajectory import State, Trajectory
 from commonroad.prediction.prediction import TrajectoryPrediction
-from commonroad.geometry.shape import Rectangle
-from commonroad.common.solution import VehicleModel, VehicleType
 import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 

@@ -15,7 +15,6 @@ from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.scenario import Scenario
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.visualization.param_server import ParamServer
-# from commonroad_dc.collision.visualization.draw_dispatch import draw_object
 
 import commonroad_dc.pycrcc as pycrcc
 

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from enum import Enum
 from commonroad.scenario.trajectory import Trajectory
 
 """
