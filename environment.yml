@@ -1,0 +1,36 @@
+
+name: cr-py37
+channels:
+  - defaults
+dependencies:
+  - numpy-base=1.19.2=py37hfa32c7d_0
+  - openssl=1.1.1h=h7b6447c_0
+  - pip=20.2.4=py37h06a4308_0
+  - python=3.7.9=h7579374_0
+  - readline=8.0=h7b6447c_0
+  - setuptools=50.3.1=py37h06a4308_1
+  - six=1.15.0=py37h06a4308_0
+  - tk=8.6.10=hbc83047_0
+  - wheel=0.35.1=pyhd3eb1b0_0
+  - pip:
+    - antlr4-python3-runtime==4.5
+    - commonroad-io==2021.1
+    - commonroad-vehicle-models==1.0.0
+    - h5py==2.10.0
+    - numba==0.51.2
+    - numpy==1.19.2
+    - pandas==1.2.4
+    - pyarrow==3.0.0
+    - pybind11==2.6.1
+    - pytest==6.1.2
+    - python-benedict==0.23.2
+    - python-dateutil==2.8.1
+    - python-fsutil==0.4.0
+    - python-intervals==1.10.0.post1
+    - pyyaml==5.3.1
+    - ruamel-yaml==0.16.12
+    - ruamel-yaml-clib==0.2.2
+    - seaborn==0.11.1
+    - shapely==1.7.1
+    - singledispatch==3.4.0.3
+    - tqdm==4.53.0
