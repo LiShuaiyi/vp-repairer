@@ -1,6 +1,6 @@
-# commonroad_repair
+# commonroad_repairer
 
-Refactored repository for commonroad trajectory repairing 
+This repository contains a software package to solve trajectory repairing problems on [CommonRoad](https://commonroad.in.tum.de) considering traffic rules.
 
 ### The required Python dependencies
 * matplotlib>=3.3.4
