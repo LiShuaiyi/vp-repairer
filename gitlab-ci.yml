@@ -1,60 +1,38 @@
 stages:
-- style_check
-- style_check_merge_result
 - test
 
-image: $CI_REGISTRY/cps/rapid-prototyping-setup/ci:1.0
+image: continuumio/anaconda3
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  GIT_SUBMODULE_STRATEGY: recursive
+
+# Pip's cache doesn't store the python packages
+# https://pip.pypa.io/en/stable/reference/pip_install/#caching
+#
+# If you want to also cache the installed packages, you have to install
+# them in a virtualenv and cache it as well.
+#cache:
+#  paths:
+#    - .cache/pip
+#    - anaconda3/envs
 
 before_script:
-  # install ssh-agent
-  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
-    # run ssh-agent
-  - eval $(ssh-agent -s)
-    # add ssh key stored in SSH_PRIVATE_KEY variable to the agent store
-  - ssh-add <(echo "$SSH_PRIVATE_KEY")
-    # disable host key checking (NOTE: makes you susceptible to man-in-the-middle attacks)
-    # WARNING: use only in docker container, if you use it with shell you will overwrite your user's ssh config
-  - mkdir -p ~/.ssh
-  - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-  - apt update -qq -y && apt install ffmpeg -y
-
-.python-prepare: &python-prepare
-  - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.lrz.de".insteadOf "ssh://git@gitlab.lrz.de"
-  - pip install -r ./requirements.txt
-  - pip install tox coverage
-
-.install-drivability-checker: &install-drivability-checker
-  - cd ./src/commonroad-drivability-checker
-  - bash build.sh -e $CONDA_PREFIX -v 3.7 -i -j 2
-  - cd ../..
-
-style_checks:
-  stage: style_check
-  script:
-    - pip install pycodestyle
-    - git  diff ${CI_COMMIT_BEFORE_SHA}...${CI_COMMIT_SHA} -- '*.py' | pycodestyle --max-line-length=120 --diff
-  except:
-  - merge_requests
-  allow_failure: true
-
-style_check_merge_result:
-  stage: style_check
-  script:
-    - pip install pycodestyle
-    - git  diff ${CI_MERGE_REQUEST_TARGET_BRANCH_SHA}...${CI_MERGE_REQUEST_SOURCE_BRANCH_SHA} -- '*.py' | pycodestyle --max-line-length=120 --diff
-  only:
-  - merge_requests
+  - apt-get update && apt-get install -y cmake g++ libeigen3-dev libboost-all-dev
+  - conda init bash
+  #- git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.lrz.de/".insteadOf "git@gitlab.lrz.de:"
+  #- git submodule update --init --recursive  
+  - conda env create -f environment.yml
+  - source activate cr-py37
+  - conda info
+  - cd external/commonroad-drivability-checker/ && ./build.sh -e /opt/conda/envs/cr-py37 -v 3.7 -i -j 64 --no-root
+  - conda develop $CI_PROJECT_DIR
 
 build_and_test_python_3_7:
   stage: test
   rules:
-    - if: '$CI_COMMIT_BRANCH == "development" || $CI_PIPELINE_SOURCE == "merge_request_event"'
-  before_script:
-    - conda init bash
-    - conda env create -f environment.yml
-    - source activate cr-py37
-    - *python-prepare
-    - *install-drivability-checker
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_PIPELINE_SOURCE == "merge_request_event"'
   script:
     - python setup.py install
     - coverage run -m pytest tests
