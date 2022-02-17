@@ -1,9 +1,7 @@
 stages:
-- style_check
-- style_check_merge_result
 - test
 
-image: $CI_REGISTRY/cps/rapid-prototyping-setup/ci:1.0
+image: continuumio/anaconda3
 
 before_script:
   # install ssh-agent
@@ -27,23 +25,6 @@ before_script:
   - cd ./src/commonroad-drivability-checker
   - bash build.sh -e $CONDA_PREFIX -v 3.7 -i -j 2
   - cd ../..
-
-style_checks:
-  stage: style_check
-  script:
-    - pip install pycodestyle
-    - git  diff ${CI_COMMIT_BEFORE_SHA}...${CI_COMMIT_SHA} -- '*.py' | pycodestyle --max-line-length=120 --diff
-  except:
-  - merge_requests
-  allow_failure: true
-
-style_check_merge_result:
-  stage: style_check
-  script:
-    - pip install pycodestyle
-    - git  diff ${CI_MERGE_REQUEST_TARGET_BRANCH_SHA}...${CI_MERGE_REQUEST_SOURCE_BRANCH_SHA} -- '*.py' | pycodestyle --max-line-length=120 --diff
-  only:
-  - merge_requests
 
 build_and_test_python_3_7:
   stage: test
