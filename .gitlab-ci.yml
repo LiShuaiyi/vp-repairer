@@ -31,7 +31,11 @@ build_and_test_python_3_7:
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_PIPELINE_SOURCE == "merge_request_event"'
   before_script:
-    - source activate cr37
+    - apt-get update && apt-get install -y cmake g++ libeigen3-dev libboost-all-dev
+    - conda init bash 
+    - conda env create -f environment.yml
+    - source activate cr-py37
+    - conda info
     - *python-prepare
     - *install-drivability-checker
   script:
