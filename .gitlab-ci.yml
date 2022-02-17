@@ -29,7 +29,7 @@ before_script:
 build_and_test_python_3_7:
   stage: test
   rules:
-    - if: '$CI_COMMIT_BRANCH == "development" || $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_PIPELINE_SOURCE == "merge_request_event"'
   before_script:
     - source activate cr37
     - *python-prepare
