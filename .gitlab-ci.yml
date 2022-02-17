@@ -1,0 +1,59 @@
+stages:
+- style_check
+- style_check_merge_result
+- test
+
+image: $CI_REGISTRY/cps/rapid-prototyping-setup/ci:1.0
+
+before_script:
+  # install ssh-agent
+  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    # run ssh-agent
+  - eval $(ssh-agent -s)
+    # add ssh key stored in SSH_PRIVATE_KEY variable to the agent store
+  - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    # disable host key checking (NOTE: makes you susceptible to man-in-the-middle attacks)
+    # WARNING: use only in docker container, if you use it with shell you will overwrite your user's ssh config
+  - mkdir -p ~/.ssh
+  - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  - apt update -qq -y && apt install ffmpeg -y
+
+.python-prepare: &python-prepare
+  - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.lrz.de".insteadOf "ssh://git@gitlab.lrz.de"
+  - pip install -r ./requirements.txt
+  - pip install tox coverage
+
+.install-drivability-checker: &install-drivability-checker
+  - cd ./src/commonroad-drivability-checker
+  - bash build.sh -e $CONDA_PREFIX -v 3.7 -i -j 2
+  - cd ../..
+
+style_checks:
+  stage: style_check
+  script:
+    - pip install pycodestyle
+    - git  diff ${CI_COMMIT_BEFORE_SHA}...${CI_COMMIT_SHA} -- '*.py' | pycodestyle --max-line-length=120 --diff
+  except:
+  - merge_requests
+  allow_failure: true
+
+style_check_merge_result:
+  stage: style_check
+  script:
+    - pip install pycodestyle
+    - git  diff ${CI_MERGE_REQUEST_TARGET_BRANCH_SHA}...${CI_MERGE_REQUEST_SOURCE_BRANCH_SHA} -- '*.py' | pycodestyle --max-line-length=120 --diff
+  only:
+  - merge_requests
+
+build_and_test_python_3_7:
+  stage: test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development" || $CI_PIPELINE_SOURCE == "merge_request_event"'
+  before_script:
+    - source activate cr37
+    - *python-prepare
+    - *install-drivability-checker
+  script:
+    - python setup.py install
+    - coverage run -m pytest tests
+    - coverage report -m || true
