@@ -7,6 +7,7 @@ dependencies:
   - python=3.7.9=h7579374_0
   - setuptools=50.3.1=py37h06a4308_1
   - pip:
+    - install --upgrade pip setuptools wheel
     - commonroad-io==2021.1
     - commonroad-vehicle-models==1.0.0
     - numpy==1.19.5
