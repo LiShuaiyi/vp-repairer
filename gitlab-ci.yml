@@ -28,6 +28,7 @@ before_script:]
   - conda env create -f environment.yml
   - source activate cr-py37
   - conda info
+  - conda install -c conda-forge cvxpy
   - cd external/commonroad-drivability-checker/ && ./build.sh -e /opt/conda/envs/cr-py37 -v 3.7 -i -j 64 --no-root
   - cd external/stl_crmonitor/ && git submodule update --init --recursive && pip install external/rtamt && conda develop .
   - conda develop $CI_PROJECT_DIR

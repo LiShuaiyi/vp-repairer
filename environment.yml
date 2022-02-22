@@ -19,6 +19,5 @@ dependencies:
     - pyyaml
     - p5py
     - PEP517
-    - cvxpy
     - osqp==0.6.2
 
