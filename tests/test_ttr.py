@@ -2,7 +2,6 @@
 Unit tests of the module time-to-react computation
 """
 
-
 import os
 import unittest
 import math
