@@ -7,11 +7,6 @@ from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 
 
-class SATISFIABILITY(Enum):
-    SAT = "satisfiable"
-    UNSAT = "unsatisfiable"
-
-
 class SATSolver:
     def __init__(self,
                  rule_abstracter: RuleAbstracter):
@@ -22,14 +17,9 @@ class SATSolver:
         self._dpll_solver = DPLL(self._formula, self._prop_robust_all, rule_abstracter.rule_monitor.tv_time_step)
         self._dpll_model = None
 
-
     @property
     def formula(self):
         return self._formula
-
-    @property
-    def satisfiable_subformula_list(self):
-        return self._sat_list
 
     @property
     def initial_assignment(self):
