@@ -46,7 +46,7 @@ before_script:
 build_and_test_python_3_7:
   stage: test
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main" || $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "master" || $CI_PIPELINE_SOURCE == "merge_request_event"'
   script:
     - python setup.py install
     - cd $CI_PROJECT_DIR/tests && python -m unittest
