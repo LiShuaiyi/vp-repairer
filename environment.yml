@@ -1,12 +1,15 @@
 
 name: cr-py37
+
 channels:
   - defaults
+  
 dependencies:
-  - pip=20.2.4=py37h06a4308_0
-  - python=3.7.9=h7579374_0
-  - setuptools=50.3.1=py37h06a4308_1
+  - python=3.7
+  - pip=20.2.4
   - pip:
+    # environment dependencies
+    - setuptools==50.3.2
     - commonroad-io==2021.1
     - commonroad-vehicle-models==1.0.0
     - numpy==1.19.5
