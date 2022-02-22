@@ -3,12 +3,13 @@ import math
 import unittest
 from sympy.logic.boolalg import is_cnf
 
-from abstraction.abstracter import RuleAbstracter
-from sat_solver.sat_solver import SATSolver, SATISFIABILITY
-from t_solver.t_solver import TSolver, CutOffAction
-from sat_solver.dpll import DPLL
-from t_solver.qp_planner import QPPlannerRepair
-from crmonitor.predicates.rule import PropositionNode
+from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.sat_solver.sat_solver import SATSolver
+from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
+from commonroad_repair.crrepairer.t_solver.t_solver import TSolver, CutOffAction
+from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
+
+from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer
