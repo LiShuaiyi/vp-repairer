@@ -1,6 +1,6 @@
 import math
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import List, Union
 import matplotlib.pyplot as plt
 
 # CommonRoad STL monitor
@@ -31,7 +31,7 @@ class CutOffBase(ABC):
         self._world_state = world_state
         self._N = self._world_state.num_time_steps
         self._dT = world_state.dt
-        self._visualize = True
+        self._visualize = False
         if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:
             self.scenario.remove_obstacle(self._ego_vehicle)
         road_boundary_obstacle, road_boundary_sg_rectangles = boundary.create_road_boundary_obstacle(self.scenario)
@@ -80,7 +80,7 @@ class CutOffBase(ABC):
         """
         pass
 
-    def _calc_ttc(self, state_list: Union[State]):
+    def _calc_ttc(self, state_list: List[State]):
         """
         Detects the collision time given the trajectory of ego_vehicle using a for loop over
         the state list.
@@ -98,7 +98,7 @@ class CutOffBase(ABC):
             if self._collision_checker.collide(ego):
                 if self._visualize:
                     rnd = MPRenderer()
-                    ego_obb = pycrcc.RectOBB(0.5 *  self._shape.length,
+                    ego_obb = pycrcc.RectOBB(0.5 * self._shape.length,
                                              0.5 * self._shape.width,
                                              theta, pos1, pos2)
                     draw_collision_rectobb(ego_obb, rnd)

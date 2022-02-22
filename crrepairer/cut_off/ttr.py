@@ -16,7 +16,7 @@ class TTR(CutOffBase, ABC):
                  world_state: WorldState):
         super().__init__(world_state)
         # calculate the time-to-collision as default value
-        self._ttc = self._calc_ttc(world_state.ego_vehicle.states_cr)
+        self._ttc = self._calc_ttc(world_state.ego_vehicle.state_list_cr)
         self._visualize = False
 
     @property
