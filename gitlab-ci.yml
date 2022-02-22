@@ -18,7 +18,8 @@ variables:
 #    - .cache/pip
 #    - anaconda3/envs
 
-before_script:
+before_script:]
+  - apt-get update && apt-get install -y cmake g++ libeigen3-dev libboost-all-dev
   - conda init bash
   #- git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.lrz.de/".insteadOf "git@gitlab.lrz.de:"
   #- git submodule update --init --recursive  
