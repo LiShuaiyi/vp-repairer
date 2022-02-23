@@ -1,6 +1,6 @@
 [submodule "external/commonroad-drivability-checker"]
 	path = external/commonroad-drivability-checker
-	url = git@gitlab.lrz.de:cps/commonroad-drivability-checker.git
+	url = git@gitlab.lrz.de:tum-cps/commonroad-drivability-checker.git
 [submodule "external/stl_crmonitor"]
 	path = external/stl_crmonitor
 	url = git@gitlab.lrz.de:ge69xek/stl_crmonitor.git
