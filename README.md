@@ -36,7 +36,7 @@ Then, install the dependencies with:
 ```sh
 $ pip install -r requirements.txt
 ```
-This will install related dependencies specified in `requirements.txt`. 
+This will install related dependencies specified in `requirements.txt`. Or simply install the dependencies listed in `requirements.txt` and add this repository to your python path.
 
 ## Folder structure
 ```
@@ -74,7 +74,8 @@ commonroad-repairer
 ├─ README.md                                            
 └─ setup.py                                      
 ```
+## Minimal Example
+A tutorial notebook and an example script can be found under the `tutorial/` folder.
 
-[1] https://www.highd-dataset.com/
-
-[2] https://commonroad.in.tum.de/dataset-converters
+- [1] https://www.highd-dataset.com/
+- [2] https://commonroad.in.tum.de/dataset-converters
