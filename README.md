@@ -4,19 +4,39 @@ This repository contains a software package to solve trajectory repairing proble
 
 ## The required Python dependencies
 The code is written in Python 3.7 and has been tested on Ubuntu 20.04. 
-* matplotlib>=3.3.4
-* numpy>=1.19.5
-* sympy>=1.8
-* setuptools>=50.3.2
-* z3-solver>=4.8.12.0
-* cvxpy>=1.1.15
-* osqp>=0.6.2
-* mosek>=9.3.11
-* commonroad-io>=2021.1
-* commonroad-vehicle-models>=1.0.0
+
+You have to mannually install the following packages:
 * [commonroad-qp-planner/feature_safe_distance](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner)
 * [CommonRoad Drivability Checker>=2021.1/](https://commonroad.in.tum.de/drivability-checker)
 * [STL CRmonitor/feature_interface](https://gitlab.lrz.de/ge69xek/stl_crmonitor)
+
+## Installation Guide
+We recommend using [Anaconda](https://www.anaconda.com/) to manage your environment so that even if you mess something up, you can always have a safe and clean restart. A guide for managing python environments with Anaconda can be found [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
+
+After installing Anaconda, create a new environment with:
+``` sh
+$ conda create -n commonroad-py37 python=3.7 -y
+```
+
+Here the name of the environment is called **commonroad-py37**. You may also change this name as you wish. In such case, don't forget to change it in the following commands as well. **Always activate** this environment before you do anything related:
+
+```sh
+$ conda activate commonroad-py37
+or
+$ source activate commonroad-py37
+```
+Install `Jupyter Notebook` and supplementary modules:
+```sh
+$ conda install jupyter ipykernel ipywidgets sphinx scipy -y
+$ jupyter nbextension install --py widgetsnbextension --user
+$ jupyter nbextension enable widgetsnbextension --user --py
+```
+Then, install the dependencies with:
+
+```sh
+$ pip install -r requirements.txt
+```
+This will install related dependencies specified in `requirements.txt`. 
 
 ## Folder structure
 ```
@@ -44,7 +64,7 @@ commonroad-repairer
 |     ├─ rule_constraints               # Script to add rule constraints based on the assignments of predicates 
 |     ├─ t_solver                       # Theory solver
 |     ├─ utils                          # Utility functions for the T-solver
-├─ evaluate
+├─ evaluate                             # Evaluation with HighD scenarios[1] using converter[2]
 ├─ external
 ├─ scenarios
 ├─ tests
