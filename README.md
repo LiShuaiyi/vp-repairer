@@ -64,8 +64,7 @@ commonroad-repairer
 |     ├─ rule_constraints               # Script to add rule constraints based on the assignments of predicates 
 |     ├─ t_solver                       # Theory solver
 |     ├─ utils                          # Utility functions for the T-solver
-├─ evaluate                             # Evaluation with HighD scenarios[1] using converter[2]
-├─ external
+├─ evaluation                           # Evaluation with HighD scenarios[1] using converter[2]
 ├─ scenarios
 ├─ tests
 ├─ tutorials
