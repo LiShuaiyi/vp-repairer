@@ -19,7 +19,6 @@ before_script:
 test:
   stage: test
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"' 
-      when: on_success
+    - when: on_success
   script:
     - cd $CI_PROJECT_DIR/tests && python -m unittest
