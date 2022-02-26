@@ -11,7 +11,7 @@ from stl_crmonitor.crmonitor.common.world_state import WorldState
 
 from commonroad_repair.crrepairer.cut_off.tc import TC
 from commonroad_repair.crrepairer.cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
-from commonroad_repair.crrepairer.cut_off.utils import check_velocity_feasibility
+from commonroad_repair.crrepairer.cut_off.utils import check_velocity_feasibility, update_ego_vehicle
 from commonroad_repair.crrepairer.abstraction.monitor import STLRuleMonitor
 
 
@@ -119,3 +119,44 @@ class TestTC(unittest.TestCase):
         self.assertEqual(
             tc_object.compliant_maneuver, CutOffAction.BRAKE
         )
+
+    def test_update_world_state(self):
+        # simulate a new trajectory of the ego vehicle
+        ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
+        sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0)
+        new_state_list = sim_long.simulate_state_list()
+        # 1. directly update the ego vehicle
+        update_ego_vehicle(self.world_state.road_network,
+                           self.world_state.ego_vehicle,
+                           new_state_list,
+                           0,
+                           self.world_state.dt)
+        # 2. recreate the world state
+        ego_vehicle.prediction.trajectory.state_list = new_state_list
+        ego_vehicle.prediction.trajectory.initial_time_step = 0  # bugfix: the initial time step is 0
+        world_state_updated = WorldState.create_from_scenario(self.scenario, self.ego_id)
+        # comparison
+        # ---> length of the state list
+        self.assertEqual(
+            len(self.world_state.ego_vehicle.states_cr),
+            len(world_state_updated.ego_vehicle.states_cr),
+        )
+        self.assertEqual(
+            len(self.world_state.ego_vehicle.states_lon),
+            len(world_state_updated.ego_vehicle.states_lon),
+        )
+        self.assertEqual(
+            len(self.world_state.ego_vehicle.states_lat),
+            len(world_state_updated.ego_vehicle.states_lat),
+        )
+        # ---> check the final state
+        # whether its the same
+        self.assertTrue(self.world_state.ego_vehicle.state_list_cr[-1] ==
+                        world_state_updated.ego_vehicle.state_list_cr[-1])
+        self.assertTrue(self.world_state.ego_vehicle.states_lat[ego_vehicle.prediction.final_time_step].d ==
+                        world_state_updated.ego_vehicle.states_lat[ego_vehicle.prediction.final_time_step].d)
+        self.assertTrue(self.world_state.ego_vehicle.states_lon[ego_vehicle.prediction.final_time_step].s ==
+                        world_state_updated.ego_vehicle.states_lon[ego_vehicle.prediction.final_time_step].s)
+        # ---> check the lane
+        self.assertEqual(self.world_state.ego_vehicle.lane.contained_lanelets,
+                         world_state_updated.ego_vehicle.lane.contained_lanelets)
