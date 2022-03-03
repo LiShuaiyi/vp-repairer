@@ -206,7 +206,7 @@ class RuleConstraints:
         # prec_veh, foll_veh = self._determine_related_veh(self._tc_obj.tc_time_step,
         #                                                  self._target_lanes[self._tc_obj.tc_time_step])
         # num_target_lanes = len(self._target_lanes[self._tc_obj.tc_time_step])
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
             # if len(self._target_lanes[k]) < num_target_lanes:
             if k in self._target_lanes:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
