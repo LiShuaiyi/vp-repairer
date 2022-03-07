@@ -26,17 +26,26 @@ class SATSolver:
         return self._init_assign
 
     @staticmethod
+    def stl2sympy(input_formula: str):
+        return input_formula.replace("and", "&").replace("or", "|").replace("!", "~").replace("implies", ">>")
+
+    @staticmethod
     def construct_cnf(stl_formula):
         """
         Construct Conjunctive Normal Form (CNF) using sympy - first needs to convert the formula to sp's interface.
         """
-
-        def stl2sympy(input_formula: str):
-            return input_formula.replace("and", "&").replace("or", "|").replace("!", "~").replace("implies", ">>")
-
-        sp_formula = stl2sympy(stl_formula)
+        sp_formula = SATSolver.stl2sympy(stl_formula)
         cnf_formula = str(sp.to_cnf(sp_formula))
         return cnf_formula
+
+    @staticmethod
+    def construct_dnf(stl_formula):
+        """
+        Construct Disjunctive Normal Form (CNF) using sympy - first needs to convert the formula to sp's interface.
+        """
+        sp_formula = SATSolver.stl2sympy(stl_formula)
+        dnf_formula = str(sp.to_dnf(sp_formula))
+        return dnf_formula
 
     def check_prior_satisfiability(self, abs_robust_tv):
         self._init_assign = self.obtain_initial_assignment(abs_robust_tv)

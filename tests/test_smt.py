@@ -1,7 +1,7 @@
 import os
 import math
 import unittest
-from sympy.logic.boolalg import is_cnf
+from sympy.logic.boolalg import is_cnf, is_dnf
 
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from commonroad_repair.crrepairer.sat_solver.sat_solver import SATSolver
@@ -78,9 +78,8 @@ class TestSMTSolver(unittest.TestCase):
                             if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
         t_solver.assign_proposition([proposition], ["d"])
         # safe distance
-        self.assertEqual(t_solver.compliant_maneuvers,
-                         [CutOffAction.BRAKE,
-                          CutOffAction.KICKDOWN])
+        self.assertEqual(set(t_solver.compliant_maneuvers),
+                         {CutOffAction.BRAKE, CutOffAction.KICKDOWN})
         tc = t_solver.search_tc()
         assert math.isclose(tc,
                             1.9,
@@ -104,6 +103,14 @@ class TestSMTSolver(unittest.TestCase):
                          unsat)
         self.assertEqual(dpll_solver.model,
                          set())
+
+    def test_cnf_dnf_converter(self):
+        original_formula = '(a and b and !c) implies d'
+        sat_solver = SATSolver(self.rule_abstracter)
+        cnf_formula = sat_solver.construct_cnf(original_formula)
+        self.assertTrue(is_cnf(cnf_formula))
+        dnf_formula = sat_solver.construct_dnf(original_formula)
+        self.assertTrue(is_cnf(dnf_formula))
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self.rule_abstracter)
