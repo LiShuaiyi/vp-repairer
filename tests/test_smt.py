@@ -110,7 +110,7 @@ class TestSMTSolver(unittest.TestCase):
         cnf_formula = sat_solver.construct_cnf(original_formula)
         self.assertTrue(is_cnf(cnf_formula))
         dnf_formula = sat_solver.construct_dnf(original_formula)
-        self.assertTrue(is_cnf(dnf_formula))
+        self.assertTrue(is_dnf(dnf_formula))
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self.rule_abstracter)
