@@ -78,7 +78,7 @@ class QPPlannerRepair(QPPlanner):
         print('\t\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
         lat_constr.select_proposition = long_constr.select_proposition
-        d_reference = self.construct_d_reference()[1:]
+        d_reference = self.construct_d_reference()
         trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr, d_reference)
         # convert trajectory to cartesian space
         if status is not 'optimal':
@@ -89,7 +89,7 @@ class QPPlannerRepair(QPPlanner):
 
     def construct_d_reference(self):
         d_reference = []
-        for k in range(self._cut_off_time_step, self._cut_off_time_step + self.N + 1):
+        for k in range(self._cut_off_time_step, self._cut_off_time_step + self.N):
             initial_position = self._initial_trajectory.state_at_time_step(k).position
             d_k = self._vehicle_configuration.curvilinear_coordinate_system. \
                 convert_to_curvilinear_coords(initial_position[0], initial_position[1])[1]
@@ -142,7 +142,7 @@ class QPPlannerRepair(QPPlanner):
             remaining_states = []
         else:
             remaining_states = [] + \
-                               self._initial_trajectory.state_list[:self._cut_off_time_step - 1]
+                               self._initial_trajectory.states_in_time_interval(1, self._cut_off_time_step-1)
         for state in cr_traj_repaired.state_list:
             state.time_step += self._cut_off_time_step
         cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
@@ -150,7 +150,9 @@ class QPPlannerRepair(QPPlanner):
 
     def _formulate_reference(self):
         x_ref = list()
-        for state in self._initial_trajectory.state_list[self._cut_off_time_step:]:
+
+        for state in self._initial_trajectory.states_in_time_interval(self._cut_off_time_step,
+                                                                      self._ego_vehicle.prediction.final_time_step):
             pos = convert_pos_curvilinear(state, self._vehicle_configuration)
             x_ref.append(QPLongState(pos[0], state.velocity, 0., 0., 0.))
         return QPLongReference(x_ref)

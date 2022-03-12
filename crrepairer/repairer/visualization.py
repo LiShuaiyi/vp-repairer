@@ -130,8 +130,7 @@ def visualize_repairing_result(scenario: Scenario,
                                plot_limits = None,
                                end_time=None,
                                tc=None,
-                               target_veh=None,
-                               ego_initial=None):
+                               target_veh=None,):
     """
     Function to visualize complete planning result from the reactive planner for a given time step
     :param scenario: CommonRoad scenario object

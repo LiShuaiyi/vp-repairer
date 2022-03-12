@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="commonroad-repairer",
+    name="commonroad_repair",
     version="0.0.1",
     author="Cyber-Physical Systems Group, Technical University of Munich",
     author_email="commonroad@lists.lrz.de",
@@ -14,7 +14,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: BSD License",
         "Operating System :: OS Independent",
     ],
 )

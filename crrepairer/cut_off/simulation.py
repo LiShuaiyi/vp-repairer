@@ -51,6 +51,10 @@ class SimulationBase(ABC):
     def action(self):
         return self._action
 
+    @action.setter
+    def action(self, action: CutOffAction):
+        self._action = action
+
     @property
     def parameters(self):
         return self._parameters

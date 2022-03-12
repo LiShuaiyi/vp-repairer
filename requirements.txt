@@ -1,6 +1,10 @@
-commonroad-vehicle-models>=2.0.0
-git+ssh://git@gitlab.lrz.de/cps/commonroad-io.git@develop#egg=commonroad-io
-git+ssh://git@gitlab.lrz.de/tum-cps/commonroad-route-planner.git@main#egg=commonroad-route-planner
--e git+ssh://git@gitlab.lrz.de/tum-cps/commonroad-drivability-checker.git@v2021.3#egg=commonroad-drivability-checker
-git+ssh://git@gitlab.lrz.de/yuanfei/commonroad-qp-planner.git@feature_safe_distance#egg=commonroad-qp-planner
-git+ssh://git@gitlab.lrz.de:ge69xek/stl_crmonitor.git@feature_interface#egg=stl_crmonitor
+matplotlib>=3.3.4
+numpy>=1.19.5
+sympy>=1.8
+setuptools>=50.3.2
+z3-solver>=4.8.12.0
+cvxpy>=1.1.15
+osqp>=0.6.2
+Mosek
+commonroad-io>=2021.1
+commonroad-vehicle-models>=1.0.0

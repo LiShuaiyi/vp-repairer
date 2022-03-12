@@ -1,8 +1,8 @@
-from abstraction.abstracter import RuleAbstracter
-from t_solver.t_solver import TSolver
-from t_solver.qp_planner import QPPlannerRepair
-from repairer.smt_repairer import SMTTrajectoryRepairer
-from t_solver.utils import convert_traj_to_ego_vehicle
+from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.t_solver.t_solver import TSolver
+from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
+from commonroad_repair.crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
+from commonroad_repair.crrepairer.t_solver.utils import convert_traj_to_ego_vehicle
 from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_v_profile,\
     visualize_initial_result
 
@@ -14,7 +14,7 @@ import math
 
 scenario_id = "DEU_Muc-4_2_T-1"
 
-file_path = "../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
+file_path = "../../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
 
 figure_path = "/home/yuanfei/commonroad/commonroad_repair/tests/figures/"
 
