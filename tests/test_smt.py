@@ -45,12 +45,6 @@ class TestSMTSolver(unittest.TestCase):
             rule_monitor.other_id, 1004
         )
 
-    def test_select_predicates(self):
-        predicates = self.rule_abstracter.select_predicates()
-        self.assertEqual(
-            predicates[0].base_name, "keeps_safe_distance_prec"
-        )
-
     def test_sat_solver(self):
         sat_solver = SATSolver(self.rule_abstracter)
         # check whether the formula in the sat solver is CNF or not
