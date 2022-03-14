@@ -87,7 +87,7 @@ class TestSMTSolver(unittest.TestCase):
                             abs_tol=1e-2)
 
     def test_dpll(self):
-        dpll_solver = DPLL('~a | ~b | c | d', self.rule_abstracter.prop_robust_ttv)
+        dpll_solver = DPLL('~a | ~b | c | d', self.rule_abstracter.rule_monitor.prop_robust_ttv)
         self.assertEqual(dpll_solver.solve(),
                          sat)
         self.assertEqual(list(dpll_solver.model),

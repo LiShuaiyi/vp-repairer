@@ -12,7 +12,7 @@ class SATSolver:
                  rule_abstracter: RuleAbstracter):
         self._formula = self.construct_cnf(rule_abstracter.sat_encoding)
         self._prop_nodes = rule_abstracter.propositions
-        self._prop_robust_all = rule_abstracter.prop_robust_all
+        self._prop_robust_all = rule_abstracter.rule_monitor.prop_robust_all
         self._init_assign = list()
         self._dpll_solver = DPLL(self._formula, self._prop_robust_all, rule_abstracter.rule_monitor.tv_time_step)
         self._dpll_model = None

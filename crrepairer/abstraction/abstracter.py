@@ -25,8 +25,6 @@ class RuleAbstracter:
                                                        planning_problem,
                                                        vehicle_id)
         self._rule_monitor = STLRuleMonitor(self._world_state, rule_str)
-        self._prop_rob_ttv = self._rule_monitor.prop_robust_ttv
-        self._prop_rob_all = self._rule_monitor.prop_robust_all
         self._vehicle_id = vehicle_id
         # if there is no other id
         if self._rule_monitor.other_id is None or not isinstance(self._rule_monitor.other_id, int):
@@ -53,14 +51,6 @@ class RuleAbstracter:
     @property
     def rule_monitor(self) -> STLRuleMonitor:
         return self._rule_monitor
-
-    @property
-    def prop_robust_ttv(self):
-        return self._prop_rob_ttv
-
-    @property
-    def prop_robust_all(self):
-        return self._prop_rob_all
 
     @property
     def world_state(self) -> WorldState:
