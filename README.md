@@ -2,6 +2,11 @@
 
 This repository contains a software package to solve trajectory repairing problems on [CommonRoad](https://commonroad.in.tum.de) considering traffic rules.
 
+## About Trajectory repairing
+_Inspired by Randall Munroe, I describe my research using the 1,200 most common English words from www.wordfrequency.info._ 
+
+We want our cars to always plan a safe path. But environments change every time. Thus, the path cannot be used as we want or does not follow traffic rules from time to time. One possible solution is to remain part of the path and plan the rest.
+
 ## The required Python dependencies
 The code is written in Python 3.7 and has been tested on Ubuntu 20.04. 
 
