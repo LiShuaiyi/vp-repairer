@@ -32,18 +32,15 @@ class SimulationBase(ABC):
         self._time_horizon = simulated_vehicle.prediction.final_time_step
         self._action = action
         self._simulated_vehicle = simulated_vehicle
+        self._start_time = start_time
         self._cut_off_state = simulated_vehicle.state_at_time(start_time)
-        if simulated_vehicle.prediction.trajectory.state_list[0].time_step != 0:
-            self._state_list = [simulated_vehicle.initial_state] + \
-                               simulated_vehicle.prediction.trajectory.state_list[:start_time]
-        else:
-            self._state_list = [simulated_vehicle.initial_state] + \
-                               simulated_vehicle.prediction.trajectory.state_list[1:start_time]
+        self._state_list = simulated_vehicle.prediction.trajectory.states_in_time_interval(0, start_time)
         for state in self._state_list:
             if not hasattr(state, "velocity_y"):
                 state.velocity_y = state.velocity * math.sin(state.orientation)
         self._input: State = State(steering_angle_speed=0,
                                    acceleration=0)
+        # currently: point mass model since KS model has some infeasibility issues
         self._vehicle_dynamics = PointMassDynamics(VehicleType.BMW_320i)
         self._parameters = self._vehicle_dynamics.parameters
 
@@ -76,11 +73,17 @@ class SimulationBase(ABC):
         return self._start_time
 
     @abstractmethod
-    def set_inputs(self):
+    def set_inputs(self, *args, **kwargs):
+        """
+        sets the input pairs
+        """
         pass
 
     @abstractmethod
     def simulate_state_list(self):
+        """
+        forward simulation of the state list
+        """
         pass
 
 
@@ -89,24 +92,30 @@ class SimulationLong(SimulationBase, ABC):
                  simulated_vehicle: DynamicObstacle,
                  start_time: int):
         assert action == CutOffAction.BRAKE or action == CutOffAction.KICKDOWN \
-               or action == CutOffAction.STEADYSPEED, "<SimulationLong>: provided action {} is not supported".format(
-            action)
+               or action == CutOffAction.STEADYSPEED, \
+               "<SimulationLong>: provided action {} is not supported".format(action)
         self.j_limit = 5
         super().__init__(action, simulated_vehicle, start_time, dt=0.1)
 
     def set_inputs(self, pre_state):
+        """
+        sets inputs for the longitudinal simulation
+        """
         velocity = pre_state.velocity
         self._input.acceleration_y = 0
         a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
         if self.action == CutOffAction.BRAKE:
+            # braking
             self._input.acceleration = - a_max
         elif self.action == CutOffAction.KICKDOWN:
+            # kickdowning
             v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch
             if velocity > v_switch:
                 a_max = self._vehicle_dynamics.parameters.longitudinal.a_max * v_switch / velocity
             self._input.acceleration = a_max
         else:
-            self._input.acceleration = min(0, pre_state.acceleration+self.j_limit*self._dt)
+            # constant velocity
+            self._input.acceleration = min(0, pre_state.acceleration + self.j_limit * self._dt)
 
     def simulate_state_list(self):
         pre_state = self._cut_off_state
@@ -116,11 +125,10 @@ class SimulationLong(SimulationBase, ABC):
         while pre_state.time_step < self._time_horizon:
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
-            # todo: fix the speed limit
             if suc_state and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
                 check_elements(suc_state)
                 if not hasattr(suc_state, "acceleration"):
-                    suc_state.acceleration = (suc_state.velocity - pre_state.velocity)/self._dt
+                    suc_state.acceleration = (suc_state.velocity - pre_state.velocity) / self._dt
                 # if abs(suc_state.orientation) > np.pi/2:
                 #     suc_state.orientation = np.sign(suc_state.orientation)*abs(suc_state.orientation-np.pi/2)
                 self._state_list.append(suc_state)
@@ -143,10 +151,17 @@ class SimulationLateral(SimulationBase, ABC):
         self._world_state = world_state
 
     def set_target_lane(self):
+        """
+        based on the lane structure within stl monitor.
+        """
         if self.action == CutOffAction.LANECHANGELEFT:
             return self._world_state.ego_vehicle.lane.adj_left
-        else:
+        elif self.action == CutOffAction.LANECHANGERIGHT:
             return self._world_state.ego_vehicle.lane.adj_right
+        elif self.action in (CutOffAction.STEERLEFT, CutOffAction.STEERRIGHT):
+            return self._world_state.ego_vehicle.lane
+        else:
+            return None
 
     def calc_total_time(self, lat_dist):
         """
@@ -163,6 +178,10 @@ class SimulationLateral(SimulationBase, ABC):
         return sqrt(2 * abs(lat_dist / self._input.acceleration_y))
 
     def set_inputs(self, velocity):
+        """
+        for lane-related traffic rules, we specify the steering maneuver as lane change, i.e., lateral offsets are
+        based on the lane width.
+        """
         self._input.acceleration = 0
         v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch
         if velocity > v_switch:
@@ -170,8 +189,10 @@ class SimulationLateral(SimulationBase, ABC):
         else:
             a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
         if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.STEERLEFT]:
+            # steering to the left
             self._input.acceleration_y = a_max
         elif self.action in [CutOffAction.LANECHANGERIGHT, CutOffAction.STEERRIGHT]:
+            # steering to the right
             self._input.acceleration_y = - a_max
         else:
             self._input.acceleration_y = 0
@@ -180,7 +201,7 @@ class SimulationLateral(SimulationBase, ABC):
         if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
             # todo: fix the lane of the ego
             ego_lane_width = self._world_state.ego_vehicle.lane.width(ego_s)
-            ego_to_lane_boundary = ego_lane_width/2 - abs(ego_d)
+            ego_to_lane_boundary = ego_lane_width / 2 - abs(ego_d)
             lateral_distance = ego_to_lane_boundary + target_lane.width(ego_s) / 2
         else:
             # from paper: A flexible method for criticality assessment in driver assistance systems
@@ -190,16 +211,20 @@ class SimulationLateral(SimulationBase, ABC):
         return bang_bang_time
 
     def set_maximal_orientation(self, lane_orientation):
+        """
+        adds additional constraints for the orientation.
+        """
         if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.STEERLEFT]:
-            return lane_orientation + math.pi/4
+            return lane_orientation + math.pi / 4
         elif self.action in [CutOffAction.LANECHANGERIGHT, CutOffAction.STEERRIGHT]:
-            return lane_orientation - math.pi/4
+            return lane_orientation - math.pi / 4
         else:
             pass
 
-    def bang_bang_simulation(self, state, time_horizon, max_orientation):
+    def bang_bang_simulation(self, state, simulation_time, max_orientation):
         pre_state = state
-        while pre_state.time_step < state.time_step + time_horizon:
+        suc_state = state
+        while pre_state.time_step < state.time_step + simulation_time:
             self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
             if suc_state:  # and check_steering_angle_feasibility(suc_state, self._vehicle_dynamics.parameters):
@@ -209,6 +234,7 @@ class SimulationLateral(SimulationBase, ABC):
                 if abs(suc_state.orientation) > abs(max_orientation):
                     break
             else:
+                # in case the suc_state is infeasible
                 self._input.acceleration_y = 0
         return suc_state
 
@@ -216,11 +242,10 @@ class SimulationLateral(SimulationBase, ABC):
         self.set_inputs(self._cut_off_state.velocity)
         target_lane = self.set_target_lane()
         if target_lane is None:
+            # lane change is impossible
             return None
         current_ego_s, current_ego_d = self._world_state.ego_vehicle.lane.clcs.convert_to_curvilinear_coords(
             self._cut_off_state.position[0], self._cut_off_state.position[1])
-        # current_ego_s = self._world_state.ego_vehicle.states_lon[self._cut_off_state.time_step].s
-        # current_ego_d = self._world_state.ego_vehicle.states_lat[self._cut_off_state.time_step].d
         bang_bang_time = self.set_bang_bang_time(current_ego_s, current_ego_d, target_lane)
         lane_orientation = self._world_state.ego_vehicle.lane.orientation(current_ego_s)
         max_orientation = self.set_maximal_orientation(lane_orientation)
@@ -231,7 +256,8 @@ class SimulationLateral(SimulationBase, ABC):
         while current_state.time_step < self._time_horizon:
             self._input.acceleration_y = 0
             self._input.time_step = current_state.time_step
-            current_state.velocity_y = current_state.velocity*math.sin(lane_orientation)
+            # drive along the lane direction
+            current_state.velocity_y = current_state.velocity * math.sin(lane_orientation)
             current_state = self._vehicle_dynamics.simulate_next_state(current_state, self._input, self._dt,
                                                                        throw=False)
             self._state_list.append(current_state)
@@ -239,13 +265,12 @@ class SimulationLateral(SimulationBase, ABC):
 
 
 def check_elements(state: State):
+    """
+    checks the missing elements needed for PM model
+    """
     if not hasattr(state, "slip_angle"):
         state.slip_angle = 0
     if not hasattr(state, "yaw_rate"):
         state.yaw_rate = 0
     if not hasattr(state, "velocity_y"):
         state.velocity_y = state.velocity * math.cos(state.orientation)
-
-
-if __name__ == '__main__':
-    SL = SimulationLong(CutOffAction.LANECHANGELEFT, None, 1, None)

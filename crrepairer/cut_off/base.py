@@ -74,7 +74,7 @@ class CutOffBase(ABC):
         raise Exception("You are not allowed to change the number of time steps!")
 
     @abstractmethod
-    def generate(self,  *args, **kwargs):
+    def generate(self, *args, **kwargs):
         """
         generates the cut off state: time-to-react or time-to-compliance
         """

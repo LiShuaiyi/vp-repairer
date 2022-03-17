@@ -35,9 +35,9 @@ class TestTTR(unittest.TestCase):
                         CutOffAction.KICKDOWN,
                         CutOffAction.STEERRIGHT]  # all maneuvers
         ttr = self.ttr_object.generate(maneuver_set)
-        assert math.isclose(ttr, 1.8, abs_tol=1e-2)
+        assert math.isclose(ttr, 2.3, abs_tol=1e-2)
 
     def test_ttr_2(self):
-        maneuver_set = [CutOffAction.STEERLEFT]  # impossible maneuver
+        maneuver_set = [CutOffAction.STEERRIGHT]  # impossible maneuver
         ttr = self.ttr_object.generate(maneuver_set)
         assert math.isclose(ttr, -math.inf, abs_tol=1e-2)

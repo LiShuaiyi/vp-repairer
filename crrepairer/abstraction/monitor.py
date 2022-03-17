@@ -29,7 +29,7 @@ class STLRuleMonitor:
         self._prop_nodes = self._initialize_prop_rob()
 
     @property
-    def tv_time_step(self) -> float:
+    def tv_time_step(self) -> Union[int, float]:
         return self._tv
 
     @property

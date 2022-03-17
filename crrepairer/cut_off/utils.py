@@ -16,22 +16,22 @@ from commonroad.visualization.mp_renderer import MPRenderer
 
 
 def visualize_state_list(collision_checker, state_list: List[State], scenario, obs_shape):
-    for time_step in range(len(state_list)):
-        rnd = MPRenderer()
-        # scenario.draw(rnd)
-        # scenario.lanelet_network.draw(rnd, draw_params={'time_begin': time_step, 'scenario':{'dynamic_obstacle':{'show_label': True}}})
-        trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
-        scenario.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True},
-                                        "occupancy": {"draw_occupancies": 1}})
-        trajectory.draw(rnd, draw_params={'time_begin': time_step, 'trajectory': {'draw_trajectory': True},
-                                        "occupancy": {"draw_occupancies": 1}})
-        # collision_checker.draw(rnd, draw_params={'time_begin': time_step, 'facecolor': 'blue', 'draw_mesh': False})
-        rnd.render()
-        plt.show()
+    rnd = MPRenderer()
+    trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
+    scenario.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True},
+                                    "occupancy": {"draw_occupancies": 1}})
+    trajectory.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True},
+                                      "occupancy": {"draw_occupancies": 1}})
+    collision_checker.draw(rnd, draw_params={'time_begin': 0, 'facecolor': 'blue', 'draw_mesh': False})
+    rnd.render()
+    plt.show()
+
 
 def check_velocity_feasibility(state: State, parameters: VehicleParameters):
+    # the vehicle model in highD doesn't comply with commonroad vehicle models, thus the velocity limit for bmw320i
+    # doesn't work for highD scenarios
     if state.velocity < 0 or \
-            state.velocity > 60:#parameters.longitudinal.v_max:
+            state.velocity > 60:  # parameters.longitudinal.v_max:
         return False
     return True
 
@@ -114,7 +114,7 @@ def update_ego_vehicle(road_network: RoadNetwork,
         jerk = _compute_jerk(acceleration, pre_cut_off_state.acceleration, dt)
     # cut-off state changes it's input values, but the states stay unchanged
     ego_vehicle.states_lon[cut_off_time] = update_curvilinear_states_long(ego_vehicle.states_lon[cut_off_time],
-                                                                              acceleration, jerk)
+                                                                          acceleration, jerk)
     state_lon = ego_vehicle.states_lon[cut_off_time]
     state_lat = ego_vehicle.states_lat[cut_off_time]
     reference_lane = ego_vehicle.lane
@@ -127,10 +127,10 @@ def update_ego_vehicle(road_network: RoadNetwork,
         else:  # previous state out of projection domain
             previous_acceleration = 0.0
         jerk = _compute_jerk(acceleration, previous_acceleration,
-                dt)
+                             dt)
         state_lon, state_lat = create_curvilinear_states(state.position,
-                state.velocity, acceleration, jerk, state.orientation,
-                reference_lane, )
+                                                         state.velocity, acceleration, jerk, state.orientation,
+                                                         reference_lane, )
         if state_lon is None or state_lat is None:
             break
         ego_vehicle.states_lon[state.time_step] = state_lon
@@ -143,9 +143,9 @@ def update_ego_vehicle(road_network: RoadNetwork,
                                                              state.orientation)
         # use the shape lanelet assignment
         ego_vehicle.lanelet_assignment[state.time_step] = \
-        set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
+            set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
     if ego_vehicle.end_time > updated_ego_states[-1].time_step:
-        for time_step in range(updated_ego_states[-1].time_step+1, ego_vehicle.end_time+1):
+        for time_step in range(updated_ego_states[-1].time_step + 1, ego_vehicle.end_time + 1):
             del ego_vehicle.states_lon[time_step]
             del ego_vehicle.states_lat[time_step]
             del ego_vehicle.states_cr[time_step]
