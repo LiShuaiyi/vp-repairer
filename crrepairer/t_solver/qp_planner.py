@@ -46,8 +46,6 @@ class QPPlannerRepair(QPPlanner):
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
                                                                            self._planning_problem)
-        # self._vehicle_configuration.curvilinear_coordinate_system = rule_abstracter.world_state.ego_vehicle.lane.clcs
-        # self._planning_problem.initial_state.time_step = 0 # todo: check the time steps
         super().__init__(self._scenario,
                          self._planning_problem,
                          self._time_horizon,
@@ -66,7 +64,6 @@ class QPPlannerRepair(QPPlanner):
 
     def plan(self):
         print('\t\t Longitudinal optimization')
-
         long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self._formulate_reference()
         traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon,
@@ -124,12 +121,8 @@ class QPPlannerRepair(QPPlanner):
         for state in trajectory.states:
             cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
                 state.position[0], state.position[1])
-            # convert the orientation here
-            ref_orientation = compute_orientation_from_polyline(self.vehicle_configuration.reference_path)
-            ref_pathlength = compute_pathlength_from_polyline(self.vehicle_configuration.reference_path)
-            orientation_interpolated = 0  # np.interp(state.position[0], ref_pathlength, ref_orientation)
             cartesian_traj_points.append(TrajPoint(
-                t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation + orientation_interpolated, v=state.v,
+                t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation, v=state.v,
                 a=state.a,
                 kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
 
@@ -150,7 +143,6 @@ class QPPlannerRepair(QPPlanner):
 
     def _formulate_reference(self):
         x_ref = list()
-
         for state in self._initial_trajectory.states_in_time_interval(self._cut_off_time_step,
                                                                       self._ego_vehicle.prediction.final_time_step):
             pos = convert_pos_curvilinear(state, self._vehicle_configuration)

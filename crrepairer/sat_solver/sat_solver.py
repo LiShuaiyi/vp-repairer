@@ -47,25 +47,12 @@ class SATSolver:
         dnf_formula = str(sp.to_dnf(sp_formula))
         return dnf_formula
 
-    def check_prior_satisfiability(self, abs_robust_tv):
-        self._init_assign = self.obtain_initial_assignment(abs_robust_tv)
-        satisfiable_list = list()
-        for i in range(len(self._init_assign)):
-            updated_formula = self._formula + '& ~' + self._init_assign[i]
-            for j in range(len(self._init_assign)):
-                if j is not i:
-                    updated_formula += '&' + self._init_assign[j]
-            if satisfiable(eval(updated_formula)):
-                satisfiable_list.append(self._init_assign[i][-1])
-        return satisfiable_list
-
     def solve(self):
         """
         SAT Solver.
         There are multiple choices for the SAT solver. *Pysat* supports the DIMACS CNF as inputs, *z3*: a theorem solver
         from Microsoft Research. Here we use *sympy* for its easy-to-use interface
         """
-        # sat_result = satisfiable(eval(self._formula))
         self._dpll_solver.update_cnf(self._formula)
         sat_result = self._dpll_solver.solve()
         return sat_result
@@ -74,9 +61,6 @@ class SATSolver:
         """
         return a satisfiable proposition - based on robustness
         """
-        # select the unvisited predicates within the least robust proposition at time step TTV.
-        # prop_rob_min = self._prop_robust_ttv[self._prop_robust_ttv.robustness.abs()
-        #                                      == self._prop_robust_ttv.robustness.abs().min()].alphabet.values
         self._dpll_model = self._dpll_solver.model
         prop_list = list()
         for m in list(self._dpll_model):
@@ -103,12 +87,3 @@ class SATSolver:
         self._formula += ' & ' + counter_ex
         print("<SATSolver>: the formula is updated to {}".format(self._formula))
 
-    @staticmethod
-    def obtain_initial_assignment(robustness_tv):
-        ini_assign = list()
-        for _, row in robustness_tv.iterrows():
-            if row['robustness'] > 0:
-                ini_assign.append(row['alphabet'])
-            else:
-                ini_assign.append('~' + row['alphabet'])
-        return ini_assign
