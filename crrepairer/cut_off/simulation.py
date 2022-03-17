@@ -34,7 +34,12 @@ class SimulationBase(ABC):
         self._simulated_vehicle = simulated_vehicle
         self._start_time = start_time
         self._cut_off_state = simulated_vehicle.state_at_time(start_time)
-        self._state_list = simulated_vehicle.prediction.trajectory.states_in_time_interval(0, start_time)
+        if start_time == 0:
+            self._state_list = []
+        else:
+            # if the state list doesn't start with time step 0, then states_in_time_interval returns None for it
+            self._state_list = [simulated_vehicle.initial_state] +\
+                               simulated_vehicle.prediction.trajectory.states_in_time_interval(1, start_time)
         for state in self._state_list:
             if not hasattr(state, "velocity_y"):
                 state.velocity_y = state.velocity * math.sin(state.orientation)
