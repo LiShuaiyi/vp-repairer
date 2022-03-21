@@ -1,6 +1,6 @@
 
 scenario_settings:
-    scenario_name: &scenario_name config_DEU_LocationBUpper-1_22_T-1       # set correct scenario name
+    scenario_name: &scenario_name highD scenario # set correct scenario name
     draw: True
 
 general_planning_settings:

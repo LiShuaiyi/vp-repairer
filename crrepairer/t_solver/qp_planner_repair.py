@@ -1,5 +1,4 @@
-import numpy as np
-from commonroad_dc.geometry.util import (compute_pathlength_from_polyline, compute_orientation_from_polyline)
+
 
 from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongReference
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
