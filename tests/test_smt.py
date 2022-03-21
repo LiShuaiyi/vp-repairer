@@ -7,7 +7,7 @@ from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from commonroad_repair.crrepairer.sat_solver.sat_solver import SATSolver
 from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
 from commonroad_repair.crrepairer.t_solver.t_solver import TSolver, CutOffAction
-from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
+from commonroad_repair.crrepairer.t_solver.qp_planner_repair import QPPlannerRepair
 
 from commonroad.common.file_reader import CommonRoadFileReader
 
