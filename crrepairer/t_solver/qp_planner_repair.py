@@ -1,10 +1,10 @@
 
-
 from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongReference
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
+
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
 from commonroad_repair.crrepairer.cut_off.tc import TC
@@ -23,32 +23,47 @@ import os
 
 
 class QPPlannerRepair(QPPlanner):
+    """
+    QP-planner for trajectory repairing starting from the cut-off state.
+    """
     def __init__(self,
                  rule_abstracter: RuleAbstracter,
                  tc_object: TC,
                  sel_proposition: List[PropositionNode]):
+        # initialize the scenario and planning problem
         self._scenario = rule_abstracter.world_state.scenario
         self._ego_vehicle = tc_object.ego_vehicle
-        # remove the existing ego vehicle from the scenario to avoid the conflict
         self._planning_problem = rule_abstracter.world_state.planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
+
+        # set the cut-off state as the initial state
         self._cut_off_time_step = tc_object.tc_time_step
         self._N = tc_object.N
         if self._cut_off_time_step == 0:
             self._cut_off_state = self._ego_vehicle.initial_state
         else:
             self._cut_off_state = self._initial_trajectory.state_at_time_step(self._cut_off_time_step)
-        self._settings = self.config_settings()
         self._reformulate_planning_problem()
         self._time_horizon = round((self._N - self._cut_off_time_step) * self._scenario.dt, 1)
         self._planning_problem.initial_state = self._cut_off_state
+
+        # load and set up the configuration
+        self._settings = self.config_settings()
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
                                                                            self._scenario,
                                                                            self._planning_problem)
+
+        # update the vehicle shape
+        self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
+        self._vehicle_configuration.length = self._ego_vehicle.obstacle_shape.length
+
+        # initialize the QP planner
         super().__init__(self._scenario,
                          self._planning_problem,
                          self._time_horizon,
                          self._vehicle_configuration)
+
+        # construct the rule constraints based on the traffic rules and proposition to be repaired
         self._rule_constraints = RuleConstraints(tc_object,
                                                  rule_abstracter,
                                                  sel_proposition,
@@ -56,26 +71,34 @@ class QPPlannerRepair(QPPlanner):
                                                  self._initial_trajectory)
 
     def _reformulate_planning_problem(self, ):
+        """
+        Reformulates the planning problem: initial state and goal
+        """
         if not hasattr(self._planning_problem, "initial_state"):
             raise ValueError("<QPPlannerRepair>: the initial state needs to be specified")
         self._planning_problem.initial_state = self._ego_vehicle.initial_state
         self._planning_problem.goal = update_goal_state(self._initial_trajectory)
 
     def plan(self):
-        print('\t\t Longitudinal optimization')
+        """
+        Plans a trajectory starting from the cut-off state.
+            First: constructs the constraints and the reference path
+            Then: generates the trajectory in both longitudinal and lateral directions
+        """
+        print('<QP planner>: process starts')
+        print('\t Longitudinal optimization')
         long_constr = self._rule_constraints.longitudinal_constraints()
-        reference_lon = self._formulate_reference()
+        reference_lon = self.construct_s_reference()
         traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon,
                                                                  safe_dis_modes=self._rule_constraints.
                                                                  safe_distance_modes)
         if status is not 'optimal':
             return None
             # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
-        print('\t\t Lateral optimization')
+        print('\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
         lat_constr.select_proposition = long_constr.select_proposition
-        d_reference = self.construct_d_reference()
-        trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr, d_reference)
+        trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr, None)
         # convert trajectory to cartesian space
         if status is not 'optimal':
             return None
@@ -83,22 +106,33 @@ class QPPlannerRepair(QPPlanner):
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
 
+    def construct_s_reference(self):
+        """
+        Constructs the longitudinal reference from the initially-planned trajectory.
+        """
+        x_ref = list()
+        for state in self._initial_trajectory.states_in_time_interval(self._cut_off_time_step,
+                                                                      self._ego_vehicle.prediction.final_time_step):
+            pos = convert_pos_curvilinear(state, self._vehicle_configuration)
+            x_ref.append(QPLongState(pos[0], state.velocity, 0., 0., 0.))
+        return QPLongReference(x_ref)
+
     def construct_d_reference(self):
-        d_reference = []
-        for k in range(self._cut_off_time_step, self._cut_off_time_step + self.N):
-            initial_position = self._initial_trajectory.state_at_time_step(k).position
-            d_k = self._vehicle_configuration.curvilinear_coordinate_system. \
-                convert_to_curvilinear_coords(initial_position[0], initial_position[1])[1]
-            d_reference.append(d_k)
-        return d_reference
+        """
+        Constructs the lateral reference from the initially-planned trajectory.
+        """
+        d_ref = list()
+        for state in self._initial_trajectory.states_in_time_interval(self._cut_off_time_step,
+                                                                      self._ego_vehicle.prediction.final_time_step):
+            pos = convert_pos_curvilinear(state, self._vehicle_configuration)
+            d_ref.append(pos[1])
+        return d_ref
 
     def convert_traj_to_ego_vehicle(self,
                                     cr_trajectory: Trajectory,
                                     vehicle_id: int = 0) -> DynamicObstacle:
         """
         Converts trajectory object to CommonRoad obstacle with specified width and length
-        :param width: The width of the ego vehicle
-        :param length: The length of the ego vehicle
         :param vehicle_id: ID of ego vehicle
         :return: The CommonRoad DynamicObstacle object containing the current trajectory
         """
@@ -116,6 +150,9 @@ class QPPlannerRepair(QPPlanner):
         return ego
 
     def transform_merge_trajectory(self, trajectory: QPTrajectory):
+        """
+        Transforms and merges the trajectory (before and after repairing)
+        """
         cartesian_traj_points = list()
         for state in trajectory.states:
             cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
@@ -140,25 +177,24 @@ class QPPlannerRepair(QPPlanner):
         cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
         return cr_traj_repaired
 
-    def _formulate_reference(self):
-        x_ref = list()
-        for state in self._initial_trajectory.states_in_time_interval(self._cut_off_time_step,
-                                                                      self._ego_vehicle.prediction.final_time_step):
-            pos = convert_pos_curvilinear(state, self._vehicle_configuration)
-            x_ref.append(QPLongState(pos[0], state.velocity, 0., 0., 0.))
-        return QPLongReference(x_ref)
-
     def config_settings(self):
-        config_file = 'config_highd.yaml'
-        # config_file = 'config_' + str(self._scenario.scenario_id) + '.yaml'
+        """
+        Configuration settings.
+        """
+        config_file = 'config_' + str(self._scenario.scenario_id) + '.yaml'
         config_dir = os.path.normpath(os.path.join(os.path.dirname(__file__),
                                                    "../../config"))
-
+        if not os.path.exists(os.path.join(config_dir, config_file)):
+            config_file = 'config_default.yaml'
         with open(os.path.join(config_dir, config_file), 'r') as stream:
             try:
                 settings = yaml.load(stream, Loader=yaml.Loader)
             except yaml.YAMLError as exc:
                 print(exc)
+        if config_file == 'config_default.yaml':
+            # for HighD scnarios
+            settings["vehicle_settings"][self._planning_problem.planning_problem_id] = \
+                settings["vehicle_settings"].pop(1)
         return settings
 
 
