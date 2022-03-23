@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from commonroad.scenario.trajectory import Trajectory
 
 """
-Class for trajectory repairer.
+Base c lass for trajectory repairer.
 """
 
 

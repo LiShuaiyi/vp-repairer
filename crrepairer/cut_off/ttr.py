@@ -40,8 +40,7 @@ class TTR(CutOffBase, ABC):
                 ttm[maneuver] = self.search_ttm(maneuver)
             if max(ttm.values()) in [math.inf, -math.inf]:
                 return max(ttm.values())
-            return int_round(max(ttm.values()), 1) #, max(ttm, key=ttm.get)
-        return ttr
+            return int_round(max(ttm.values()), 1)  #, max(ttm, key=ttm.get)
 
     def search_ttm(self, maneuver):
         """
@@ -72,9 +71,9 @@ class TTR(CutOffBase, ABC):
             if state_list is None:
                 return -math.inf
             if self._visualize:
-                visualize_state_list(state_list, self.scenario, SL.vehicle_dynamics.shape)
+                visualize_state_list(self._collision_checker, state_list, self.scenario, SL.vehicle_dynamics.shape)
             flag_collision = self._detect_collision(state_list)  # bool value
-            # if violation-free and collision-free
+            # if collision-free
             if not flag_collision:
                 low = mid + 1
             else:

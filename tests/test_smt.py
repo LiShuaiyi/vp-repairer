@@ -1,13 +1,13 @@
 import os
 import math
 import unittest
-from sympy.logic.boolalg import is_cnf
+from sympy.logic.boolalg import is_cnf, is_dnf
 
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from commonroad_repair.crrepairer.sat_solver.sat_solver import SATSolver
 from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
 from commonroad_repair.crrepairer.t_solver.t_solver import TSolver, CutOffAction
-from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
+from commonroad_repair.crrepairer.t_solver.qp_planner_repair import QPPlannerRepair
 
 from commonroad.common.file_reader import CommonRoadFileReader
 
@@ -45,12 +45,6 @@ class TestSMTSolver(unittest.TestCase):
             rule_monitor.other_id, 1004
         )
 
-    def test_select_predicates(self):
-        predicates = self.rule_abstracter.select_predicates()
-        self.assertEqual(
-            predicates[0].base_name, "keeps_safe_distance_prec"
-        )
-
     def test_sat_solver(self):
         sat_solver = SATSolver(self.rule_abstracter)
         # check whether the formula in the sat solver is CNF or not
@@ -78,9 +72,8 @@ class TestSMTSolver(unittest.TestCase):
                             if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
         t_solver.assign_proposition([proposition], ["d"])
         # safe distance
-        self.assertEqual(t_solver.compliant_maneuvers,
-                         [CutOffAction.BRAKE,
-                          CutOffAction.KICKDOWN])
+        self.assertEqual(set(t_solver.compliant_maneuvers),
+                         {CutOffAction.BRAKE, CutOffAction.KICKDOWN})
         tc = t_solver.search_tc()
         assert math.isclose(tc,
                             1.9,
@@ -94,7 +87,7 @@ class TestSMTSolver(unittest.TestCase):
                             abs_tol=1e-2)
 
     def test_dpll(self):
-        dpll_solver = DPLL('~a | ~b | c | d', self.rule_abstracter.prop_robust_ttv)
+        dpll_solver = DPLL('~a | ~b | c | d', self.rule_abstracter.rule_monitor.prop_robust_ttv)
         self.assertEqual(dpll_solver.solve(),
                          sat)
         self.assertEqual(list(dpll_solver.model),
@@ -104,6 +97,14 @@ class TestSMTSolver(unittest.TestCase):
                          unsat)
         self.assertEqual(dpll_solver.model,
                          set())
+
+    def test_cnf_dnf_converter(self):
+        original_formula = '(a and b and !c) implies d'
+        sat_solver = SATSolver(self.rule_abstracter)
+        cnf_formula = sat_solver.construct_cnf(original_formula)
+        self.assertTrue(is_cnf(cnf_formula))
+        dnf_formula = sat_solver.construct_dnf(original_formula)
+        self.assertTrue(is_dnf(dnf_formula))
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self.rule_abstracter)
