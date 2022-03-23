@@ -1,6 +1,6 @@
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from commonroad_repair.crrepairer.t_solver.t_solver import TSolver
-from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
+from commonroad_repair.crrepairer.t_solver.qp_planner_repair import QPPlannerRepair
 from commonroad_repair.crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 from commonroad_repair.crrepairer.t_solver.utils import convert_traj_to_ego_vehicle
 from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_profile, visualize_initial_result
@@ -49,19 +49,18 @@ if __name__ == '__main__':
     # plot_limits = [-380, -150, 7.5, 17.5]
     target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
     # following_veh = scenario.obstacle_by_id(203)
-    # visualize_profile(target_veh, following_veh, ego_initial, ego_vehicle)
+    # visualize_profile(target_veh, following_veh, ego_initial,   ego_vehicle)
     for time_step in range(21):
-        visualize_initial_result(scenario, ego_initial,
-                                 time_step,
-                                 target_veh=target_veh,
-                                 plot_limits=plot_limits,
-                                 # save_path=figure_path,
-                                 tv=int(repairer.tv))
-        # visualize_repairing_result(scenario,
-        #                            ego_vehicle,
-        #                            time_step,
-        #                            tc=repairer.tc,
-        #                            plot_limits=plot_limits,
-        #                            target_veh=target_veh,
-        #                            ego_initial=ego_initial,
-        #                            save_path=figure_path)
+        # visualize_initial_result(scenario, ego_initial,
+        #                          time_step,
+        #                          target_veh=target_veh,
+        #                          plot_limits=plot_limits,
+        #                          # save_path=figure_path,
+        #                          tv=int(repairer.tv))
+        visualize_repairing_result(scenario,
+                                   ego_vehicle,
+                                   time_step,
+                                   tc=repairer.tc,
+                                   plot_limits=plot_limits,
+                                   target_veh=target_veh)
+                                   # save_path=figure_path)

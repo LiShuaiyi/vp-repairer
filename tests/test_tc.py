@@ -133,7 +133,6 @@ class TestTC(unittest.TestCase):
                            self.world_state.dt)
         # 2. recreate the world state
         ego_vehicle.prediction.trajectory.state_list = new_state_list
-        ego_vehicle.prediction.trajectory.initial_time_step = 0  # bugfix: the initial time step is 0
         world_state_updated = WorldState.create_from_scenario(self.scenario, self.ego_id)
         # comparison
         # ---> length of the state list

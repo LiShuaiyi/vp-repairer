@@ -1,6 +1,6 @@
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
 from commonroad_repair.crrepairer.t_solver.t_solver import TSolver
-from commonroad_repair.crrepairer.t_solver.qp_planner import QPPlannerRepair
+from commonroad_repair.crrepairer.t_solver.qp_planner_repair import QPPlannerRepair
 from commonroad_repair.crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 from commonroad_repair.crrepairer.t_solver.utils import convert_traj_to_ego_vehicle
 from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_profile

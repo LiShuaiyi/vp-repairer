@@ -35,16 +35,20 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
 
     @property
     def tc(self):
-            return self._tc
+        return self._tc
 
     @property
     def model(self):
+        """
+        SAT models
+        """
         return self._model
 
     def repair(self, *args, **kwargs):
         self._tv = self.rule_abstracter.rule_monitor.tv_time_step
         if self._tv == -math.inf:
             return None
+        # initialize Solvers for SMT paradigm
         sat_solver = SATSolver(self.rule_abstracter)
         t_solver = TSolver(self.rule_abstracter)
         while sat_solver.solve() == sat:
@@ -55,11 +59,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             self._tc = t_solver.tc_object.tc_time_step
             if repairability:
                 tv, _ = t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
-                # if tv == math.inf:
-                return repaired_traj
-                # else:
-                #     print("<Repairer>: reparable but the solver failed")
+                if tv == math.inf:
+                    return repaired_traj
+                else:
+                    print("<Repairer>: reparable but the solver failed")
             sat_solver.update_formula()
         return None
-
-

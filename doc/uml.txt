@@ -1,0 +1,31 @@
+@startuml
+class "CommonRoadRepairer" as class1
+class "CommonRoadMonitor" as class2
+class "RuleViolation" as class3
+class "Collision" as class4
+class "Infeasibility" as class5
+class "CutOffState" as class6
+class "SMT Repairer" as class7
+class "SAT Solver" as class8
+class "T Solver" as class9
+class "CommonRoadCriticalityMeasures" as class10
+class "Informed CL-RRT" as class11
+class "Reference Path" as class12
+class "Rule Abstracter" as class13
+
+class1 *-- class2 : 1:1
+class2 <|-- class3
+class2 <|-- class4
+class2 <|-- class5
+class1 *-- class6 : 1:1
+class6 *-- class10 : 1:1
+class3 *-- class7 : 1:1
+class7 *-- class8 : 1:1
+class7 *-- class9 : 1:1
+class4 *-- class11 : 1:1
+class5 *-- class11 : 1:1
+class11 *-- class12 : 1:1
+class3 *-- class13 : 1:1
+@enduml
+
+# created by https://www.plantuml.com/

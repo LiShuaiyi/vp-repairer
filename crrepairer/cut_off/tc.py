@@ -21,7 +21,7 @@ class TC(CutOffBase, ABC):
                  rule_monitor: STLRuleMonitor):
         super().__init__(rule_monitor.world_state)
         self.rule_monitor = rule_monitor
-        self._tv = rule_monitor.tv_time_step * self.dT  # time step -> time
+        self._tv_time_step = rule_monitor.tv_time_step
         self._other_id = rule_monitor.other_id
         self._visualize = False
         self._compliant_maneuver = None
@@ -35,21 +35,21 @@ class TC(CutOffBase, ABC):
 
     @property
     def tv(self):
-        return self._tv
+        return self._tv_time_step*self.dT
 
     @property
     def tc(self):
         return self._tc
 
     @property
-    def tc_time_step(self) -> int:
+    def tc_time_step(self) -> Union[int, float]:
         if self._tc == -math.inf:
             return self._tc
         return int(self._tc/self.dT)
 
     @property
-    def tv_time_step(self) -> int:
-        return int(self._tv / self.dT)
+    def tv_time_step(self) -> Union[int, float]:
+        return self._tv_time_step
 
     @property
     def compliant_maneuver(self) -> CutOffAction:
@@ -83,9 +83,9 @@ class TC(CutOffBase, ABC):
         """
         if not cut_off_maneuvers:
             return -math.inf
-        if self._tv == -math.inf:
+        if self.tv == -math.inf:
             raise ValueError("<TC>: the trajectory is not repairable since it already disobeys the rules")
-        elif self._tv == math.inf:
+        elif self.tv == math.inf:
             self._tc = math.inf
         else:
             ttm = dict()
@@ -103,7 +103,7 @@ class TC(CutOffBase, ABC):
     def search_ttm(self, maneuver: CutOffAction):
         ttm = - math.inf
         low = 0
-        high = int(round(self._tv / self.dT))
+        high = int(round(self.tv / self.dT))
         while low < high:
             mid = int(round(low + high)/2)
             if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:

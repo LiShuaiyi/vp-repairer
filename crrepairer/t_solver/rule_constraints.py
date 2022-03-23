@@ -28,6 +28,9 @@ from commonroad.scenario.trajectory import Trajectory
 
 
 class RuleConstraints:
+    """
+    Class for traffic rule constraints
+    """
     def __init__(self,
                  tc_object: TC,
                  rule_abstracter: RuleAbstracter,
