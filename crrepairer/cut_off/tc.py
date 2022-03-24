@@ -39,6 +39,8 @@ class TC(CutOffBase, ABC):
 
     @property
     def tc(self):
+        if self._tc == -math.inf:
+            return self._tc
         return round(self._tc, 1)
 
     @property
