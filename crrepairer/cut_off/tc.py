@@ -35,11 +35,11 @@ class TC(CutOffBase, ABC):
 
     @property
     def tv(self):
-        return self._tv_time_step*self.dT
+        return round(self._tv_time_step*self.dT, 1)
 
     @property
     def tc(self):
-        return self._tc
+        return round(self._tc, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:
