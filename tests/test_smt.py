@@ -108,9 +108,9 @@ class TestSMTSolver(unittest.TestCase):
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self.rule_abstracter)
-        proposition2 = next((prop for prop in list(self.rule_abstracter.propositions)
+        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
                             if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
-        assign_prop = [proposition2]
+        assign_prop = [proposition]
         t_solver.assign_proposition(assign_prop, ["d"])
         t_solver.search_tc()
         tc_object = t_solver.tc_object
@@ -118,3 +118,31 @@ class TestSMTSolver(unittest.TestCase):
                                       tc_object,
                                       assign_prop)
         self.assertIsInstance(qp_repairer, QPPlannerRepair)
+        qp_repairer.rule_constraints.add() # add constraints
+        safe_distance_modes_t = [True for _ in range(tc_object.N - tc_object.tc_time_step)]
+        self.assertEqual(qp_repairer.rule_constraints.safe_distance_modes,
+                         safe_distance_modes_t)
+        self.assertEqual(len(qp_repairer.rule_constraints.safe_distance_modes),
+                         qp_repairer.total_time_steps)
+
+    def test_rule_constraints(self):
+        t_solver = TSolver(self.rule_abstracter)
+        proposition = next((prop for prop in list(self.rule_abstracter.propositions)
+                            if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
+        assign_prop = [proposition]
+        t_solver.assign_proposition(assign_prop, ["~a"])
+        t_solver.search_tc()
+        tc_object = t_solver.tc_object
+        qp_repairer = QPPlannerRepair(self.rule_abstracter,
+                                      tc_object,
+                                      assign_prop)
+        qp_repairer.rule_constraints.add() # add constraints
+        for time_step, lanes in qp_repairer.rule_constraints.target_lanes.items():
+            if time_step <= qp_repairer.rule_constraints.time_leave_lane:
+                self.assertEqual(lanes, [self.rule_abstracter.world_state.road_network.lanes[1]])
+            elif time_step <= tc_object.tv_time_step:
+                self.assertEqual(set(lanes), {self.rule_abstracter.world_state.road_network.lanes[0],
+                                              self.rule_abstracter.world_state.road_network.lanes[1]})
+            else:
+                self.assertEqual(lanes, [self.rule_abstracter.world_state.road_network.lanes[0]])
+        # qp_repairer.rule_constraints.safe_distance_modes

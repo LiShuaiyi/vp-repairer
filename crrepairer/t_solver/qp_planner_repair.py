@@ -70,6 +70,14 @@ class QPPlannerRepair(QPPlanner):
                                                  self._vehicle_configuration,
                                                  self._initial_trajectory)
 
+    @property
+    def rule_constraints(self):
+        return self._rule_constraints
+
+    @property
+    def total_time_steps(self):
+        return self._N - self._cut_off_time_step
+
     def _reformulate_planning_problem(self, ):
         """
         Reformulates the planning problem: initial state and goal
