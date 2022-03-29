@@ -1,8 +1,7 @@
 # standard imports
-from typing import List
 from enum import Enum
 from shapely.geometry.polygon import Polygon
-from commonroad_dc.pycrcc import Polygon as CRPolygon
+
 # third party
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,84 +29,39 @@ class TUMcolor(Enum):
     TUMlightgray = [217 / 255, 218 / 255, 219 / 255]
 
 
-def visualize_profile(target_vehicle: DynamicObstacle,
-                      follow_vehicle: DynamicObstacle,
-                      ego_initial: DynamicObstacle,
-                      ego_repaired: DynamicObstacle):
-    plt.figure(figsize=(20, 8))
-    time_list = []
-    target_pos_list = []
-    ego_ini_pos_list = []
-    ego_rep_pos_list = []
-    safe_dis_ini_list = []
-    safe_dis_rep_list = []
-    ego_ini_vel_list = []
-    ego_rep_vel_list = []
-    follow_pos_list = []
-    for time_step in range(ego_initial.prediction.final_time_step + 1):
-        time_list.append(time_step)
-        target_pos_list.append(target_vehicle.state_at_time(time_step).position)
-        follow_pos_list.append(follow_vehicle.state_at_time(time_step).position[0] +
-                               follow_vehicle.obstacle_shape.length / 2)
-        ego_ini_pos_list.append(ego_initial.state_at_time(time_step).position)
-        ego_rep_pos_list.append(ego_repaired.state_at_time(time_step).position)
-
-        safe_dis_ini_list.append(target_pos_list[time_step][0] -
-                                 target_vehicle.obstacle_shape.length / 2 -
-                                 calculate_safe_distance(ego_initial.state_at_time(time_step).velocity,
-                                                         target_vehicle.state_at_time(time_step).velocity,
-                                                         -10.5,
-                                                         -10.,
-                                                         0.4) - ego_initial.obstacle_shape.length / 2)
-        safe_dis_rep_list.append(target_pos_list[time_step][0] - target_vehicle.obstacle_shape.length / 2 -
-                                 calculate_safe_distance(ego_repaired.state_at_time(time_step).velocity,
-                                                         target_vehicle.state_at_time(time_step).velocity,
-                                                         -10.5,
-                                                         -10.,
-                                                         0.4) - ego_repaired.obstacle_shape.length / 2)
-        ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
-        ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
-    plt.plot(time_list, np.array(ego_ini_pos_list)[:, 0], color=TUMcolor.TUMblue, marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    # plt.plot(time_list, np.array(target_pos_list)[:, 0], color='black', linewidth=0.8,)
-    plt.plot(time_list[13:], np.array(ego_rep_pos_list)[13:, 0], color='#a2ad00', marker='.',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list, safe_dis_ini_list, color='red', linewidth=1., )
-    plt.plot(time_list, follow_pos_list, color='red', linewidth=1., )
-    plt.plot(time_list, safe_dis_rep_list, color='yellow', linewidth=1., )
-    plt.xlim((0, 20))
-    plt.xticks(range(0, 20))
-    plt.ylim((np.array(ego_ini_pos_list)[0, 0], 40))
-    plt.show()
-    plt.plot(time_list, ego_ini_vel_list, color=TUMcolor.TUMblue, marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[13:], ego_rep_vel_list[13:], color='#a2ad00', marker='.',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.show()
-
-
 def visualize_v_profile(
         ego_initial: DynamicObstacle,
         ego_repaired: DynamicObstacle,
+        time_start,
+        time_end,
         tc,
-        tv):
+        tv,
+        speed_limit: float = 13.88):
     # plt.figure(figsize=(20, 8))
     time_list = []
     ego_ini_vel_list = []
     ego_rep_vel_list = []
-    plt.axhline(y=13.88)
-    for time_step in range(ego_initial.prediction.final_time_step):
+    plt.axhline(y=speed_limit)
+    for time_step in range(time_start, time_end):
         time_list.append(time_step)
         ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
         ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
-    plt.plot(time_list[:tv + 1], ego_ini_vel_list[:tv + 1], color=TUMcolor.TUMblue, marker='x',
+    plt.plot(time_list[:tv + 1],
+             ego_ini_vel_list[:tv + 1],
+             color=TUMcolor.TUMblue.value, marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tv:], ego_ini_vel_list[tv:], color='red', marker='x',
+    plt.plot(time_list[tv:],
+             ego_ini_vel_list[tv:],
+             color='red', marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tc:], ego_rep_vel_list[tc:], color='#a2ad00', marker='.',
+    plt.plot(time_list[tc:],
+             ego_rep_vel_list[tc:],
+             color=TUMcolor.TUMgreen.value, marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.xticks(range(0, 20))
+    plt.xticks(range(time_start, time_end, 5))
     plt.yticks(range(5, 15, 5))
+    plt.xlabel('time step')
+    plt.ylabel('velocity')
     plt.show()
 
 
@@ -130,15 +84,22 @@ def visualize_a_profile(dt,
             ego_ini_acc_list.append((ego_initial.state_at_time(time_step + 1).velocity -
                                      ego_initial.state_at_time(time_step).velocity) / dt)
         ego_rep_acc_list.append(ego_repaired.state_at_time(time_step).acceleration)
-    plt.plot(time_list[:tv - time_start + 1], ego_ini_acc_list[:tv - time_start + 1], color=TUMcolor.TUMblue,
+    plt.plot(time_list[:tv - time_start + 1],
+             ego_ini_acc_list[:tv - time_start + 1],
+             color=TUMcolor.TUMblue.value,
              marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tv - time_start:], ego_ini_acc_list[tv - time_start:], color='red', marker='x',
+    plt.plot(time_list[tv - time_start:],
+             ego_ini_acc_list[tv - time_start:],
+             color='red', marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tc - time_start:], ego_rep_acc_list[tc - time_start:], color='#a2ad00', marker='.',
+    plt.plot(time_list[tc - time_start:],
+             ego_rep_acc_list[tc - time_start:],
+             color=TUMcolor.TUMgreen.value, marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.xticks(range(0, 20))
-
+    plt.xticks(range(time_start, time_end, 5))
+    plt.xlabel('time step')
+    plt.ylabel('velocity')
     plt.show()
 
 
@@ -286,7 +247,6 @@ def visualize_repairing_result(scenario: Scenario,
     for ax in (ax0, ax1):
         ax.set_xticks([])
         ax.set_yticks([])
-    plt.show(block=True)
 
     # save as .svg file
     if save_path is not None:
@@ -296,6 +256,8 @@ def visualize_repairing_result(scenario: Scenario,
         else:
             plt.savefig(f"{save_path}/{time_step}.svg", format='svg', dpi=300,
                         bbox_inches='tight')
+    else:
+        plt.show(block=True)
 
 
 def compute_unsafe_polygon(ego_veh_state,
