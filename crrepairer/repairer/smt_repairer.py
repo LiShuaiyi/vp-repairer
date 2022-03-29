@@ -2,6 +2,8 @@ from abc import ABC
 import math
 
 from commonroad.scenario.scenario import DynamicObstacle
+from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.obstacle import TrajectoryPrediction, ObstacleType
 
 from commonroad_repair.crrepairer.repairer.base import TrajectoryRepair
 from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
@@ -65,3 +67,27 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                     print("<Repairer>: reparable but the solver failed")
             sat_solver.update_formula()
         return None
+
+    @staticmethod
+    def convert_traj_to_ego_vehicle(shape,
+                                    initial_state,
+                                    cr_trajectory: Trajectory,
+                                    vehicle_id: int = 0) -> DynamicObstacle:
+        """
+        Converts trajectory object to CommonRoad obstacle with specified width and length
+        :param width: The width of the ego vehicle
+        :param length: The length of the ego vehicle
+        :param vehicle_id: ID of ego vehicle
+        :return: The CommonRoad DynamicObstacle object containing the current trajectory
+        """
+        # get trajectory
+        pred = TrajectoryPrediction(cr_trajectory, shape)
+
+        # create new object
+        ego = DynamicObstacle(obstacle_id=vehicle_id,
+                              obstacle_type=ObstacleType.CAR,
+                              prediction=pred,
+                              obstacle_shape=shape,
+                              initial_state=initial_state)
+        return ego
+
