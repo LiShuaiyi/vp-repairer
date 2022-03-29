@@ -46,7 +46,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         """
         return self._model
 
-    def repair(self, *args, **kwargs):
+    def repair(self, check_flag=True, *args, **kwargs):
         self._tv = self.rule_abstracter.rule_monitor.tv_time_step
         if self._tv == -math.inf:
             return None
@@ -59,9 +59,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             select_proposition, self._model = sat_solver.model()
             repairability, repaired_traj = t_solver.check(select_proposition, list(self._model))
             self._tc = t_solver.tc_object.tc_time_step
-            if repairability:
+            if repairability and repaired_traj is not None:
                 tv, _ = t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
-                if tv == math.inf:
+                if tv == math.inf or not check_flag:
                     return repaired_traj
                 else:
                     print("<Repairer>: reparable but the solver failed")

@@ -175,15 +175,14 @@ class RuleConstraints:
             if k in self._target_lanes:
                 target_lanes = self._target_lanes[k]
                 index = k - self._tc_obj.tc_time_step
-                for lane in target_lanes:
-                    lane_boundary_left = lane.clcs_left.\
+                lane_boundary_left = target_lanes[-1].clcs_left.\
                         convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
-                    lane_boundary_right = lane.clcs_right.\
+                lane_boundary_right = target_lanes[0].clcs_right.\
                         convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
-                    d_max = min(self._veh_config.curvilinear_coordinate_system.
+                d_max = min(self._veh_config.curvilinear_coordinate_system.
                                 convert_to_curvilinear_coords(lane_boundary_left[0],
                                                               lane_boundary_left[1])[1], d_max)
-                    d_min = max(self._veh_config.curvilinear_coordinate_system.
+                d_min = max(self._veh_config.curvilinear_coordinate_system.
                                 convert_to_curvilinear_coords(lane_boundary_right[0],
                                                               lane_boundary_right[1])[1], d_min)
             self._lat_dis_constraints.append([d_min,
@@ -287,6 +286,7 @@ class RuleConstraints:
                 target_lane = ego_veh_lane
             elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
                 target_lane += ego_veh_lane
+            target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
         self._target_lanes[time_step] = list(set(target_lane))
 
     def ConstrInFrontOf(self, time_step: int, prop_assignment: float):
