@@ -176,9 +176,9 @@ class QPPlannerRepair(QPPlanner):
         traj._u_lat = trajectory.u_lat
         cr_traj_repaired = traj.convert_to_cr_trajectory(self._vehicle_configuration.wheelbase)
         if self._cut_off_time_step == 0:
-            remaining_states = []
+            remaining_states = [self._ego_vehicle.initial_state]
         else:
-            remaining_states = [] + \
+            remaining_states = [self._ego_vehicle.initial_state] + \
                                self._initial_trajectory.states_in_time_interval(1, self._cut_off_time_step-1)
         for state in cr_traj_repaired.state_list:
             state.time_step += self._cut_off_time_step
