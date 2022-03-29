@@ -37,30 +37,27 @@ if __name__ == '__main__':
     rule_abstracter = RuleAbstracter(scenario,
                                      planning_problem,
                                      ego_id, rule)
+
     repairer = SMTTrajectoryRepairer(rule_abstracter,
                                      ego_initial)
     repaired_traj = repairer.repair()
 
-    ego_vehicle = convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
-                                              ego_initial.initial_state,
-                                              repaired_traj)
-    ego_initial.prediction.shape = ego_vehicle.prediction.shape
+    ego_repaired = repairer.convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
+                                                       ego_initial.initial_state,
+                                                       repaired_traj)
     plot_limits = [-5, 50, -4.5, 3]
     # plot_limits = [-380, -150, 7.5, 17.5]
     target_veh = scenario.obstacle_by_id(repairer.rule_abstracter.other_veh_id)
     # following_veh = scenario.obstacle_by_id(203)
     # visualize_profile(target_veh, following_veh, ego_initial,   ego_vehicle)
     for time_step in range(21):
-        # visualize_initial_result(scenario, ego_initial,
-        #                          time_step,
-        #                          target_veh=target_veh,
-        #                          plot_limits=plot_limits,
-        #                          # save_path=figure_path,
-        #                          tv=int(repairer.tv))
         visualize_repairing_result(scenario,
-                                   ego_vehicle,
+                                   ego_initial,
+                                   ego_repaired,
                                    time_step,
                                    tc=repairer.tc,
+                                   tv=repairer.tv,
                                    plot_limits=plot_limits,
-                                   target_veh=target_veh)
+                                   target_veh=target_veh,
+                                   world_state=rule_abstracter.world_state)
                                    # save_path=figure_path)
