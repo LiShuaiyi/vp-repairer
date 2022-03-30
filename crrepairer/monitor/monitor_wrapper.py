@@ -1,10 +1,15 @@
 import math
-from typing import Iterable, Union, Tuple, Any
+from typing import Iterable, Union, Tuple, Any, List
 from enum import Enum
 import numpy as np
 
 from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
 from stl_crmonitor.crmonitor.common.world_state import WorldState
+from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
+
+# CommonRoad Toolbox
+from commonroad.scenario.scenario import Scenario
+from commonroad.planning.planning_problem import PlanningProblem
 
 
 class MonitorType(Enum):
@@ -17,12 +22,17 @@ class MonitorType(Enum):
 
 class STLRuleMonitor:
     def __init__(self,
-                 world_state,
-                 rules: Union[str, Iterable[str]],):
+                 scenario: Scenario,
+                 planning_problem: PlanningProblem,
+                 vehicle_id: int,
+                 rules: Union[str, Iterable[str]], ):
+        self._world_state: WorldState = self.construct_world_state(scenario,
+                                                                   planning_problem,
+                                                                   vehicle_id)
+        self._vehicle_id = vehicle_id
         self._rules = rules
         self._rule_eval = RuleSetEvaluator.create_from_config(rules,
-                                                              dt=world_state.dt)
-        self.world_state: WorldState = world_state
+                                                              dt=self._world_state.dt)
         self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
         # obtain the time-to-violation
         self._tv, self._other_id = self._cal_tv_initial()
@@ -34,7 +44,18 @@ class STLRuleMonitor:
 
     @property
     def other_id(self) -> int:
-        return self._other_id
+        if self._other_id is None or not isinstance(self._other_id, int):
+            return self._vehicle_id
+        else:
+            return self._other_id
+
+    @property
+    def vehicle_id(self) -> int:
+        return self._vehicle_id
+
+    @property
+    def world_state(self) -> WorldState:
+        return self._world_state
 
     @property
     def type(self):
@@ -45,7 +66,7 @@ class STLRuleMonitor:
         return self._rule_eval
 
     @property
-    def proposition_nodes(self):
+    def proposition_nodes(self) -> List[PropositionNode]:
         return self._prop_nodes
 
     @property
@@ -59,6 +80,18 @@ class STLRuleMonitor:
     @property
     def prop_robust_ttv(self):
         return self.prop_robust_all.query('time_step == @self._tv')
+
+    @staticmethod
+    def construct_world_state(scenario: Scenario,
+                              planning_problem: PlanningProblem,
+                              ego_id: int) -> WorldState:
+        """
+        Constructs world state
+        """
+        world_state = WorldState.create_from_scenario(scenario,
+                                                      ego_id,
+                                                      planning_problem=planning_problem)
+        return world_state
 
     def _initialize_prop_rob(self):
         # obtain the id of violation-relevant vehicle
@@ -74,8 +107,8 @@ class STLRuleMonitor:
         """
         Evaluate whether the ego vehicle disobeys traffic rules
         """
-        return self._rule_eval.\
-            evaluate_incremental(self.world_state,
+        return self._rule_eval. \
+            evaluate_incremental(self._world_state,
                                  to_pandas=True)
 
     def evaluate_consecutively(self):
@@ -83,8 +116,8 @@ class STLRuleMonitor:
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
         self._rule_eval.switch_to_boolean()
-        self.rob_rule, self.rob_predicate = self._rule_eval.\
-            evaluate_consecutively(self.world_state,
+        self.rob_rule, self.rob_predicate = self._rule_eval. \
+            evaluate_consecutively(self._world_state,
                                    )
 
     def query_rule_rob_all(self):
@@ -106,7 +139,7 @@ class STLRuleMonitor:
         if tv == 0:
             return math.inf, None  # no violation
         if evaluated_ids[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
-            return int(tv), self.world_state.ego_vehicle.id
+            return int(tv), self._world_state.ego_vehicle.id
         return int(tv), evaluated_ids[tv][0]
 
 # Currently, SMT monitor is not supported
