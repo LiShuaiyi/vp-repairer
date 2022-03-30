@@ -1,4 +1,4 @@
-from typing import Iterable, Union, List, Any, Tuple
+from typing import Union, List, Any, Tuple
 from collections import defaultdict
 import math
 from abc import ABC
@@ -6,9 +6,8 @@ from abc import ABC
 import numpy as np
 from commonroad.scenario.obstacle import State
 
-import matplotlib.pyplot as plt
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase
-from commonroad_repair.crrepairer.abstraction.monitor import STLRuleMonitor
+from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from commonroad_repair.crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list
 from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 
@@ -19,7 +18,7 @@ class TC(CutOffBase, ABC):
     """
     def __init__(self,
                  rule_monitor: STLRuleMonitor):
-        super().__init__(rule_monitor.world_state)
+        super().__init__(rule_monitor._world_state)
         self.rule_monitor = rule_monitor
         self._tv_time_step = rule_monitor.tv_time_step
         self._other_id = rule_monitor.other_id
@@ -35,11 +34,13 @@ class TC(CutOffBase, ABC):
 
     @property
     def tv(self):
-        return self._tv_time_step*self.dT
+        return round(self._tv_time_step*self.dT, 1)
 
     @property
     def tc(self):
-        return self._tc
+        if self._tc == -math.inf:
+            return self._tc
+        return round(self._tc, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:
@@ -58,7 +59,7 @@ class TC(CutOffBase, ABC):
     def calc_tv_updated(self, updated_states: List[State] = None) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
-        self.rule_monitor.world_state.time_step = 0
+        self.rule_monitor._world_state.time_step = 0
         update_ego_vehicle(self.world_state.road_network,
                            self.world_state.ego_vehicle,
                            updated_states,

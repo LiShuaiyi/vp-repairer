@@ -8,8 +8,8 @@ from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
 from commonroad_repair.crrepairer.cut_off.tc import TC
-from commonroad_repair.crrepairer.t_solver.rule_constraints import RuleConstraints
-from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.smt.t_solver.rule_constraints import RuleConstraints
+from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 from commonroad.scenario.trajectory import Trajectory, State
 from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType
@@ -27,13 +27,13 @@ class QPPlannerRepair(QPPlanner):
     QP-planner for trajectory repairing starting from the cut-off state.
     """
     def __init__(self,
-                 rule_abstracter: RuleAbstracter,
+                 rule_monitor: STLRuleMonitor,
                  tc_object: TC,
                  sel_proposition: List[PropositionNode]):
         # initialize the scenario and planning problem
-        self._scenario = rule_abstracter.world_state.scenario
+        self._scenario = rule_monitor.world_state.scenario
         self._ego_vehicle = tc_object.ego_vehicle
-        self._planning_problem = rule_abstracter.world_state.planning_problem
+        self._planning_problem = rule_monitor.world_state.planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
 
         # set the cut-off state as the initial state
@@ -65,10 +65,18 @@ class QPPlannerRepair(QPPlanner):
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
         self._rule_constraints = RuleConstraints(tc_object,
-                                                 rule_abstracter,
+                                                 rule_monitor,
                                                  sel_proposition,
                                                  self._vehicle_configuration,
                                                  self._initial_trajectory)
+
+    @property
+    def rule_constraints(self):
+        return self._rule_constraints
+
+    @property
+    def total_time_steps(self):
+        return self._N - self._cut_off_time_step
 
     def _reformulate_planning_problem(self, ):
         """
@@ -168,9 +176,9 @@ class QPPlannerRepair(QPPlanner):
         traj._u_lat = trajectory.u_lat
         cr_traj_repaired = traj.convert_to_cr_trajectory(self._vehicle_configuration.wheelbase)
         if self._cut_off_time_step == 0:
-            remaining_states = []
+            remaining_states = [self._ego_vehicle.initial_state]
         else:
-            remaining_states = [] + \
+            remaining_states = [self._ego_vehicle.initial_state] + \
                                self._initial_trajectory.states_in_time_interval(1, self._cut_off_time_step-1)
         for state in cr_traj_repaired.state_list:
             state.time_step += self._cut_off_time_step
@@ -183,7 +191,7 @@ class QPPlannerRepair(QPPlanner):
         """
         config_file = 'config_' + str(self._scenario.scenario_id) + '.yaml'
         config_dir = os.path.normpath(os.path.join(os.path.dirname(__file__),
-                                                   "../../config"))
+                                                   "../../../config"))
         if not os.path.exists(os.path.join(config_dir, config_file)):
             config_file = 'config_default.yaml'
         with open(os.path.join(config_dir, config_file), 'r') as stream:

@@ -1,5 +1,6 @@
 # standard imports
-from typing import List
+from enum import Enum
+from shapely.geometry.polygon import Polygon
 
 # third party
 import matplotlib.pyplot as plt
@@ -11,88 +12,58 @@ from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad.visualization.param_server import ParamServer
 
-from commonroad_repair.crrepairer.t_solver.utils import calculate_safe_distance
-import commonroad_dc.pycrcc as pycrcc
+from commonroad_qp_planner.utils import calculate_safe_distance
 
-def visualize_profile(target_vehicle: DynamicObstacle,
-                      follow_vehicle: DynamicObstacle,
-                      ego_initial: DynamicObstacle,
-                      ego_repaired: DynamicObstacle):
-    plt.figure(figsize=(20, 8))
-    time_list = []
-    target_pos_list = []
-    ego_ini_pos_list = []
-    ego_rep_pos_list = []
-    safe_dis_ini_list = []
-    safe_dis_rep_list = []
-    ego_ini_vel_list = []
-    ego_rep_vel_list = []
-    follow_pos_list = []
-    for time_step in range(ego_initial.prediction.final_time_step + 1):
-        time_list.append(time_step)
-        target_pos_list.append(target_vehicle.state_at_time(time_step).position)
-        follow_pos_list.append(follow_vehicle.state_at_time(time_step).position[0] +
-                               follow_vehicle.obstacle_shape.length/2)
-        ego_ini_pos_list.append(ego_initial.state_at_time(time_step).position)
-        ego_rep_pos_list.append(ego_repaired.state_at_time(time_step).position)
+from stl_crmonitor.crmonitor.common.world_state import WorldState
 
-        safe_dis_ini_list.append(target_pos_list[time_step][0]-
-                                 target_vehicle.obstacle_shape.length/2-
-                                 calculate_safe_distance(ego_initial.state_at_time(time_step).velocity,
-                                                         target_vehicle.state_at_time(time_step).velocity,
-                                                         -10.5,
-                                                         -10.,
-                                                         0.4) - ego_initial.obstacle_shape.length/2)
-        safe_dis_rep_list.append(target_pos_list[time_step][0] - target_vehicle.obstacle_shape.length/2-
-                                 calculate_safe_distance(ego_repaired.state_at_time(time_step).velocity,
-                                                         target_vehicle.state_at_time(time_step).velocity,
-                                                         -10.5,
-                                                         -10.,
-                                                         0.4) - ego_repaired.obstacle_shape.length/2)
-        ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
-        ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
-    plt.plot(time_list, np.array(ego_ini_pos_list)[:, 0], color='#0065bd', marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    # plt.plot(time_list, np.array(target_pos_list)[:, 0], color='black', linewidth=0.8,)
-    plt.plot(time_list[13:], np.array(ego_rep_pos_list)[13:, 0], color='#a2ad00', marker='.',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list, safe_dis_ini_list, color='red', linewidth=1.,)
-    plt.plot(time_list, follow_pos_list,color='red', linewidth=1.,)
-    plt.plot(time_list, safe_dis_rep_list, color='yellow', linewidth=1.,)
-    plt.xlim((0, 20))
-    plt.xticks(range(0, 20))
-    plt.ylim((np.array(ego_ini_pos_list)[0, 0], 40))
-    plt.show()
-    plt.plot(time_list, ego_ini_vel_list, color='#0065bd', marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[13:], ego_rep_vel_list[13:], color='#a2ad00', marker='.',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.show()
+
+class TUMcolor(Enum):
+    TUMblue = [0, 101 / 255, 189 / 255]
+    TUMgreen = [162 / 255, 173 / 255, 0]
+    TUMgray = [156 / 255, 157 / 255, 159 / 255]
+    TUMdarkgray = [88 / 255, 88 / 255, 99 / 255]
+    TUMorange = [227 / 255, 114 / 255, 34 / 255]
+    TUMdarkblue = [0, 82 / 255, 147 / 255]
+    TUMwhite = [1, 1, 1]
+    TUMblack = [0, 0, 0]
+    TUMlightgray = [217 / 255, 218 / 255, 219 / 255]
 
 
 def visualize_v_profile(
-                      ego_initial: DynamicObstacle,
-                      ego_repaired: DynamicObstacle,
-                      tc,
-                      tv):
+        ego_initial: DynamicObstacle,
+        ego_repaired: DynamicObstacle,
+        time_start,
+        time_end,
+        tc,
+        tv,
+        speed_limit: float = 13.88):
     # plt.figure(figsize=(20, 8))
     time_list = []
     ego_ini_vel_list = []
     ego_rep_vel_list = []
-    plt.axhline(y=13.88)
-    for time_step in range(ego_initial.prediction.final_time_step):
-        time_list.append(time_step)
+    plt.axhline(y=speed_limit)
+    for time_step in range(time_start, time_end):
+        time_list.append(time_step-time_start)
         ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
         ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
-    plt.plot(time_list[:tv+1], ego_ini_vel_list[:tv+1], color='#0065bd', marker='x',
+    plt.plot(time_list[:tv + 1 - time_start],
+             ego_ini_vel_list[:tv + 1 - time_start],
+             color=TUMcolor.TUMblue.value, marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tv:], ego_ini_vel_list[tv:], color='red', marker='x',
+    plt.plot(time_list[tv - time_start:],
+             ego_ini_vel_list[tv - time_start:],
+             color='red', marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tc:], ego_rep_vel_list[tc:], color='#a2ad00', marker='.',
+    plt.plot(time_list[tc - time_start:],
+             ego_rep_vel_list[tc - time_start:],
+             color=TUMcolor.TUMgreen.value, marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.xticks(range(0, 20))
+    plt.xticks(range(time_start - time_start, time_end - time_start, 5))
     plt.yticks(range(5, 15, 5))
+    plt.xlabel('time step')
+    plt.ylabel('velocity')
     plt.show()
+
 
 def visualize_a_profile(dt,
                         ego_initial: DynamicObstacle,
@@ -106,247 +77,102 @@ def visualize_a_profile(dt,
     ego_ini_acc_list = []
     ego_rep_acc_list = []
     for time_step in range(time_start, time_end):
-        time_list.append(time_step-time_start)
+        time_list.append(time_step - time_start)
         if hasattr(ego_initial.state_at_time(time_step), 'acceleration'):
             ego_ini_acc_list.append(ego_initial.state_at_time(time_step).acceleration)
         else:
-            ego_ini_acc_list.append((ego_initial.state_at_time(time_step+1).velocity -
-                                     ego_initial.state_at_time(time_step).velocity)/dt)
+            ego_ini_acc_list.append((ego_initial.state_at_time(time_step + 1).velocity -
+                                     ego_initial.state_at_time(time_step).velocity) / dt)
         ego_rep_acc_list.append(ego_repaired.state_at_time(time_step).acceleration)
-    plt.plot(time_list[:tv-time_start+1], ego_ini_acc_list[:tv-time_start+1], color='#0065bd', marker='x',
+    plt.plot(time_list[:tv - time_start + 1],
+             ego_ini_acc_list[:tv - time_start + 1],
+             color=TUMcolor.TUMblue.value,
+             marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tv-time_start:], ego_ini_acc_list[tv-time_start:], color='red', marker='x',
+    plt.plot(time_list[tv - time_start:],
+             ego_ini_acc_list[tv - time_start:],
+             color='red', marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tc-time_start:], ego_rep_acc_list[tc-time_start:], color='#a2ad00', marker='.',
+    plt.plot(time_list[tc - time_start:],
+             ego_rep_acc_list[tc - time_start:],
+             color=TUMcolor.TUMgreen.value, marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.xticks(range(0, 20))
-
+    plt.xticks(range(time_start - time_start, time_end - time_start, 5))
+    plt.xlabel('time step')
+    plt.ylabel('velocity')
     plt.show()
 
+
 def visualize_repairing_result(scenario: Scenario,
+                               ego_initial: DynamicObstacle,
                                ego_repaired: DynamicObstacle,
-                               timestep: int,
+                               time_step: int,
                                save_path: str = None,
-                               plot_limits = None,
+                               plot_limits=None,
                                end_time=None,
                                tc=None,
-                               target_veh=None,):
+                               tv=None,
+                               target_veh=None,
+                               world_state: WorldState = None):
     """
     Function to visualize complete planning result from the reactive planner for a given time step
     :param scenario: CommonRoad scenario object
-    :param: planning_problem: CommonRoad PlanningProblem object
-    :param ego: Ego vehicle as CommonRoad DynamicObstacle object
-    :param pos: positions of planned trajectory [(nx2) np.ndarray]
-    :param timestep: current time step of scenario to plot
-    :param traj_set: List of sampled trajectories (optional)
-    :param ref_path: Reference path for planner as polyline [(nx2) np.ndarray] (optional)
-    :param save_path: Path to save plot as .png (optional)
+    :param ego_initial: initially-planned trajectory
+    :param ego_repaired: repaired ego vehicle
+    :param time_step: current time step
+    :param save_path: Path to save plot as .png/.svg (optional)
+    :param plot_limits: plot limits of the scenario
+    :param end_time: ending time step
+    :param tc: time-to-comply
+    :param tv: time-to-violation
+    :param target_veh: target vehicle for repairing
+    :param world_state: world state
     """
-    # plot_limits = [ego_position[0]-5, ego_position[0]+70, 7.5, 17.5]
-    # create renderer object
-    rnd = MPRenderer(figsize=(20, 10), plot_limits=plot_limits)
+    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(20, 10))
+    rnd_0 = MPRenderer(ax=ax0, plot_limits=plot_limits)
+    rnd_1 = MPRenderer(ax=ax1, plot_limits=plot_limits)
+
     # visualize scenario
-    scenario.draw(
-        rnd,
-        draw_params=ParamServer({"time_begin": timestep, "time_end": end_time, "trajectory": {
-            "draw_trajectory": True},
-                                 "lanelet": {"fill_lanelet": False},
+    for rnd in (rnd_0, rnd_1):
+        scenario.draw(
+            rnd,
+            draw_params=ParamServer({"time_begin": time_step,
+                                     "time_end": end_time,
+                                     "trajectory": {"draw_trajectory": True},
+                                     "lanelet": {"fill_lanelet": False},
+                                     "occupancy": {"draw_occupancies": 0},
+                                     "dynamic_obstacle":
+                                         {"vehicle_shape":
+                                              {"occupancy":
+                                                   {"draw_occupancies": 0, "shape":
+                                                       {"rectangle":
+                                                            {"facecolor": TUMcolor.TUMblack.value,
+                                                             "edgecolor": TUMcolor.TUMblack.value}}}}}}))
+
+    if time_step >= tv:
+        ego_color = 'red'
+    else:
+        ego_color = TUMcolor.TUMblue.value
+    ego_mark = 'x'
+
+    ego_initial.draw(
+        rnd_0,
+        draw_params=ParamServer({"time_begin": time_step,
+                                 "time_end": end_time,
+                                 "trajectory": {"draw_trajectory": False},
                                  "occupancy": {
-            "draw_occupancies": 0},
+                                     "draw_occupancies": 1,
+                                     "shape": {"rectangle": {
+                                         "facecolor": ego_color,
+                                         "edgecolor": ego_color}}},
                                  "dynamic_obstacle":
-                               {
-                                   "vehicle_shape": {
-                                   "occupancy": {
-                                       "draw_occupancies": 0,
-                                       "shape": {"rectangle": {
-                                           "facecolor": "black",
-                                           "edgecolor": "black"}
-                                       }}}}})
-    )
-    # visualize planning problem
-    # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
-    if target_veh:
-        ego_state_list = [ego_repaired.initial_state] + ego_repaired.prediction.trajectory.state_list
-        safe_distance = calculate_safe_distance(ego_state_list[timestep].velocity,
-                                                target_veh.state_at_time(timestep).velocity,
-                                                -10.5, -10.0, 0.4)
-        box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
-                     [safe_distance / 2, 0]
-        # -preceding_vehicle.obstacle_shape.width/2
-        # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
-        obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
-        obb.draw(rnd, draw_params={"opacity": 0.2,
-                                   "facecolor": "red",
-                                   'edgecolor': "red"})
-    if timestep>=tc:
-        ego_repaired.draw(rnd,
-                         draw_params=ParamServer(
-                             {"time_begin": timestep, "time_end": end_time,"trajectory": {
-                                 "draw_trajectory": False},
-                              "occupancy": {
-                                  "draw_occupancies": 1,
-                                  "shape": {"rectangle": {
-                                      "facecolor": "#a2ad00",
-                                      "edgecolor": "#a2ad00"}
-                                  }},
-                              "dynamic_obstacle":
-                                  {"vehicle_shape": {
-                                      "occupancy": {
-                                          "shape": {"rectangle": {
-                                              "facecolor": "#a2ad00",
-                                              "edgecolor": "#a2ad00"}
-                                          }}}}}))
-    else:
-        ego_repaired.draw(rnd,
-                          draw_params=ParamServer(
-                              {"time_begin": timestep,"time_end": end_time, "trajectory": {
-                                  "draw_trajectory": False},
-                               "occupancy": {
-                                   "draw_occupancies": 1,
-                                   "shape": {"rectangle": {
-                                       "facecolor": "#0065bd",
-                                       "edgecolor": "#0065bd"}
-                                   }},
-                               "dynamic_obstacle":
-                                   {
-                                       "vehicle_shape": {
-                                       "occupancy": {
-                                           "draw_occupancies": 0,
-                                           "shape": {"rectangle": {
-                                               "facecolor": "#0065bd",
-                                               "edgecolor": "#0065bd"}
-                                           }}}}}))
-
+                                     {"vehicle_shape": {
+                                         "occupancy": {
+                                             "shape": {"rectangle":
+                                                           {"facecolor": ego_color,
+                                                            "edgecolor": ego_color}}}}}}))
     # render scenario and ego vehicle
-    rnd.render()
-    #
-    pos_x_repaired = []
-    pos_y_repaired = []
-    for state in ego_repaired.prediction.trajectory.state_list:
-        pos_x_repaired.append(state.position[0])
-        pos_y_repaired.append(state.position[1])
-
-    # visualize optimal trajectory
-    if timestep>=tc:
-        rnd.ax.plot(pos_x_repaired[timestep:end_time], pos_y_repaired[timestep:end_time], color='#a2ad00', marker='.',
-                    markersize=7.5, zorder=22, linewidth=1.5,
-                    label='repaired trajectory')
-    else:
-        rnd.ax.plot(pos_x_repaired[timestep:end_time], pos_y_repaired[timestep:end_time], color='#0065bd',
-                marker='x', markersize=7.5, zorder=22, linewidth=1.5,
-                label='repaired trajectory')
-
-    plt.xticks([])
-    plt.yticks([])
-    # plt.title(timestep)
-
-    # show the rule-violating region
-
-    # show plot
-    plt.show(block=True)
-
-    # save as .svg file
-    if save_path is not None:
-        if timestep<10:
-            plt.savefig(f"{save_path}/{0}{timestep}.svg", format='svg', dpi=300,
-                        bbox_inches='tight')
-        else:
-            plt.savefig(f"{save_path}/{timestep}.svg", format='svg', dpi=300,
-                        bbox_inches='tight')
-
-def visualize_initial_result(scenario: Scenario,
-                             ego_initial: DynamicObstacle,
-                             timestep: int,
-                             target_veh=None,
-                             save_path: str = None,
-                             plot_limits=None,
-                             end_time=None,
-                             tv=None):
-    """
-    Function to visualize complete planning result from the reactive planner for a given time step
-    :param scenario: CommonRoad scenario object
-    :param: planning_problem: CommonRoad PlanningProblem object
-    :param ego: Ego vehicle as CommonRoad DynamicObstacle object
-    :param pos: positions of planned trajectory [(nx2) np.ndarray]
-    :param timestep: current time step of scenario to plot
-    :param traj_set: List of sampled trajectories (optional)
-    :param ref_path: Reference path for planner as polyline [(nx2) np.ndarray] (optional)
-    :param save_path: Path to save plot as .png (optional)
-    """
-    # plot_limits = [ego_position[0]-5, ego_position[0]+70, 7.5, 17.5]
-    # create renderer object
-    rnd = MPRenderer(figsize=(20, 10), plot_limits=plot_limits)
-    # visualize scenario
-    scenario.draw(
-        rnd,
-        draw_params=ParamServer({"time_begin": timestep, "time_end": end_time, "trajectory": {
-            "draw_trajectory": True},
-                                 "lanelet": {"fill_lanelet": False},
-                                 "occupancy": {
-                                     "draw_occupancies": 0},
-                                 "dynamic_obstacle":
-                                     {
-                                         "vehicle_shape": {
-                                             "occupancy": {
-                                                 "draw_occupancies": 0,
-                                                 "shape": {"rectangle": {
-                                                     "facecolor": "black",
-                                                     "edgecolor": "black"}
-                                                 }}}}})
-    )
-    # visualize planning problem
-    # planning_problem.draw(rnd, draw_params={"initial_state": {"state": {"draw_arrow": False}}})
-    if target_veh:
-        ego_state_list = [ego_initial.initial_state] + ego_initial.prediction.trajectory.state_list[:end_time]
-        safe_distance = calculate_safe_distance(ego_state_list[timestep].velocity,
-                                                target_veh.state_at_time(timestep).velocity,
-                                                -10.5, -10.0, 0.4)
-        box_center = target_veh.state_at_time(timestep).position - [target_veh.obstacle_shape.length / 2, 0] - \
-                     [safe_distance / 2, 0]
-        # -preceding_vehicle.obstacle_shape.width/2
-        # Oriented rectangle with width/2, height/2, orientation, x-position , y-position
-        obb = pycrcc.RectOBB(safe_distance / 2, 3.5 / 2, 0.0, box_center[0], box_center[1])
-        obb.draw(rnd, draw_params={"opacity": 0.2,
-                                   "facecolor": "red",
-                                   'edgecolor': "red"})
-    if timestep<tv:
-        ego_initial.draw(rnd,
-                         draw_params=ParamServer(
-                             {"time_begin": timestep, "time_end": end_time,"trajectory": {
-                                 "draw_trajectory": False},
-                              "occupancy": {
-                                  "draw_occupancies": 1,
-                                  "shape": {"rectangle": {
-                                      "facecolor": "#0065bd",
-                                      "edgecolor": "#0065bd"}
-                                  }},
-                              "dynamic_obstacle":
-                                  {"vehicle_shape": {
-                                      "occupancy": {
-                                          "shape": {"rectangle": {
-                                              "facecolor": "#0065bd",
-                                              "edgecolor": "#0065bd"}
-                                          }}}}}))
-    else:
-        ego_initial.draw(rnd,
-                         draw_params=ParamServer(
-                             {"time_begin": timestep, "time_end": end_time,"trajectory": {
-                                 "draw_trajectory": False},
-                              "occupancy": {
-                                  "draw_occupancies": 1,
-                                  "shape": {"rectangle": {
-                                      "facecolor": "red",
-                                      "edgecolor": "red"}
-                                  }},
-                              "dynamic_obstacle":
-                                  {"vehicle_shape": {
-                                      "occupancy": {
-                                          "shape": {"rectangle": {
-                                              "facecolor": "red",
-                                              "edgecolor": "red"}
-                                          }}}}}))
-    # render scenario and ego vehicle
-    rnd.render()
+    rnd_0.render()
 
     pos_x_initial = [ego_initial.initial_state.position[0]]
     pos_y_initial = [ego_initial.initial_state.position[1]]
@@ -354,28 +180,121 @@ def visualize_initial_result(scenario: Scenario,
         pos_x_initial.append(state.position[0])
         pos_y_initial.append(state.position[1])
 
-    if timestep>=tv:
-        rnd.ax.plot(pos_x_initial[timestep:end_time], pos_y_initial[timestep:end_time], color='red', marker='x',
-                    markersize=7.5, zorder=35, linewidth=1.5,
-                    label='repaired trajectory')
+    if time_step >= tv:
+        rnd_0.ax.plot(pos_x_initial[time_step:end_time], pos_y_initial[time_step:end_time], color=ego_color,
+                      marker=ego_mark, markersize=7.5, zorder=35, linewidth=1.5,
+                      label='initial trajectory')
     else:
-        rnd.ax.plot(pos_x_initial[timestep:end_time], pos_y_initial[timestep:end_time], color='#0065bd',
-                marker='x', markersize=7.5, zorder=35, linewidth=1.5,
-                label='repaired trajectory')
-    plt.xticks([])
-    plt.yticks([])
-    # plt.title(timestep)
+        rnd_0.ax.plot(pos_x_initial[time_step:end_time], pos_y_initial[time_step:end_time], color=ego_color,
+                      marker=ego_mark, markersize=7.5, zorder=35, linewidth=1.5,
+                      label='initial trajectory')
 
-    # show the rule-violating region
+    if time_step >= tc:
+        ego_color = TUMcolor.TUMgreen.value
+        ego_mark = '.'
+    else:
+        ego_color = TUMcolor.TUMblue.value
+        ego_mark = 'x'
 
+    ego_repaired.draw(
+        rnd_1,
+        draw_params=ParamServer({"time_begin": time_step,
+                                 "time_end": end_time,
+                                 "trajectory": {"draw_trajectory": False},
+                                 "occupancy": {
+                                     "draw_occupancies": 1,
+                                     "shape": {"rectangle": {
+                                         "facecolor": ego_color,
+                                         "edgecolor": ego_color}}},
+                                 "dynamic_obstacle":
+                                     {"vehicle_shape": {
+                                         "occupancy": {
+                                             "shape": {"rectangle":
+                                                           {"facecolor": ego_color,
+                                                            "edgecolor": ego_color}}}}}}))
+
+    # render scenario and ego vehicle
+    rnd_1.render()
+
+    pos_x_repaired = []
+    pos_y_repaired = []
+    for state in ego_repaired.prediction.trajectory.state_list:
+        pos_x_repaired.append(state.position[0])
+        pos_y_repaired.append(state.position[1])
+
+    # visualize optimal trajectory
+    rnd_1.ax.plot(pos_x_repaired[time_step:end_time],
+                  pos_y_repaired[time_step:end_time],
+                  color=ego_color, marker=ego_mark,
+                  markersize=7.5, zorder=22, linewidth=1.5,
+                  label='repaired trajectory')
+
+    if target_veh:
+        ego_veh_state_ini = ego_initial.state_at_time(time_step)
+        ego_veh_state_rep = ego_repaired.state_at_time(time_step)
+        tar_veh_state = target_veh.state_at_time(time_step)
+        tar_veh_lane = world_state.vehicle_by_id(target_veh.obstacle_id).lane
+        unsafe_poly_ini = compute_unsafe_polygon(ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane)
+        rnd_0.ax.fill(*unsafe_poly_ini.exterior.xy, zorder=30, alpha=0.2,
+                      facecolor=TUMcolor.TUMorange.value, edgecolor=None)
+        unsafe_poly_rep = compute_unsafe_polygon(ego_veh_state_rep, tar_veh_state, target_veh, tar_veh_lane)
+        rnd_1.ax.fill(*unsafe_poly_rep.exterior.xy, zorder=30, alpha=0.2,
+                      facecolor=TUMcolor.TUMorange.value, edgecolor=None)
+
+    ax0.set_title('Initial configuration.')
+    ax1.set_title('Repaired configuration.')
     # show plot
-    plt.show(block=True)
+    for ax in (ax0, ax1):
+        ax.set_xticks([])
+        ax.set_yticks([])
 
     # save as .svg file
     if save_path is not None:
-        if timestep<10:
-            plt.savefig(f"{save_path}/{0}{timestep}.svg", format='svg', dpi=300,
+        if time_step < 10:
+            plt.savefig(f"{save_path}/{0}{time_step}.svg", format='svg', dpi=300,
                         bbox_inches='tight')
         else:
-            plt.savefig(f"{save_path}/{timestep}.svg", format='svg', dpi=300,
+            plt.savefig(f"{save_path}/{time_step}.svg", format='svg', dpi=300,
                         bbox_inches='tight')
+    else:
+        plt.show(block=True)
+
+
+def compute_unsafe_polygon(ego_veh_state,
+                           tar_veh_state,
+                           target_veh,
+                           tar_veh_lane):
+    safe_distance = calculate_safe_distance(ego_veh_state.velocity,
+                                            tar_veh_state.velocity,
+                                            -10.5, -10.0, 0.4)
+    tar_pos_rear_CART = [tar_veh_state.position[0] - target_veh.obstacle_shape.length / 2,
+                         tar_veh_state.position[1]]
+    tar_pos_rear_CVLN = tar_veh_lane.clcs. \
+        convert_to_curvilinear_coords(tar_pos_rear_CART[0], tar_pos_rear_CART[1])
+    safe_pos_CVLN = tar_pos_rear_CVLN - [safe_distance, 0.]
+    safe_pos_CART = tar_veh_lane.clcs. \
+        convert_to_cartesian_coords(safe_pos_CVLN[0], safe_pos_CVLN[1])
+
+    # left vertices
+    tar_pos_rear_left_CART = tar_veh_lane.clcs_left.convert_to_cartesian_coords(tar_pos_rear_CVLN[0], 0.0)
+    safe_pos_left_CART = tar_veh_lane.clcs_left.convert_to_cartesian_coords(safe_pos_CVLN[0], 0.0)
+    ref_left = np.vstack(tar_veh_lane.clcs_left.reference_path())
+    vertices_left = ref_left[(ref_left[:, 0] > safe_pos_left_CART[0]) &
+                             (ref_left[:, 0] < tar_pos_rear_left_CART[0]), :]
+    vertices_left = np.concatenate(([safe_pos_left_CART], vertices_left, [tar_pos_rear_left_CART]))
+
+    # right vertices
+    tar_pos_rear_right_CART = tar_veh_lane.clcs_right.convert_to_cartesian_coords(tar_pos_rear_CVLN[0], 0.0)
+    safe_pos_right_CART = tar_veh_lane.clcs_right.convert_to_cartesian_coords(safe_pos_CVLN[0], 0.0)
+    ref_right = np.vstack(tar_veh_lane.clcs_right.reference_path())
+    vertices_right = ref_right[(ref_right[:, 0] > safe_pos_right_CART[0]) &
+                               (ref_right[:, 0] < tar_pos_rear_right_CART[0]), :]
+    vertices_right = np.concatenate(([safe_pos_right_CART], vertices_right, [tar_pos_rear_right_CART]))
+
+    # the polygon vertices
+    vertices_total = np.concatenate(([safe_pos_CART],
+                                     vertices_left,
+                                     [tar_pos_rear_CART],
+                                     np.flip(vertices_right, 0),
+                                     [safe_pos_CART])).tolist()
+    return Polygon(vertices_total)
