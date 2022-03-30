@@ -41,8 +41,8 @@ class DPLL:
     def get_literal(cnf, prop_robust_all, tv_time_step: int):
         def robustness_degree(alp):
             rob_min_tv_h = abs(prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step])
-            print("<DPLL>: the robustness of instances in TV of alphabet {} is {}"
-                  .format(alp, prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step]))
+            # print("<DPLL>: the robustness of instances in TV of alphabet {} is {}"
+            #       .format(alp, prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step]))
             return rob_min_tv_h
         literals = []
         for sub in cnf:
