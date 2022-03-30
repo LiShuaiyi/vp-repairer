@@ -9,7 +9,7 @@ from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
 from commonroad_repair.crrepairer.cut_off.tc import TC
 from commonroad_repair.crrepairer.t_solver.rule_constraints import RuleConstraints
-from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
 
 from commonroad.scenario.trajectory import Trajectory, State
 from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType
@@ -27,13 +27,13 @@ class QPPlannerRepair(QPPlanner):
     QP-planner for trajectory repairing starting from the cut-off state.
     """
     def __init__(self,
-                 rule_abstracter: RuleAbstracter,
+                 rule_monitor: STLRuleMonitor,
                  tc_object: TC,
                  sel_proposition: List[PropositionNode]):
         # initialize the scenario and planning problem
-        self._scenario = rule_abstracter.world_state.scenario
+        self._scenario = rule_monitor.world_state.scenario
         self._ego_vehicle = tc_object.ego_vehicle
-        self._planning_problem = rule_abstracter.world_state.planning_problem
+        self._planning_problem = rule_monitor.world_state.planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
 
         # set the cut-off state as the initial state
@@ -65,7 +65,7 @@ class QPPlannerRepair(QPPlanner):
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
         self._rule_constraints = RuleConstraints(tc_object,
-                                                 rule_abstracter,
+                                                 rule_monitor,
                                                  sel_proposition,
                                                  self._vehicle_configuration,
                                                  self._initial_trajectory)

@@ -1,20 +1,17 @@
 import sympy as sp
-from enum import Enum
 
-from sympy.logic.inference import satisfiable
 from commonroad_repair.crrepairer.sat_solver.dpll import DPLL
-
-from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
 
 
 class SATSolver:
     def __init__(self,
-                 rule_abstracter: RuleAbstracter):
-        self._formula = self.construct_cnf(rule_abstracter.sat_encoding)
-        self._prop_nodes = rule_abstracter.propositions
-        self._prop_robust_all = rule_abstracter.rule_monitor.prop_robust_all
+                 rule_monitor: STLRuleMonitor):
+        self._formula = self.construct_cnf(rule_monitor.sat_formula)
+        self._prop_nodes = rule_monitor.proposition_nodes
+        self._prop_robust_all = rule_monitor.prop_robust_all
         self._init_assign = list()
-        self._dpll_solver = DPLL(self._formula, self._prop_robust_all, rule_abstracter.rule_monitor.tv_time_step)
+        self._dpll_solver = DPLL(self._formula, self._prop_robust_all, rule_monitor.tv_time_step)
         self._dpll_model = None
 
     @property

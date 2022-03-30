@@ -1,4 +1,4 @@
-from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
 from commonroad_repair.crrepairer.t_solver.t_solver import TSolver
 from commonroad_repair.crrepairer.t_solver.qp_planner_repair import QPPlannerRepair
 from commonroad_repair.crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
@@ -44,15 +44,15 @@ if __name__ == '__main__':
             if ego_initial.obstacle_type != ObstacleType.CAR:
                 continue
             try:
-                rule_abstracter = RuleAbstracter(scenario,
+                rule_monitor = STLRuleMonitor(scenario,
                                                  planning_problem,
                                                  ego_id, rule)
-                if rule_abstracter.rule_monitor.tv_time_step in (-math.inf, math.inf):
+                if rule_monitor.tv_time_step in (-math.inf, math.inf):
                     writer.writerow([scenario.scenario_id, ego_id, rule, "initial feasibility"])
                     nr_infeasible += 1
                     continue
-                repairer = SMTTrajectoryRepairer(rule_abstracter,
-                                             ego_initial)
+                repairer = SMTTrajectoryRepairer(rule_monitor,
+                                                 ego_initial)
 
                 repaired_traj = repairer.repair()
             except:

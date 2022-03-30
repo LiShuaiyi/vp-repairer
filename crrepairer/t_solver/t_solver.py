@@ -4,7 +4,7 @@ from typing import List
 from commonroad_repair.crrepairer.cut_off.tc import TC
 from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction
 from commonroad_repair.crrepairer.t_solver.qp_planner_repair import QPPlannerRepair
-from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
 
 from stl_crmonitor.crmonitor.predicates.predicate import Category
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
@@ -17,10 +17,10 @@ class TSolver:
     T-solver for the SMT-based repairer.
     """
     def __init__(self,
-                 rule_abstracter: RuleAbstracter):
+                 rule_monitor: STLRuleMonitor):
         self._sel_prop = None
-        self._rule_abstracter = rule_abstracter
-        self._tc_obj = TC(rule_abstracter.rule_monitor)
+        self._rule_monitor = rule_monitor
+        self._tc_obj = TC(rule_monitor)
         self._compliant_maneuvers = list()
         self._repairability = False
         self._qp_planner = None
@@ -89,7 +89,7 @@ class TSolver:
         """
         Initializes the qp planner and uses it for trajectory repairing.
         """
-        self._qp_planner = QPPlannerRepair(self._rule_abstracter,
+        self._qp_planner = QPPlannerRepair(self._rule_monitor,
                                            self._tc_obj,
                                            self._sel_prop)
         repaired_trajectory = self._qp_planner.plan()
