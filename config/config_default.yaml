@@ -44,7 +44,7 @@ qp_planner:
     # forbidden_lanelets: [452, 462, 474, 472, 470]
 
     longitudinal_parameters:
-        W_S: 0.0 # weight for state deviation
+        W_S: 0.1 # weight for state deviation
         W_V: 0.4 # weight for velocity deviation
         W_A: 1.0 # weight for acceleration deviation
         W_J: 2.0 # weight for jerk deviation
@@ -55,6 +55,7 @@ qp_planner:
         W_C_L: 50.0 # weight for linear slack costs for collision mitigation
         W_S_A_L: 10.0 # weight for lower acceleration slack
         W_S_A_U: 2.0  # weight for upper acceleration slack
+        W_R: 0.1  # weight for robustness term
         L_ENLARGE: 0.0 # add 0.3m to the length of every vehicle for collision avoidance
 
     lateral_parameters:
@@ -73,4 +74,6 @@ qp_planner:
         KAPPA_DOT_DOT_MIN: -100 # minimum steering rate rate
         KAPPA_DOT_DOT_MAX: 100 # maximum steering rate rate
         KAPPA_MAX: 0.5 # maximum curvature
+        W_R: 0.1  # weight for robustness term
+
 

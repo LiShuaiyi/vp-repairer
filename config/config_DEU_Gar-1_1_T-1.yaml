@@ -1,6 +1,6 @@
 
 scenario_settings:
-    scenario_name: &scenario_name config_DEU_LocationBUpper-1_22_T-1       # set correct scenario name
+    scenario_name: &scenario_name DEU_Gar-1_1_T-1       # set correct scenario name
     draw: True
 
 general_planning_settings:
@@ -56,6 +56,7 @@ qp_planner:
         W_S_A_L: 10.0 # weight for lower acceleration slack
         W_S_A_U: 2.0  # weight for upper acceleration slack
         L_ENLARGE: 0.0 # add 0.3m to the length of every vehicle for collision avoidance
+        W_R: 0.01 # weight for robustness term
 
     lateral_parameters:
         W_D: 15. # weight for d deviation
@@ -73,4 +74,5 @@ qp_planner:
         KAPPA_DOT_DOT_MIN: -100 # minimum steering rate rate
         KAPPA_DOT_DOT_MAX: 100 # maximum steering rate rate
         KAPPA_MAX: 0.4 # maximum curvature
+        W_R: 0.01 # weight for robustness term
 
