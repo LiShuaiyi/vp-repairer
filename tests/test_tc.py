@@ -12,7 +12,7 @@ from stl_crmonitor.crmonitor.common.world_state import WorldState
 from commonroad_repair.crrepairer.cut_off.tc import TC
 from commonroad_repair.crrepairer.cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
 from commonroad_repair.crrepairer.cut_off.utils import check_velocity_feasibility, update_ego_vehicle
-from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
+from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 
 class TestTC(unittest.TestCase):

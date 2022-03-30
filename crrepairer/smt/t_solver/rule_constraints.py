@@ -1,13 +1,10 @@
-import math
-
 import numpy as np
 
 from collections import defaultdict
 
 from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction
 from commonroad_repair.crrepairer.cut_off.tc import TC
-from commonroad_repair.crrepairer.monitor.abstracter import RuleAbstracter
-from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
+from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 # class from STL monitor
 from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
@@ -19,7 +16,7 @@ from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 from stl_crmonitor.crmonitor.common.road_network import Lane
 from stl_crmonitor.crmonitor.common.vehicle import Vehicle
 
-from typing import Dict, List
+from typing import List
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints

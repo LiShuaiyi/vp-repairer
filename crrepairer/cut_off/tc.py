@@ -1,4 +1,4 @@
-from typing import Iterable, Union, List, Any, Tuple
+from typing import Union, List, Any, Tuple
 from collections import defaultdict
 import math
 from abc import ABC
@@ -6,9 +6,8 @@ from abc import ABC
 import numpy as np
 from commonroad.scenario.obstacle import State
 
-import matplotlib.pyplot as plt
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase
-from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
+from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from commonroad_repair.crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list
 from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
 
