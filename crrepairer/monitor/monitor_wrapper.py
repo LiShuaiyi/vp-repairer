@@ -142,7 +142,7 @@ class STLRuleMonitor:
             return int(tv), self._world_state.ego_vehicle.id
         return int(tv), evaluated_ids[tv][0]
 
-# Currently, SMT monitor is not supported
+# Currently, MTL monitor is not supported
 # class MTLRuleMonitor:
 #     def __init__(self,
 #                  scenario: Scenario,

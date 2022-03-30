@@ -6,7 +6,8 @@ from collections import defaultdict
 
 from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction
 from commonroad_repair.crrepairer.cut_off.tc import TC
-from commonroad_repair.crrepairer.abstraction.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.monitor.abstracter import RuleAbstracter
+from commonroad_repair.crrepairer.monitor.monitor_wrapper import STLRuleMonitor
 
 # class from STL monitor
 from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
@@ -35,16 +36,16 @@ class RuleConstraints:
 
     def __init__(self,
                  tc_object: TC,
-                 rule_abstracter: RuleAbstracter,
+                 rule_monitor: STLRuleMonitor,
                  sel_proposition: List[PropositionNode],
                  veh_config: PlanningConfigurationVehicle,
                  initial_trajectory: Trajectory):
         # initialize the needed components
         self._tc_obj = tc_object
-        self._rule_abstracter = rule_abstracter
-        self._world_state = self._rule_abstracter.world_state
-        self._other_id = rule_abstracter.other_veh_id
-        self._ego_id = rule_abstracter.vehicle_id  # if no target vehicle, the other_id stands for the ego
+        self._rule_monitor = rule_monitor
+        self._world_state = self._rule_monitor.world_state
+        self._other_id = self._rule_monitor.other_id
+        self._ego_id = self._rule_monitor.vehicle_id  # if no target vehicle, the other_id stands for the ego
         self._ini_traj = initial_trajectory
         self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
         self._veh_config = veh_config
@@ -69,7 +70,7 @@ class RuleConstraints:
                 self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
             lane_dist = self._world_state.ego_vehicle.lane.width(
                 self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s) / 2 - \
-                abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width / 2
+                        abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width / 2
             self._time_leave_lane = int(
                 self._tc_obj.simulation_lateral.calc_leave_time(lane_dist) / self._world_state.dt)
 
@@ -96,14 +97,14 @@ class RuleConstraints:
         # acceleration limit (only one value for all time steps)
         a_limit = [-np.inf, np.inf]
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            total_assignment = self._rule_abstracter.rule_monitor.prop_robust_all.query('time_step == @k')
+            total_assignment = self._rule_monitor.prop_robust_all.query('time_step == @k')
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
-            for proposition in self._rule_abstracter.rule_monitor.proposition_nodes:
+            for proposition in self._rule_monitor.proposition_nodes:
                 try:
-                    prop_assignment = total_assignment.query('alphabet == @proposition.alphabet')\
-                                                       ["robustness"].values[0]
+                    prop_assignment = total_assignment.query('alphabet == @proposition.alphabet') \
+                        ["robustness"].values[0]
                 except:
                     # no assignment can be found
                     continue
@@ -175,16 +176,16 @@ class RuleConstraints:
             if k in self._target_lanes:
                 target_lanes = self._target_lanes[k]
                 index = k - self._tc_obj.tc_time_step
-                lane_boundary_left = target_lanes[-1].clcs_left.\
-                        convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
-                lane_boundary_right = target_lanes[0].clcs_right.\
-                        convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
+                lane_boundary_left = target_lanes[-1].clcs_left. \
+                    convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
+                lane_boundary_right = target_lanes[0].clcs_right. \
+                    convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
                 d_max = min(self._veh_config.curvilinear_coordinate_system.
-                                convert_to_curvilinear_coords(lane_boundary_left[0],
-                                                              lane_boundary_left[1])[1], d_max)
+                            convert_to_curvilinear_coords(lane_boundary_left[0],
+                                                          lane_boundary_left[1])[1], d_max)
                 d_min = max(self._veh_config.curvilinear_coordinate_system.
-                                convert_to_curvilinear_coords(lane_boundary_right[0],
-                                                              lane_boundary_right[1])[1], d_min)
+                            convert_to_curvilinear_coords(lane_boundary_right[0],
+                                                          lane_boundary_right[1])[1], d_min)
             self._lat_dis_constraints.append([d_min,
                                               d_max])
         lateral_constraints = np.array(self._lat_dis_constraints)
@@ -267,26 +268,23 @@ class RuleConstraints:
         if time_step in self._target_vehicle.lanelet_assignment.keys():
             tar_veh_lanelet = self._target_vehicle.lanelet_assignment[time_step]
             tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(list(tar_veh_lanelet)[0])
-            if prop_assignment > 0:
-                target_lane = [tar_veh_lane]
-            elif self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
+            # if prop_assignment > 0:
+            #     target_lane = [tar_veh_lane]
+            if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
                 target_lane = [tar_veh_lane.adj_right]
             elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
                 target_lane = [tar_veh_lane.adj_left]
             else:
-                target_lane = [None]
+                target_lane = [tar_veh_lane]
+            if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
+                                            CutOffAction.LANECHANGERIGHT]:
+                if time_step <= self._time_leave_lane:
+                    target_lane = [tar_veh_lane]
+                elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
+                    target_lane += [tar_veh_lane]
+                target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
         else:
             target_lane = [None]
-
-        if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
-                                        CutOffAction.LANECHANGERIGHT]:
-            ego_veh_lanelet = self._world_state.ego_vehicle.lanelet_assignment[time_step]
-            ego_veh_lane = list(self._world_state.road_network.find_lanes_by_lanelets(ego_veh_lanelet))
-            if time_step <= self._time_leave_lane:
-                target_lane = ego_veh_lane
-            elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
-                target_lane += ego_veh_lane
-            target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
         self._target_lanes[time_step] = list(set(target_lane))
 
     def ConstrInFrontOf(self, time_step: int, prop_assignment: float):
@@ -317,4 +315,3 @@ class RuleConstraints:
     @staticmethod
     def _get_overlap(interval1: list, interval2: list):
         return [max(interval1[0], interval2[0]), min(interval1[1], interval2[1])]
-
