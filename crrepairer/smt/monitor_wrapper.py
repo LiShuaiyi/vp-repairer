@@ -37,6 +37,9 @@ class STLRuleMonitor:
         # obtain the time-to-violation
         self._tv, self._other_id = self._cal_tv_initial()
         self._prop_nodes = self._initialize_prop_rob()
+        print("<STLMonitor>: the ego vehicle (id: {})'s initial trajectory violates traffic rule".
+              format(self._vehicle_id))
+        print('\t\t w.r.t vehicle {} at time step {}.'.format(self.other_id, self.tv_time_step))
 
     @property
     def tv_time_step(self) -> Union[int, float]:

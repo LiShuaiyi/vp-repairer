@@ -43,22 +43,22 @@ def visualize_v_profile(
     ego_rep_vel_list = []
     plt.axhline(y=speed_limit)
     for time_step in range(time_start, time_end):
-        time_list.append(time_step)
+        time_list.append(time_step-time_start)
         ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
         ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
-    plt.plot(time_list[:tv + 1],
-             ego_ini_vel_list[:tv + 1],
+    plt.plot(time_list[:tv + 1 - time_start],
+             ego_ini_vel_list[:tv + 1 - time_start],
              color=TUMcolor.TUMblue.value, marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tv:],
-             ego_ini_vel_list[tv:],
+    plt.plot(time_list[tv - time_start:],
+             ego_ini_vel_list[tv - time_start:],
              color='red', marker='x',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tc:],
-             ego_rep_vel_list[tc:],
+    plt.plot(time_list[tc - time_start:],
+             ego_rep_vel_list[tc - time_start:],
              color=TUMcolor.TUMgreen.value, marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.xticks(range(time_start, time_end, 5))
+    plt.xticks(range(time_start - time_start, time_end - time_start, 5))
     plt.yticks(range(5, 15, 5))
     plt.xlabel('time step')
     plt.ylabel('velocity')
@@ -97,7 +97,7 @@ def visualize_a_profile(dt,
              ego_rep_acc_list[tc - time_start:],
              color=TUMcolor.TUMgreen.value, marker='.',
              markersize=7.5, zorder=21, linewidth=1.5)
-    plt.xticks(range(time_start, time_end, 5))
+    plt.xticks(range(time_start - time_start, time_end - time_start, 5))
     plt.xlabel('time step')
     plt.ylabel('velocity')
     plt.show()
@@ -120,9 +120,9 @@ def visualize_repairing_result(scenario: Scenario,
     :param ego_initial: initially-planned trajectory
     :param ego_repaired: repaired ego vehicle
     :param time_step: current time step
-    :param save_path: Path to save plot as .png (optional)
-    :param plot_limits
-    :param end_time
+    :param save_path: Path to save plot as .png/.svg (optional)
+    :param plot_limits: plot limits of the scenario
+    :param end_time: ending time step
     :param tc: time-to-comply
     :param tv: time-to-violation
     :param target_veh: target vehicle for repairing
