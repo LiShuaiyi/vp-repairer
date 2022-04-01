@@ -61,7 +61,9 @@ class QPPlannerRepair(QPPlanner):
         super().__init__(self._scenario,
                          self._planning_problem,
                          self._time_horizon,
-                         self._vehicle_configuration)
+                         self._vehicle_configuration,
+                         qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
+                         qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"])
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
         self._rule_constraints = RuleConstraints(tc_object,
@@ -93,8 +95,8 @@ class QPPlannerRepair(QPPlanner):
             First: constructs the constraints and the reference path
             Then: generates the trajectory in both longitudinal and lateral directions
         """
-        print('<QP planner>: process starts')
-        print('\t Longitudinal optimization')
+        print('* \t<QPPlanner>: process starts')
+        print('* \t\t Longitudinal optimization')
         long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self.construct_s_reference()
         traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon,
@@ -103,7 +105,7 @@ class QPPlannerRepair(QPPlanner):
         if status is not 'optimal':
             return None
             # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
-        print('\t Lateral optimization')
+        print('* \t\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
         lat_constr.select_proposition = long_constr.select_proposition
         trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr, None)
