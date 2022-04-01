@@ -115,7 +115,7 @@ def visualize_repairing_result(scenario: Scenario,
                                target_veh=None,
                                world_state: WorldState = None):
     """
-    Function to visualize complete planning result from the reactive planner for a given time step
+    Function to visualize the repairing result given time step
     :param scenario: CommonRoad scenario object
     :param ego_initial: initially-planned trajectory
     :param ego_repaired: repaired ego vehicle
