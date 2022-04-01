@@ -64,7 +64,7 @@ class SATSolver:
             sel_prop_node = next((prop_node for prop_node in self._prop_nodes
                                   if prop_node.alphabet == m[-1]), None)
             prop_list.append(sel_prop_node)
-        print("<SATSolver>: model is {}".format(self._dpll_model))
+        print("* \t<SATSolver>: model is {}".format(self._dpll_model))
         return prop_list, self._dpll_model
 
     def update_formula(self):
@@ -82,5 +82,5 @@ class SATSolver:
                 counter_ex += ' | ~' + atom
             counter_ex += ')'
         self._formula += ' & ' + counter_ex
-        print("<SATSolver>: the formula is updated to {}".format(self._formula))
+        print("* \t<SATSolver>: the formula is updated to {}".format(self._formula))
 

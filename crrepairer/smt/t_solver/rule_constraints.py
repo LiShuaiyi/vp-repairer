@@ -302,7 +302,7 @@ class RuleConstraints:
             pass
 
     def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
-        print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
+        # print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
         return None
 
     @staticmethod

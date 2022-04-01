@@ -72,7 +72,14 @@ class TSolver:
                     # raise ValueError('<T-Solver>: the category {} is not specified'
                     #                  .format(predicate_category))
         compliant_maneuver = list(set(compliant_maneuver))
-        print("<TSolver>: compliant maneuver {} is selected".format(compliant_maneuver))
+        if not compliant_maneuver:
+            print("* \t<TSolver>: no compliant maneuver is selected")
+        else:
+            string = "* \t<TSolver>: compliant maneuver "
+            for m in compliant_maneuver:
+                string += '/' + m.value + '/'
+            string += " is selected"
+            print(string)
         return compliant_maneuver
 
     def search_tc(self):
@@ -80,7 +87,6 @@ class TSolver:
         Searches the time-to-compliance.
         """
         if self._compliant_maneuvers is None:
-            print("<TSolver>: the compliant maneuver is not specified")
             return -math.inf  # marked as not repairable
         tc = self.tc_object.generate(self._compliant_maneuvers)
         return tc
@@ -102,9 +108,10 @@ class TSolver:
         repaired_traj = None
         self.assign_proposition(proposition, model)
         if self.compliant_maneuvers is None:
+            print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj
         tc = self.search_tc()
-        print("<T-solver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv))
+        print("* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv))
 
         if tc != -math.inf:
             repaired_traj = self._optimization_based_repair()

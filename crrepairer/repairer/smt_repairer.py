@@ -53,7 +53,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         # initialize Solvers for SMT paradigm
         sat_solver = SATSolver(self.rule_monitor)
         t_solver = TSolver(self.rule_monitor)
+        nr = 1
         while sat_solver.solve() == sat:
+            print("* {}. iteration...".format(nr))
             if self.rule_monitor.proposition_nodes is None:
                 return None
             select_proposition, self._model = sat_solver.model()
@@ -62,10 +64,12 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             if repairability and repaired_traj is not None:
                 tv, _ = t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
                 if tv == math.inf or not check_flag:
+                    print("* \t<SMTRepairer>: successfully repaired! •ᴗ•")
                     return repaired_traj
                 else:
-                    print("<Repairer>: reparable but the solver failed")
+                    print("* \t<SMTRepairer>: reparable but the solver failed ಠ_ಠ")
             sat_solver.update_formula()
+            nr += 1
         return None
 
     @staticmethod
