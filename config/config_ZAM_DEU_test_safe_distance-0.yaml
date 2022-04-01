@@ -1,11 +1,6 @@
 # add here the directory of commonroad-qp-planner
 scenario_settings:
     scenario_name: &scenario_name ZAM_DEU_test_safe_distance         # set correct scenario name
-    draw: True
-
-general_planning_settings:
-    time_horizon: --            # (planning) horizon
-
 
 vehicle_settings:
     1:  # planning problem ID from CommonRoad scenario file
@@ -30,13 +25,6 @@ vehicle_settings:
         resampling_reference_path: 1.5  # resampling for curvilinear CoSy
         #overwrite_reference_path: [436, 446, 456, 466, 478]
         max_curvature_reference_path: 0.01  # for curvilinear CoSy
-
-debugging_settings:
-    draw_solution: True                 # True to draw and store reachable sets
-    draw_window: !!null
-    store_config: False
-    folder_dir: &folder_dir evaluation/
-    directory: !!python/object/apply:os.path.join [*folder_dir, *scenario_name]         # directory to store plots
 
 # Planner specific configurations
 qp_planner:
