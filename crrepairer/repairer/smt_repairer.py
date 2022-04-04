@@ -54,6 +54,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         sat_solver = SATSolver(self.rule_monitor)
         t_solver = TSolver(self.rule_monitor)
         nr = 1
+        print("******** Trajectory Repairing starts! ********")
         while sat_solver.solve() == sat:
             print("* {}. iteration...".format(nr))
             if self.rule_monitor.proposition_nodes is None:

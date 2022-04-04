@@ -1,7 +1,6 @@
 
 scenario_settings:
     scenario_name: &scenario_name config_DEU_LocationBUpper-1_22_T-1       # set correct scenario name
-    draw: True
 
 general_planning_settings:
     time_horizon: --            # (planning) horizon
@@ -31,12 +30,6 @@ vehicle_settings:
         #overwrite_reference_path: [436, 446, 456, 466, 478]
         max_curvature_reference_path: 0.01  # for curvilinear CoSy
 
-debugging_settings:
-    draw_solution: True                 # True to draw and store reachable sets
-    draw_window: !!null
-    store_config: False
-    folder_dir: &folder_dir evaluation/
-    directory: !!python/object/apply:os.path.join [*folder_dir, *scenario_name]         # directory to store plots
 
 # Planner specific configurations
 qp_planner:

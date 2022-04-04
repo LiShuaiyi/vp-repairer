@@ -1,11 +1,6 @@
 
 scenario_settings:
     scenario_name: &scenario_name DEU_Gar-1_1_T-1       # set correct scenario name
-    draw: True
-
-general_planning_settings:
-    time_horizon: --            # (planning) horizon
-
 
 vehicle_settings:
     800:  # planning problem ID from CommonRoad scenario file

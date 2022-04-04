@@ -75,9 +75,9 @@ class TSolver:
         if not compliant_maneuver:
             print("* \t<TSolver>: no compliant maneuver is selected")
         else:
-            string = "* \t<TSolver>: compliant maneuver "
+            string = "* \t<TSolver>: compliant maneuver /"
             for m in compliant_maneuver:
-                string += '/' + m.value + '/'
+                string += m.value + '/'
             string += " is selected"
             print(string)
         return compliant_maneuver
