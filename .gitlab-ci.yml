@@ -1,5 +1,6 @@
 stages:
-- test
+  - test
+  - deploy
 
 image: continuumio/anaconda3
 
