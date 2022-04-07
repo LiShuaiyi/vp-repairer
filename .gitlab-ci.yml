@@ -19,8 +19,7 @@ before_script:
 
 test:
   stage: test
-  rules:
-    - when: on_success
+  when: manual
   script:
     - cd $CI_PROJECT_DIR/tests && python -m unittest
 
@@ -36,5 +35,4 @@ deploy_develop:
     - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
     - git remote set-url origin "https://gitlab-ci-token:${VERSION_BUMP_PUSH_TOKEN}@gitlab.lrz.de/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}.git"
     - git push -o ci.skip origin HEAD:${CI_COMMIT_REF_NAME}
-  when: manual
 
