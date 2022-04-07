@@ -26,7 +26,6 @@ test:
 deploy_develop:
   stage: deploy
   script:
-    - git lfs install
     - pip install twine bump2version
     - git config --global user.email "${GITLAB_USER_EMAIL}"
     - git config --global user.name "${GITLAB_USER_NAME}"
