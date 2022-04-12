@@ -1,5 +1,6 @@
 from abc import ABC
 import math
+import time
 
 from commonroad.scenario.scenario import DynamicObstacle
 from commonroad.scenario.trajectory import Trajectory
@@ -30,6 +31,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self._model = None
         self._tc = -math.inf
         self._tv = -math.inf
+        # initialize Solvers for SMT paradigm
+        self.sat_solver = SATSolver(self.rule_monitor)
+        self.t_solver = TSolver(self.rule_monitor)
 
     @property
     def tv(self):
@@ -50,26 +54,25 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self._tv = self.rule_monitor.tv_time_step
         if self._tv == -math.inf:
             return None
-        # initialize Solvers for SMT paradigm
-        sat_solver = SATSolver(self.rule_monitor)
-        t_solver = TSolver(self.rule_monitor)
         nr = 1
         print("******** Trajectory Repairing starts! ********")
-        while sat_solver.solve() == sat:
+        start_time = time.time()
+        while self.sat_solver.solve() == sat:
             print("* {}. iteration...".format(nr))
             if self.rule_monitor.proposition_nodes is None:
                 return None
-            select_proposition, self._model = sat_solver.model()
-            repairability, repaired_traj = t_solver.check(select_proposition, list(self._model))
-            self._tc = t_solver.tc_object.tc_time_step
+            select_proposition, self._model = self.sat_solver.model()
+            repairability, repaired_traj = self.t_solver.check(select_proposition, list(self._model))
+            self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
-                tv, _ = t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
+                print("----------- Computation Time: {} -----------".format(time.time() - start_time))
+                tv, _ = self.t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
                 if tv == math.inf or not check_flag:
                     print("********  Successfully Repaired! •ᴗ•  ********")
                     return repaired_traj
                 else:
                     print("****** Reparable but Solver Failed ಠ_ಠ  ******")
-            sat_solver.update_formula()
+            self.sat_solver.update_formula()
             nr += 1
         print("**********   Repairing Failed ಠ_ಠ   **********")
         return None

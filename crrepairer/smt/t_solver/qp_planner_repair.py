@@ -63,7 +63,8 @@ class QPPlannerRepair(QPPlanner):
                          self._time_horizon,
                          self._vehicle_configuration,
                          qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
-                         qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"])
+                         qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
+                         verbose=False)
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
         self._rule_constraints = RuleConstraints(tc_object,

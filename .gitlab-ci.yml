@@ -24,6 +24,7 @@ test:
     - cd $CI_PROJECT_DIR/tests && python -m unittest
 
 deploy_develop:
+  when: manual
   stage: deploy
   script:
     - pip install twine bump2version

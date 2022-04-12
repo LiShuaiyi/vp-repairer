@@ -118,7 +118,7 @@ class TestSMTSolver(unittest.TestCase):
                                       tc_object,
                                       assign_prop)
         self.assertIsInstance(qp_repairer, QPPlannerRepair)
-        qp_repairer.rule_constraints.add() # add constraints
+        qp_repairer.rule_constraints.add()  # add constraints
         safe_distance_modes_t = [True for _ in range(tc_object.N - tc_object.tc_time_step)]
         self.assertEqual(qp_repairer.rule_constraints.safe_distance_modes,
                          safe_distance_modes_t)
