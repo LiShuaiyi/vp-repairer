@@ -29,7 +29,8 @@ class QPPlannerRepair(QPPlanner):
     def __init__(self,
                  rule_monitor: STLRuleMonitor,
                  tc_object: TC,
-                 sel_proposition: List[PropositionNode]):
+                 sel_proposition: List[PropositionNode],
+                 verbose=False):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world_state.scenario
         self._ego_vehicle = tc_object.ego_vehicle
@@ -64,7 +65,7 @@ class QPPlannerRepair(QPPlanner):
                          self._vehicle_configuration,
                          qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
                          qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
-                         verbose=False)
+                         verbose=verbose)
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
         self._rule_constraints = RuleConstraints(tc_object,

@@ -26,6 +26,8 @@ class TSolver:
         self._repairability = False
         self._qp_planner = None
 
+        self.verbose = True
+
     @property
     def tc_object(self):
         return self._tc_obj
@@ -98,7 +100,8 @@ class TSolver:
         """
         self._qp_planner = QPPlannerRepair(self._rule_monitor,
                                            self._tc_obj,
-                                           self._sel_prop)
+                                           self._sel_prop,
+                                           verbose=self.verbose)
         start_time = time.time()
         repaired_trajectory = self._qp_planner.plan()
         print("* \t<TSolver>: solving time {}".format(time.time()-start_time))
