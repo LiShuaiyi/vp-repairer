@@ -1,4 +1,5 @@
 import math
+import time
 from typing import List
 
 from commonroad_repair.crrepairer.cut_off.tc import TC
@@ -98,7 +99,9 @@ class TSolver:
         self._qp_planner = QPPlannerRepair(self._rule_monitor,
                                            self._tc_obj,
                                            self._sel_prop)
+        start_time = time.time()
         repaired_trajectory = self._qp_planner.plan()
+        print("* \t<TSolver>: solving time {}".format(time.time()-start_time))
         return repaired_trajectory
 
     def check(self, proposition: List[PropositionNode], model: list) -> (bool, Trajectory):
