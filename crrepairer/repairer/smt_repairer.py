@@ -68,13 +68,13 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 print(f"----- Computation Time: {time.time() - start_time:.3f}s -----")
                 tv, _ = self.t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
                 if tv == math.inf or not check_flag:
-                    print("********  Successfully Repaired! •ᴗ•  ********")
+                    print("*****  Successfully Repaired! •ᴗ•  *****")
                     return repaired_traj
                 else:
-                    print("****** Reparable but Solver Failed ಠ_ಠ  ******")
+                    print("*** Reparable but Solver Failed ಠ_ಠ  ***")
             self.sat_solver.update_formula()
             nr += 1
-        print("**********   Repairing Failed ಠ_ಠ   **********")
+        print("*******   Repairing Failed ಠ_ಠ   *******")
         return None
 
     @staticmethod
