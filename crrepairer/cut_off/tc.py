@@ -1,6 +1,7 @@
 from typing import Union, List, Any, Tuple
 from collections import defaultdict
 import math
+import functools
 from abc import ABC
 
 import numpy as np
@@ -118,6 +119,7 @@ class TC(CutOffBase, ABC):
             self._compliant_maneuver = max(ttm, key=ttm.get)
         return self._tc
 
+    @functools.lru_cache(128)
     def search_ttm(self, maneuver: CutOffAction):
         ttm = - math.inf
         low = 0

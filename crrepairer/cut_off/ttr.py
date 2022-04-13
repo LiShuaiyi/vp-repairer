@@ -1,5 +1,6 @@
 from abc import ABC
 import math
+import functools
 
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase
 from commonroad_repair.crrepairer.cut_off.utils import visualize_state_list, int_round
@@ -42,6 +43,7 @@ class TTR(CutOffBase, ABC):
                 return max(ttm.values())
             return int_round(max(ttm.values()), 1)  #, max(ttm, key=ttm.get)
 
+    @functools.lru_cache(128)
     def search_ttm(self, maneuver):
         """
         Finds the TTM.
