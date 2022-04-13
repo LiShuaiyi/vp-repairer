@@ -26,7 +26,7 @@ class TSolver:
         self._repairability = False
         self._qp_planner = None
 
-        self.verbose = True
+        self.verbose = False
 
     @property
     def tc_object(self):
@@ -104,7 +104,7 @@ class TSolver:
                                            verbose=self.verbose)
         start_time = time.time()
         repaired_trajectory = self._qp_planner.plan()
-        print("* \t<TSolver>: solving time {}".format(time.time()-start_time))
+        print(f"* \t<TSolver>: solving time {time.time()-start_time:.3f}s")
         return repaired_trajectory
 
     def check(self, proposition: List[PropositionNode], model: list) -> (bool, Trajectory):
@@ -116,9 +116,10 @@ class TSolver:
         if self.compliant_maneuvers is None:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj
+        start_time = time.time()
         tc = self.search_tc()
         print("* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv))
-
+        print(f"* \t<Tsolver>: run time {time.time() - start_time:.3f}s")
         if tc != -math.inf:
             repaired_traj = self._optimization_based_repair()
             if repaired_traj is not None:

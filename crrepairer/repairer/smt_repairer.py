@@ -65,7 +65,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             repairability, repaired_traj = self.t_solver.check(select_proposition, list(self._model))
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
-                print("----------- Computation Time: {} -----------".format(time.time() - start_time))
+                print(f"----- Computation Time: {time.time() - start_time:.3f}s -----")
                 tv, _ = self.t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
                 if tv == math.inf or not check_flag:
                     print("********  Successfully Repaired! •ᴗ•  ********")
