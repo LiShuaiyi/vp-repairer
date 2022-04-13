@@ -9,7 +9,7 @@ from commonroad.scenario.obstacle import State
 
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase
 from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
-from commonroad_repair.crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list
+from commonroad_repair.crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list, int_round
 from commonroad_repair.crrepairer.cut_off.simulation import (CutOffAction,
                                                              SimulationLateral,
                                                              SimulationLong,
@@ -52,13 +52,13 @@ class TC(CutOffBase, ABC):
 
     @property
     def tv(self):
-        return round(self._tv_time_step * self.dT, 1)
+        return int_round(self._tv_time_step * self.dT, 1)
 
     @property
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
-        return round(self._tc, 1)
+        return int_round(self._tc, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:
@@ -123,9 +123,9 @@ class TC(CutOffBase, ABC):
     def search_ttm(self, maneuver: CutOffAction):
         ttm = - math.inf
         low = 0
-        high = int(round(self.tv / self.dT))
+        high = int(int_round(self.tv / self.dT))
         while low < high:
-            mid = int(round(low + high) / 2)
+            mid = int(int_round(low + high) / 2)
             if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
                 self._sim_lon.update_action(maneuver, mid)
                 state_list = self._sim_lon.simulate_state_list()

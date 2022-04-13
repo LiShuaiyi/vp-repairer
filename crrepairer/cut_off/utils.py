@@ -1,3 +1,4 @@
+import functools
 import math
 
 from stl_crmonitor.crmonitor.common.vehicle import Vehicle
@@ -99,8 +100,6 @@ def update_ego_vehicle(road_network: RoadNetwork,
     # cut-off state changes it's input values, but the states stay unchanged
     ego_vehicle.states_lon[cut_off_time] = update_curvilinear_states_long(ego_vehicle.states_lon[cut_off_time],
                                                                           acceleration, jerk)
-    state_lon = ego_vehicle.states_lon[cut_off_time]
-    state_lat = ego_vehicle.states_lat[cut_off_time]
     reference_lane = ego_vehicle.lane
     # print(ego_vehicle.lanelet_assignment)
 
@@ -136,6 +135,7 @@ def update_ego_vehicle(road_network: RoadNetwork,
             del ego_vehicle.lanelet_assignment[time_step]
 
 
+@functools.lru_cache()
 def int_round(some_float, tolerance=1):
     """
     Round function using int.
