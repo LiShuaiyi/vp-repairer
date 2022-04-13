@@ -1,3 +1,4 @@
+import functools
 import math
 from typing import Iterable, Union, Tuple, Any, List
 from enum import Enum
@@ -79,10 +80,12 @@ class STLRuleMonitor:
         return self._rule_eval.sat_formula
 
     @property
+    @functools.lru_cache(128)
     def prop_robust_all(self):
         return self.rob_abstraction.query('other_id == @self._other_id')
 
     @property
+    @functools.lru_cache(128)
     def prop_robust_ttv(self):
         return self.prop_robust_all.query('time_step == @self._tv')
 

@@ -1,6 +1,7 @@
 from typing import Union, List, Any, Tuple
 from collections import defaultdict
 import math
+import functools
 from abc import ABC
 
 import numpy as np
@@ -8,14 +9,18 @@ from commonroad.scenario.obstacle import State
 
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase
 from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
-from commonroad_repair.crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list
-from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
+from commonroad_repair.crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list, int_round
+from commonroad_repair.crrepairer.cut_off.simulation import (CutOffAction,
+                                                             SimulationLateral,
+                                                             SimulationLong,
+                                                             check_elements_state_list)
 
 
 class TC(CutOffBase, ABC):
     """
     Time-To-Compliance.
     """
+
     def __init__(self,
                  rule_monitor: STLRuleMonitor):
         super().__init__(rule_monitor._world_state)
@@ -26,27 +31,40 @@ class TC(CutOffBase, ABC):
         self._compliant_maneuver = None
         self._tc = -math.inf
         self._tc_dict = defaultdict(float)
-        self._simulation_lateral = None
+
+        self._sim_lon = SimulationLong(None,
+                                       self.ego_vehicle,
+                                       None,
+                                       dt=rule_monitor.world_state.dt)
+        self._sim_lat = SimulationLateral(None,
+                                          self.ego_vehicle,
+                                          None,
+                                          rule_monitor.world_state,
+                                          dt=rule_monitor.world_state.dt)
 
     @property
-    def simulation_lateral(self) -> Union[SimulationLong, SimulationLateral]:
-        return self._simulation_lateral
+    def simulation_lateral(self) -> Union[SimulationLateral]:
+        return self._sim_lat
+
+    @property
+    def simulation_longitudinal(self) -> Union[SimulationLong]:
+        return self._sim_lon
 
     @property
     def tv(self):
-        return round(self._tv_time_step*self.dT, 1)
+        return int_round(self._tv_time_step * self.dT, 1)
 
     @property
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
-        return round(self._tc, 1)
+        return int_round(self._tc, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:
         if self._tc == -math.inf:
             return self._tc
-        return int(self._tc/self.dT)
+        return int(self._tc / self.dT)
 
     @property
     def tv_time_step(self) -> Union[int, float]:
@@ -101,35 +119,31 @@ class TC(CutOffBase, ABC):
             self._compliant_maneuver = max(ttm, key=ttm.get)
         return self._tc
 
+    @functools.lru_cache(128)
     def search_ttm(self, maneuver: CutOffAction):
         ttm = - math.inf
         low = 0
-        high = int(round(self.tv / self.dT))
+        high = int(int_round(self.tv / self.dT))
         while low < high:
-            mid = int(round(low + high)/2)
+            mid = int(int_round(low + high) / 2)
             if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
-                SL = SimulationLong(maneuver,
-                                    self.ego_vehicle,
-                                    mid)
+                self._sim_lon.update_action(maneuver, mid)
+                state_list = self._sim_lon.simulate_state_list()
             elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
-                SL = SimulationLateral(maneuver,
-                                       self.ego_vehicle,
-                                       mid,
-                                       self.world_state)
-                self._simulation_lateral = SL
+                self._sim_lat.update_action(maneuver, mid)
+                state_list = self._sim_lat.simulate_state_list()
             else:
                 raise ValueError("<TTCC>: given compliant maneuver {} is not supported".format(maneuver))
-
-            state_list = SL.simulate_state_list()
             if state_list is None:
                 flag_collision = True
                 tv = -math.inf
             else:
                 if self._visualize:
                     visualize_state_list(self._collision_checker, state_list, self.scenario,
-                                             SL.vehicle_dynamics.shape)
-                flag_collision = self._detect_collision(state_list)  # bool value
-                tv, _ = self.calc_tv_updated(state_list) # which should be tv instead of ttm
+                                         self._sim_lat.vehicle_dynamics.shape)
+                # flag_collision = self._detect_collision(state_list)  # bool value
+                check_elements_state_list(state_list, self.dT)
+                tv, _ = self.calc_tv_updated(state_list)  # which should be tv instead of ttm
             # if violation-free and collision-free
             if tv == math.inf:  # and not flag_collision:
                 low = mid + 1
@@ -139,7 +153,4 @@ class TC(CutOffBase, ABC):
         if low != 0:
             ttm = (low - 1) * self.dT
         return ttm
-
-
-
 
