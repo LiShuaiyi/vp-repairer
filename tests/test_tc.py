@@ -37,7 +37,7 @@ class TestTC(unittest.TestCase):
 
     def test_simulation_long(self):
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
-        sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0)
+        sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0, dt=self.scenario.dt)
         simulated_state1 = sim_long.simulate_state_list()
         self.assertEqual(
             simulated_state1[-1].time_step,
@@ -69,7 +69,8 @@ class TestTC(unittest.TestCase):
             CutOffAction.LANECHANGELEFT,
             ego_vehicle,
             0,
-            world_state)
+            world_state,
+            dt=world_state.dt)
         simulated_state_list1 = sim_lat.simulate_state_list()
         final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position(
             [simulated_state_list1[-1].position])[0]
@@ -124,7 +125,7 @@ class TestTC(unittest.TestCase):
         # simulate a new trajectory of the ego vehicle
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
         world_state = self.rule_monitor.world_state
-        sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0)
+        sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0, dt=world_state.dt)
         new_state_list = sim_long.simulate_state_list()
         # 1. directly update the ego vehicle
         update_ego_vehicle(world_state.road_network,

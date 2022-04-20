@@ -5,13 +5,14 @@ from commonroad_repair.crrepairer.repairer.visualization import (visualize_repai
                                                                  visualize_v_profile)
 
 from commonroad.common.file_reader import CommonRoadFileReader
-
 import math
 
 scenario_id = "DEU_Gar-1_1_T-1"
 file_path = "../../scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
+
+flag_visualization = False
 
 if __name__ == '__main__':
     # ========== Scenario and Configuration =========
@@ -33,8 +34,7 @@ if __name__ == '__main__':
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor,
                                          ego_initial)
         repaired_traj = repairer.repair()
-
-        if repaired_traj is not None:
+        if repaired_traj is not None and flag_visualization:
             ego_repaired = repairer.convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
                                                                 ego_initial.initial_state,
                                                                 repaired_traj)

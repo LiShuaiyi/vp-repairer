@@ -9,9 +9,11 @@ from commonroad.common.file_reader import CommonRoadFileReader
 import math
 
 scenario_id = "ZAM_Zip-1_56_T-1"
-file_path = "../../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
+file_path = "../../scenarios/" \
+            + scenario_id + ".xml"
 figure_path = "./figures"
 
+flag_visualization = False
 
 if __name__ == '__main__':
     # ========== Scenario and Configuration =========
@@ -21,9 +23,17 @@ if __name__ == '__main__':
     rule = "R_G2"
 
     ego_initial = scenario.obstacle_by_id(ego_id)
-    # # change the time horizon
     initial_time_step = 50
-    final_time_step = initial_time_step + 21
+    final_time_step = initial_time_step + 20
+    # # change the time horizon
+    for veh in scenario.obstacles:
+        for state in veh.prediction.trajectory.state_list:
+            state.time_step -= initial_time_step
+        veh.initial_state = veh.prediction.trajectory.state_list[initial_time_step-1]
+        veh.prediction.trajectory.state_list = veh.prediction.trajectory.state_list[initial_time_step:
+                                                                                    final_time_step]
+        veh.prediction.occupancy_set = veh.prediction.occupancy_set[initial_time_step:final_time_step]
+        veh.prediction.final_time_step = 20
 
     for i in range(ego_initial.prediction.trajectory.final_state.time_step):
         ego_initial.state_at_time(i).acceleration = (ego_initial.state_at_time(i + 1).velocity -
@@ -35,13 +45,11 @@ if __name__ == '__main__':
                                   ego_id, rule)
     # ========== Trajectory Repairing =========
     if rule_monitor.tv_time_step is not math.inf:
-
         repairer = SMTTrajectoryRepairer(rule_monitor,
                                          ego_initial)
         repaired_traj = repairer.repair()
-
         plot_limits = [-50, 10, 3.5, 11.2]
-        if repaired_traj is not None:
+        if repaired_traj is not None and flag_visualization:
             ego_repaired = repairer.convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
                                                                 ego_initial.initial_state,
                                                                 repaired_traj)

@@ -1,9 +1,11 @@
 from abc import ABC
 import math
+import functools
 
 from commonroad_repair.crrepairer.cut_off.base import CutOffBase
 from commonroad_repair.crrepairer.cut_off.utils import visualize_state_list, int_round
-from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction, SimulationLateral, SimulationLong
+from commonroad_repair.crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
+                                                             check_elements_state_list)
 
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 
@@ -42,6 +44,7 @@ class TTR(CutOffBase, ABC):
                 return max(ttm.values())
             return int_round(max(ttm.values()), 1)  #, max(ttm, key=ttm.get)
 
+    @functools.lru_cache(128)
     def search_ttm(self, maneuver):
         """
         Finds the TTM.
@@ -56,7 +59,8 @@ class TTR(CutOffBase, ABC):
                             CutOffAction.STEADYSPEED]:
                 SL = SimulationLong(maneuver,
                                     self.ego_vehicle,
-                                    mid)
+                                    mid,
+                                    dt=self.dT)
             elif maneuver in [CutOffAction.LANECHANGELEFT,
                               CutOffAction.LANECHANGERIGHT,
                               CutOffAction.STEERLEFT,
@@ -64,10 +68,12 @@ class TTR(CutOffBase, ABC):
                 SL = SimulationLateral(maneuver,
                                        self.ego_vehicle,
                                        mid,
-                                       self.world_state)
+                                       self.world_state,
+                                       dt=self.dT)
             else:
                 raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))
             state_list = SL.simulate_state_list()
+            check_elements_state_list(state_list, self.dT)
             if state_list is None:
                 return -math.inf
             if self._visualize:

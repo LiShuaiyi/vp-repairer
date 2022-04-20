@@ -9,8 +9,11 @@ from commonroad.common.file_reader import CommonRoadFileReader
 import math
 
 scenario_id = "DEU_Muc-4_2_T-1"
-file_path = "../../../commonroad-scenarios-master-scenarios/scenarios/hand-crafted/" + scenario_id + ".xml"
+file_path = "../../scenarios/" \
+            + scenario_id + ".xml"
 figure_path = "./figures"
+
+flag_visualization = False
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
@@ -32,7 +35,7 @@ if __name__ == '__main__':
                                          ego_initial)
         repaired_traj = repairer.repair()
 
-        if repaired_traj is not None:
+        if repaired_traj is not None and flag_visualization:
             ego_repaired = repairer.convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
                                                                 ego_initial.initial_state,
                                                                 repaired_traj)

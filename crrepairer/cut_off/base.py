@@ -2,6 +2,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import List, Union
 import matplotlib.pyplot as plt
+import copy
 
 # CommonRoad STL monitor
 from stl_crmonitor.crmonitor.common.world_state import WorldState
@@ -26,9 +27,9 @@ class CutOffBase(ABC):
     """
     def __init__(self,
                  world_state: WorldState):
-        self.scenario = world_state.scenario
-        self._ego_vehicle = self.scenario.obstacle_by_id(world_state.ego_vehicle.id)
         self._world_state = world_state
+        self.scenario = self._world_state.scenario
+        self._ego_vehicle = self.scenario.obstacle_by_id(world_state.ego_vehicle.id)
         self._N = self._world_state.num_time_steps
         self._dT = world_state.dt
         self._visualize = False

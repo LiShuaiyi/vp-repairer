@@ -20,6 +20,7 @@ from commonroad.geometry.shape import Rectangle
 from typing import List
 import yaml
 import os
+import time
 
 
 class QPPlannerRepair(QPPlanner):
@@ -29,7 +30,8 @@ class QPPlannerRepair(QPPlanner):
     def __init__(self,
                  rule_monitor: STLRuleMonitor,
                  tc_object: TC,
-                 sel_proposition: List[PropositionNode]):
+                 sel_proposition: List[PropositionNode],
+                 verbose=False):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world_state.scenario
         self._ego_vehicle = tc_object.ego_vehicle
@@ -63,7 +65,8 @@ class QPPlannerRepair(QPPlanner):
                          self._time_horizon,
                          self._vehicle_configuration,
                          qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
-                         qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"])
+                         qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
+                         verbose=verbose)
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
         self._rule_constraints = RuleConstraints(tc_object,
@@ -99,16 +102,22 @@ class QPPlannerRepair(QPPlanner):
         print('* \t\t Longitudinal optimization')
         long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self.construct_s_reference()
+        start_time_lon = time.time()
         traj_lon, status = self.longitudinal_trajectory_planning(long_constr, reference_lon,
                                                                  safe_dis_modes=self._rule_constraints.
                                                                  safe_distance_modes)
+        print('* \t\t -- run time {} s --'.format(round(time.time()-start_time_lon, 3)))
         if status is not 'optimal':
             return None
             # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
         print('* \t\t Lateral optimization')
         lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
         lat_constr.select_proposition = long_constr.select_proposition
-        trajectory, status = self.lateral_trajectory_planning(traj_lon, lat_constr, None)
+        start_time_lat = time.time()
+        trajectory, status = self.lateral_trajectory_planning(traj_lon,
+                                                              lat_constr,
+                                                              None)
+        print('* \t\t -- run time {} s --'.format(round(time.time()-start_time_lat, 3)))
         # convert trajectory to cartesian space
         if status is not 'optimal':
             return None

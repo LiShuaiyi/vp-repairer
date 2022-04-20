@@ -1,4 +1,5 @@
 import math
+import functools
 
 from sympy.logic.boolalg import is_cnf
 from copy import deepcopy
