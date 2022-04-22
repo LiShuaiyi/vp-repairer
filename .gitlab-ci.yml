@@ -21,7 +21,7 @@ test:
   stage: test
   script:
     - pip install --index-url https://commonroad-repairer-package:DgzMqqqWWzECPsQpqDv6@${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple  -e .
-    - python -m unittest
+    - cd $CI_PROJECT_DIR/tests && python -m unittest
 
 deploy_develop:
   when: manual
