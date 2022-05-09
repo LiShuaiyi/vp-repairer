@@ -3,7 +3,7 @@ from t_solver.t_solver import TSolver
 from t_solver.qp_planner import QPPlannerRepair
 from repairer.smt_repairer import SMTTrajectoryRepairer
 from t_solver.utils import convert_traj_to_ego_vehicle
-from commonroad_repair.crrepairer.repairer.visualization import visualize_repairing_result, visualize_v_profile
+from commonroad_repairer.crrepairer.repairer.visualization import visualize_repairing_result, visualize_v_profile
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.visualization.mp_renderer import MPRenderer

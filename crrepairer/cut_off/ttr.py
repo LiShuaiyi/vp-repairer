@@ -2,10 +2,10 @@ from abc import ABC
 import math
 import functools
 
-from commonroad_repair.crrepairer.cut_off.base import CutOffBase
-from commonroad_repair.crrepairer.cut_off.utils import visualize_state_list, int_round
-from commonroad_repair.crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
-                                                             check_elements_state_list)
+from commonroad_repairer.crrepairer.cut_off.base import CutOffBase
+from commonroad_repairer.crrepairer.cut_off.utils import visualize_state_list, int_round
+from commonroad_repairer.crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
+                                                               check_elements_state_list)
 
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 

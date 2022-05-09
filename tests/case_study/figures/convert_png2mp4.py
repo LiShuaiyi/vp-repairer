@@ -6,7 +6,7 @@ mode = 'repaired'
 import ffmpeg
 (
     ffmpeg
-    .input('/home/yuanfei/commonroad/commonroad_repair/tests/case_study/figures/' +
+    .input('/home/yuanfei/commonroad/commonroad_repairer/tests/case_study/figures/' +
            '/rg' + rule[-1] + '_' + mode +
            '/*.svg', pattern_type='glob', framerate=10)
     .output(rule + mode + '.mp4')

@@ -9,10 +9,10 @@ import math
 from commonroad.common.file_reader import CommonRoadFileReader
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 
-from commonroad_repair.crrepairer.cut_off.tc import TC
-from commonroad_repair.crrepairer.cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
-from commonroad_repair.crrepairer.cut_off.utils import check_velocity_feasibility, update_ego_vehicle
-from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from commonroad_repairer.crrepairer.cut_off.tc import TC
+from commonroad_repairer.crrepairer.cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
+from commonroad_repairer.crrepairer.cut_off.utils import check_velocity_feasibility, update_ego_vehicle
+from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 
 class TestTC(unittest.TestCase):

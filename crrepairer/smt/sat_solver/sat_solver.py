@@ -1,7 +1,7 @@
 import sympy as sp
 
-from commonroad_repair.crrepairer.smt.sat_solver.dpll import DPLL
-from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from commonroad_repairer.crrepairer.smt.sat_solver.dpll import DPLL
+from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 
 class SATSolver:
