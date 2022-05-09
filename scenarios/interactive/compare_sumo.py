@@ -11,7 +11,7 @@ from crmonitor.evaluation.evaluation import RuleSetEvaluator
 if __name__ == '__main__':
 
     # the highD-cr scenario directory
-    file_path = "/home/yuanfei/commonroad/commonroad_repair/scenarios/interactive/archive/"
+    file_path = "/commonroad_repairer/scenarios/interactive/archive/"
 
     # for s in list(glob.glob(os.path.join(file_path, "*.xml"), recursive=True)):
     s = file_path + 'DEU_LocationELower-24_18_I-1.xml'

@@ -7,9 +7,9 @@ from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 
 from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
 
-from commonroad_repair.crrepairer.cut_off.tc import TC
-from commonroad_repair.crrepairer.smt.t_solver.rule_constraints import RuleConstraints
-from commonroad_repair.crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from commonroad_repairer.crrepairer.cut_off.tc import TC
+from commonroad_repairer.crrepairer.smt.t_solver.rule_constraints import RuleConstraints
+from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 from commonroad.scenario.trajectory import Trajectory, State
 from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType

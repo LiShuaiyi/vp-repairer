@@ -8,16 +8,4 @@ dependencies:
   - python=3.7
   - pip=20.2.4
   - pip:
-    # environment dependencies
-    - setuptools==50.3.2
-    - commonroad-io==2021.1
-    - commonroad-vehicle-models==1.0.0
-    - numpy==1.19.5
-    - matplotlib==3.3.4
-    - z3-solver==4.8.12.0
-    - sympy==1.8
-    - pyyaml
-    - p5py
-    - PEP517
-    - osqp==0.6.2
-
+    - -r requirements.txt

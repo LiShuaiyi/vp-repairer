@@ -15,12 +15,11 @@ before_script:
     - conda env create -f environment.yml
     - source activate cr-py37
     - conda info
-    - cd external/commonroad-drivability-checker/ && ./build.sh -e /opt/conda/envs/cr-py37 -v 3.7 -i -j 64 --no-root
 
 test:
   stage: test
-  when: manual
   script:
+    - pip install --index-url https://commonroad-repairer-package:DgzMqqqWWzECPsQpqDv6@${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple  -e .
     - cd $CI_PROJECT_DIR/tests && python -m unittest
 
 deploy_develop:

@@ -8,8 +8,8 @@ import math
 
 from commonroad.common.file_reader import CommonRoadFileReader
 
-from commonroad_repair.crrepairer.cut_off.ttr import TTR
-from commonroad_repair.crrepairer.cut_off.simulation import CutOffAction
+from commonroad_repairer.crrepairer.cut_off.ttr import TTR
+from commonroad_repairer.crrepairer.cut_off.simulation import CutOffAction
 
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 
