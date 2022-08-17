@@ -15,6 +15,7 @@ before_script:
     - conda env create -f environment.yml
     - source activate cr-py37
     - conda info
+    - conda install -c conda-forge cvxpy
 
 test:
   stage: test

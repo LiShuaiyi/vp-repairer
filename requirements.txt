@@ -3,10 +3,9 @@ numpy>=1.19.5
 sympy>=1.8
 setuptools>=50.3.2
 z3-solver>=4.8.12.0
-cvxpy>=1.1.15
-osqp>=0.6.2
-Mosek
-gcc7
+# cvxpy>=1.1.15
+# osqp>=0.6.2
+# Mosek
 commonroad-io>=2021.1
 commonroad-vehicle-models>=1.0.0
 
