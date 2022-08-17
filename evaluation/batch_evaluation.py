@@ -1,5 +1,5 @@
-from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
-from commonroad_repairer.crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 
 from commonroad.scenario.obstacle import ObstacleType
 from commonroad.common.file_reader import CommonRoadFileReader

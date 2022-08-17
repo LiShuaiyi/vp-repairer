@@ -2,10 +2,10 @@ from abc import ABC
 import math
 import functools
 
-from commonroad_repairer.crrepairer.cut_off.base import CutOffBase
-from commonroad_repairer.crrepairer.cut_off.utils import visualize_state_list, int_round
-from commonroad_repairer.crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
-                                                               check_elements_state_list)
+from crrepairer.cut_off.base import CutOffBase
+from crrepairer.cut_off.utils import visualize_state_list, int_round
+from crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
+                                           check_elements_state_list)
 
 from stl_crmonitor.crmonitor.common.world_state import WorldState
 
@@ -14,6 +14,7 @@ class TTR(CutOffBase, ABC):
     """
     Time-To-React.
     """
+
     def __init__(self,
                  world_state: WorldState):
         super().__init__(world_state)
@@ -42,7 +43,7 @@ class TTR(CutOffBase, ABC):
                 ttm[maneuver] = self.search_ttm(maneuver)
             if max(ttm.values()) in [math.inf, -math.inf]:
                 return max(ttm.values())
-            return int_round(max(ttm.values()), 1)  #, max(ttm, key=ttm.get)
+            return int_round(max(ttm.values()), 1)  # , max(ttm, key=ttm.get)
 
     @functools.lru_cache(128)
     def search_ttm(self, maneuver):
@@ -53,7 +54,7 @@ class TTR(CutOffBase, ABC):
         low = 0
         high = int(self._ttc / self.dT)
         while low < high:
-            mid = int((low + high)/2)
+            mid = int((low + high) / 2)
             if maneuver in [CutOffAction.BRAKE,
                             CutOffAction.KICKDOWN,
                             CutOffAction.STEADYSPEED]:
@@ -64,7 +65,7 @@ class TTR(CutOffBase, ABC):
             elif maneuver in [CutOffAction.LANECHANGELEFT,
                               CutOffAction.LANECHANGERIGHT,
                               CutOffAction.STEERLEFT,
-                              CutOffAction.STEERRIGHT,]:
+                              CutOffAction.STEERRIGHT, ]:
                 SL = SimulationLateral(maneuver,
                                        self.ego_vehicle,
                                        mid,

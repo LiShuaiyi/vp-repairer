@@ -2,9 +2,9 @@ import numpy as np
 
 from collections import defaultdict
 
-from commonroad_repairer.crrepairer.cut_off.simulation import CutOffAction
-from commonroad_repairer.crrepairer.cut_off.tc import TC
-from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.cut_off.simulation import CutOffAction
+from crrepairer.cut_off.tc import TC
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 # class from STL monitor
 from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,

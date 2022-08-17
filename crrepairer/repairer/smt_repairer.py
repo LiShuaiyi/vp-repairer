@@ -6,10 +6,10 @@ from commonroad.scenario.scenario import DynamicObstacle
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import TrajectoryPrediction, ObstacleType
 
-from commonroad_repairer.crrepairer.repairer.base import TrajectoryRepair
-from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
-from commonroad_repairer.crrepairer.smt.sat_solver.sat_solver import SATSolver
-from commonroad_repairer.crrepairer.smt.t_solver.t_solver import TSolver
+from crrepairer.repairer.base import TrajectoryRepair
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.smt.sat_solver.sat_solver import SATSolver
+from crrepairer.smt.t_solver.t_solver import TSolver
 
 from z3 import sat
 from enum import Enum

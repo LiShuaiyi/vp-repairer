@@ -18,7 +18,7 @@ from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad_dc.collision.visualization.drawing \
     import draw_collision_rectobb
 
-from commonroad_repairer.crrepairer.cut_off.utils import transfer_state_list_to_prediction
+from crrepairer.cut_off.utils import transfer_state_list_to_prediction
 
 
 class CutOffBase(ABC):
