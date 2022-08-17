@@ -4,9 +4,9 @@ from typing import Iterable, Union, Tuple, Any, List
 from enum import Enum
 import numpy as np
 
-from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
-from stl_crmonitor.crmonitor.common.world_state import WorldState
-from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
+from crmonitor.evaluation.evaluation import RuleSetEvaluator
+from crmonitor.common.world_state import WorldState
+from crmonitor.predicates.rule import PropositionNode
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario

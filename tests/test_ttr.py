@@ -8,10 +8,10 @@ import math
 
 from commonroad.common.file_reader import CommonRoadFileReader
 
-from commonroad_repairer.crrepairer.cut_off.ttr import TTR
-from commonroad_repairer.crrepairer.cut_off.simulation import CutOffAction
+from crrepairer.cut_off.ttr import TTR
+from crrepairer.cut_off.simulation import CutOffAction
 
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from crmonitor.common.world_state import WorldState
 
 
 class TestTTR(unittest.TestCase):

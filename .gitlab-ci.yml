@@ -11,19 +11,25 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 before_script:
+    - apt-get update && apt-get install -y build-essential
+    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.lrz.de".insteadOf "ssh://git@gitlab.lrz.de"
     - conda init bash
     - conda env create -f environment.yml
     - source activate cr-py37
     - conda info
+    - conda install -c conda-forge cvxpy
 
 test:
   stage: test
   script:
-    - pip install --index-url https://commonroad-repairer-package:DgzMqqqWWzECPsQpqDv6@${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple  -e .
+    - pip install -e .
     - cd $CI_PROJECT_DIR/tests && python -m unittest
+
 
 deploy_develop:
   when: manual
+  only:
+    - master
   stage: deploy
   script:
     - pip install twine bump2version

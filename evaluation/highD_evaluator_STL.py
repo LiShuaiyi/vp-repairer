@@ -13,8 +13,8 @@ import glob
 import csv
 
 from commonroad.common.file_reader import CommonRoadFileReader
-from stl_crmonitor.crmonitor.common.world_state import WorldState
-from stl_crmonitor.crmonitor.evaluation.evaluation import RuleSetEvaluator
+from crmonitor.common.world_state import WorldState
+from crmonitor.evaluation.evaluation import RuleSetEvaluator
 
 if __name__ == '__main__':
 

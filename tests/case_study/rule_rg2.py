@@ -1,6 +1,6 @@
-from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
-from commonroad_repairer.crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-from commonroad_repairer.crrepairer.repairer.visualization import (visualize_repairing_result,
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
+from crrepairer.repairer.visualization import (visualize_repairing_result,
                                                                    visualize_a_profile,
                                                                    visualize_v_profile)
 

@@ -2,13 +2,13 @@ import math
 import time
 from typing import List
 
-from commonroad_repairer.crrepairer.cut_off.tc import TC
-from commonroad_repairer.crrepairer.cut_off.simulation import CutOffAction
-from commonroad_repairer.crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
-from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.cut_off.tc import TC
+from crrepairer.cut_off.simulation import CutOffAction
+from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
-from stl_crmonitor.crmonitor.predicates.predicate import Category
-from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
+from crmonitor.predicates.predicate import Category
+from crmonitor.predicates.rule import PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
 

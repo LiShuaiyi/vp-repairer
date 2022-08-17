@@ -2,19 +2,19 @@ import numpy as np
 
 from collections import defaultdict
 
-from commonroad_repairer.crrepairer.cut_off.simulation import CutOffAction
-from commonroad_repairer.crrepairer.cut_off.tc import TC
-from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.cut_off.simulation import CutOffAction
+from crrepairer.cut_off.tc import TC
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 # class from STL monitor
-from stl_crmonitor.crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
+from crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
                                                           PredCutIn, PredSafeDistPrec,
                                                           PredLaneSpeedLimit, PredFovSpeedLimit,
                                                           PredBrSpeedLimit, PredTypeSpeedLimit,
                                                           PredAbruptBreaking)
-from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
-from stl_crmonitor.crmonitor.common.road_network import Lane
-from stl_crmonitor.crmonitor.common.vehicle import Vehicle
+from crmonitor.predicates.rule import PropositionNode
+from crmonitor.common.road_network import Lane
+from crmonitor.common.vehicle import Vehicle
 
 from typing import List
 

@@ -6,16 +6,19 @@ z3-solver>=4.8.12.0
 cvxpy>=1.1.15
 osqp>=0.6.2
 Mosek
-commonroad-io>=2021.1
-commonroad-vehicle-models>=1.0.0
-
-#git+https://gitlab.lrz.de/ge69xek/stl_crmonitor.git@glpat-4Rpyg13_D1ZQJmKaw_sh
-#git+https://github.com/nickovic/rtamt.git@c495f36ecf32366e6f3b6ced1942e0ce5db20f56
-
+pandas~=1.2.4
+pyyaml
+antlr4-python3-runtime<=4.8
+rtamt==0.3
+ruamel-yaml>=0.16.12
+commonroad-io>=2022.1
+commonroad-vehicle-models==2.0.0
+commonroad-route-planner
 # commonroad-dc 
-#--extra-index-url https://commonroad-dc-package:WRzXAy7oJ8S2atx8iit6@gitlab.lrz.de/api/v4/projects/62155/packages/pypi/simple
-#commonroad-drivability-checker
+commonroad-drivability-checker>=2022.1
 
-#--extra-index-url https://stl-crmonitor-package:4qhSxJuW2qo4q-A6dyMY@gitlab.lrz.de/api/v4/projects/70411/packages/pypi/simple 
-#stl-crmonitor
+# stl_crmonitor
+-e git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@feature_interface#egg=stl-crmonitor
 
+# qp planner
+-e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_safe_distance#egg=commonroad-qp-planner

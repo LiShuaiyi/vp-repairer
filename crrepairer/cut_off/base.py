@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import copy
 
 # CommonRoad STL monitor
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from crmonitor.common.world_state import WorldState
 
 # CommonRoad Toolbox
 from commonroad.scenario.obstacle import DynamicObstacle, Shape
@@ -18,7 +18,7 @@ from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad_dc.collision.visualization.drawing \
     import draw_collision_rectobb
 
-from commonroad_repairer.crrepairer.cut_off.utils import transfer_state_list_to_prediction
+from crrepairer.cut_off.utils import transfer_state_list_to_prediction
 
 
 class CutOffBase(ABC):

@@ -3,11 +3,11 @@ import math
 import unittest
 from sympy.logic.boolalg import is_cnf, is_dnf
 
-from commonroad_repairer.crrepairer.smt.monitor_wrapper import STLRuleMonitor
-from commonroad_repairer.crrepairer.smt.sat_solver.sat_solver import SATSolver
-from commonroad_repairer.crrepairer.smt.sat_solver.dpll import DPLL
-from commonroad_repairer.crrepairer.smt.t_solver.t_solver import TSolver, CutOffAction
-from commonroad_repairer.crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.smt.sat_solver.sat_solver import SATSolver
+from crrepairer.smt.sat_solver.dpll import DPLL
+from crrepairer.smt.t_solver.t_solver import TSolver, CutOffAction
+from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 
 from commonroad.common.file_reader import CommonRoadFileReader
 
