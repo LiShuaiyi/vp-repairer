@@ -11,6 +11,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 before_script:
+    - apt-get update && apt-get upgrade -y && apt-get install gcc
     - conda init bash
     - conda env create -f environment.yml
     - source activate cr-py37
