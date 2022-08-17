@@ -10,6 +10,6 @@ commonroad-io>=2021.1
 commonroad-vehicle-models>=1.0.0
 
 # commonroad-dc 
-commonroad-drivability-checker>=2022.1
+# commonroad-drivability-checker>=2022.1
 
 
