@@ -7,7 +7,7 @@ from crrepairer.cut_off.utils import visualize_state_list, int_round
 from crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
                                            check_elements_state_list)
 
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from crmonitor.common.world_state import WorldState
 
 
 class TTR(CutOffBase, ABC):

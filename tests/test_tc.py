@@ -7,7 +7,7 @@ import unittest
 import math
 
 from commonroad.common.file_reader import CommonRoadFileReader
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from crmonitor.common.world_state import WorldState
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction

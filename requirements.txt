@@ -12,4 +12,5 @@ commonroad-vehicle-models>=1.0.0
 # commonroad-dc 
 commonroad-drivability-checker>=2022.1
 
-
+# stl_crmonitor
+-e git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@feature_interface

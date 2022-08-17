@@ -5,7 +5,7 @@ from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 
-from stl_crmonitor.crmonitor.predicates.rule import PropositionNode
+from crmonitor.predicates.rule import PropositionNode
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.rule_constraints import RuleConstraints

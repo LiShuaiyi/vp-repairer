@@ -8,7 +8,7 @@ from commonroad.common.solution import VehicleType
 from commonroad.scenario.obstacle import DynamicObstacle, State
 from commonroad_dc.feasibility.vehicle_dynamics import PointMassDynamics
 
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from crmonitor.common.world_state import WorldState
 from crrepairer.cut_off.utils import check_velocity_feasibility
 
 

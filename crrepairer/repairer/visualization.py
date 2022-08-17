@@ -14,7 +14,7 @@ from commonroad.visualization.param_server import ParamServer
 
 from commonroad_qp_planner.utils import calculate_safe_distance
 
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from crmonitor.common.world_state import WorldState
 
 
 class TUMcolor(Enum):

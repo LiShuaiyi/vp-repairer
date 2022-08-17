@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import copy
 
 # CommonRoad STL monitor
-from stl_crmonitor.crmonitor.common.world_state import WorldState
+from crmonitor.common.world_state import WorldState
 
 # CommonRoad Toolbox
 from commonroad.scenario.obstacle import DynamicObstacle, Shape
