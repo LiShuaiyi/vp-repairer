@@ -6,6 +6,7 @@ z3-solver>=4.8.12.0
 cvxpy>=1.1.15
 osqp>=0.6.2
 Mosek
+rtamt==0.3
 commonroad-io>=2021.1
 commonroad-vehicle-models>=1.0.0
 
@@ -13,7 +14,7 @@ commonroad-vehicle-models>=1.0.0
 commonroad-drivability-checker>=2022.1
 
 # stl_crmonitor
-# -e git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@feature_interface#egg=commonroad-stl-monitor
+-e git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@feature_interface#egg=commonroad-stl-monitor
 
 # qp planner
 -e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_safe_distance#egg=commonroad-qp-planner
