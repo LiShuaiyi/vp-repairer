@@ -11,7 +11,7 @@ pyyaml
 antlr4-python3-runtime<=4.8
 rtamt==0.3
 ruamel-yaml>=0.16.12
-commonroad-io>=2022.1
+commonroad-io==2022.1
 commonroad-vehicle-models==2.0.0
 commonroad-route-planner
 # commonroad-dc 
