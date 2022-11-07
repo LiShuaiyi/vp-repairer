@@ -3,6 +3,8 @@ import math
 from typing import Iterable, Union, Tuple, Any, List
 from enum import Enum
 import numpy as np
+import dataclasses
+from dataclasses import dataclass
 
 from crmonitor.evaluation.evaluation import RuleSetEvaluator
 from crmonitor.common.world_state import WorldState
@@ -11,6 +13,13 @@ from crmonitor.predicates.rule import PropositionNode
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
 from commonroad.planning.planning_problem import PlanningProblem
+
+@dataclass
+class PropositionNode:
+    name: str
+    alphabet: str
+    ttv_value: float
+    children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
 
 class MonitorType(Enum):
@@ -102,31 +111,100 @@ class STLRuleMonitor:
         return world_state
 
     def _initialize_prop_rob(self):
-        # obtain the id of violation-relevant vehicle
-        prop_nodes = self._rule_eval.proposition_nodes
-        # assign the robustness at ttv
+        """
+        Construct 'nodes' for propositions for better backward compatibility.
+
+        Returns:
+        prop_nodes (List[PropositionNode]): List of proposition nodes
+        """
+        alphabet = "abcdefghijklmnopqrstuvwxyz"
+
+        def retrieve_preds(node, liste):
+            # Method for retrieving PredicateNodes, which are to be used in determining maneuvers
+            for child in node.children:
+                if hasattr(child, 'latest_value'):
+                    liste.append(child)
+                else:
+                    retrieve_preds(child, liste)
+
         if self._tv in (math.inf, -math.inf):
             return None
-        for node in prop_nodes:
-            node.ttv_value = self.prop_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0]
+        all_props = self.prop_robust_ttv()
+        prop_nodes = []
+        pred_nodes = []
+        retrieve_preds(self._rule_eval._rule, pred_nodes)
+        for idx, row in all_props.iterrows():
+            proposition = PropositionNode(row["prop_name"], alphabet[idx - all_props.index[0]], row["robustness"])
+            for pred in pred_nodes:
+                if pred.name in row["rule_name"]:
+                    proposition.children.append(pred)
+            prop_nodes.append(proposition)
+
         return prop_nodes
 
     def evaluate_initially(self):
         """
         Evaluate whether the ego vehicle disobeys traffic rules
+
+        Update: Now uses the get_propositions method of the STLRuleEvaluator to obtain the rule, predicate, and
+        proposition robustness values. The values are only obtained for the highest non-conforming vehicle at
+        each time step, the id of which is kept for better backward compatibility and higher verbosity.
+
+        Returns:
+        df_rule (pd.Dataframe): DF constructed of the rule robustness at each timestep
+        df_pred (pd.Dataframe): DF constructed of each predicate robustness at each timestep for given other_id
+        df_prop (pd.Dataframe): DF constructed of each proposition robustness at each timestep for given other_id
         """
-        return self._rule_eval. \
-            evaluate_incremental(self._world_state,
-                                 to_pandas=True)
+        rule_robustness = {}
+        pred_robustness = {}
+        proposition_robustness = {}
+        other_ids_values = {}
+
+        #TODO: Incorporate support for multiple rules.
+
+        while self._world_state.time_step <= self._world_state.ego_vehicle.end_time:
+            t = self._world_state.time_step
+            rule_robustness[t] = {}
+            predicate_robustness[t] = {}
+            proposition_robustness[t] = {}
+            other_ids_values[t] = {}
+            for rule in self._rules:
+                rul = self._rule_eval.update()
+                pred = self._rule_eval.get_predicates()
+                prop, other, time = self._rule_eval.get_propositions()
+                other_ids_values[t][rule.name] = other
+                rule_robustness[t][rule.name] = rul
+
+                proposition_robustness[t][rule.name][other] = {}
+                for prop_name in prop.keys():
+                    proposition_robustness[t][rule.name][other][prop_name] = prop[prop_name]
+
+                predicate_robustness[t][rule.name] = {}
+                for full_name in pred.keys():
+                    predicate_robustness[t][rule.name][full_name] = pred[full_name]
+                other_ids_values[t][rule.name] = other
+
+        df_rule = pandas_from_nested_dict(rule_robustness,
+                                          ["time_step", "rule_name", "robustness"])
+        df_pred = pandas_from_nested_dict(predicate_robustness,
+                                          ["time_step", "rule_name", "full_name", "robustness"])
+        df_prop = pandas_from_nested_dict(proposition_robustness,
+                                          ["time_step", "rule_name", "other_id", "prop_name", "robustness"])
+        df_ids = pandas_from_nested_dict(other_ids_values,
+                                         ["time_step", "rule_name", "other_ids"])
+        df_rule = df_rule.merge(df_ids, on=["time_step", "rule_name"])
+
+        return df_rule, df_pred, df_prop
 
     def evaluate_consecutively(self):
         """
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
         self._rule_eval.switch_to_boolean()
-        self.rob_rule, self.rob_predicate = self._rule_eval. \
-            evaluate_consecutively(self._world_state,
-                                   )
+        world_state = copy.copy(world_state)
+        time_begin = world_state.time_step
+        self._rule_eval.reset(world_state._ego_vehicle, world_state, time_begin)
+        return self.evaluate_initially()
 
     def query_rule_rob_all(self):
         """
