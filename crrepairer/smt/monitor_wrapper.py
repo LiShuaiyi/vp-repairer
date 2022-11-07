@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from crmonitor.evaluation.evaluation import RuleSetEvaluator
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode
+from crmonitor.common.helper import pandas_from_nested_dict
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
