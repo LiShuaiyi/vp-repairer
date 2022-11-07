@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from crmonitor.evaluation.evaluation import RuleSetEvaluator
 from crmonitor.common.world_state import WorldState
-from crmonitor.predicates.rule import PropositionNode
+from crmonitor.predicates.rule import PropositionNode, PredicateNode
 from crmonitor.common.helper import pandas_from_nested_dict
 
 # CommonRoad Toolbox
@@ -157,7 +157,7 @@ class STLRuleMonitor:
         df_prop (pd.Dataframe): DF constructed of each proposition robustness at each timestep for given other_id
         """
         rule_robustness = {}
-        pred_robustness = {}
+        predicate_robustness = {}
         proposition_robustness = {}
         other_ids_values = {}
 
