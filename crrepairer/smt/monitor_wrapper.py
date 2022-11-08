@@ -7,7 +7,7 @@ import dataclasses
 from dataclasses import dataclass
 
 from crmonitor.evaluation.evaluation import RuleEvaluator
-from crmonitor.common.world_state import WorldState
+from crmonitor.common.world import World
 from crmonitor.predicates.rule import PropositionNode, PredicateNode
 from crmonitor.common.helper import pandas_from_nested_dict
 
@@ -37,9 +37,7 @@ class STLRuleMonitor:
                  planning_problem: PlanningProblem,
                  vehicle_id: int,
                  rules: Union[str, Iterable[str]], ):
-        self._world_state: WorldState = self.construct_world_state(scenario,
-                                                                   planning_problem,
-                                                                   vehicle_id)
+        self._world_state: WorldState = self.construct_world_state(scenario)
         self._vehicle_id = vehicle_id
         self._rules = rules
         self._rule_eval = RuleEvaluator.create_from_config(rules,
