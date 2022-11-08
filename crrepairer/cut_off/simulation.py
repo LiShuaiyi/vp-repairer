@@ -8,7 +8,8 @@ from commonroad.common.solution import VehicleType
 from commonroad.scenario.obstacle import DynamicObstacle, State
 from commonroad_dc.feasibility.vehicle_dynamics import PointMassDynamics
 
-from crmonitor.common.world_state import WorldState
+from crmonitor.common.world import World
+from crmonitor.common.vehicle import Vehicle as WorldVehicle
 from crrepairer.cut_off.utils import check_velocity_feasibility
 
 
@@ -165,23 +166,24 @@ class SimulationLateral(SimulationBase, ABC):
     def __init__(self, action: Union[CutOffAction, None],
                  simulated_vehicle: DynamicObstacle,
                  start_time: Union[int, None],
-                 world_state: WorldState,
+                 world_ego: WorldVehicle,
                  dt: float):
         super().__init__(action, simulated_vehicle, start_time, dt=dt)
-        self._world_state = world_state
+        self._world_ego: WorldVehicle = world_ego
 
-    def set_target_lane(self):
-        """
-        based on the lane structure within stl monitor.
-        """
-        if self.action == CutOffAction.LANECHANGELEFT:
-            return self._world_state.ego_vehicle.lane.adj_left
-        elif self.action == CutOffAction.LANECHANGERIGHT:
-            return self._world_state.ego_vehicle.lane.adj_right
-        elif self.action in (CutOffAction.STEERLEFT, CutOffAction.STEERRIGHT):
-            return self._world_state.ego_vehicle.lane
-        else:
-            return None
+    # def set_target_lane(self):
+    #     """
+    #     based on the lane structure within stl monitor.
+    #     """
+    #     return  self._world_ego.get_lane(self._start_time)
+    #     if self.action == CutOffAction.LANECHANGELEFT:
+    #         return self._world_ego.get_lane(self._start_time).lane.adj_left
+    #     elif self.action == CutOffAction.LANECHANGERIGHT:
+    #         return self._world_ego.get_lane(self._start_time).lane.adj_right
+    #     elif self.action in (CutOffAction.STEERLEFT, CutOffAction.STEERRIGHT):
+    #         return self._world_state.ego_vehicle.lane
+    #     else:
+    #         return None
 
     def calc_total_time(self, lat_dist):
         """
@@ -220,9 +222,10 @@ class SimulationLateral(SimulationBase, ABC):
     def set_bang_bang_time(self, ego_s, ego_d, target_lane):
         if self.action in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
             # todo: fix the lane of the ego
-            ego_lane_width = self._world_state.ego_vehicle.lane.width(ego_s)
-            ego_to_lane_boundary = ego_lane_width / 2 - abs(ego_d)
-            lateral_distance = ego_to_lane_boundary + target_lane.width(ego_s) / 2
+            # ego_lane_width = self._world_state.ego_vehicle.lane.width(ego_s)
+            # ego_to_lane_boundary = ego_lane_width / 2 - abs(ego_d)
+            # lateral_distance = ego_to_lane_boundary + target_lane.width(ego_s) / 2
+            lateral_distance = self._world_ego.get_lane(self._start_time).width(ego_s)
         else:
             # from paper: A flexible method for criticality assessment in driver assistance systems
             lateral_distance = 0.8
@@ -260,14 +263,14 @@ class SimulationLateral(SimulationBase, ABC):
 
     def simulate_state_list(self):
         self.set_inputs(self.cut_off_state.velocity)
-        target_lane = self.set_target_lane()
-        if target_lane is None:
-            # lane change is impossible
-            return None
-        current_ego_s, current_ego_d = self._world_state.ego_vehicle.lane.clcs.convert_to_curvilinear_coords(
+        target_lane = None #self.set_target_lane()
+        # if target_lane is None:
+        #     # lane change is impossible
+        #     return None
+        current_ego_s, current_ego_d = self._world_ego.get_lane(self._start_time).clcs.convert_to_curvilinear_coords(
             self.cut_off_state.position[0], self.cut_off_state.position[1])
         bang_bang_time = self.set_bang_bang_time(current_ego_s, current_ego_d, target_lane)
-        lane_orientation = self._world_state.ego_vehicle.lane.orientation(current_ego_s)
+        lane_orientation = self._world_ego.get_lane(self._start_time).orientation(current_ego_s)
         max_orientation = self.set_maximal_orientation(lane_orientation)
         current_state = self.cut_off_state
         for i in range(2):

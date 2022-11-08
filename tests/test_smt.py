@@ -139,10 +139,10 @@ class TestSMTSolver(unittest.TestCase):
         qp_repairer.rule_constraints.add()  # add constraints
         for time_step, lanes in qp_repairer.rule_constraints.target_lanes.items():
             if time_step <= qp_repairer.rule_constraints.time_leave_lane:
-                self.assertEqual(lanes, [self.rule_monitor.world_state.road_network.lanes[1]])
+                self.assertEqual(lanes, [self.rule_monitor.world.road_network.lanes[1]])
             elif time_step <= tc_object.tv_time_step:
-                self.assertEqual(set(lanes), {self.rule_monitor.world_state.road_network.lanes[1],
-                                              self.rule_monitor.world_state.road_network.lanes[2]})
+                self.assertEqual(set(lanes), {self.rule_monitor.world.road_network.lanes[1],
+                                              self.rule_monitor.world.road_network.lanes[2]})
             else:
-                self.assertEqual(lanes, [self.rule_monitor.world_state.road_network.lanes[2]])
+                self.assertEqual(lanes, [self.rule_monitor.world.road_network.lanes[2]])
         # qp_repairer.rule_constraints.safe_distance_modes

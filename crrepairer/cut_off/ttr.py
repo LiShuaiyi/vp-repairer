@@ -16,10 +16,10 @@ class TTR(CutOffBase, ABC):
     """
 
     def __init__(self,
-                 world_state: WorldState):
-        super().__init__(world_state)
+                 world: WorldState):
+        super().__init__(world)
         # calculate the time-to-collision as default value
-        self._ttc = self._calc_ttc(world_state.ego_vehicle.state_list_cr)
+        self._ttc = self._calc_ttc(world.ego_vehicle.state_list_cr)
         self._visualize = False
 
     @property
@@ -69,7 +69,7 @@ class TTR(CutOffBase, ABC):
                 SL = SimulationLateral(maneuver,
                                        self.ego_vehicle,
                                        mid,
-                                       self.world_state,
+                                       self.world,
                                        dt=self.dT)
             else:
                 raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))

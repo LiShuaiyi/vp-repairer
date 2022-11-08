@@ -27,7 +27,6 @@ if __name__ == '__main__':
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(scenario,
-                                          planning_problem,
                                           ego_id, rule)
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
@@ -55,4 +54,4 @@ if __name__ == '__main__':
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
                                            target_veh=target_veh,
-                                           world_state=traffic_rule_monitor.world_state)  # , save_path=figure_path)
+                                           world=traffic_rule_monitor.world)  # , save_path=figure_path)

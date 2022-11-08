@@ -68,4 +68,4 @@ if __name__ == '__main__':
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
                                            target_veh=None,
-                                           world_state=rule_monitor.world_state)  # , save_path=figure_path)
+                                           world=rule_monitor.world)  # , save_path=figure_path)

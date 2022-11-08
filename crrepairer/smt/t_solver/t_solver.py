@@ -5,10 +5,7 @@ from typing import List
 from crrepairer.cut_off.tc import TC
 from crrepairer.cut_off.simulation import CutOffAction
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
-from crrepairer.smt.monitor_wrapper import STLRuleMonitor
-
-from crmonitor.predicates.predicate import Category
-from crmonitor.predicates.rule import PropositionNode
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
 

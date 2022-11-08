@@ -5,15 +5,31 @@ from enum import Enum
 import numpy as np
 import dataclasses
 from dataclasses import dataclass
+import pandas as pd
 
 from crmonitor.evaluation.evaluation import RuleEvaluator
 from crmonitor.common.world import World
-from crmonitor.predicates.rule import PropositionNode, PredicateNode
-from crmonitor.common.helper import pandas_from_nested_dict
+from crmonitor.monitor.rule import PredicateNode
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
 from commonroad.planning.planning_problem import PlanningProblem
+
+
+def flatten_nested_dict(data, path=tuple()):
+    entries = []
+    for key, val in data.items():
+        if isinstance(val, dict):
+            entries.extend(flatten_nested_dict(val, path + (key,)))
+        else:
+            entries.append(path + (key, val))
+    return entries
+
+
+def pandas_from_nested_dict(data, level_names):
+    entries = flatten_nested_dict(data)
+    return pd.DataFrame(entries, columns=level_names)
+
 
 @dataclass
 class PropositionNode:
@@ -34,14 +50,15 @@ class MonitorType(Enum):
 class STLRuleMonitor:
     def __init__(self,
                  scenario: Scenario,
-                 planning_problem: PlanningProblem,
                  vehicle_id: int,
                  rules: Union[str, Iterable[str]], ):
-        self._world_state: WorldState = self.construct_world_state(scenario)
+        self._world: World = World.create_from_scenario(scenario)
         self._vehicle_id = vehicle_id
         self._rules = rules
-        self._rule_eval = RuleEvaluator.create_from_config(rules,
-                                                              dt=self._world_state.dt)
+        # todo: now only one rule is supported
+        self._rule_eval = RuleEvaluator.create_from_config(self._world,
+                                                           self._world.vehicle_by_id(self._vehicle_id),
+                                                           rules)
         self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
         # obtain the time-to-violation
         self._tv, self._other_id = self._cal_tv_initial()
@@ -68,8 +85,8 @@ class STLRuleMonitor:
         return self._vehicle_id
 
     @property
-    def world_state(self) -> WorldState:
-        return self._world_state
+    def world(self) -> World:
+        return self._world
 
     @property
     def type(self):
@@ -97,17 +114,6 @@ class STLRuleMonitor:
     def prop_robust_ttv(self):
         return self.prop_robust_all.query('time_step == @self._tv')
 
-    @staticmethod
-    def construct_world_state(scenario: Scenario,
-                              planning_problem: PlanningProblem,
-                              ego_id: int) -> WorldState:
-        """
-        Constructs world state
-        """
-        world_state = WorldState.create_from_scenario(scenario,
-                                                      ego_id,
-                                                      planning_problem=planning_problem)
-        return world_state
 
     def _initialize_prop_rob(self):
         """
@@ -161,8 +167,8 @@ class STLRuleMonitor:
 
         #TODO: Incorporate support for multiple rules.
 
-        while self._world_state.time_step <= self._world_state.ego_vehicle.end_time:
-            t = self._world_state.time_step
+        while self._world.time_step <= self._world.ego_vehicle.end_time:
+            t = self._world.time_step
             rule_robustness[t] = {}
             predicate_robustness[t] = {}
             proposition_robustness[t] = {}
@@ -224,7 +230,7 @@ class STLRuleMonitor:
         if tv == 0:
             return math.inf, None  # no violation
         if evaluated_ids[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
-            return int(tv), self._world_state.ego_vehicle.id
+            return int(tv), self._world.ego_vehicle.id
         return int(tv), evaluated_ids[tv][0]
 
 # Currently, MTL monitor is not supported

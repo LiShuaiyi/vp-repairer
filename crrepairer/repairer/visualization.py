@@ -14,7 +14,7 @@ from commonroad.visualization.param_server import ParamServer
 
 from commonroad_qp_planner.utils import calculate_safe_distance
 
-from crmonitor.common.world_state import WorldState
+from crmonitor.common.world import World
 
 
 class TUMcolor(Enum):
@@ -113,7 +113,7 @@ def visualize_repairing_result(scenario: Scenario,
                                tc=None,
                                tv=None,
                                target_veh=None,
-                               world_state: WorldState = None):
+                               world: World = None):
     """
     Function to visualize the repairing result given time step
     :param scenario: CommonRoad scenario object
@@ -126,7 +126,7 @@ def visualize_repairing_result(scenario: Scenario,
     :param tc: time-to-comply
     :param tv: time-to-violation
     :param target_veh: target vehicle for repairing
-    :param world_state: world state
+    :param world: world state
     """
     fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(20, 10))
     rnd_0 = MPRenderer(ax=ax0, plot_limits=plot_limits)
@@ -233,7 +233,7 @@ def visualize_repairing_result(scenario: Scenario,
         ego_veh_state_ini = ego_initial.state_at_time(time_step)
         ego_veh_state_rep = ego_repaired.state_at_time(time_step)
         tar_veh_state = target_veh.state_at_time(time_step)
-        tar_veh_lane = world_state.vehicle_by_id(target_veh.obstacle_id).lane
+        tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).lane
         unsafe_poly_ini = compute_unsafe_polygon(ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane)
         rnd_0.ax.fill(*unsafe_poly_ini.exterior.xy, zorder=30, alpha=0.2,
                       facecolor=TUMcolor.TUMorange.value, edgecolor=None)

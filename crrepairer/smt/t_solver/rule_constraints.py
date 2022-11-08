@@ -4,15 +4,16 @@ from collections import defaultdict
 
 from crrepairer.cut_off.simulation import CutOffAction
 from crrepairer.cut_off.tc import TC
-from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 # class from STL monitor
-from crmonitor.predicates.predicate import (PredInSameLane, PredInFrontOf,
-                                                          PredCutIn, PredSafeDistPrec,
-                                                          PredLaneSpeedLimit, PredFovSpeedLimit,
-                                                          PredBrSpeedLimit, PredTypeSpeedLimit,
-                                                          PredAbruptBreaking)
-from crmonitor.predicates.rule import PropositionNode
+from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane, PredInFrontOf)
+
+from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit,
+                                           PredBrSpeedLimit, PredTypeSpeedLimit)
+from crmonitor.predicates.general import PredCutIn
+from crmonitor.predicates.acceleration import PredAbruptBreaking
+
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
 
@@ -40,7 +41,7 @@ class RuleConstraints:
         # initialize the needed components
         self._tc_obj = tc_object
         self._rule_monitor = rule_monitor
-        self._world_state = self._rule_monitor.world_state
+        self._world_state = self._rule_monitor.world
         self._other_id = self._rule_monitor.other_id
         self._ego_id = self._rule_monitor.vehicle_id  # if no target vehicle, the other_id stands for the ego
         self._ini_traj = initial_trajectory

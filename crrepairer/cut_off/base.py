@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import copy
 
 # CommonRoad STL monitor
-from crmonitor.common.world_state import WorldState
+from crmonitor.common.world import World
 
 # CommonRoad Toolbox
 from commonroad.scenario.obstacle import DynamicObstacle, Shape
@@ -26,12 +26,12 @@ class CutOffBase(ABC):
         Abstract base class for calculating cut-off states
     """
     def __init__(self,
-                 world_state: WorldState):
-        self._world_state = world_state
-        self.scenario = self._world_state.scenario
-        self._ego_vehicle = self.scenario.obstacle_by_id(world_state.ego_vehicle.id)
-        self._N = self._world_state.num_time_steps
-        self._dT = world_state.dt
+                 world: World):
+        self._world = world
+        self.scenario = self._world.scenario
+        self._ego_vehicle = self.scenario.obstacle_by_id(world.ego_vehicle.id)
+        self._N = self._world.num_time_steps
+        self._dT = world.dt
         self._visualize = False
         if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:
             self.scenario.remove_obstacle(self._ego_vehicle)
@@ -47,8 +47,8 @@ class CutOffBase(ABC):
         self._shape = self._ego_vehicle.obstacle_shape
 
     @property
-    def world_state(self) -> WorldState:
-        return self._world_state
+    def world(self) -> World:
+        return self._world
 
     @property
     def ego_vehicle(self) -> DynamicObstacle:

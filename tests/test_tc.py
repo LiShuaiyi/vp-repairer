@@ -25,7 +25,6 @@ class TestTC(unittest.TestCase):
         planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         self.ego_id = 1003
         self.rule_monitor = STLRuleMonitor(self.scenario,
-                                           planning_problem,
                                            self.ego_id,
                                            ["R_G1"])
 
@@ -64,7 +63,7 @@ class TestTC(unittest.TestCase):
 
     def test_simulate_lateral(self):
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
-        world_state = self.rule_monitor.world_state
+        world_state = self.rule_monitor.world
         sim_lat = SimulationLateral(
             CutOffAction.LANECHANGELEFT,
             ego_vehicle,
@@ -124,7 +123,7 @@ class TestTC(unittest.TestCase):
     def test_update_world_state(self):
         # simulate a new trajectory of the ego vehicle
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
-        world_state = self.rule_monitor.world_state
+        world_state = self.rule_monitor.world
         sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0, dt=world_state.dt)
         new_state_list = sim_long.simulate_state_list()
         # 1. directly update the ego vehicle
