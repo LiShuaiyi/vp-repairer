@@ -6,7 +6,7 @@ import numpy as np
 import dataclasses
 from dataclasses import dataclass
 
-from crmonitor.evaluation.evaluation import RuleSetEvaluator
+from crmonitor.evaluation.evaluation import RuleEvaluator
 from crmonitor.common.world_state import WorldState
 from crmonitor.predicates.rule import PropositionNode, PredicateNode
 from crmonitor.common.helper import pandas_from_nested_dict
@@ -42,7 +42,7 @@ class STLRuleMonitor:
                                                                    vehicle_id)
         self._vehicle_id = vehicle_id
         self._rules = rules
-        self._rule_eval = RuleSetEvaluator.create_from_config(rules,
+        self._rule_eval = RuleEvaluator.create_from_config(rules,
                                                               dt=self._world_state.dt)
         self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
         # obtain the time-to-violation
