@@ -167,8 +167,8 @@ class STLRuleMonitor:
 
         #TODO: Incorporate support for multiple rules.
 
-        while self._world.time_step <= self._world.ego_vehicle.end_time:
-            t = self._world.time_step
+        while self._rule_eval.current_time() <= self._rule_eval.ego_vehicle.end_time:
+            t = self._rule_eval.current_time()
             rule_robustness[t] = {}
             predicate_robustness[t] = {}
             proposition_robustness[t] = {}
@@ -206,9 +206,9 @@ class STLRuleMonitor:
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
         self._rule_eval.switch_to_boolean()
-        world_state = copy.copy(world_state)
+        world_state = copy.copy(self._world)
         time_begin = world_state.time_step
-        self._rule_eval.reset(world_state._ego_vehicle, world_state, time_begin)
+        self._rule_eval.reset(world_state.vehicle_by_id(self._vehicle_id), world_state, 0)
         return self.evaluate_initially()
 
     def query_rule_rob_all(self):
