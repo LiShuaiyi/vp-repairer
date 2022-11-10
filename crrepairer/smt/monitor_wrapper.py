@@ -13,7 +13,6 @@ from crmonitor.monitor.rule import PredicateNode
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
-from commonroad.planning.planning_problem import PlanningProblem
 
 
 def flatten_nested_dict(data, path=tuple()):
@@ -56,9 +55,10 @@ class STLRuleMonitor:
         self._vehicle_id = vehicle_id
         self._rules = rules
         # todo: now only one rule is supported
+        # todo: create multiple rule evaluators
         self._rule_eval = RuleEvaluator.create_from_config(self._world,
                                                            self._world.vehicle_by_id(self._vehicle_id),
-                                                           rules)
+                                                           rules[0])
         self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
         # obtain the time-to-violation
         self._tv, self._other_id = self._cal_tv_initial()
@@ -167,27 +167,27 @@ class STLRuleMonitor:
 
         #TODO: Incorporate support for multiple rules.
 
-        while self._rule_eval.current_time() <= self._rule_eval.ego_vehicle.end_time:
-            t = self._rule_eval.current_time()
-            rule_robustness[t] = {}
-            predicate_robustness[t] = {}
-            proposition_robustness[t] = {}
-            other_ids_values[t] = {}
+        while self._rule_eval.current_time <= self._rule_eval.ego_vehicle.end_time:
             for rule in self._rules:
                 rul = self._rule_eval.update()
+                t = self._rule_eval.current_time
+                rule_robustness[t] = {}
+                predicate_robustness[t] = {}
+                proposition_robustness[t] = {}
+                other_ids_values[t] = {}
                 pred = self._rule_eval.get_predicates()
                 prop, other, time = self._rule_eval.get_propositions()
-                other_ids_values[t][rule.name] = other
-                rule_robustness[t][rule.name] = rul
+                other_ids_values[t][rule] = other
+                rule_robustness[t][rule] = rul
 
-                proposition_robustness[t][rule.name][other] = {}
+                proposition_robustness[t][rule][other] = {}
                 for prop_name in prop.keys():
-                    proposition_robustness[t][rule.name][other][prop_name] = prop[prop_name]
+                    proposition_robustness[t][rule][other][prop_name] = prop[prop_name]
 
-                predicate_robustness[t][rule.name] = {}
+                predicate_robustness[t][rule] = {}
                 for full_name in pred.keys():
-                    predicate_robustness[t][rule.name][full_name] = pred[full_name]
-                other_ids_values[t][rule.name] = other
+                    predicate_robustness[t][rule][full_name] = pred[full_name]
+                other_ids_values[t][rule] = other
 
         df_rule = pandas_from_nested_dict(rule_robustness,
                                           ["time_step", "rule_name", "robustness"])
