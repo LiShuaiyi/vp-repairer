@@ -30,7 +30,7 @@ class TC(CutOffBase, ABC):
         self._compliant_maneuver = None
         self._tc = -math.inf
         self._tc_dict = defaultdict(float)
-
+        self._mid = None
         self._sim_lon = SimulationLong(None,
                                        self.ego_vehicle,
                                        None,
@@ -82,7 +82,7 @@ class TC(CutOffBase, ABC):
                            updated_states,
                            0,
                            self.dT)
-        self.rule_monitor.evaluate_consecutively()
+        self.rule_monitor.evaluate_consecutively(self._mid)
         evaluated_robustness, evaluated_ids = self.rule_monitor.query_rule_rob_all()
         if evaluated_robustness[0] < 0:
             return -math.inf, evaluated_ids[0][0]  # all violated
@@ -124,12 +124,12 @@ class TC(CutOffBase, ABC):
         low = 0
         high = int(int_round(self.tv / self.dT))
         while low < high:
-            mid = int(int_round(low + high) / 2)
+            self._mid = int(int_round(low + high) / 2)
             if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
-                self._sim_lon.update_action(maneuver, mid)
+                self._sim_lon.update_action(maneuver, self._mid)
                 state_list = self._sim_lon.simulate_state_list()
             elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
-                self._sim_lat.update_action(maneuver, mid)
+                self._sim_lat.update_action(maneuver, self._mid)
                 state_list = self._sim_lat.simulate_state_list()
             else:
                 raise ValueError("<TTCC>: given compliant maneuver {} is not supported".format(maneuver))
@@ -145,9 +145,9 @@ class TC(CutOffBase, ABC):
                 tv, _ = self.calc_tv_updated(state_list)  # which should be tv instead of ttm
             # if violation-free and collision-free
             if tv == math.inf:  # and not flag_collision:
-                low = mid + 1
+                low = self._mid + 1
             else:
-                high = mid
+                high = self._mid
 
         if low != 0:
             ttm = (low - 1) * self.dT

@@ -110,8 +110,15 @@ class STLRuleMonitor:
         and replace with the alphabet.
         """
         rule_node = self._rule_eval._rule
-        sat_formula = rule_node.children[0].rule_str if len(rule_node.children) == 1 \
-            else rule_node.rule_str
+        if len(rule_node.children) == 1:
+            sat_formula = rule_node.children[0].rule_str
+        else:
+            sat_formula = rule_node.rule_str
+            for child in rule_node.children:
+                if hasattr(child, 'quantified_vehicle'):
+                    sat_formula = sat_formula.replace(child.name, 
+                    child.children[0].rule_str)
+        sat_formula = sat_formula.replace('(', '').replace(')', '').replace('not', '!')
         for prop_node in self._prop_nodes:
             matches = SequenceMatcher(None, 
                                       sat_formula, 
@@ -182,6 +189,7 @@ class STLRuleMonitor:
         df_rule (np.ndarray): DF constructed of the rule robustness at each timestep
         df_pred (np.ndarray): DF constructed of each predicate robustness at each timestep for given other_id
         df_prop (np.ndarray): DF constructed of each proposition robustness at each timestep for given other_id
+        other_ids List(Tuple): Vehicle ids w.r.t which the rule robustness was calculated
         """
 
         #TODO: Incorporate support for multiple rules.
@@ -201,22 +209,19 @@ class STLRuleMonitor:
             prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
             pred = self._rule_eval.get_predicates()
             pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
-
         rule_rob = np.array(rule_rob, dtype=np.float64)
         prop_rob = np.array(prop_rob, dtype=np.float64)
         prop_names = np.array(prop_names, dtype=object)
         pred_rob = np.array(pred_rob, dtype=np.float64)
-        other_ids = np.array(other_ids)
         return rule_rob, pred_rob, prop_rob, prop_names, other_ids           
 
-    def evaluate_consecutively(self):
+    def evaluate_consecutively(self, reset_time):
         """
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
         self._rule_eval.switch_to_boolean()
         world_state = copy.copy(self._world)
-        time_begin = world_state.time_step
-        self._rule_eval.reset(world_state.vehicle_by_id(self._vehicle_id), world_state, 0)
+        self._rule_eval.reset(world_state.vehicle_by_id(self._vehicle_id), world_state, reset_time)
         return self.evaluate_initially()
 
     def query_rule_rob_all(self):
@@ -233,13 +238,13 @@ class STLRuleMonitor:
         if self.rob_rule[0] < 0:
             if self.other_ids[0] is ():
                 return -math.inf, None
-            return -math.inf, int(self.other_ids[0][0])  # all violated
+            return -math.inf, self.other_ids[0][0]  # all violated
         tv = np.argmax(self.rob_rule < 0)
         if tv == 0:
             return math.inf, None  # no violation
-        if self.rob_rule[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
-            return int(tv), self._world.ego_vehicle.id
-        return int(tv), int(self.other_ids[tv][0])
+        if self.other_ids[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
+            return int(tv), self._vehicle_id
+        return int(tv), self.other_ids[tv][0]
 
 # Currently, MTL monitor is not supported
 # class MTLRuleMonitor:
