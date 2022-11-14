@@ -6,6 +6,8 @@ import numpy as np
 import dataclasses
 from dataclasses import dataclass
 import pandas as pd
+import re
+from difflib import SequenceMatcher, get_close_matches
 
 from crmonitor.evaluation.evaluation import RuleEvaluator
 from crmonitor.common.world import World
@@ -53,16 +55,18 @@ class STLRuleMonitor:
                  rules: Union[str, Iterable[str]], ):
         self._world: World = World.create_from_scenario(scenario)
         self._vehicle_id = vehicle_id
-        self._rules = rules
+        self._rules = [rules]
         # todo: now only one rule is supported
         # todo: create multiple rule evaluators
         self._rule_eval = RuleEvaluator.create_from_config(self._world,
                                                            self._world.vehicle_by_id(self._vehicle_id),
-                                                           rules[0])
-        self.rob_rule, self.rob_predicate, self.rob_abstraction = self.evaluate_initially()
+                                                           rules)
+        self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
+            self.other_ids  = self.evaluate_initially()
         # obtain the time-to-violation
         self._tv, self._other_id = self._cal_tv_initial()
         self._prop_nodes = self._initialize_prop_rob()
+        print(self._prop_nodes)
         print("# =========== Traffic Rule Monitor ========== #")
         print("\tthe ego vehicle (id: {})'s initial\n\ttrajectory violates traffic rule {}".
               format(self._vehicle_id, self._rules))
@@ -102,7 +106,24 @@ class STLRuleMonitor:
 
     @property
     def sat_formula(self):
-        return self._rule_eval.sat_formula
+        """
+        For all propositions find the overlapping subsequences in the rule string
+        and replace with the alphabet.
+        """
+        rule_node = self._rule_eval._rule
+        sat_formula = rule_node.children[0].rule_str if len(rule_node.children) == 1 \
+            else rule_node.rule_str
+        for prop_node in self._prop_nodes:
+            matches = SequenceMatcher(None, 
+                                      sat_formula, 
+                                      prop_node.name, 
+                                      autojunk=True).get_matching_blocks()
+            clean_matches = [match for match in matches if match.size>1]
+            first_index = clean_matches[0].a
+            last_index = clean_matches[-1].a+clean_matches[-1].size
+            to_repl = sat_formula[first_index:last_index]
+            sat_formula = sat_formula.replace(to_repl, prop_node.alphabet)       
+        return sat_formula
 
     @property
     @functools.lru_cache(128)
@@ -134,18 +155,21 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        all_props = self.prop_robust_ttv()
+        all_prop_robs = self.rob_abstraction[self._tv]
+        all_prop_names = self.abstraction_names[self._tv]
         prop_nodes = []
         pred_nodes = []
         retrieve_preds(self._rule_eval._rule, pred_nodes)
-        for idx, row in all_props.iterrows():
-            proposition = PropositionNode(row["prop_name"], alphabet[idx - all_props.index[0]], row["robustness"])
+        for idx, prop_rob in enumerate(all_prop_robs):
+            proposition = PropositionNode(all_prop_names[idx],
+                                          alphabet[idx],
+                                          prop_rob)
             for pred in pred_nodes:
-                if pred.name in row["rule_name"]:
+                if pred.name in all_prop_names[idx]:
                     proposition.children.append(pred)
             prop_nodes.append(proposition)
-
         return prop_nodes
+
 
     def evaluate_initially(self):
         """
@@ -156,50 +180,33 @@ class STLRuleMonitor:
         each time step, the id of which is kept for better backward compatibility and higher verbosity.
 
         Returns:
-        df_rule (pd.Dataframe): DF constructed of the rule robustness at each timestep
-        df_pred (pd.Dataframe): DF constructed of each predicate robustness at each timestep for given other_id
-        df_prop (pd.Dataframe): DF constructed of each proposition robustness at each timestep for given other_id
+        df_rule (np.ndarray): DF constructed of the rule robustness at each timestep
+        df_pred (np.ndarray): DF constructed of each predicate robustness at each timestep for given other_id
+        df_prop (np.ndarray): DF constructed of each proposition robustness at each timestep for given other_id
         """
-        rule_robustness = {}
-        predicate_robustness = {}
-        proposition_robustness = {}
-        other_ids_values = {}
 
         #TODO: Incorporate support for multiple rules.
+        rule_rob = [] #init as list, convert to ndarray 2x faster, but 2x more memory
+        prop_rob = []
+        prop_names = []
+        pred_rob = []
+        other_ids = []
 
         while self._rule_eval.current_time <= self._rule_eval.ego_vehicle.end_time:
-            for rule in self._rules:
-                rul = self._rule_eval.update()
-                t = self._rule_eval.current_time
-                rule_robustness[t] = {}
-                predicate_robustness[t] = {}
-                proposition_robustness[t] = {}
-                other_ids_values[t] = {}
-                pred = self._rule_eval.get_predicates()
-                prop, other, time = self._rule_eval.get_propositions()
-                other_ids_values[t][rule] = other
-                rule_robustness[t][rule] = rul
+            rule_rob.append(self._rule_eval.update())
+            other_ids.append(self._rule_eval.other_ids)
+            prop, _, _ = self._rule_eval.get_propositions()
+            prop_names.append([prop_name for prop_name in prop.keys()])
+            prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
+            pred = self._rule_eval.get_predicates()
+            pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
 
-                proposition_robustness[t][rule][other] = {}
-                for prop_name in prop.keys():
-                    proposition_robustness[t][rule][other][prop_name] = prop[prop_name]
-
-                predicate_robustness[t][rule] = {}
-                for full_name in pred.keys():
-                    predicate_robustness[t][rule][full_name] = pred[full_name]
-                other_ids_values[t][rule] = other
-
-        df_rule = pandas_from_nested_dict(rule_robustness,
-                                          ["time_step", "rule_name", "robustness"])
-        df_pred = pandas_from_nested_dict(predicate_robustness,
-                                          ["time_step", "rule_name", "full_name", "robustness"])
-        df_prop = pandas_from_nested_dict(proposition_robustness,
-                                          ["time_step", "rule_name", "other_id", "prop_name", "robustness"])
-        df_ids = pandas_from_nested_dict(other_ids_values,
-                                         ["time_step", "rule_name", "other_ids"])
-        df_rule = df_rule.merge(df_ids, on=["time_step", "rule_name"])
-
-        return df_rule, df_pred, df_prop
+        rule_rob = np.array(rule_rob, dtype=np.float64)
+        prop_rob = np.array(prop_rob, dtype=np.float64)
+        prop_names = np.array(prop_names, dtype=object)
+        pred_rob = np.array(pred_rob, dtype=np.float64)
+        other_ids = np.array(other_ids)
+        return rule_rob, pred_rob, prop_rob, prop_names, other_ids           
 
     def evaluate_consecutively(self):
         """
@@ -221,17 +228,17 @@ class STLRuleMonitor:
 
     def _cal_tv_initial(self) -> Tuple[Union[int, float], Any]:
         # calculate the time-to-violation: detect violation time using STL monitor
-        evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
-        if evaluated_robustness[0] < 0:
-            if evaluated_ids[0] is ():
+        #evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
+        if self.rob_rule[0] < 0:
+            if self.other_ids[0] is ():
                 return -math.inf, None
-            return -math.inf, evaluated_ids[0][0]  # all violated
-        tv = np.argmax(evaluated_robustness < 0)
+            return -math.inf, self.other_ids[0][0]  # all violated
+        tv = np.argmax(self.rob_rule < 0)
         if tv == 0:
             return math.inf, None  # no violation
-        if evaluated_ids[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
+        if self.rob_rule[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
             return int(tv), self._world.ego_vehicle.id
-        return int(tv), evaluated_ids[tv][0]
+        return int(tv), self.other_ids[tv][0]
 
 # Currently, MTL monitor is not supported
 # class MTLRuleMonitor:

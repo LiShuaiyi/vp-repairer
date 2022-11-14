@@ -9,7 +9,7 @@ class SATSolver:
                  rule_monitor: STLRuleMonitor):
         self._formula = self.construct_cnf(rule_monitor.sat_formula)
         self._prop_nodes = rule_monitor.proposition_nodes
-        self._prop_robust_all = rule_monitor.prop_robust_all
+        self._prop_robust_all = rule_monitor.rob_abstraction
         self._init_assign = list()
         self._dpll_solver = DPLL(self._formula, self._prop_robust_all, rule_monitor.tv_time_step)
         self._dpll_model = None
