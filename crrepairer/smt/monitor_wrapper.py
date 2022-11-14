@@ -66,7 +66,6 @@ class STLRuleMonitor:
         # obtain the time-to-violation
         self._tv, self._other_id = self._cal_tv_initial()
         self._prop_nodes = self._initialize_prop_rob()
-        print(self._prop_nodes)
         print("# =========== Traffic Rule Monitor ========== #")
         print("\tthe ego vehicle (id: {})'s initial\n\ttrajectory violates traffic rule {}".
               format(self._vehicle_id, self._rules))
@@ -191,8 +190,10 @@ class STLRuleMonitor:
         prop_names = []
         pred_rob = []
         other_ids = []
-
-        while self._rule_eval.current_time <= self._rule_eval.ego_vehicle.end_time:
+        # update until start time is reached
+        while self._rule_eval.current_time < self._rule_eval.ego_vehicle.start_time:
+            self._rule_eval.update()
+        while self._rule_eval.current_time < self._rule_eval.ego_vehicle.end_time:
             rule_rob.append(self._rule_eval.update())
             other_ids.append(self._rule_eval.other_ids)
             prop, _, _ = self._rule_eval.get_propositions()
@@ -232,13 +233,13 @@ class STLRuleMonitor:
         if self.rob_rule[0] < 0:
             if self.other_ids[0] is ():
                 return -math.inf, None
-            return -math.inf, self.other_ids[0][0]  # all violated
+            return -math.inf, int(self.other_ids[0][0])  # all violated
         tv = np.argmax(self.rob_rule < 0)
         if tv == 0:
             return math.inf, None  # no violation
         if self.rob_rule[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
             return int(tv), self._world.ego_vehicle.id
-        return int(tv), self.other_ids[tv][0]
+        return int(tv), int(self.other_ids[tv][0])
 
 # Currently, MTL monitor is not supported
 # class MTLRuleMonitor:
