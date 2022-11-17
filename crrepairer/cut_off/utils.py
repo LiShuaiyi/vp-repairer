@@ -1,5 +1,5 @@
 import functools
-import math
+from collections import defaultdict
 
 from crmonitor.common.vehicle import Vehicle
 from crmonitor.common.road_network import RoadNetwork
@@ -86,7 +86,8 @@ def update_ego_vehicle(road_network: RoadNetwork,
         # use the shape lanelet assignment
         ego_vehicle.lanelet_assignment[state.time_step] = \
             set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
-
+        ego_vehicle.predicate_cache.cache[state.time_step] = defaultdict()
+    pass
     # ego_initial_state = ego_vehicle.states_cr[0]
     # if cut_off_time == 0:
     #     acceleration = 0.0
