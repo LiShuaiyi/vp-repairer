@@ -15,6 +15,7 @@ from commonroad.scenario.trajectory import Trajectory, State
 from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
+from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.geometry.shape import Rectangle
 
 from typing import List
@@ -31,11 +32,12 @@ class QPPlannerRepair(QPPlanner):
                  rule_monitor: STLRuleMonitor,
                  tc_object: TC,
                  sel_proposition: List[PropositionNode],
+                 planning_problem: PlanningProblem,
                  verbose=False):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world.scenario
         self._ego_vehicle = tc_object.ego_vehicle
-        self._planning_problem = rule_monitor.world.planning_problem
+        self._planning_problem = planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
 
         # set the cut-off state as the initial state

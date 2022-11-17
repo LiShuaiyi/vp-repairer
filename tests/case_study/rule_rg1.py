@@ -31,6 +31,7 @@ if __name__ == '__main__':
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor,
+                                         planning_problem,
                                          ego_initial)
         repaired_traj = repairer.repair()
         if repaired_traj is not None and flag_visualization:

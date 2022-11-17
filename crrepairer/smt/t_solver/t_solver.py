@@ -9,6 +9,7 @@ from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import DynamicObstacle
+from commonroad.planning.planning_problem import PlanningProblem
 
 from crmonitor.predicates.position import PositionPredicates
 
@@ -19,6 +20,7 @@ class TSolver:
     """
     def __init__(self,
                  ego_vehicle: DynamicObstacle,
+                 planning_problem: PlanningProblem,
                  rule_monitor: STLRuleMonitor):
         self._sel_prop = None
         self._rule_monitor = rule_monitor
@@ -26,6 +28,7 @@ class TSolver:
         self._compliant_maneuvers = list()
         self._repairability = False
         self._qp_planner = None
+        self._planning_problem = planning_problem
 
         self.verbose = False
 
@@ -104,6 +107,7 @@ class TSolver:
         self._qp_planner = QPPlannerRepair(self._rule_monitor,
                                            self._tc_obj,
                                            self._sel_prop,
+                                           self._planning_problem,
                                            verbose=self.verbose)
         start_time = time.time()
         repaired_trajectory = self._qp_planner.plan()

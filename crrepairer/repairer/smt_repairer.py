@@ -5,6 +5,7 @@ import time
 from commonroad.scenario.scenario import DynamicObstacle
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import TrajectoryPrediction, ObstacleType
+from commonroad.planning.planning_problem import PlanningProblem
 
 from crrepairer.repairer.base import TrajectoryRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
@@ -25,6 +26,7 @@ class RepairingRule(Enum):
 class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     def __init__(self,
                  rule_monitor: STLRuleMonitor,
+                 planning_problem: PlanningProblem,
                  ego_vehicle: DynamicObstacle):
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_monitor = rule_monitor
@@ -36,7 +38,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self._tv = -math.inf
         # initialize Solvers for SMT paradigm
         self.sat_solver = SATSolver(self.rule_monitor)
-        self.t_solver = TSolver(ego_vehicle, self.rule_monitor)
+        self.t_solver = TSolver(ego_vehicle, planning_problem, self.rule_monitor)
 
     @property
     def tv(self):
