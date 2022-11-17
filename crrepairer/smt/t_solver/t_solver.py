@@ -10,6 +10,8 @@ from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import DynamicObstacle
 
+from crmonitor.predicates.position import PositionPredicates
+
 
 class TSolver:
     """
@@ -58,16 +60,18 @@ class TSolver:
             for predicate in prop_node.children:
                 if not hasattr(predicate, "evaluator"):
                     continue
-                predicate_category = predicate.evaluator.predicate_category
-                if predicate_category == Category.LON_POS:
+                predicate_category = predicate.evaluator.predicate_name.__class__.__name__[:3]
+                if predicate_category == "Pos" and \
+                        predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
+                                                               PositionPredicates.InFrontOf]:
                     compliant_maneuver += [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
-                elif predicate_category == Category.LAT_POS:
+                elif predicate_category == "Pos":
                     compliant_maneuver += [CutOffAction.LANECHANGELEFT,
                                            CutOffAction.LANECHANGERIGHT]
-                elif predicate_category == Category.VEL:
+                elif predicate_category == "Vel":
                     compliant_maneuver += [CutOffAction.BRAKE,
                                            CutOffAction.KICKDOWN]
-                elif predicate_category == Category.ACC:
+                elif predicate_category == "Acc":
                     compliant_maneuver += [CutOffAction.STEADYSPEED]
                 else:
                     pass  # general predicate

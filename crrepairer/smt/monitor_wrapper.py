@@ -1,5 +1,6 @@
 import functools
 import math
+import copy
 from typing import Iterable, Union, Tuple, Any, List
 from enum import Enum
 import numpy as np

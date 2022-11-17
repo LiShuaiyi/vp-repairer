@@ -26,6 +26,7 @@ class TC(CutOffBase, ABC):
                  rule_monitor: STLRuleMonitor):
         super().__init__(ego_vehicle, rule_monitor.world)
         self.rule_monitor = rule_monitor
+        self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = rule_monitor.tv_time_step
         self._other_id = rule_monitor.other_id
         self._visualize = False
@@ -80,7 +81,7 @@ class TC(CutOffBase, ABC):
         # self.rule_monitor.evaluate_initially()
         self.rule_monitor.world.time_step = 0
         update_ego_vehicle(self.world.road_network,
-                           self.world.ego_vehicle,
+                           self._world_ego,
                            updated_states,
                            0,
                            self.dT)
