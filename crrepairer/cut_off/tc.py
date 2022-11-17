@@ -5,7 +5,7 @@ import functools
 from abc import ABC
 
 import numpy as np
-from commonroad.scenario.obstacle import State
+from commonroad.scenario.obstacle import State, DynamicObstacle
 
 from crrepairer.cut_off.base import CutOffBase
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
@@ -15,14 +15,16 @@ from crrepairer.cut_off.simulation import (CutOffAction,
                                            SimulationLong,
                                            check_elements_state_list)
 
+
 class TC(CutOffBase, ABC):
     """
     Time-To-Compliance.
     """
 
     def __init__(self,
+                 ego_vehicle: DynamicObstacle,
                  rule_monitor: STLRuleMonitor):
-        super().__init__(rule_monitor._world)
+        super().__init__(ego_vehicle, rule_monitor.world)
         self.rule_monitor = rule_monitor
         self._tv_time_step = rule_monitor.tv_time_step
         self._other_id = rule_monitor.other_id
@@ -38,7 +40,7 @@ class TC(CutOffBase, ABC):
         self._sim_lat = SimulationLateral(None,
                                           self.ego_vehicle,
                                           None,
-                                          rule_monitor.world,
+                                          rule_monitor.world.vehicle_by_id(ego_vehicle.obstacle_id),
                                           dt=rule_monitor.world.dt)
 
     @property
@@ -76,7 +78,7 @@ class TC(CutOffBase, ABC):
     def calc_tv_updated(self, updated_states: List[State] = None) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
-        self.rule_monitor._world.time_step = 0
+        self.rule_monitor.world.time_step = 0
         update_ego_vehicle(self.world.road_network,
                            self.world.ego_vehicle,
                            updated_states,

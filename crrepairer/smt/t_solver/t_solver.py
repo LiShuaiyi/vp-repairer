@@ -8,6 +8,7 @@ from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.obstacle import DynamicObstacle
 
 
 class TSolver:
@@ -15,10 +16,11 @@ class TSolver:
     T-solver for the SMT-based repairer.
     """
     def __init__(self,
+                 ego_vehicle: DynamicObstacle,
                  rule_monitor: STLRuleMonitor):
         self._sel_prop = None
         self._rule_monitor = rule_monitor
-        self._tc_obj = TC(rule_monitor)
+        self._tc_obj = TC(ego_vehicle, rule_monitor)
         self._compliant_maneuvers = list()
         self._repairability = False
         self._qp_planner = None

@@ -58,8 +58,8 @@ class STLRuleMonitor:
         self._rules = [rules]
         # todo: now only one rule is supported
         # todo: create multiple rule evaluators
-        self._rule_eval = RuleEvaluator.create_from_config(self._world,
-                                                           self._world.vehicle_by_id(self._vehicle_id),
+        self._rule_eval = RuleEvaluator.create_from_config(self.world,
+                                                           self.world.vehicle_by_id(self._vehicle_id),
                                                            rules)
         self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
             self.other_ids  = self.evaluate_initially()
@@ -220,7 +220,7 @@ class STLRuleMonitor:
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
         self._rule_eval.switch_to_boolean()
-        world_state = copy.copy(self._world)
+        world_state = copy.copy(self.world)
         self._rule_eval.reset(world_state.vehicle_by_id(self._vehicle_id), world_state, reset_time)
         return self.evaluate_initially()
 

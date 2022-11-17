@@ -36,7 +36,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self._tv = -math.inf
         # initialize Solvers for SMT paradigm
         self.sat_solver = SATSolver(self.rule_monitor)
-        self.t_solver = TSolver(self.rule_monitor)
+        self.t_solver = TSolver(ego_vehicle, self.rule_monitor)
 
     @property
     def tv(self):

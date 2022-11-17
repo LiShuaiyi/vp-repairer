@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(scenario,
-                                          ego_id, rule)
+                                          ego_id, rule[0])
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor,

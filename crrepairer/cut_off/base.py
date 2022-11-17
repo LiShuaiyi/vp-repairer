@@ -26,11 +26,12 @@ class CutOffBase(ABC):
         Abstract base class for calculating cut-off states
     """
     def __init__(self,
+                 ego_vehicle: DynamicObstacle,
                  world: World):
         self._world = world
         self.scenario = self._world.scenario
-        self._ego_vehicle = self.scenario.obstacle_by_id(world.ego_vehicle.id)
-        self._N = self._world.num_time_steps
+        self._ego_vehicle = ego_vehicle
+        self._N = ego_vehicle.prediction.final_time_step
         self._dT = world.dt
         self._visualize = False
         if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:
