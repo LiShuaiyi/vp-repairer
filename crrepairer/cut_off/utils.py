@@ -80,23 +80,29 @@ def update_ego_vehicle(road_network: RoadNetwork,
     """
     Update the ego vehicle based on the new given trajectory
     """
+    for state in updated_ego_states[cut_off_time:]:
+        ego_vehicle.states_cr[state.time_step] = state
+        ego_shape = ego_vehicle.shape.rotate_translate_local(state.position, state.orientation)
+        # use the shape lanelet assignment
+        ego_vehicle.lanelet_assignment[state.time_step] = \
+            set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
 
-    ego_initial_state = ego_vehicle.states_cr[0]
-    if cut_off_time == 0:
-        acceleration = 0.0
-        jerk = 0.0
-    else:
-        cut_off_state = updated_ego_states[cut_off_time - 1]
-        if cut_off_time == 1:
-            pre_cut_off_state = ego_initial_state
-        else:
-            pre_cut_off_state = updated_ego_states[cut_off_time - 2]
-        acceleration = cut_off_state.acceleration
-        if not hasattr(pre_cut_off_state, "acceleration"):
-            pre_cut_off_state.acceleration = 0
-        jerk = _compute_jerk(acceleration, pre_cut_off_state.acceleration, dt)
+    # ego_initial_state = ego_vehicle.states_cr[0]
+    # if cut_off_time == 0:
+    #     acceleration = 0.0
+    #     jerk = 0.0
+    # else:
+    #     cut_off_state = updated_ego_states[cut_off_time - 1]
+    #     if cut_off_time == 1:
+    #         pre_cut_off_state = ego_initial_state
+    #     else:
+    #         pre_cut_off_state = updated_ego_states[cut_off_time - 2]
+    #     acceleration = cut_off_state.acceleration
+    #     if not hasattr(pre_cut_off_state, "acceleration"):
+    #         pre_cut_off_state.acceleration = 0
+    #     jerk = _compute_jerk(acceleration, pre_cut_off_state.acceleration, dt)
 
-    # cut-off state changes it's input values, but the states stay unchanged
+    # todo: cut-off state changes it's input values, but the states stay unchanged
     # ego_vehicle.states_lon[cut_off_time] = update_curvilinear_states_long(ego_vehicle.states_lon[cut_off_time],
     #                                                                       acceleration, jerk)
     # reference_lane = ego_vehicle.lane

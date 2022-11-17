@@ -220,7 +220,7 @@ class STLRuleMonitor:
         """
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
-        self._rule_eval.switch_to_boolean()
+        self._rule_eval._eval_visitor.use_boolean = True
         world_state = copy.copy(self.world)
         self._rule_eval.reset(world_state.vehicle_by_id(self._vehicle_id), world_state, reset_time)
         return self.evaluate_initially()

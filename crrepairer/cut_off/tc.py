@@ -76,25 +76,24 @@ class TC(CutOffBase, ABC):
     def compliant_maneuver(self) -> CutOffAction:
         return self._compliant_maneuver
 
-    def calc_tv_updated(self, updated_states: List[State] = None) -> Tuple[float, Any]:
+    def calc_tv_updated(self, updated_states: List[State], cut_off_time: int) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
         self.rule_monitor.world.time_step = 0
         update_ego_vehicle(self.world.road_network,
                            self._world_ego,
                            updated_states,
-                           0,
+                           cut_off_time,
                            self.dT)
-        self.rule_monitor.evaluate_consecutively(self._mid)
-        evaluated_robustness, evaluated_ids = self.rule_monitor.query_rule_rob_all()
-        if evaluated_robustness[0] < 0:
-            return -math.inf, evaluated_ids[0][0]  # all violated
-        tv = np.argmax(evaluated_robustness < 0)
+        rule_rob, _, _, _, other_ids = self.rule_monitor.evaluate_consecutively(self._mid)
+        if rule_rob[0] < 0:
+            return -math.inf, other_ids[0][0]  # all violated
+        tv = np.argmax(rule_rob < 0)
         if tv == 0:
             return math.inf, None  # no violation
-        if evaluated_ids[tv] is ():
+        if other_ids[tv] is ():
             return tv * self.dT, self.ego_vehicle.obstacle_id
-        return tv * self.dT, evaluated_ids[tv][0]
+        return tv * self.dT, other_ids[tv][0]
 
     def generate(self, cut_off_maneuvers: List[CutOffAction]):
         """
@@ -145,7 +144,7 @@ class TC(CutOffBase, ABC):
                                          self._sim_lat.vehicle_dynamics.shape)
                 # flag_collision = self._detect_collision(state_list)  # bool value
                 check_elements_state_list(state_list, self.dT)
-                tv, _ = self.calc_tv_updated(state_list)  # which should be tv instead of ttm
+                tv, _ = self.calc_tv_updated(state_list, self._mid)  # which should be tv instead of ttm
             # if violation-free and collision-free
             if tv == math.inf:  # and not flag_collision:
                 low = self._mid + 1
