@@ -83,9 +83,9 @@ class TC(CutOffBase, ABC):
         update_ego_vehicle(self.world.road_network,
                            self._world_ego,
                            updated_states,
-                           cut_off_time,
+                           0,
                            self.dT)
-        rule_rob, _, _, _, other_ids = self.rule_monitor.evaluate_consecutively(self._mid)
+        rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(self.world, cut_off_time)
         if rule_rob[0] < 0:
             return -math.inf, other_ids[0][0]  # all violated
         tv = np.argmax(rule_rob < 0)

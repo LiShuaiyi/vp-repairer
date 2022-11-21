@@ -1,13 +1,12 @@
 import functools
 import math
-import copy
 from typing import Iterable, Union, Tuple, Any, List
 from enum import Enum
 import numpy as np
 import dataclasses
 from dataclasses import dataclass
 import pandas as pd
-import re
+import copy
 from difflib import SequenceMatcher, get_close_matches
 
 from crmonitor.evaluation.evaluation import RuleEvaluator
@@ -59,8 +58,8 @@ class STLRuleMonitor:
         self._rules = [rules]
         # todo: now only one rule is supported
         # todo: create multiple rule evaluators
-        self._rule_eval = RuleEvaluator.create_from_config(self.world,
-                                                           self.world.vehicle_by_id(self._vehicle_id),
+        self._rule_eval = RuleEvaluator.create_from_config(self._world,
+                                                           self._world.vehicle_by_id(self._vehicle_id),
                                                            rules)
         self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
             self.other_ids  = self.evaluate_initially()
@@ -129,18 +128,21 @@ class STLRuleMonitor:
             first_index = clean_matches[0].a
             last_index = clean_matches[-1].a+clean_matches[-1].size
             to_repl = sat_formula[first_index:last_index]
-            sat_formula = sat_formula.replace(to_repl, prop_node.alphabet)       
+            sat_formula = sat_formula.replace(to_repl, prop_node.alphabet)  
+        if 'implies' in sat_formula:
+            impl_at = sat_formula.find('implies')
+            sat_formula = '(' + sat_formula[:impl_at] + ') ' + sat_formula[impl_at:]    
         return sat_formula
 
     @property
     @functools.lru_cache(128)
     def prop_robust_all(self):
-        return self.rob_abstraction.query('other_id == @self._other_id')
+        return self.rob_abstraction
 
     @property
     @functools.lru_cache(128)
     def prop_robust_ttv(self):
-        return self.prop_robust_all.query('time_step == @self._tv')
+        return self.rob_abstraction[self._tv]
 
 
     def _initialize_prop_rob(self):
@@ -216,14 +218,20 @@ class STLRuleMonitor:
         pred_rob = np.array(pred_rob, dtype=np.float64)
         return rule_rob, pred_rob, prop_rob, prop_names, other_ids           
 
-    def evaluate_consecutively(self, reset_time):
+    def evaluate_consecutively(self, world, reset_time):
         """
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
-        self._rule_eval._eval_visitor.use_boolean = True
-        world_state = copy.copy(self.world)
+        #self.switch_to_boolean()
+        world_state = copy.copy(world)
         self._rule_eval.reset(world_state.vehicle_by_id(self._vehicle_id), world_state, reset_time)
-        return self.evaluate_initially()
+        self.switch_to_boolean()
+        rule_rob = []
+        other_ids = []
+        while self._rule_eval.current_time < self._rule_eval.ego_vehicle.end_time:
+            rule_rob.append(self._rule_eval.update())
+            other_ids.append(self._rule_eval.other_ids)
+        return np.array(rule_rob), other_ids
 
     def query_rule_rob_all(self):
         """
@@ -246,6 +254,10 @@ class STLRuleMonitor:
         if self.other_ids[tv] is () or self._rules == 'R_G2':  # R_G2: we focus on the ego vehicle
             return int(tv), self._vehicle_id
         return int(tv), self.other_ids[tv][0]
+
+    def switch_to_boolean(self):
+        if not self._rule_eval._eval_visitor.use_boolean:
+            self._rule_eval._eval_visitor.use_boolean = True
 
 # Currently, MTL monitor is not supported
 # class MTLRuleMonitor:

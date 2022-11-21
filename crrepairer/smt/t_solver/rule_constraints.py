@@ -44,6 +44,7 @@ class RuleConstraints:
         self._world_state = self._rule_monitor.world
         self._other_id = self._rule_monitor.other_id
         self._ego_id = self._rule_monitor.vehicle_id  # if no target vehicle, the other_id stands for the ego
+        self._ego_vehicle = self._world_state.vehicle_by_id(self._ego_id)
         self._ini_traj = initial_trajectory
         self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
         self._veh_config = veh_config
@@ -65,10 +66,10 @@ class RuleConstraints:
                                         CutOffAction.LANECHANGERIGHT]:
             # time for leaving the current lane
             self._tc_obj.simulation_lateral.set_inputs(
-                self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
-            lane_dist = self._world_state.ego_vehicle.lane.width(
-                self._world_state.ego_vehicle.states_lon[self._tc_obj.tc_time_step].s) / 2 - \
-                        abs(self._world_state.ego_vehicle.states_lat[0].d) - self._veh_config.width / 2
+                self._ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
+            lane_dist = self._ego_vehicle.lane.width(
+                self._ego_vehicle.states_lon[self._tc_obj.tc_time_step].s) / 2 - \
+                        abs(self._ego_vehicle.states_lat[0].d) - self._veh_config.width / 2
             self._time_leave_lane = int(
                 self._tc_obj.simulation_lateral.calc_leave_time(lane_dist) / self._world_state.dt)
 
@@ -94,15 +95,14 @@ class RuleConstraints:
         """
         # acceleration limit (only one value for all time steps)
         a_limit = [-np.inf, np.inf]
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            total_assignment = self._rule_monitor.prop_robust_all.query('time_step == @k')
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
+            total_assignment = self._rule_monitor.prop_robust_all[k]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
-            for proposition in self._rule_monitor.proposition_nodes:
+            for idx,proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:
-                    prop_assignment = total_assignment.query('alphabet == @proposition.alphabet') \
-                        ["robustness"].values[0]
+                    prop_assignment = total_assignment[idx]
                 except:
                     # no assignment can be found
                     continue
@@ -207,18 +207,22 @@ class RuleConstraints:
             return None, None
         # find all the vehicles in the target lanes (then remove the ego)
         for lane in lanes:
-            vehicle_ids.update(lane.dynamic_obstacles_by_time_step(time_step))
+            vehicle_ids.update(lane.lanelet.dynamic_obstacle_by_time_step(time_step))
         vehicle_ids.discard(self._ego_id)
         for id in vehicle_ids:
             other_vehicle = self._world_state.vehicle_by_id(id)
             if time_step == 0:
-                ego_state = self._world_state.ego_vehicle.states_cr[0]
+                ego_state = self._ego_vehicle.states_cr[0]
             else:
                 ego_state = self._ini_traj.state_at_time_step(time_step)
             ego_lon_s = convert_pos_curvilinear(ego_state, self._veh_config)[0]
-            if time_step in other_vehicle.states_lon:
-                dist = other_vehicle.states_lon[time_step].s - ego_lon_s
-            else:
+            #if time_step in other_vehicle.states_lon:
+            #    dist = other_vehicle.states_lon[time_step].s - ego_lon_s
+            #else:
+            #    continue
+            try:
+                dist = other_vehicle.get_lon_state(time_step).s - ego_lon_s
+            except:
                 continue
             if 0 < dist < dist_pre:
                 preceding_vehicle = other_vehicle
@@ -242,7 +246,7 @@ class RuleConstraints:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
             else:
                 lanelet = self._world_state.scenario.lanelet_network.find_lanelet_by_position(
-                    [self._world_state.ego_vehicle.states_cr[k].position])[0]
+                    [self._ego_vehicle.states_cr[k].position])[0]
                 lanes = self._world_state.road_network.find_lanes_by_lanelets(set(lanelet))
                 if lanes:
                     self._prec_veh, self._foll_veh = self._determine_related_veh(k, list(lanes))
