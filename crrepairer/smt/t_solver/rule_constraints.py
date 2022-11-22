@@ -61,15 +61,15 @@ class RuleConstraints:
         self._prec_veh = None
         self._foll_veh = None
         # whether safe distance needs to be obeyed
-        self._safe_dis_mode = [False for _ in range(self._tc_obj.N - self._tc_obj.tc_time_step)]
+        self._safe_dis_mode = [False for _ in range(self._tc_obj.N - self._tc_obj.tc_time_step + 1)]
         if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
                                         CutOffAction.LANECHANGERIGHT]:
             # time for leaving the current lane
             self._tc_obj.simulation_lateral.set_inputs(
-                self._ego_vehicle.states_lon[self._tc_obj.tc_time_step].v)
-            lane_dist = self._ego_vehicle.lane.width(
-                self._ego_vehicle.states_lon[self._tc_obj.tc_time_step].s) / 2 - \
-                        abs(self._ego_vehicle.states_lat[0].d) - self._veh_config.width / 2
+                self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).v)
+            lane_dist = self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
+                self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s) / 2 - \
+                        abs(self._ego_vehicle.get_lat_state(0).d) - self._veh_config.width / 2
             self._time_leave_lane = int(
                 self._tc_obj.simulation_lateral.calc_leave_time(lane_dist) / self._world_state.dt)
 
@@ -95,12 +95,12 @@ class RuleConstraints:
         """
         # acceleration limit (only one value for all time steps)
         a_limit = [-np.inf, np.inf]
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             total_assignment = self._rule_monitor.prop_robust_all[k]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
-            for idx,proposition in enumerate(self._rule_monitor.proposition_nodes):
+            for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:
                     prop_assignment = total_assignment[idx]
                 except:

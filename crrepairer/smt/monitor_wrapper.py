@@ -204,7 +204,7 @@ class STLRuleMonitor:
         # update until start time is reached
         while self._rule_eval.current_time < self._rule_eval.ego_vehicle.start_time:
             self._rule_eval.update()
-        while self._rule_eval.current_time < self._rule_eval.ego_vehicle.end_time:
+        while self._rule_eval.current_time <= self._rule_eval.ego_vehicle.end_time:
             rule_rob.append(self._rule_eval.update())
             other_ids.append(self._rule_eval.other_ids)
             prop, _, _ = self._rule_eval.get_propositions()

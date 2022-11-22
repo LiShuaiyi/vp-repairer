@@ -233,7 +233,7 @@ def visualize_repairing_result(scenario: Scenario,
         ego_veh_state_ini = ego_initial.state_at_time(time_step)
         ego_veh_state_rep = ego_repaired.state_at_time(time_step)
         tar_veh_state = target_veh.state_at_time(time_step)
-        tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).lane
+        tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
         unsafe_poly_ini = compute_unsafe_polygon(ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane)
         rnd_0.ax.fill(*unsafe_poly_ini.exterior.xy, zorder=30, alpha=0.2,
                       facecolor=TUMcolor.TUMorange.value, edgecolor=None)
