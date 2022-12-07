@@ -239,7 +239,7 @@ class STLRuleMonitor:
         """
         if self.rob_rule is None:
             raise ValueError("the evaluation procedure is not executed yet")
-        return self.rob_rule['robustness'].values, self.rob_rule["other_ids"].values
+        return self.rob_rule, self.other_ids
 
     def _cal_tv_initial(self) -> Tuple[Union[int, float], Any]:
         # calculate the time-to-violation: detect violation time using STL monitor

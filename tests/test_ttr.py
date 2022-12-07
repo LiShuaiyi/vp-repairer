@@ -11,7 +11,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from crrepairer.cut_off.ttr import TTR
 from crrepairer.cut_off.simulation import CutOffAction
 
-from crmonitor.common.world_state import WorldState
+from crmonitor.common.world import World
 
 
 class TestTTR(unittest.TestCase):
@@ -22,8 +22,9 @@ class TestTTR(unittest.TestCase):
         scenario_file = os.path.join(self.scenario_root_path, "ZAM_Urban-3_3_Repair.xml")
         self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         ego_id = 8
-        self.world_state = WorldState.create_from_scenario(self.scenario, ego_id)
-        self.ttr_object = TTR(self.world_state)
+        self.world_state = World.create_from_scenario(self.scenario)
+        ego_vehicle = self.scenario.obstacle_by_id(ego_id)
+        self.ttr_object = TTR(ego_vehicle, self.world_state)
 
     def test_ttc(self):
         ttc = self.ttr_object.ttc

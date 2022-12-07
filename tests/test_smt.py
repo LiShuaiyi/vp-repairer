@@ -24,20 +24,21 @@ class TestSMTSolver(unittest.TestCase):
         # self.scenario.remove_obstacle(self.scenario.obstacle_by_id(1006))
         self.planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         ego_id = 1003
+        self._ego_obs = self.scenario.obstacle_by_id(ego_id)
         rule = "R_G1"
         self.rule_monitor = STLRuleMonitor(self.scenario,
-                                           self.planning_problem,
                                            ego_id, rule)
 
     def test_construction(self):
         self.assertEqual(len(self.rule_monitor.proposition_nodes), 4)
         rule_monitor = self.rule_monitor
-        for node in self.rule_monitor.proposition_nodes:
+        for i,node in enumerate(self.rule_monitor.proposition_nodes):
             self.assertEqual(
-                rule_monitor.prop_robust_ttv.query('alphabet == @node.alphabet')["robustness"].values[0],
+                rule_monitor.prop_robust_ttv[i],
                 node.ttv_value)
         exp_compliance = False
-        rob_value = all([r >= 0.0 for r in rule_monitor.prop_robust_all["robustness"].values])
+        #rob_value = rule_monitor.prop_robust_all[rule_monitor.prop_robust_all>=0.0]
+        rob_value = all([r >= 0.0 for r in rule_monitor.prop_robust_all.flatten()])
         self.assertEqual(
             exp_compliance, rob_value,
         )
@@ -54,7 +55,7 @@ class TestSMTSolver(unittest.TestCase):
             sat_re, sat
         )
         _, m = sat_solver.model()
-        self.assertEqual(list(m), ['d'])
+        self.assertEqual(list(m), ['a'])
         abstraction_nodes = self.rule_monitor.proposition_nodes
         # after negating all the possible solutions
         while len(m) != 0:
@@ -67,10 +68,10 @@ class TestSMTSolver(unittest.TestCase):
         )
 
     def test_t_solver(self):
-        t_solver = TSolver(self.rule_monitor)
+        t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
-        t_solver.assign_proposition([proposition], ["d"])
+                            if prop.name == '(keeps_safe_distance_prec__a0_a1)>=(0.0)'), None)
+        t_solver.assign_proposition([proposition], ["a"])
         # safe distance
         self.assertEqual(set(t_solver.compliant_maneuvers),
                          {CutOffAction.BRAKE, CutOffAction.KICKDOWN})
@@ -79,19 +80,19 @@ class TestSMTSolver(unittest.TestCase):
                             1.9,
                             abs_tol=1e-2)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
-        t_solver.assign_proposition([proposition], ["~a"])
+                            if prop.name == '(in_same_lane__a0_a1_i)>=(0.0)'), None)
+        t_solver.assign_proposition([proposition], ["~c"])
         tc = t_solver.search_tc()
         assert math.isclose(tc,
                             0.5,
                             abs_tol=1e-2)
 
     def test_dpll(self):
-        dpll_solver = DPLL('~a | ~b | c | d', self.rule_monitor.prop_robust_ttv)
+        dpll_solver = DPLL('~a | ~b | c | d', self.rule_monitor.proposition_nodes)
         self.assertEqual(dpll_solver.solve(),
                          sat)
         self.assertEqual(list(dpll_solver.model),
-                         ['d'])
+                         ['~a'])
         dpll_solver.update_cnf('~a & a')
         self.assertEqual(dpll_solver.solve(),
                          unsat)
@@ -107,30 +108,31 @@ class TestSMTSolver(unittest.TestCase):
         self.assertTrue(is_dnf(dnf_formula))
 
     def test_construct_qp_repair(self):
-        t_solver = TSolver(self.rule_monitor)
+        t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(keeps_safe_distance_prec__a0_a1 >= 0)'), None)
+                            if prop.name == '(keeps_safe_distance_prec__a0_a1)>=(0.0)'), None)
         assign_prop = [proposition]
-        t_solver.assign_proposition(assign_prop, ["d"])
+        t_solver.assign_proposition(assign_prop, ["a"])
         t_solver.search_tc()
         tc_object = t_solver.tc_object
         qp_repairer = QPPlannerRepair(self.rule_monitor,
                                       tc_object,
-                                      assign_prop)
+                                      assign_prop, 
+                                      self.planning_problem)
         self.assertIsInstance(qp_repairer, QPPlannerRepair)
         qp_repairer.rule_constraints.add()  # add constraints
-        safe_distance_modes_t = [True for _ in range(tc_object.N - tc_object.tc_time_step)]
+        safe_distance_modes_t = [True for _ in range(tc_object.N - tc_object.tc_time_step)] # tc + 1 ?
         self.assertEqual(qp_repairer.rule_constraints.safe_distance_modes,
                          safe_distance_modes_t)
         self.assertEqual(len(qp_repairer.rule_constraints.safe_distance_modes),
                          qp_repairer.total_time_steps)
 
     def test_rule_constraints(self):
-        t_solver = TSolver(self.rule_monitor)
+        t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(in_same_lane__a0_a1_i >= 0)'), None)
+                            if prop.name == '(in_same_lane__a0_a1_i)>=(0.0)'), None)
         assign_prop = [proposition]
-        t_solver.assign_proposition(assign_prop, ["~a"])
+        t_solver.assign_proposition(assign_prop, ["~c"])
         t_solver.search_tc()
         tc_object = t_solver.tc_object
         qp_repairer = QPPlannerRepair(self.rule_monitor,

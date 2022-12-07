@@ -12,7 +12,7 @@ from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane, Pre
 from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit,
                                            PredBrSpeedLimit, PredTypeSpeedLimit)
 from crmonitor.predicates.general import PredCutIn
-from crmonitor.predicates.acceleration import PredAbruptBreaking
+from crmonitor.predicates.acceleration import (PredAbruptBreaking, PredRelAbruptBreaking)
 
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
@@ -126,11 +126,16 @@ class RuleConstraints:
                                                      PredBrSpeedLimit.predicate_name,
                                                      PredTypeSpeedLimit.predicate_name,
                                                      PredLaneSpeedLimit.predicate_name):
-                            speed_limit = predicate.evaluator.speed_limit
+                            speed_limit = predicate.evaluator.get_speed_limit(self._world_state,
+                                                                              k, 
+                                                                              [self._ego_id])
+                            if speed_limit is None:
+                                speed_limit = np.inf
                             v_constr = self.ConstrSpeedLimit(speed_limit)
                             v_limit = self._get_overlap(v_limit, v_constr)
-                        elif predicate.base_name == PredAbruptBreaking.predicate_name:
-                            a_abruptly = predicate.evaluator.a_abrupt
+                        elif predicate.base_name in (PredAbruptBreaking.predicate_name,
+                                                     PredRelAbruptBreaking.predicate_name):
+                            a_abruptly = predicate.evaluator.config["a_abrupt"]
                             a_constr = self.ConstrAccNotAbruptly(a_abruptly)
                             a_limit = self._get_overlap(a_constr, a_limit)
                         else:
