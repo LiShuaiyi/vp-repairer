@@ -15,7 +15,7 @@ before_script:
     - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.lrz.de".insteadOf "ssh://git@gitlab.lrz.de"
     - conda init bash
     - conda env create -f environment.yml
-    - source activate cr-py37
+    - source activate cr-py38
     - conda info
     - conda install -c conda-forge cvxpy
 

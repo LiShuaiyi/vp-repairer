@@ -1,11 +1,11 @@
 
-name: cr-py37
+name: cr-py38
 
 channels:
   - defaults
   
 dependencies:
-  - python=3.7
+  - python=3.8
   - pip=20.2.4
   - pip:
     - -r requirements.txt
