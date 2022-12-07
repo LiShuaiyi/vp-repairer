@@ -76,7 +76,7 @@ class TestTC(unittest.TestCase):
             [simulated_state_list1[-1].position])[0]
         final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
         self.assertEqual(
-            world_state.vehicle_by_id(ego_vehicle.obstacle_id).lane.adj_left.lane_id,
+            world_state.vehicle_by_id(ego_vehicle.obstacle_id).get_lane(0).adj_left.lane_id,
             final_lane.lane_id)
         sim_lat.action = CutOffAction.LANECHANGERIGHT
         simulated_state_list2 = sim_lat.simulate_state_list()
@@ -84,7 +84,7 @@ class TestTC(unittest.TestCase):
             [simulated_state_list2[-1].position])[0]
         final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
         self.assertEqual(
-            world_state.vehicle_by_id(ego_vehicle.obstacle_id).lane.adj_right.lane_id,
+            world_state.vehicle_by_id(ego_vehicle.obstacle_id).get_lane(0).adj_right.lane_id,
             final_lane.lane_id)
 
     def test_tc_1(self):

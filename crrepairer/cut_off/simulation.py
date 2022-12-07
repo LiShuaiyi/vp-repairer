@@ -176,11 +176,11 @@ class SimulationLateral(SimulationBase, ABC):
         based on the lane structure within stl monitor.
         """
         if self.action == CutOffAction.LANECHANGELEFT:
-            return self._world_ego.get_lane(self._start_time).lane.adj_left
+            return self._world_ego.get_lane(self._start_time).adj_left
         elif self.action == CutOffAction.LANECHANGERIGHT:
-            return self._world_ego.get_lane(self._start_time).lane.adj_right
+            return self._world_ego.get_lane(self._start_time).adj_right
         elif self.action in (CutOffAction.STEERLEFT, CutOffAction.STEERRIGHT):
-            return self._world_ego.get_lane(self._start_time).lane
+            return self._world_ego.get_lane(self._start_time)
         else:
             return None
 
@@ -263,7 +263,7 @@ class SimulationLateral(SimulationBase, ABC):
 
     def simulate_state_list(self):
         self.set_inputs(self.cut_off_state.velocity)
-        target_lane = None #self.set_target_lane()
+        target_lane = self.set_target_lane()
         # if target_lane is None:
         #     # lane change is impossible
         #     return None
