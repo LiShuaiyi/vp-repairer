@@ -32,7 +32,7 @@ class TestTC(unittest.TestCase):
     def test_tv(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
         assert math.isclose(tc_object.tv,
-                            2.0,
+                            2.1,
                             abs_tol=1e-2)
 
     def test_simulation_long(self):
@@ -99,14 +99,14 @@ class TestTC(unittest.TestCase):
         tc = tc_object.generate([CutOffAction.LANECHANGERIGHT])
         self.assertEqual(
             round(tc, 1),
-            .5)
+            .7)
 
     def test_tc_3(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
         tc = tc_object.generate([CutOffAction.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            1.9)
+            2.)
 
     def test_tc_total(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
@@ -116,7 +116,7 @@ class TestTC(unittest.TestCase):
                                  CutOffAction.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            1.9)
+            2.)
         self.assertEqual(
             tc_object.compliant_maneuver, CutOffAction.BRAKE
         )
@@ -135,7 +135,7 @@ class TestTC(unittest.TestCase):
                            world_state.dt)
         # 2. recreate the world state
         ego_vehicle.prediction.trajectory.state_list = new_state_list
-        world_state_updated = World.create_from_scenario(self.scenario)#, self.ego_id)
+        world_state_updated = World.create_from_scenario(self.scenario) #, self.ego_id)
         ego_former = world_state.vehicle_by_id(ego_vehicle.obstacle_id)
         ego_updated = world_state_updated.vehicle_by_id(ego_vehicle.obstacle_id)
         # comparison
@@ -161,5 +161,5 @@ class TestTC(unittest.TestCase):
         self.assertTrue(ego_former.get_lon_state(ego_vehicle.prediction.final_time_step).s ==
                         ego_updated.get_lon_state(ego_vehicle.prediction.final_time_step).s)
         # ---> check the lane
-        self.assertEqual(ego_former.lane.contained_lanelets,
-                         ego_updated.lane.contained_lanelets)
+        self.assertEqual(ego_former.get_lane(0).contained_lanelets,
+                         ego_updated.get_lane(0).contained_lanelets)

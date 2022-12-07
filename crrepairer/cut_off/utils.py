@@ -1,7 +1,7 @@
 import functools
 from collections import defaultdict
 
-from crmonitor.common.vehicle import Vehicle
+from crmonitor.common.vehicle import Vehicle, CurvilinearStateManager
 from crmonitor.common.road_network import RoadNetwork
 from crmonitor.common.helper import (_compute_jerk)
 from typing import List
@@ -83,6 +83,7 @@ def update_ego_vehicle(road_network: RoadNetwork,
     for state in updated_ego_states[cut_off_time:]:
         ego_vehicle.states_cr[state.time_step] = state
         ego_shape = ego_vehicle.shape.rotate_translate_local(state.position, state.orientation)
+        ego_vehicle.ccosy_cache = CurvilinearStateManager(road_network)
         # use the shape lanelet assignment
         ego_vehicle.lanelet_assignment[state.time_step] = \
             set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))

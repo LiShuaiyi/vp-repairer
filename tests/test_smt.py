@@ -77,14 +77,14 @@ class TestSMTSolver(unittest.TestCase):
                          {CutOffAction.BRAKE, CutOffAction.KICKDOWN})
         tc = t_solver.search_tc()
         assert math.isclose(tc,
-                            1.9,
+                            2.0,
                             abs_tol=1e-2)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
                             if prop.name == '(in_same_lane__a0_a1_i)>=(0.0)'), None)
         t_solver.assign_proposition([proposition], ["~c"])
         tc = t_solver.search_tc()
         assert math.isclose(tc,
-                            0.5,
+                            0.7,
                             abs_tol=1e-2)
 
     def test_dpll(self):
@@ -121,11 +121,11 @@ class TestSMTSolver(unittest.TestCase):
                                       self.planning_problem)
         self.assertIsInstance(qp_repairer, QPPlannerRepair)
         qp_repairer.rule_constraints.add()  # add constraints
-        safe_distance_modes_t = [True for _ in range(tc_object.N - tc_object.tc_time_step)] # tc + 1 ?
+        safe_distance_modes_t = [True for _ in range(tc_object.N - tc_object.tc_time_step + 1)]  # tc + 1 ?
         self.assertEqual(qp_repairer.rule_constraints.safe_distance_modes,
                          safe_distance_modes_t)
         self.assertEqual(len(qp_repairer.rule_constraints.safe_distance_modes),
-                         qp_repairer.total_time_steps)
+                         qp_repairer.total_time_steps + 1)
 
     def test_rule_constraints(self):
         t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
@@ -137,7 +137,8 @@ class TestSMTSolver(unittest.TestCase):
         tc_object = t_solver.tc_object
         qp_repairer = QPPlannerRepair(self.rule_monitor,
                                       tc_object,
-                                      assign_prop)
+                                      assign_prop,
+                                      self.planning_problem)
         qp_repairer.rule_constraints.add()  # add constraints
         for time_step, lanes in qp_repairer.rule_constraints.target_lanes.items():
             if time_step <= qp_repairer.rule_constraints.time_leave_lane:
