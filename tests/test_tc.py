@@ -32,7 +32,7 @@ class TestTC(unittest.TestCase):
     def test_tv(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
         assert math.isclose(tc_object.tv,
-                            2.2,
+                            2.0,
                             abs_tol=1e-2)
 
     def test_simulation_long(self):
@@ -99,14 +99,14 @@ class TestTC(unittest.TestCase):
         tc = tc_object.generate([CutOffAction.LANECHANGERIGHT])
         self.assertEqual(
             round(tc, 1),
-            .7)
+            .5)
 
     def test_tc_3(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
         tc = tc_object.generate([CutOffAction.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            2.1)
+            1.9)
 
     def test_tc_total(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
@@ -116,7 +116,7 @@ class TestTC(unittest.TestCase):
                                  CutOffAction.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            2.1)
+            1.9)
         self.assertEqual(
             tc_object.compliant_maneuver, CutOffAction.BRAKE
         )
