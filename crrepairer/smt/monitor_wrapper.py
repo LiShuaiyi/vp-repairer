@@ -62,7 +62,7 @@ class STLRuleMonitor:
                                                            self._world.vehicle_by_id(self._vehicle_id),
                                                            rules)
         self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
-            self.other_ids  = self.evaluate_initially()
+            self.other_ids = self.evaluate_initially()
         # obtain the time-to-violation
         self._tv, self._other_id = self._cal_tv_initial()
         self._prop_nodes = self._initialize_prop_rob()
@@ -202,16 +202,26 @@ class STLRuleMonitor:
         pred_rob = []
         other_ids = []
         # update until start time is reached
-        while self._rule_eval.current_time < self._rule_eval.ego_vehicle.start_time:
-            self._rule_eval.update()
-        while self._rule_eval.current_time <= self._rule_eval.ego_vehicle.end_time:
+        # while self._rule_eval.current_time < self._rule_eval.ego_vehicle.start_time:
+        #     self._rule_eval.update()
+        for _ in range(
+                self._rule_eval.ego_vehicle.start_time, self._rule_eval.ego_vehicle.end_time + 1
+        ):
+            print(self._rule_eval.current_time)
             rule_rob.append(self._rule_eval.update())
             other_ids.append(self._rule_eval.other_ids)
             prop, _, _ = self._rule_eval.get_propositions()
-            prop_names.append([prop_name for prop_name in prop.keys()])
-            prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
+            if prop:
+                prop_names.append([prop_name for prop_name in prop.keys()])
+                prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
+            else:
+                prop_names.append([])
+                prop_rob.append([])
             pred = self._rule_eval.get_predicates()
-            pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
+            if pred:
+                pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
+            else:
+                pred_rob.append([])
         rule_rob = np.array(rule_rob, dtype=np.float64)
         prop_rob = np.array(prop_rob, dtype=np.float64)
         prop_names = np.array(prop_names, dtype=object)
@@ -222,7 +232,6 @@ class STLRuleMonitor:
         """
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
         """
-        #self.switch_to_boolean()
         world_state = copy.copy(world)
         self._rule_eval.reset(world_state.vehicle_by_id(self._vehicle_id), world_state, reset_time)
         self.switch_to_boolean()

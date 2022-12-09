@@ -12,7 +12,7 @@ file_path = "../../scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
 
-flag_visualization = False
+flag_visualization = True
 
 if __name__ == '__main__':
     # ========== Scenario and Configuration =========
@@ -42,10 +42,10 @@ if __name__ == '__main__':
             # ============= Visualization =============
             plot_limits = [-5, 50, -4.5, 3]
             target_veh = scenario.obstacle_by_id(traffic_rule_monitor.other_id)
-            visualize_v_profile(ego_initial, ego_repaired, time_start=0, time_end=N,
-                                tc=repairer.tc, tv=repairer.tv)
-            visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=0,
-                                time_end=N, tc=repairer.tc, tv=repairer.tv)
+            # visualize_v_profile(ego_initial, ego_repaired, time_start=0, time_end=N,
+            #                     tc=repairer.tc, tv=repairer.tv)
+            # visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=0,
+            #                     time_end=N, tc=repairer.tc, tv=repairer.tv)
             for time_step in range(N):
                 visualize_repairing_result(scenario,
                                            ego_initial,
@@ -55,4 +55,4 @@ if __name__ == '__main__':
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
                                            target_veh=target_veh,
-                                           world=traffic_rule_monitor.world)  # , save_path=figure_path)
+                                           world=traffic_rule_monitor.world, save_path=figure_path)
