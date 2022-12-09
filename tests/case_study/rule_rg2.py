@@ -9,7 +9,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 import math
 
 scenario_id = "ZAM_Zip-1_56_T-1"
-file_path = "./scenarios/" \
+file_path = "../../scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
 

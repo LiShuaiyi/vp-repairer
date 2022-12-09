@@ -243,10 +243,14 @@ def visualize_repairing_result(scenario: Scenario,
 
     ax0.set_title('Initial configuration.')
     ax1.set_title('Repaired configuration.')
+
     # show plot
     for ax in (ax0, ax1):
         ax.set_xticks([])
         ax.set_yticks([])
+        if plot_limits:
+            ax.set_xlim([plot_limits[0], plot_limits[1]])
+            ax.set_ylim([plot_limits[2], plot_limits[3]])
 
     # save as .svg file
     if save_path is not None:

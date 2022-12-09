@@ -9,11 +9,11 @@ from commonroad.common.file_reader import CommonRoadFileReader
 import math
 
 scenario_id = "DEU_Muc-4_2_T-1"
-file_path = "./scenarios/" \
+file_path = "../../scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
 
-flag_visualization = False
+flag_visualization = True
 
 if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
