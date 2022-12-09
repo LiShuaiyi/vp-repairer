@@ -207,7 +207,6 @@ class STLRuleMonitor:
         for _ in range(
                 self._rule_eval.ego_vehicle.start_time, self._rule_eval.ego_vehicle.end_time + 1
         ):
-            print(self._rule_eval.current_time)
             rule_rob.append(self._rule_eval.update())
             other_ids.append(self._rule_eval.other_ids)
             prop, _, _ = self._rule_eval.get_propositions()
