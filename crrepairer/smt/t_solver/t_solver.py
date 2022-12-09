@@ -5,12 +5,13 @@ from typing import List
 from crrepairer.cut_off.tc import TC
 from crrepairer.cut_off.simulation import CutOffAction
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
-from crrepairer.smt.monitor_wrapper import STLRuleMonitor
-
-from crmonitor.predicates.predicate import Category
-from crmonitor.predicates.rule import PropositionNode
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.obstacle import DynamicObstacle
+from commonroad.planning.planning_problem import PlanningProblem
+
+from crmonitor.predicates.position import PositionPredicates
 
 
 class TSolver:
@@ -18,13 +19,16 @@ class TSolver:
     T-solver for the SMT-based repairer.
     """
     def __init__(self,
+                 ego_vehicle: DynamicObstacle,
+                 planning_problem: PlanningProblem,
                  rule_monitor: STLRuleMonitor):
         self._sel_prop = None
         self._rule_monitor = rule_monitor
-        self._tc_obj = TC(rule_monitor)
+        self._tc_obj = TC(ego_vehicle, rule_monitor)
         self._compliant_maneuvers = list()
         self._repairability = False
         self._qp_planner = None
+        self._planning_problem = planning_problem
 
         self.verbose = False
 
@@ -59,16 +63,18 @@ class TSolver:
             for predicate in prop_node.children:
                 if not hasattr(predicate, "evaluator"):
                     continue
-                predicate_category = predicate.evaluator.predicate_category
-                if predicate_category == Category.LON_POS:
+                predicate_category = predicate.evaluator.predicate_name.__class__.__name__[:3]
+                if predicate_category == "Pos" and \
+                        predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
+                                                               PositionPredicates.InFrontOf]:
                     compliant_maneuver += [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
-                elif predicate_category == Category.LAT_POS:
+                elif predicate_category == "Pos":
                     compliant_maneuver += [CutOffAction.LANECHANGELEFT,
                                            CutOffAction.LANECHANGERIGHT]
-                elif predicate_category == Category.VEL:
+                elif predicate_category == "Vel":
                     compliant_maneuver += [CutOffAction.BRAKE,
                                            CutOffAction.KICKDOWN]
-                elif predicate_category == Category.ACC:
+                elif predicate_category == "Acc":
                     compliant_maneuver += [CutOffAction.STEADYSPEED]
                 else:
                     pass  # general predicate
@@ -101,6 +107,7 @@ class TSolver:
         self._qp_planner = QPPlannerRepair(self._rule_monitor,
                                            self._tc_obj,
                                            self._sel_prop,
+                                           self._planning_problem,
                                            verbose=self.verbose)
         start_time = time.time()
         repaired_trajectory = self._qp_planner.plan()

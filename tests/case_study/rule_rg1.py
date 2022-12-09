@@ -12,14 +12,14 @@ file_path = "../../scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
 
-flag_visualization = False
+flag_visualization = True
 
 if __name__ == '__main__':
     # ========== Scenario and Configuration =========
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 200
-    rule = "R_G1"
+    rule = ["R_G1"]
     N = 21
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:N]
@@ -27,11 +27,11 @@ if __name__ == '__main__':
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(scenario,
-                                          planning_problem,
-                                          ego_id, rule)
+                                          ego_id, rule[0])
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor,
+                                         planning_problem,
                                          ego_initial)
         repaired_traj = repairer.repair()
         if repaired_traj is not None and flag_visualization:
@@ -55,4 +55,4 @@ if __name__ == '__main__':
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
                                            target_veh=target_veh,
-                                           world_state=traffic_rule_monitor.world_state)  # , save_path=figure_path)
+                                           world=traffic_rule_monitor.world)  #, save_path=figure_path)

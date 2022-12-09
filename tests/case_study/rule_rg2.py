@@ -41,11 +41,10 @@ if __name__ == '__main__':
 
     # ========== Traffic Rule Monitor =========
     rule_monitor = STLRuleMonitor(scenario,
-                                  planning_problem,
                                   ego_id, rule)
     # ========== Trajectory Repairing =========
     if rule_monitor.tv_time_step is not math.inf:
-        repairer = SMTTrajectoryRepairer(rule_monitor,
+        repairer = SMTTrajectoryRepairer(rule_monitor, planning_problem,
                                          ego_initial)
         repaired_traj = repairer.repair()
         plot_limits = [-50, 10, 3.5, 11.2]
@@ -68,4 +67,4 @@ if __name__ == '__main__':
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
                                            target_veh=None,
-                                           world_state=rule_monitor.world_state)  # , save_path=figure_path)
+                                           world=rule_monitor.world)  # , save_path=figure_path)

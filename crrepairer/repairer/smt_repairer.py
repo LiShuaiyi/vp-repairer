@@ -5,6 +5,7 @@ import time
 from commonroad.scenario.scenario import DynamicObstacle
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import TrajectoryPrediction, ObstacleType
+from commonroad.planning.planning_problem import PlanningProblem
 
 from crrepairer.repairer.base import TrajectoryRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
@@ -25,15 +26,19 @@ class RepairingRule(Enum):
 class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     def __init__(self,
                  rule_monitor: STLRuleMonitor,
+                 planning_problem: PlanningProblem,
                  ego_vehicle: DynamicObstacle):
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_monitor = rule_monitor
+        self._inital_rob = (self.rule_monitor.rob_rule, 
+                            rule_monitor.rob_predicate, 
+                            rule_monitor.rob_abstraction)
         self._model = None
         self._tc = -math.inf
         self._tv = -math.inf
         # initialize Solvers for SMT paradigm
         self.sat_solver = SATSolver(self.rule_monitor)
-        self.t_solver = TSolver(self.rule_monitor)
+        self.t_solver = TSolver(ego_vehicle, planning_problem, self.rule_monitor)
 
     @property
     def tv(self):
@@ -66,7 +71,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
                 print(f"----- Computation Time: {time.time() - start_time:.3f}s -----")
-                tv, _ = self.t_solver.tc_object.calc_tv_updated(repaired_traj.state_list)
+                tv, _ = self.t_solver.tc_object.calc_tv_updated(repaired_traj.state_list, int(self._tc))
                 if tv == math.inf or not check_flag:
                     print("*****  Successfully Repaired! •ᴗ•  *****")
                     return repaired_traj

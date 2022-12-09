@@ -5,7 +5,7 @@ from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 
-from crmonitor.predicates.rule import PropositionNode
+from crrepairer.smt.monitor_wrapper import PropositionNode
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.rule_constraints import RuleConstraints
@@ -15,6 +15,7 @@ from commonroad.scenario.trajectory import Trajectory, State
 from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
+from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.geometry.shape import Rectangle
 
 from typing import List
@@ -31,11 +32,12 @@ class QPPlannerRepair(QPPlanner):
                  rule_monitor: STLRuleMonitor,
                  tc_object: TC,
                  sel_proposition: List[PropositionNode],
+                 planning_problem: PlanningProblem,
                  verbose=False):
         # initialize the scenario and planning problem
-        self._scenario = rule_monitor.world_state.scenario
+        self._scenario = rule_monitor.world.scenario
         self._ego_vehicle = tc_object.ego_vehicle
-        self._planning_problem = rule_monitor.world_state.planning_problem
+        self._planning_problem = planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
 
         # set the cut-off state as the initial state

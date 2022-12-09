@@ -8,7 +8,7 @@ from z3 import sat, unsat
 
 class DPLL:
     def __init__(self, sympy_cnf: str,
-                 prop_robust_all=None,
+                 prop_nodes=None,
                  tv_time_step=0):
         """
         Based on the pseudocode in Wikipedia page:
@@ -17,9 +17,9 @@ class DPLL:
         assert is_cnf(sympy_cnf), "<DPLL>: the given formula {} is not CNF or" \
                                   " not in the sympy CNF standard".format(sympy_cnf)
         self._cnf = self._assign_cnf(sympy_cnf)
-        self._prop_robust_all = prop_robust_all
+        self._prop_nodes = prop_nodes
         self._tv_time_step = tv_time_step
-        self._literals = self.get_literal(self._cnf, prop_robust_all, tv_time_step)
+        self._literals = self.get_literal(self._cnf, prop_nodes, tv_time_step)
         self._assign_true = set()
         self._assign_false = set()
         self._new_true = []
@@ -39,9 +39,10 @@ class DPLL:
         return self._cnf
 
     @staticmethod
-    def get_literal(cnf, prop_robust_all, tv_time_step: int):
+    def get_literal(cnf, prop_nodes, tv_time_step: int):
         def robustness_degree(alp):
-            rob_min_tv_h = abs(prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step])
+            node = next((x for x in prop_nodes if x.alphabet == alp[-1]), None)
+            rob_min_tv_h = abs(node.ttv_value)
             # print("<DPLL>: the robustness of instances in TV of alphabet {} is {}"
             #       .format(alp, prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step]))
             return rob_min_tv_h
@@ -52,7 +53,7 @@ class DPLL:
                 if lit[-1] not in literals and '~' + lit[-1] not in literals:
                     literals.append(lit)
         # use robustness as heuristics to rank the literals
-        if prop_robust_all is not None and tv_time_step is not math.inf:
+        if prop_nodes is not None and tv_time_step is not math.inf:
             return sorted(literals, key=robustness_degree)
         else:
             return literals
@@ -63,7 +64,7 @@ class DPLL:
 
     def update_cnf(self, cnf):
         self._cnf = self._assign_cnf(cnf)
-        self._literals = self.get_literal(self._cnf, self._prop_robust_all, self._tv_time_step)
+        self._literals = self.get_literal(self._cnf, self._prop_nodes, self._tv_time_step)
         self._assign_true = set()
         self._assign_false = set()
         self._new_true = []
@@ -95,7 +96,7 @@ class DPLL:
             # if \phi contains an empty clause
             self.back_tracking()
             return unsat
-        literals = self.get_literal(cnf, self._prop_robust_all, self._tv_time_step)
+        literals = self.get_literal(cnf, self._prop_nodes, self._tv_time_step)
         lit = self.choose_literal(literals)
         # print('<DPLL>: literal ({}) is selected'.format(lit))
         if self._solve(deepcopy(cnf) + [lit]) == sat:

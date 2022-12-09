@@ -7,7 +7,7 @@ from crrepairer.cut_off.utils import visualize_state_list, int_round
 from crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
                                            check_elements_state_list)
 
-from crmonitor.common.world_state import WorldState
+from crmonitor.common.world import World
 
 
 class TTR(CutOffBase, ABC):
@@ -16,10 +16,12 @@ class TTR(CutOffBase, ABC):
     """
 
     def __init__(self,
-                 world_state: WorldState):
-        super().__init__(world_state)
+                 ego_obstacle,
+                 world: World):
+        super().__init__(ego_obstacle, world)
+        ego_vehicle = world.vehicle_by_id(ego_obstacle.obstacle_id)
         # calculate the time-to-collision as default value
-        self._ttc = self._calc_ttc(world_state.ego_vehicle.state_list_cr)
+        self._ttc = self._calc_ttc(ego_vehicle.states_cr)
         self._visualize = False
 
     @property
@@ -69,7 +71,7 @@ class TTR(CutOffBase, ABC):
                 SL = SimulationLateral(maneuver,
                                        self.ego_vehicle,
                                        mid,
-                                       self.world_state,
+                                       self.world.vehicle_by_id(self.ego_vehicle.obstacle_id),
                                        dt=self.dT)
             else:
                 raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))
