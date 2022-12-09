@@ -17,8 +17,9 @@ before_script:
     - conda env create -f environment.yml
     - source activate cr-py38
     - conda info
-    - conda install -c conda-forge cvxpy
+    - pip uninstall git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@new-interface
     - pip install git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@new-interface
+    - conda install -c conda-forge cvxpy
 
 test:
   stage: test
