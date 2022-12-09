@@ -9,7 +9,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 import math
 
 scenario_id = "ZAM_Zip-1_56_T-1"
-file_path = "../../scenarios/" \
+file_path = "./scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
 
@@ -41,11 +41,10 @@ if __name__ == '__main__':
 
     # ========== Traffic Rule Monitor =========
     rule_monitor = STLRuleMonitor(scenario,
-                                  planning_problem,
                                   ego_id, rule)
     # ========== Trajectory Repairing =========
     if rule_monitor.tv_time_step is not math.inf:
-        repairer = SMTTrajectoryRepairer(rule_monitor,
+        repairer = SMTTrajectoryRepairer(rule_monitor, planning_problem,
                                          ego_initial)
         repaired_traj = repairer.repair()
         plot_limits = [-50, 10, 3.5, 11.2]
