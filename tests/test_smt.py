@@ -77,14 +77,14 @@ class TestSMTSolver(unittest.TestCase):
                          {CutOffAction.BRAKE, CutOffAction.KICKDOWN})
         tc = t_solver.search_tc()
         assert math.isclose(tc,
-                            2.1,
+                            1.9,
                             abs_tol=1e-2)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
                             if prop.name == '(in_same_lane__a0_a1_i)>=(0.0)'), None)
         t_solver.assign_proposition([proposition], ["~c"])
         tc = t_solver.search_tc()
         assert math.isclose(tc,
-                            0.7,
+                            0.5,
                             abs_tol=1e-2)
 
     def test_dpll(self):
