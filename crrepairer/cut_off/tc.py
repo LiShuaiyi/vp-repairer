@@ -86,14 +86,22 @@ class TC(CutOffBase, ABC):
                            0,
                            self.dT)
         rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(self.world, cut_off_time)
-        if rule_rob[0] < 0:
-            return -math.inf, other_ids[0][0]  # all violated
-        tv = np.argmax(rule_rob < 0)
-        if tv == 0:
-            return math.inf, None  # no violation
-        if other_ids[tv] is ():
-            return tv * self.dT, self.ego_vehicle.obstacle_id
-        return tv * self.dT, other_ids[tv][0]
+        if np.any(rule_rob[:,0] < 0):
+            rule_idx = np.where(rule_rob[:,0] < 0)[0][0]
+            if other_ids[rule_idx][0] is ():
+                return -math.inf, None
+            return -math.inf, other_ids[rule_idx][0][0]
+        tv_per_rule = np.argmax(rule_rob < 0, axis=-1)
+        if np.all(tv_per_rule == 0):
+            return math.inf, None # no violation
+        min_tv = np.min(tv_per_rule[tv_per_rule != 0])
+        rule_idx = np.where(tv_per_rule == min_tv)[0][0]
+        if rule_idx == self.rule_monitor._violated_rule_idx:
+            if other_ids[rule_idx][min_tv] is ():
+                return min_tv * self.dT, self.ego_vehicle.obstacle_id
+            return min_tv * self.dT, other_ids[rule_idx][min_tv][0]
+        else:
+            print("Violated rule changed.")
 
     def generate(self, cut_off_maneuvers: List[CutOffAction]):
         """
