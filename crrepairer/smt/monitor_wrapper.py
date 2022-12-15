@@ -55,7 +55,7 @@ class STLRuleMonitor:
                  rules: Union[str, Iterable[str]], ): 
         self._world: World = World.create_from_scenario(scenario)
         self._vehicle_id = vehicle_id
-        self._rules = rules
+        self._rules = [rules] if isinstance(rules, str) else rules 
         # todo: now only one rule is supported
         # todo: create multiple rule evaluators
         self._rule_eval = []
@@ -70,7 +70,7 @@ class STLRuleMonitor:
         self._prop_nodes = self._initialize_prop_rob()
         print("# =========== Traffic Rule Monitor ========== #")
         print("\tthe ego vehicle (id: {})'s initial\n\ttrajectory violates traffic rule {}".
-              format(self._vehicle_id, self._rules[0][self._violated_rule_idx]))
+              format(self._vehicle_id, self._rules[self._violated_rule_idx]))
         print('\tw.r.t vehicle {} at time step {}.'.format(self.other_id, self.tv_time_step))
         print("# =========================================== #")
 
