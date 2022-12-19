@@ -111,30 +111,39 @@ class STLRuleMonitor:
         For all propositions find the overlapping subsequences in the rule string
         and replace with the alphabet.
         """
-        rule_node = self._rule_eval[self._violated_rule_idx]._rule
-        if len(rule_node.children) == 1:
-            sat_formula = rule_node.children[0].rule_str
-        else:
-            sat_formula = rule_node.rule_str
-            for child in rule_node.children:
-                if hasattr(child, 'quantified_vehicle'):
-                    sat_formula = sat_formula.replace(child.name, 
-                    child.children[0].rule_str)
-        sat_formula = sat_formula.replace('(', '').replace(')', '').replace('not', '!')
-        for prop_node in self._prop_nodes:
-            matches = SequenceMatcher(None, 
-                                      sat_formula, 
-                                      prop_node.name, 
-                                      autojunk=True).get_matching_blocks()
-            clean_matches = [match for match in matches if match.size>1]
-            first_index = clean_matches[0].a
-            last_index = clean_matches[-1].a+clean_matches[-1].size
-            to_repl = sat_formula[first_index:last_index]
-            sat_formula = sat_formula.replace(to_repl, prop_node.alphabet)  
-        if 'implies' in sat_formula:
-            impl_at = sat_formula.find('implies')
-            sat_formula = '(' + sat_formula[:impl_at] + ') ' + sat_formula[impl_at:]
-        return sat_formula
+        subformula_list = []
+        prev_idx = 0
+        for i, evaluator in enumerate(self._rule_eval):
+            rule_node = evaluator._rule
+            if len(rule_node.children) == 1:
+                sat_formula = rule_node.children[0].rule_str
+            else:
+                sat_formula = rule_node.rule_str
+                for child in rule_node.children:
+                    if hasattr(child, 'quantified_vehicle'):
+                        sat_formula = sat_formula.replace(child.name,
+                                                          child.children[0].rule_str)
+            sat_formula = sat_formula.replace('(', '').replace(')', '').replace('not', '!')
+            length = self.rob_abstraction[i].shape[-1]
+            props_of_rule = self._prop_nodes[prev_idx:prev_idx+length]
+            prev_idx += length
+            for prop_node in props_of_rule:
+                matches = SequenceMatcher(None, 
+                                          sat_formula, 
+                                          prop_node.name, 
+                                          autojunk=True).get_matching_blocks()
+                clean_matches = [match for match in matches if match.size>1]
+                first_index = clean_matches[0].a
+                last_index = clean_matches[-1].a+clean_matches[-1].size
+                to_repl = sat_formula[first_index:last_index]
+                sat_formula = sat_formula.replace(to_repl, prop_node.alphabet)  
+            if 'implies' in sat_formula:
+                impl_at = sat_formula.find('implies')
+                sat_formula = '(' + sat_formula[:impl_at] + ') ' + sat_formula[impl_at:]
+            subformula_list.append('(' + sat_formula + ')')
+        for i, substr in enumerate(subformula_list[:-1]):
+            subformula_list[i] = substr + ' and '
+        return ''.join(subformula_list)
 
     @property
     @functools.lru_cache(128)
@@ -166,15 +175,15 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        all_prop_robs = self.rob_abstraction[self._violated_rule_idx][self._tv]
-        all_prop_names = self.abstraction_names[self._violated_rule_idx][self._tv]
+        all_prop_robs = self.rob_abstraction[:, self._tv]
+        all_prop_names = self.abstraction_names[:, self._tv]
         prop_nodes = []
-        pred_nodes = []
-        retrieve_preds(self._rule_eval[self._violated_rule_idx]._rule, pred_nodes)
-        for idx, prop_rob in enumerate(all_prop_robs):
+        for idx, prop_rob in np.ndenumerate(all_prop_robs):
             proposition = PropositionNode(all_prop_names[idx],
-                                          alphabet[idx],
+                                          alphabet[len(prop_nodes)],
                                           prop_rob)
+            pred_nodes = []
+            retrieve_preds(self._rule_eval[idx[0]]._rule, pred_nodes)
             for pred in pred_nodes:
                 if pred.name in all_prop_names[idx]:
                     proposition.children.append(pred)
