@@ -14,13 +14,14 @@ before_script:
     - apt-get update && apt-get install -y build-essential
     - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.lrz.de".insteadOf "ssh://git@gitlab.lrz.de"
     - conda init bash
-    - pip install git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@new-interface
     - conda env create -f environment.yml
     - source activate cr-py38
     - conda info
     # - pip uninstall git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@new-interface
     - conda install -c conda-forge cvxpy
-
+    - pip install git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@new-interface
+    - pip install -r requirements.txt
+    
 test:
   stage: test
   script:
@@ -32,6 +33,7 @@ deploy_develop:
   when: manual
   only:
     - master
+    - develop
   stage: deploy
   script:
     - pip install twine bump2version
