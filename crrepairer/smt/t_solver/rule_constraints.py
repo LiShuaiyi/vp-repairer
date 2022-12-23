@@ -35,7 +35,7 @@ class RuleConstraints:
     def __init__(self,
                  tc_object: TC,
                  rule_monitor: STLRuleMonitor,
-                 sel_proposition: List[PropositionNode],
+                 sel_proposition_full: List[PropositionNode],
                  veh_config: PlanningConfigurationVehicle,
                  initial_trajectory: Trajectory):
         # initialize the needed components
@@ -49,7 +49,7 @@ class RuleConstraints:
         self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
         self._veh_config = veh_config
         self._compliant_maneuver = tc_object.compliant_maneuver
-        self._sel_prop = sel_proposition
+        self._sel_prop_full = sel_proposition_full
 
         # initialize the elements for rule constraints
         self._target_lanes = defaultdict(List[Lane])
@@ -107,10 +107,10 @@ class RuleConstraints:
                     # no assignment can be found
                     continue
                 for predicate in proposition.children:
-                    if proposition in self._sel_prop and k >= self._tc_obj.tv_time_step:
+                    if proposition in self._sel_prop_full and k >= self._tc_obj.tv_time_step:
                         # proposition to be repaired (greater than the time-to-violation)
                         prop_assignment = -prop_assignment
-                    if k < self._tc_obj.tv_time_step or proposition in self._sel_prop:
+                    if k < self._tc_obj.tv_time_step or proposition in self._sel_prop_full:
                         if not hasattr(predicate, 'base_name'):
                             continue
                         if predicate.base_name == PredInSameLane.predicate_name:
@@ -165,7 +165,7 @@ class RuleConstraints:
                                                     a_max=self._lon_acc_constraint[1],
                                                     prec_veh=self._target_vehicle,
                                                     tc_time_step=self._tc_obj.tc_time_step,
-                                                    select_proposition=self._sel_prop)
+                                                    select_proposition=self._sel_prop_full)
 
     def lateral_constraints(self, long_traj: QPTrajectory, ):
         """
