@@ -272,21 +272,22 @@ class STLRuleMonitor:
             raise ValueError("the evaluation procedure is not executed yet")
         return self.rob_rule, self.other_ids
 
-    def _cal_tv_initial(self) -> Tuple[Union[int, float], Any]:
+    def _cal_tv_initial(self) -> Tuple[Any, Union[int, float], Any]:
         # calculate the time-to-violation: detect violation time using STL monitor
-        #evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
-        if np.any(self.rob_rule[:,0] < 0):
-            rule_idx = np.where(self.rob_rule[:,0] < 0)[0][0]
+        # evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
+        if np.any(self.rob_rule[:, 0] < 0):
+            rule_idx = np.where(self.rob_rule[:, 0] < 0)[0][0]
             if self.other_ids[rule_idx][0] is ():
-                return -math.inf, None
-            return -math.inf, self.other_ids[rule_idx][0][0]  # all violated
+                return None, -math.inf, None
+            return None, -math.inf, self.other_ids[rule_idx][0][0]  # all violated
         tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1)
         if np.all(tv_per_rule == 0):
-            return math.inf, None  # no violation
+            return None, math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
-        if self.other_ids[rule_idx][min_tv] is () or self._rules[rule_idx] == 'R_G2':  # R_G2: we focus on the ego vehicle
-            return int(min_tv), self._vehicle_id
+        if self.other_ids[rule_idx][min_tv] is () or self._rules[rule_idx] == 'R_G2':
+            # R_G2: we focus on the ego vehicle
+            return rule_idx, int(min_tv), self._vehicle_id
         return rule_idx, int(min_tv), self.other_ids[rule_idx][min_tv][0]
 
     def switch_to_boolean(self, evaluator):
