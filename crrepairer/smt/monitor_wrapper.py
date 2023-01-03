@@ -5,7 +5,6 @@ from enum import Enum
 import numpy as np
 import dataclasses
 from dataclasses import dataclass
-import pandas as pd
 import copy
 from difflib import SequenceMatcher, get_close_matches
 
@@ -15,21 +14,6 @@ from crmonitor.monitor.rule import PredicateNode
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
-
-
-def flatten_nested_dict(data, path=tuple()):
-    entries = []
-    for key, val in data.items():
-        if isinstance(val, dict):
-            entries.extend(flatten_nested_dict(val, path + (key,)))
-        else:
-            entries.append(path + (key, val))
-    return entries
-
-
-def pandas_from_nested_dict(data, level_names):
-    entries = flatten_nested_dict(data)
-    return pd.DataFrame(entries, columns=level_names)
 
 
 @dataclass
@@ -148,7 +132,7 @@ class STLRuleMonitor:
     @property
     @functools.lru_cache(128)
     def prop_robust_all(self):
-        return self.rob_abstraction[self._violated_rule_idx]
+        return self.rob_abstraction#[self._violated_rule_idx]
 
     @property
     @functools.lru_cache(128)
