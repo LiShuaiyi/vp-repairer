@@ -86,8 +86,8 @@ class TC(CutOffBase, ABC):
                            0,
                            self.dT)
         rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(self.world, cut_off_time)
-        if np.any(rule_rob[:,0] < 0):
-            rule_idx = np.where(rule_rob[:,0] < 0)[0][0]
+        if np.any(rule_rob[:, 0] < 0):
+            rule_idx = np.where(rule_rob[:, 0] < 0)[0][0]
             if other_ids[rule_idx][0] is ():
                 return -math.inf, None
             return -math.inf, other_ids[rule_idx][0][0]
@@ -152,7 +152,10 @@ class TC(CutOffBase, ABC):
                                          self._sim_lat.vehicle_dynamics.shape)
                 # flag_collision = self._detect_collision(state_list)  # bool value
                 check_elements_state_list(state_list, self.dT)
-                tv, _ = self.calc_tv_updated(state_list, self._mid)  # which should be tv instead of ttm
+                try:
+                    tv, _ = self.calc_tv_updated(state_list, self._mid)  # which should be tv instead of ttm
+                except:
+                    tv = -math.inf
             # if violation-free and collision-free
             if tv == math.inf:  # and not flag_collision:
                 low = self._mid + 1

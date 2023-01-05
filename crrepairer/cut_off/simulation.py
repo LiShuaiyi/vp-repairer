@@ -264,9 +264,9 @@ class SimulationLateral(SimulationBase, ABC):
     def simulate_state_list(self):
         self.set_inputs(self.cut_off_state.velocity)
         target_lane = self.set_target_lane()
-        # if target_lane is None:
-        #     # lane change is impossible
-        #     return None
+        if target_lane is None:
+            # lane change is impossible
+            return None
         current_ego_s, current_ego_d = self._world_ego.get_lane(self._start_time).clcs.convert_to_curvilinear_coords(
             self.cut_off_state.position[0], self.cut_off_state.position[1])
         bang_bang_time = self.set_bang_bang_time(current_ego_s, current_ego_d, target_lane)
