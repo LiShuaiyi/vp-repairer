@@ -97,7 +97,7 @@ class RuleConstraints:
         # acceleration limit (only one value for all time steps)
         a_limit = [-np.inf, np.inf]
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            total_assignment = self._rule_monitor.prop_robust_all[:,k]
+            total_assignment = self._rule_monitor.prop_robust_all[: k]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
@@ -119,8 +119,10 @@ class RuleConstraints:
                         elif predicate.base_name == PredInFrontOf.predicate_name:
                             s_constr = self.ConstrInFrontOf(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
-                        elif predicate.base_name == PredPreceding.predicate_name: ### precedes = \neg infrontof ?
-                            s_constr = self.ConstrInFrontOf(k, -prop_assignment)
+                        elif predicate.base_name == PredPreceding.predicate_name:
+                            # precedes = in_front_of  and in_same_lane
+                            self.ConstrInSameLane(k, prop_assignment)
+                            s_constr = self.ConstrInFrontOf(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         elif predicate.base_name == PredSafeDistPrec.predicate_name:
                             self.ConstrSafeDist(k, prop_assignment)
