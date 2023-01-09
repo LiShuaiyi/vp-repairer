@@ -68,7 +68,8 @@ class TSolver:
                 predicate_category = predicate.evaluator.predicate_name.__class__.__name__[:3]
                 if predicate_category == "Pos" and \
                         predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
-                                                               PositionPredicates.InFrontOf]:
+                                                               PositionPredicates.InFrontOf,
+                                                               PositionPredicates.Precedes]:
                     compliant_maneuver += [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
                 elif predicate_category == "Pos":
                     compliant_maneuver += [CutOffAction.LANECHANGELEFT,

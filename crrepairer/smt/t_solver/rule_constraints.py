@@ -97,7 +97,7 @@ class RuleConstraints:
         # acceleration limit (only one value for all time steps)
         a_limit = [-np.inf, np.inf]
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            total_assignment = self._rule_monitor.prop_robust_all[: k]
+            total_assignment = self._rule_monitor.prop_robust_all[:, k]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
@@ -280,22 +280,27 @@ class RuleConstraints:
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         if time_step in self._target_vehicle.lanelet_assignment.keys():
             tar_veh_lanelet = self._target_vehicle.lanelet_assignment[time_step]
-            tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(list(tar_veh_lanelet)[0])
-            # if prop_assignment > 0:
-            #     target_lane = [tar_veh_lane]
-            if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
-                target_lane = [tar_veh_lane.adj_right]
-            elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
-                target_lane = [tar_veh_lane.adj_left]
-            else:
-                target_lane = [tar_veh_lane]
-            if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
-                                            CutOffAction.LANECHANGERIGHT]:
-                if time_step <= self._time_leave_lane:
+            try:
+                tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(list(tar_veh_lanelet)[0])
+                #if prop_assignment > 0:
+                #    target_lane = [tar_veh_lane]
+                if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
+                    target_lane = [tar_veh_lane.adj_right]
+                elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
+                    target_lane = [tar_veh_lane.adj_left]
+                else:
                     target_lane = [tar_veh_lane]
-                elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
-                    target_lane += [tar_veh_lane]
-                target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
+                if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
+                                                CutOffAction.LANECHANGERIGHT]:
+                    if time_step <= self._time_leave_lane:
+                        target_lane = [tar_veh_lane]
+                    elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
+                        target_lane += [tar_veh_lane]
+                    target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
+            except:
+                tar_veh_lane = [None]
+                target_lane = [None]
+            
         else:
             target_lane = [None]
         self._target_lanes[time_step] = list(set(target_lane))

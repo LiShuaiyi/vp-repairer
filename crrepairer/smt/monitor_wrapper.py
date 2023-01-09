@@ -103,10 +103,11 @@ class STLRuleMonitor:
                 sat_formula = rule_node.children[0].rule_str
             else:
                 sat_formula = rule_node.rule_str
-                for child in rule_node.children:
-                    if hasattr(child, 'quantified_vehicle'):
-                        sat_formula = sat_formula.replace(child.name,
-                                                          child.children[0].rule_str)
+                #for child in rule_node.children:
+                #    if hasattr(child, 'quantified_vehicle'):
+                #        sat_formula = sat_formula.replace(child.name,
+                #                                          child.children[0].rule_str)
+                #        print(sat_formula)
             sat_formula = sat_formula.replace('(', '').replace(')', '').replace('not', '!')
             length = self.rob_abstraction[i].shape[-1]
             props_of_rule = self._prop_nodes[prev_idx:prev_idx+length]
@@ -147,6 +148,8 @@ class STLRuleMonitor:
         Returns:
         prop_nodes (List[PropositionNode]): List of proposition nodes
         """
+        # Currently does not support multiple quantifiers at the same level
+        # TODO: Incorporate support for multiple quantifiers
         alphabet = "abcdefghijklmnopqrstuvwxyz"
 
         def retrieve_preds(node, liste):
@@ -169,8 +172,12 @@ class STLRuleMonitor:
             pred_nodes = []
             retrieve_preds(self._rule_eval[idx[0]]._rule, pred_nodes)
             for pred in pred_nodes:
-                if pred.name in all_prop_names[idx]:
-                    proposition.children.append(pred)
+                if 'g0' not in all_prop_names[idx]:
+                    if pred.name in all_prop_names[idx]:
+                        proposition.children.append(pred)
+                else:
+                    if not any([pred.name in _ for _ in np.delete(all_prop_names, idx[-1], 1).squeeze(0)]):
+                        proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
 
