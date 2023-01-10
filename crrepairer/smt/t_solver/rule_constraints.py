@@ -311,10 +311,16 @@ class RuleConstraints:
             return [-np.inf, np.inf]
         if prop_assignment > 0:
             rear_s = self._target_vehicle.rear_s(time_step)
-            return [-np.inf, rear_s]
+            if rear_s:
+                return [-np.inf, rear_s]
+            else:
+                return [-np.inf, np.inf]
         else:
             front_s = self._target_vehicle.front_s(time_step)
-            return [front_s, np.inf]
+            if front_s:
+                return [front_s, np.inf]
+            else:
+                return [-np.inf, np.inf]
 
     def ConstrSafeDist(self, time_step: int, prop_assignment: float):
         if prop_assignment > 0:
