@@ -110,7 +110,9 @@ class RuleConstraints:
                 for predicate in proposition.children:
                     if proposition in self._sel_prop_full and k >= self._tc_obj.tv_time_step:
                         # proposition to be repaired (greater than the time-to-violation)
-                        prop_assignment = -prop_assignment
+                        prop_assignment = -self._rule_monitor.prop_robust_all[:, self._tc_obj.tv_time_step].flatten()[
+                            idx]
+                        #prop_assignment = -prop_assignment
                     if k < self._tc_obj.tv_time_step or proposition in self._sel_prop_full:
                         if not hasattr(predicate, 'base_name'):
                             continue
