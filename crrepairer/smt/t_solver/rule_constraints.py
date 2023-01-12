@@ -103,15 +103,15 @@ class RuleConstraints:
             v_limit = [0, np.inf]
             for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:
-                    prop_assignment = total_assignment.flatten()[idx]
+                    prop_assignment = total_assignment[total_assignment == total_assignment][idx]
                 except:
                     # no assignment can be found
                     continue
                 for predicate in proposition.children:
                     if proposition in self._sel_prop_full and k >= self._tc_obj.tv_time_step:
                         # proposition to be repaired (greater than the time-to-violation)
-                        prop_assignment = -self._rule_monitor.prop_robust_all[:, self._tc_obj.tv_time_step].flatten()[
-                            idx]
+                        robs_at_tv = self._rule_monitor.prop_robust_all[:, self._tc_obj.tv_time_step]
+                        prop_assignment = -robs_at_tv[robs_at_tv == robs_at_tv][idx]
                         #prop_assignment = -prop_assignment
                     if k < self._tc_obj.tv_time_step or proposition in self._sel_prop_full:
                         if not hasattr(predicate, 'base_name'):
