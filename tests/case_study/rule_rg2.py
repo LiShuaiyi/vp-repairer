@@ -13,7 +13,7 @@ file_path = "../../scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
 
-flag_visualization = False
+flag_visualization = True
 
 if __name__ == '__main__':
     # ========== Scenario and Configuration =========
@@ -53,18 +53,21 @@ if __name__ == '__main__':
                                                                 ego_initial.initial_state,
                                                                 repaired_traj)
             # ============= Visualization =============
-            visualize_v_profile(ego_initial, ego_repaired, time_start=initial_time_step,
-                                time_end=final_time_step, tc=repairer.tc, tv=repairer.tv)
-            visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=initial_time_step,
-                                time_end=final_time_step, tc=repairer.tc, tv=repairer.tv)
-            for time_step in range(initial_time_step, final_time_step):
+            visualize_v_profile(ego_initial, ego_repaired, time_start=0,
+                                time_end=20, tc=repairer.tc, tv=repairer.tv)
+            visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=0,
+                                time_end=20, tc=repairer.tc, tv=repairer.tv)
+            target_veh = scenario.obstacle_by_id(rule_monitor.other_id)
+
+            for time_step in range(0, 20):
                 visualize_repairing_result(scenario,
                                            ego_initial,
                                            ego_repaired,
                                            time_step,
-                                           end_time=final_time_step,
+                                           end_time=20,
                                            tc=repairer.tc,
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
-                                           target_veh=None,
+                                           target_veh=target_veh,
                                            world=rule_monitor.world)  # , save_path=figure_path)
+
