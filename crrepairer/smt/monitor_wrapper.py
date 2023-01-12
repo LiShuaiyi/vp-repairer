@@ -109,7 +109,8 @@ class STLRuleMonitor:
                 #                                          child.children[0].rule_str)
                 #        print(sat_formula)
             sat_formula = sat_formula.replace('(', '').replace(')', '').replace('not', '!')
-            length = self.rob_abstraction[i].shape[-1]
+            clear_rob_abs = self.rob_abstraction[i][self.rob_abstraction[i]==self.rob_abstraction[i]]
+            length = int(clear_rob_abs.shape[0] / self.rob_abstraction[i].shape[0])
             props_of_rule = self._prop_nodes[prev_idx:prev_idx+length]
             prev_idx += length
             for prop_node in props_of_rule:
@@ -165,18 +166,19 @@ class STLRuleMonitor:
         all_prop_robs = self.rob_abstraction[:, self._tv]
         all_prop_names = self.abstraction_names[:, self._tv]
         prop_nodes = []
-        for idx, prop_rob in np.ndenumerate(all_prop_robs):
-            proposition = PropositionNode(all_prop_names[idx],
+        for idx in np.transpose(np.isfinite(all_prop_robs).nonzero()):
+            proposition = PropositionNode(all_prop_names[tuple(idx)],
                                           alphabet[len(prop_nodes)],
-                                          prop_rob)
+                                          all_prop_robs[tuple(idx)])
             pred_nodes = []
             retrieve_preds(self._rule_eval[idx[0]]._rule, pred_nodes)
             for pred in pred_nodes:
-                if 'g0' not in all_prop_names[idx]:
-                    if pred.name in all_prop_names[idx]:
+                if 'g0' not in all_prop_names[tuple(idx)]:
+                    if pred.name in all_prop_names[tuple(idx)]:
                         proposition.children.append(pred)
                 else:
-                    if not any([pred.name in _ for _ in np.delete(all_prop_names, idx[-1], 1).squeeze(0)]):
+                    other_props = np.delete(all_prop_names[idx[0]], idx[-1], 0)
+                    if not any([pred.name in p_name for p_name in other_props[other_props==other_props]]):
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
@@ -234,6 +236,13 @@ class STLRuleMonitor:
             pred_rob_all.append(np.array(pred_rob, dtype=np.float64))
             other_ids_all.append(other_ids)
         assert len(rule_rob_all) == len(self._rule_eval)
+        max_n_props = max([p.shape[1] for p in prop_rob_all])
+        for idx, prop_array in enumerate(prop_rob_all):
+            if prop_array.shape[1] < max_n_props:
+                prop_rob_all[idx] = np.pad(prop_array, ((0,0),(0, max_n_props-prop_array.shape[1])), 
+                                           'constant', constant_values=np.nan)
+                prop_names_all[idx] = np.pad(prop_names_all[idx], ((0,0), (0, max_n_props-prop_array.shape[1])), 
+                                             'constant', constant_values=np.nan)
         return np.array(rule_rob_all), np.array(pred_rob_all), np.array(prop_rob_all), np.array(prop_names_all), other_ids_all          
 
     def evaluate_consecutively(self, world, reset_time):
@@ -276,7 +285,7 @@ class STLRuleMonitor:
             return None, math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
-        if self.other_ids[rule_idx][min_tv] is () or self._rules[rule_idx] == 'R_G2':
+        if self.other_ids[rule_idx][min_tv] is ():# or self._rules[rule_idx] == 'R_G2':
             # R_G2: we focus on the ego vehicle
             return rule_idx, int(min_tv), self._vehicle_id
         return rule_idx, int(min_tv), self.other_ids[rule_idx][min_tv][0]
