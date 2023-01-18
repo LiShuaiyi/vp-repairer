@@ -109,6 +109,7 @@ class TSolver:
         """
         self._qp_planner = QPPlannerRepair(self._rule_monitor,
                                            self._tc_obj,
+                                           self._sel_prop,
                                            self._prop_full,
                                            self._planning_problem,
                                            verbose=self.verbose)

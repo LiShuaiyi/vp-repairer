@@ -37,6 +37,7 @@ class RuleConstraints:
                  tc_object: TC,
                  rule_monitor: STLRuleMonitor,
                  sel_proposition_full: List[PropositionNode],
+                 proposition_full: List[PropositionNode],
                  veh_config: PlanningConfigurationVehicle,
                  initial_trajectory: Trajectory):
         # initialize the needed components
@@ -51,6 +52,7 @@ class RuleConstraints:
         self._veh_config = veh_config
         self._compliant_maneuver = tc_object.compliant_maneuver
         self._sel_prop_full = sel_proposition_full
+        self._prop_full = proposition_full
 
         # initialize the elements for rule constraints
         self._target_lanes = defaultdict(List[Lane])
@@ -108,12 +110,13 @@ class RuleConstraints:
                     # no assignment can be found
                     continue
                 for predicate in proposition.children:
-                    if proposition in self._sel_prop_full and k >= self._tc_obj.tv_time_step:
+                    if proposition in self._prop_full and k >= self._tc_obj.tv_time_step:
                         # proposition to be repaired (greater than the time-to-violation)
                         robs_at_tv = self._rule_monitor.prop_robust_all[:, self._tc_obj.tv_time_step]
-                        prop_assignment = -robs_at_tv[robs_at_tv == robs_at_tv][idx]
-                        #prop_assignment = -prop_assignment
-                    if k < self._tc_obj.tv_time_step or proposition in self._sel_prop_full:
+                        prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
+                        if proposition in self._sel_prop_full:
+                            prop_assignment = -prop_assignment
+                    if k < self._tc_obj.tv_time_step or proposition in self._prop_full:
                         if not hasattr(predicate, 'base_name'):
                             continue
                         if predicate.base_name == PredInSameLane.predicate_name:

@@ -32,6 +32,7 @@ class QPPlannerRepair(QPPlanner):
                  rule_monitor: STLRuleMonitor,
                  tc_object: TC,
                  sel_proposition: List[PropositionNode],
+                 proposition_full: List[PropositionNode],
                  planning_problem: PlanningProblem,
                  verbose=False):
         # initialize the scenario and planning problem
@@ -74,6 +75,7 @@ class QPPlannerRepair(QPPlanner):
         self._rule_constraints = RuleConstraints(tc_object,
                                                  rule_monitor,
                                                  sel_proposition,
+                                                 proposition_full,
                                                  self._vehicle_configuration,
                                                  self._initial_trajectory)
 
