@@ -34,6 +34,7 @@ if __name__ == '__main__':
                                                                                     final_time_step]
         veh.prediction.occupancy_set = veh.prediction.occupancy_set[initial_time_step:final_time_step]
         veh.prediction.final_time_step = 20
+        veh.prediction.initial_time_step = 0
 
     for i in range(ego_initial.prediction.trajectory.final_state.time_step):
         ego_initial.state_at_time(i).acceleration = (ego_initial.state_at_time(i + 1).velocity -

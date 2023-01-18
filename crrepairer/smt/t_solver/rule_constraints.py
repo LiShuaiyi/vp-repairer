@@ -58,7 +58,7 @@ class RuleConstraints:
         self._target_lanes = defaultdict(List[Lane])
         self._lon_dis_constraints = list()
         self._lon_vel_constraints = list()
-        self._lon_acc_constraint = []
+        self._lon_acc_constraints = list()
         self._lat_dis_constraints = list()
 
         self._prec_veh = None
@@ -96,13 +96,12 @@ class RuleConstraints:
             longitudinal motion: s, v, a
             lateral motion: lane
         """
-        # acceleration limit (only one value for all time steps)
-        a_limit = [-np.inf, np.inf]
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             total_assignment = self._rule_monitor.prop_robust_all[:, k]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
+            a_limit = [-np.inf, np.inf]
             for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:
                     prop_assignment = total_assignment[total_assignment == total_assignment][idx]
@@ -154,7 +153,7 @@ class RuleConstraints:
                                   "is not supported".format(predicate.name))
             self._lon_dis_constraints.append(s_limit)
             self._lon_vel_constraints.append(v_limit)
-        self._lon_acc_constraint = a_limit
+            self._lon_acc_constraints.append(a_limit)
 
     def longitudinal_constraints(self):
         """
@@ -166,14 +165,15 @@ class RuleConstraints:
         self.ConstrCollisionFree()
         longitudinal_distance_constraints = np.array(self._lon_dis_constraints)
         longitudinal_velocity_constraints = np.array(self._lon_vel_constraints)
+        longitudinal_acceleration_constraints = np.array(self._lon_acc_constraints)
         return LonConstraints.construct_constraints(longitudinal_distance_constraints[1:, 0],
                                                     longitudinal_distance_constraints[1:, 1],
                                                     longitudinal_distance_constraints[1:, 0],
                                                     longitudinal_distance_constraints[1:, 1],
                                                     v_min=longitudinal_velocity_constraints[1:, 0],
                                                     v_max=longitudinal_velocity_constraints[1:, 1],
-                                                    a_min=self._lon_acc_constraint[0],
-                                                    a_max=self._lon_acc_constraint[1],
+                                                    a_min=longitudinal_acceleration_constraints[1:, 0],
+                                                    a_max=longitudinal_acceleration_constraints[1:, 1],
                                                     prec_veh=self._target_vehicle,
                                                     tc_time_step=self._tc_obj.tc_time_step,
                                                     select_proposition=self._sel_prop_full)
