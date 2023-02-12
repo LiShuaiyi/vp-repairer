@@ -41,7 +41,7 @@ class STLRuleMonitor:
                  rules: Union[str, Iterable[str]], multiproc=True): 
         self._world: World = World.create_from_scenario(scenario)
         self._vehicle_id = vehicle_id
-        self.multiproc = False
+        self.multiproc = multiproc
         self._rules = [rules] if isinstance(rules, str) else rules 
         # todo: now only one rule is supported
         # todo: create multiple rule evaluators
