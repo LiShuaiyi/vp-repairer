@@ -142,7 +142,7 @@ class TC(CutOffBase, ABC):
                 self._sim_lat.update_action(maneuver, self._mid)
                 state_list = self._sim_lat.simulate_state_list()
             else:
-                raise ValueError("<TTCC>: given compliant maneuver {} is not supported".format(maneuver))
+                raise ValueError("<TC>: given compliant maneuver {} is not supported".format(maneuver))
             if state_list is None:
                 flag_collision = True
                 tv = -math.inf

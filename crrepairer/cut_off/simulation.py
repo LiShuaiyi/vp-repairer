@@ -5,10 +5,10 @@ from typing import Union
 from abc import ABC, abstractmethod
 
 from commonroad.common.solution import VehicleType
-from commonroad.scenario.obstacle import DynamicObstacle, State
+from commonroad.scenario.obstacle import DynamicObstacle
+from commonroad.scenario.state import PMInputState, CustomState, PMState
 from commonroad_dc.feasibility.vehicle_dynamics import PointMassDynamics
 
-from crmonitor.common.world import World
 from crmonitor.common.vehicle import Vehicle as WorldVehicle
 from crrepairer.cut_off.utils import check_velocity_feasibility
 
@@ -34,8 +34,8 @@ class SimulationBase(ABC):
         self._action = action
         self._simulated_vehicle = simulated_vehicle
         self._start_time = start_time
-        self._input: State = State(steering_angle_speed=0,
-                                   acceleration=0)
+        self._input: PMInputState = PMInputState(acceleration_y=0,
+                                                 acceleration=0)
         # currently: point mass model since KS model has some infeasibility issues
         self._vehicle_dynamics = PointMassDynamics(VehicleType.BMW_320i)
         self._parameters = self._vehicle_dynamics.parameters
@@ -115,7 +115,7 @@ class SimulationLong(SimulationBase, ABC):
         self.j_limit = 5
         super().__init__(action, simulated_vehicle, start_time, dt=dt)
 
-    def set_inputs(self, pre_state):
+    def set_inputs(self, pre_state: PMState):
         """
         sets inputs for the longitudinal simulation
         """
@@ -133,17 +133,21 @@ class SimulationLong(SimulationBase, ABC):
             self._input.acceleration = a_max
         else:
             # constant velocity
-            self._input.acceleration = min(0, pre_state.acceleration + self.j_limit * self._dt)
+            self._input.acceleration = min(0, self._input.acceleration + self.j_limit * self._dt)
+        pre_state.acceleration = self._input.acceleration
+        pre_state.acceleration_y = self._input.acceleration_y
+
 
     def simulate_state_list(self):
-        pre_state = self.cut_off_state
+        pre_state = PMState(time_step=self.cut_off_state.time_step,
+                            position=self.cut_off_state.position,
+                            velocity=self.cut_off_state.velocity * math.cos(self.cut_off_state.orientation),
+                            velocity_y=self.cut_off_state.velocity * math.sin(self.cut_off_state.orientation))
         self.set_inputs(pre_state)
-        pre_state.velocity_y = 0
-        pre_state.acceleration = self._input.acceleration
         while pre_state.time_step < self._time_horizon:
-            self._input.time_step = pre_state.time_step
+            #self._input.time_step = pre_state.time_step
             suc_state = self._vehicle_dynamics.simulate_next_state(pre_state, self._input, self._dt, throw=False)
-            if suc_state and check_velocity_feasibility(suc_state, self._vehicle_dynamics.parameters):
+            if suc_state and check_velocity_feasibility(suc_state):
                 check_elements_state(suc_state)
                 if not hasattr(suc_state, "acceleration"):
                     suc_state.acceleration = (suc_state.velocity - pre_state.velocity) / self._dt
@@ -292,7 +296,7 @@ class SimulationLateral(SimulationBase, ABC):
             "<SimulationLateral>: provided action {} is not supported".format(action)
 
 
-def check_elements_state(state: State):
+def check_elements_state(state: PMState):
     """
     checks the missing elements needed for PM model
     """
@@ -305,19 +309,15 @@ def check_elements_state(state: State):
 
 
 def check_elements_state_list(state_list, dt):
-    for k in range(len(state_list) - 1):
-        if not hasattr(state_list[k], "yaw_rate"):
-            state_list[k].yaw_rate = (state_list[k + 1].orientation - state_list[k].orientation) / dt
+    for k in range(len(state_list)):
+        # fix the problem of velocity projection
+        state_list[k].orientation = math.atan2(state_list[k].velocity_y, state_list[k].velocity)
+        state_list[k].velocity = math.sqrt(state_list[k].velocity**2 + state_list[k].velocity_y**2)
+        state_list[k].velocity_y = 0
+        if hasattr(state_list[k], 'acceleration_y'):
+            state_list[k].acceleration = math.sqrt(state_list[k].acceleration**2 + state_list[k].acceleration_y**2)
+        state_list[k].acceleration_y = 0
         if not hasattr(state_list[k], "slip_angle"):
             state_list[k].slip_angle = 0
         if not hasattr(state_list[k], "steering_angle"):
             state_list[k].steering_angle = 0
-        if not hasattr(state_list[k], "acceleration"):
-            state_list[k].acceleration = (state_list[k + 1].velocity - state_list[k].velocity) / dt
-        if not hasattr(state_list[k], "velocity_y"):
-            state_list[k].velocity_y = state_list[k].velocity * math.cos(state_list[k].orientation)
-    state_list[-1].yaw_rate = 0
-    state_list[-1].slip_angle = 0
-    state_list[-1].steering_angle = 0
-    state_list[-1].acceleration = 0
-    state_list[-1].velocity_y = state_list[k].velocity * math.cos(state_list[k].orientation)

@@ -5,7 +5,7 @@ from crmonitor.common.vehicle import Vehicle, CurvilinearStateManager
 from crmonitor.common.road_network import RoadNetwork
 from crmonitor.common.helper import (_compute_jerk)
 from typing import List
-from vehiclemodels.parameters_vehicle1 import VehicleParameters
+from vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from commonroad.scenario.obstacle import ObstacleType, DynamicObstacle
 from commonroad.scenario.trajectory import State, Trajectory
 from commonroad.prediction.prediction import TrajectoryPrediction
@@ -25,7 +25,7 @@ def visualize_state_list(collision_checker, state_list: List[State], scenario, o
     plt.show()
 
 
-def check_velocity_feasibility(state: State, parameters: VehicleParameters):
+def check_velocity_feasibility(state: State):
     # the vehicle model in highD doesn't comply with commonroad vehicle models, thus the velocity limit for bmw320i
     # doesn't work for highD scenarios
     if state.velocity < 0 or \
@@ -34,7 +34,7 @@ def check_velocity_feasibility(state: State, parameters: VehicleParameters):
     return True
 
 
-def check_steering_angle_feasibility(state: State, parameters: VehicleParameters):
+def check_steering_angle_feasibility(state: State, parameters: parameters_vehicle1):
     # if not hasattr(state, "steering_angle")
     if state.steering_angle < parameters.steering.min or \
             state.steering_angle > parameters.steering.max:

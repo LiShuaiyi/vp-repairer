@@ -10,7 +10,6 @@ import numpy as np
 from commonroad.scenario.scenario import Scenario
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.visualization.mp_renderer import MPRenderer
-from commonroad.visualization.param_server import ParamServer
 
 from commonroad_qp_planner.utils import calculate_safe_distance
 
@@ -99,7 +98,7 @@ def visualize_a_profile(dt,
              markersize=7.5, zorder=21, linewidth=1.5)
     plt.xticks(range(time_start - time_start, time_end - time_start, 5))
     plt.xlabel('time step')
-    plt.ylabel('velocity')
+    plt.ylabel('acceleration')
     plt.show()
 
 
@@ -134,43 +133,24 @@ def visualize_repairing_result(scenario: Scenario,
 
     # visualize scenario
     for rnd in (rnd_0, rnd_1):
-        scenario.draw(
-            rnd,
-            draw_params=ParamServer({"time_begin": time_step,
-                                     "time_end": end_time,
-                                     "trajectory": {"draw_trajectory": True},
-                                     "lanelet": {"fill_lanelet": False},
-                                     "occupancy": {"draw_occupancies": 0},
-                                     "dynamic_obstacle":
-                                         {"vehicle_shape":
-                                              {"occupancy":
-                                                   {"draw_occupancies": 0, "shape":
-                                                       {"rectangle":
-                                                            {"facecolor": TUMcolor.TUMblack.value,
-                                                             "edgecolor": TUMcolor.TUMblack.value}}}}}}))
+        rnd.draw_params.time_begin = time_step
+        rnd.draw_params.time_end = end_time
+        rnd.draw_params.trajectory.draw_trajectory = True
+        rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
+        rnd.draw_params.occupancy.draw_occupancies = False
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = False
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
+        scenario.draw(rnd)
 
     if time_step >= tv:
         ego_color = 'red'
     else:
         ego_color = TUMcolor.TUMblue.value
     ego_mark = 'x'
-
-    ego_initial.draw(
-        rnd_0,
-        draw_params=ParamServer({"time_begin": time_step,
-                                 "time_end": end_time,
-                                 "trajectory": {"draw_trajectory": False},
-                                 "occupancy": {
-                                     "draw_occupancies": 1,
-                                     "shape": {"rectangle": {
-                                         "facecolor": ego_color,
-                                         "edgecolor": ego_color}}},
-                                 "dynamic_obstacle":
-                                     {"vehicle_shape": {
-                                         "occupancy": {
-                                             "shape": {"rectangle":
-                                                           {"facecolor": ego_color,
-                                                            "edgecolor": ego_color}}}}}}))
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
+    ego_initial.draw(rnd_0)
     # render scenario and ego vehicle
     rnd_0.render()
 
@@ -196,22 +176,9 @@ def visualize_repairing_result(scenario: Scenario,
         ego_color = TUMcolor.TUMblue.value
         ego_mark = 'x'
 
-    ego_repaired.draw(
-        rnd_1,
-        draw_params=ParamServer({"time_begin": time_step,
-                                 "time_end": end_time,
-                                 "trajectory": {"draw_trajectory": False},
-                                 "occupancy": {
-                                     "draw_occupancies": 1,
-                                     "shape": {"rectangle": {
-                                         "facecolor": ego_color,
-                                         "edgecolor": ego_color}}},
-                                 "dynamic_obstacle":
-                                     {"vehicle_shape": {
-                                         "occupancy": {
-                                             "shape": {"rectangle":
-                                                           {"facecolor": ego_color,
-                                                            "edgecolor": ego_color}}}}}}))
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
+    ego_repaired.draw(rnd_1)
 
     # render scenario and ego vehicle
     rnd_1.render()
