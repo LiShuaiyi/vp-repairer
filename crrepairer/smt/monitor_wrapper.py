@@ -313,6 +313,8 @@ class STLRuleMonitor:
             while evaluator.current_time < evaluator.ego_vehicle.end_time:
                 rule_rob.append(evaluator.update())
                 other_ids.append(evaluator.other_ids)
+                if rule_rob[-1] < 0:
+                    break
             rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
             other_ids_all.append(other_ids)
         return np.array(rule_rob_all), other_ids_all
