@@ -117,7 +117,8 @@ class TestSMTSolver(unittest.TestCase):
         tc_object = t_solver.tc_object
         qp_repairer = QPPlannerRepair(self.rule_monitor,
                                       tc_object,
-                                      assign_prop, 
+                                      assign_prop,
+                                      assign_prop,
                                       self.planning_problem)
         self.assertIsInstance(qp_repairer, QPPlannerRepair)
         qp_repairer.rule_constraints.add()  # add constraints
@@ -137,6 +138,7 @@ class TestSMTSolver(unittest.TestCase):
         tc_object = t_solver.tc_object
         qp_repairer = QPPlannerRepair(self.rule_monitor,
                                       tc_object,
+                                      assign_prop,
                                       assign_prop,
                                       self.planning_problem)
         qp_repairer.rule_constraints.add()  # add constraints

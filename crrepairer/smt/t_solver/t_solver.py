@@ -23,6 +23,7 @@ class TSolver:
                  planning_problem: PlanningProblem,
                  rule_monitor: STLRuleMonitor):
         self._sel_prop = None
+        self._prop_full = None
         self._rule_monitor = rule_monitor
         self._tc_obj = TC(ego_vehicle, rule_monitor)
         self._compliant_maneuvers = list()
@@ -44,6 +45,7 @@ class TSolver:
         """
         Assigns propositions to the T-solver.
         """
+        self._prop_full = propositions
         self._sel_prop = list()
         for prop in propositions:
             # if not the same value
@@ -66,7 +68,8 @@ class TSolver:
                 predicate_category = predicate.evaluator.predicate_name.__class__.__name__[:3]
                 if predicate_category == "Pos" and \
                         predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
-                                                               PositionPredicates.InFrontOf]:
+                                                               PositionPredicates.InFrontOf,
+                                                               PositionPredicates.Precedes]:
                     compliant_maneuver += [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
                 elif predicate_category == "Pos":
                     compliant_maneuver += [CutOffAction.LANECHANGELEFT,
@@ -107,6 +110,7 @@ class TSolver:
         self._qp_planner = QPPlannerRepair(self._rule_monitor,
                                            self._tc_obj,
                                            self._sel_prop,
+                                           self._prop_full,
                                            self._planning_problem,
                                            verbose=self.verbose)
         start_time = time.time()

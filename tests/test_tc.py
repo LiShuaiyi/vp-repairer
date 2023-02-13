@@ -22,7 +22,6 @@ class TestTC(unittest.TestCase):
         self.scenario_root_path = os.path.join(root_path, "scenarios")
         scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
         self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
-        planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
         self.ego_id = 1003
         self._ego_obs = self.scenario.obstacle_by_id(self.ego_id)
         self.rule_monitor = STLRuleMonitor(self.scenario,

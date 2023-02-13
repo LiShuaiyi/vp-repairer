@@ -7,7 +7,8 @@ from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 # class from STL monitor
-from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane, PredInFrontOf)
+from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane, 
+                                           PredInFrontOf, PredPreceding)
 
 from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit,
                                            PredBrSpeedLimit, PredTypeSpeedLimit)
@@ -35,7 +36,8 @@ class RuleConstraints:
     def __init__(self,
                  tc_object: TC,
                  rule_monitor: STLRuleMonitor,
-                 sel_proposition: List[PropositionNode],
+                 sel_proposition_full: List[PropositionNode],
+                 proposition_full: List[PropositionNode],
                  veh_config: PlanningConfigurationVehicle,
                  initial_trajectory: Trajectory):
         # initialize the needed components
@@ -49,13 +51,14 @@ class RuleConstraints:
         self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
         self._veh_config = veh_config
         self._compliant_maneuver = tc_object.compliant_maneuver
-        self._sel_prop = sel_proposition
+        self._sel_prop_full = sel_proposition_full
+        self._prop_full = proposition_full
 
         # initialize the elements for rule constraints
         self._target_lanes = defaultdict(List[Lane])
         self._lon_dis_constraints = list()
         self._lon_vel_constraints = list()
-        self._lon_acc_constraint = []
+        self._lon_acc_constraints = list()
         self._lat_dis_constraints = list()
 
         self._prec_veh = None
@@ -93,29 +96,36 @@ class RuleConstraints:
             longitudinal motion: s, v, a
             lateral motion: lane
         """
-        # acceleration limit (only one value for all time steps)
-        a_limit = [-np.inf, np.inf]
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            total_assignment = self._rule_monitor.prop_robust_all[k]
+            total_assignment = self._rule_monitor.prop_robust_all[:, k]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
+            a_limit = [-np.inf, np.inf]
             for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:
-                    prop_assignment = total_assignment[idx]
+                    prop_assignment = total_assignment[total_assignment == total_assignment][idx]
                 except:
                     # no assignment can be found
                     continue
                 for predicate in proposition.children:
-                    if proposition in self._sel_prop and k >= self._tc_obj.tv_time_step:
+                    if proposition in self._prop_full and k >= self._tc_obj.tv_time_step:
                         # proposition to be repaired (greater than the time-to-violation)
-                        prop_assignment = -prop_assignment
-                    if k < self._tc_obj.tv_time_step or proposition in self._sel_prop:
+                        robs_at_tv = self._rule_monitor.prop_robust_all[:, self._tc_obj.tv_time_step]
+                        prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
+                        if proposition in self._sel_prop_full:
+                            prop_assignment = -prop_assignment
+                    if k < self._tc_obj.tv_time_step or proposition in self._prop_full:
                         if not hasattr(predicate, 'base_name'):
                             continue
                         if predicate.base_name == PredInSameLane.predicate_name:
                             self.ConstrInSameLane(k, prop_assignment)
                         elif predicate.base_name == PredInFrontOf.predicate_name:
+                            s_constr = self.ConstrInFrontOf(k, prop_assignment)
+                            s_limit = self._get_overlap(s_limit, s_constr)
+                        elif predicate.base_name == PredPreceding.predicate_name:
+                            # precedes = in_front_of  and in_same_lane
+                            self.ConstrInSameLane(k, prop_assignment)
                             s_constr = self.ConstrInFrontOf(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         elif predicate.base_name == PredSafeDistPrec.predicate_name:
@@ -143,7 +153,7 @@ class RuleConstraints:
                                   "is not supported".format(predicate.name))
             self._lon_dis_constraints.append(s_limit)
             self._lon_vel_constraints.append(v_limit)
-        self._lon_acc_constraint = a_limit
+            self._lon_acc_constraints.append(a_limit)
 
     def longitudinal_constraints(self):
         """
@@ -155,17 +165,18 @@ class RuleConstraints:
         self.ConstrCollisionFree()
         longitudinal_distance_constraints = np.array(self._lon_dis_constraints)
         longitudinal_velocity_constraints = np.array(self._lon_vel_constraints)
+        longitudinal_acceleration_constraints = np.array(self._lon_acc_constraints)
         return LonConstraints.construct_constraints(longitudinal_distance_constraints[1:, 0],
                                                     longitudinal_distance_constraints[1:, 1],
                                                     longitudinal_distance_constraints[1:, 0],
                                                     longitudinal_distance_constraints[1:, 1],
                                                     v_min=longitudinal_velocity_constraints[1:, 0],
                                                     v_max=longitudinal_velocity_constraints[1:, 1],
-                                                    a_min=self._lon_acc_constraint[0],
-                                                    a_max=self._lon_acc_constraint[1],
+                                                    a_min=longitudinal_acceleration_constraints[1:, 0],
+                                                    a_max=longitudinal_acceleration_constraints[1:, 1],
                                                     prec_veh=self._target_vehicle,
                                                     tc_time_step=self._tc_obj.tc_time_step,
-                                                    select_proposition=self._sel_prop)
+                                                    select_proposition=self._sel_prop_full)
 
     def lateral_constraints(self, long_traj: QPTrajectory, ):
         """
@@ -274,22 +285,27 @@ class RuleConstraints:
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         if time_step in self._target_vehicle.lanelet_assignment.keys():
             tar_veh_lanelet = self._target_vehicle.lanelet_assignment[time_step]
-            tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(list(tar_veh_lanelet)[0])
-            # if prop_assignment > 0:
-            #     target_lane = [tar_veh_lane]
-            if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
-                target_lane = [tar_veh_lane.adj_right]
-            elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
-                target_lane = [tar_veh_lane.adj_left]
-            else:
-                target_lane = [tar_veh_lane]
-            if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
-                                            CutOffAction.LANECHANGERIGHT]:
-                if time_step <= self._time_leave_lane:
+            try:
+                tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(list(tar_veh_lanelet)[0])
+                #if prop_assignment > 0:
+                #    target_lane = [tar_veh_lane]
+                if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
+                    target_lane = [tar_veh_lane.adj_right]
+                elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
+                    target_lane = [tar_veh_lane.adj_left]
+                else:
                     target_lane = [tar_veh_lane]
-                elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
-                    target_lane += [tar_veh_lane]
-                target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
+                if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
+                                                CutOffAction.LANECHANGERIGHT]:
+                    if time_step <= self._time_leave_lane:
+                        target_lane = [tar_veh_lane]
+                    elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
+                        target_lane += [tar_veh_lane]
+                    target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
+            except:
+                tar_veh_lane = [None]
+                target_lane = [None]
+            
         else:
             target_lane = [None]
         self._target_lanes[time_step] = list(set(target_lane))
@@ -300,10 +316,16 @@ class RuleConstraints:
             return [-np.inf, np.inf]
         if prop_assignment > 0:
             rear_s = self._target_vehicle.rear_s(time_step)
-            return [-np.inf, rear_s]
+            if rear_s:
+                return [-np.inf, rear_s]
+            else:
+                return [-np.inf, np.inf]
         else:
             front_s = self._target_vehicle.front_s(time_step)
-            return [front_s, np.inf]
+            if front_s:
+                return [front_s, np.inf]
+            else:
+                return [-np.inf, np.inf]
 
     def ConstrSafeDist(self, time_step: int, prop_assignment: float):
         if prop_assignment > 0:

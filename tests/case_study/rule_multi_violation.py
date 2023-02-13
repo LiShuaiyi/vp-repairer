@@ -5,10 +5,9 @@ from crrepairer.repairer.visualization import (visualize_repairing_result,
                                                                    visualize_v_profile)
 
 from commonroad.common.file_reader import CommonRoadFileReader
-
 import math
 
-scenario_id = "ZAM_Zip-1_56_T-1"
+scenario_id = "DEU_LocationALower-49_35_T-1"
 file_path = "../../scenarios/" \
             + scenario_id + ".xml"
 figure_path = "./figures"
@@ -19,56 +18,48 @@ if __name__ == '__main__':
     # ========== Scenario and Configuration =========
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 2
-    rule = "R_G2"
-
+    ego_id = 13
+    rule = ["R_G1", "R_G2", "R_G3"]
+    N = 17
     ego_initial = scenario.obstacle_by_id(ego_id)
-    initial_time_step = 50
-    final_time_step = initial_time_step + 20
-    # # change the time horizon
-    for veh in scenario.obstacles:
-        for state in veh.prediction.trajectory.state_list:
-            state.time_step -= initial_time_step
-        veh.initial_state = veh.prediction.trajectory.state_list[initial_time_step-1]
-        veh.prediction.trajectory.state_list = veh.prediction.trajectory.state_list[initial_time_step:
-                                                                                    final_time_step]
-        veh.prediction.occupancy_set = veh.prediction.occupancy_set[initial_time_step:final_time_step]
-        veh.prediction.final_time_step = 20
-        veh.prediction.initial_time_step = 0
-
-    for i in range(ego_initial.prediction.trajectory.final_state.time_step):
-        ego_initial.state_at_time(i).acceleration = (ego_initial.state_at_time(i + 1).velocity -
-                                                     ego_initial.state_at_time(i).velocity) / scenario.dt
+    ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:N]
+    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:N]
 
     # ========== Traffic Rule Monitor =========
-    rule_monitor = STLRuleMonitor(scenario,
-                                  ego_id, rule)
+    traffic_rule_monitor = STLRuleMonitor(scenario,
+                                          ego_id, rule)
+    from commonroad.visualization.mp_renderer import MPRenderer
+    rnd = MPRenderer(draw_params={"dynamic_obstacle": {"show_label": True,}})
+    scenario.draw(rnd)
+    import matplotlib.pyplot as plt
+    rnd.render()
+
+    plt.show()
     # ========== Trajectory Repairing =========
-    if rule_monitor.tv_time_step is not math.inf:
-        repairer = SMTTrajectoryRepairer(rule_monitor, planning_problem,
+    if traffic_rule_monitor.tv_time_step is not math.inf:
+        repairer = SMTTrajectoryRepairer(traffic_rule_monitor,
+                                         planning_problem,
                                          ego_initial)
         repaired_traj = repairer.repair()
-        plot_limits = [-50, 10, 3.5, 11.2]
         if repaired_traj is not None and flag_visualization:
             ego_repaired = repairer.convert_traj_to_ego_vehicle(ego_initial.obstacle_shape,
                                                                 ego_initial.initial_state,
                                                                 repaired_traj)
-            # ============= Visualization =============
-            visualize_v_profile(ego_initial, ego_repaired, time_start=0,
-                                time_end=20, tc=repairer.tc, tv=repairer.tv)
-            visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=0,
-                                time_end=20, tc=repairer.tc, tv=repairer.tv)
-            target_veh = scenario.obstacle_by_id(rule_monitor.other_id)
 
-            for time_step in range(0, 20):
+            # ============= Visualization =============
+            plot_limits = [-5, 50, -4.5, 3]
+            target_veh = scenario.obstacle_by_id(traffic_rule_monitor.other_id)
+            visualize_v_profile(ego_initial, ego_repaired, time_start=0, time_end=N,
+                                tc=repairer.tc, tv=repairer.tv)
+            visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=0,
+                                time_end=N, tc=repairer.tc, tv=repairer.tv)
+            for time_step in range(N):
                 visualize_repairing_result(scenario,
                                            ego_initial,
                                            ego_repaired,
                                            time_step,
-                                           end_time=20,
                                            tc=repairer.tc,
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
                                            target_veh=target_veh,
-                                           world=rule_monitor.world)  # , save_path=figure_path)
-
+                                           world=traffic_rule_monitor.world)  #, save_path=figure_path)
