@@ -134,7 +134,8 @@ def visualize_repairing_result(scenario: Scenario,
     # visualize scenario
     for rnd in (rnd_0, rnd_1):
         rnd.draw_params.time_begin = time_step
-        rnd.draw_params.time_end = end_time
+        if end_time:
+            rnd.draw_params.time_end = end_time
         rnd.draw_params.trajectory.draw_trajectory = True
         rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
         rnd.draw_params.occupancy.draw_occupancies = False
