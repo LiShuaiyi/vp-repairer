@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="commonroad_repairer",
-    version="0.0.0.dev3",
+    version="0.0.0.dev4",
     author="Cyber-Physical Systems Group, Technical University of Munich",
     author_email="commonroad@lists.lrz.de",
     description="It's pip... with git.",
