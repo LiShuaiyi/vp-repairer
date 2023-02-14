@@ -278,7 +278,9 @@ class SimulationLateral(SimulationBase, ABC):
                 self._input.acceleration_y = 0
         return suc_state
 
-    def simulate_state_list(self):
+    def simulate_state_list(self, start_time: int):
+        self._start_time = start_time
+        self.initialize_state_list()
         self.set_inputs(self.cut_off_state.velocity)
         target_lane = self.set_target_lane()
         if target_lane is None:
@@ -289,7 +291,11 @@ class SimulationLateral(SimulationBase, ABC):
         bang_bang_time = self.set_bang_bang_time(current_ego_s, current_ego_d, target_lane)
         lane_orientation = self._world_ego.get_lane(self._start_time).orientation(current_ego_s)
         max_orientation = self.set_maximal_orientation(lane_orientation)
-        current_state = self.cut_off_state
+        current_state = PMState(time_step=self.cut_off_state.time_step,
+                                position=self.cut_off_state.position,
+                                velocity=self.cut_off_state.velocity * math.cos(self.cut_off_state.orientation),
+                                velocity_y=self.cut_off_state.velocity * math.sin(self.cut_off_state.orientation), )
+        current_state.acceleration = self.cut_off_state.acceleration
         for i in range(2):
             current_state = self.bang_bang_simulation(current_state, bang_bang_time, max_orientation)
             self._input.acceleration_y = - self._input.acceleration_y
@@ -317,8 +323,7 @@ def check_elements_state(state: PMState):
         state.slip_angle = 0
     if not hasattr(state, "yaw_rate"):
         state.yaw_rate = 0
-    if not hasattr(state, "velocity_y"):
-        state.velocity_y = state.velocity * math.cos(state.orientation)
+    state.orientation = math.atan2(state.velocity_y, state.velocity)
 
 
 def check_elements_state_list(state_list, dt):
