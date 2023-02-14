@@ -1,31 +1,32 @@
 import functools
 from collections import defaultdict
-
+import math
 from crmonitor.common.vehicle import Vehicle, CurvilinearStateManager
 from crmonitor.common.road_network import RoadNetwork
-from crmonitor.common.helper import (_compute_jerk)
 from typing import List
 from vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from commonroad.scenario.obstacle import ObstacleType, DynamicObstacle
-from commonroad.scenario.trajectory import State, Trajectory
+from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.state import CustomState
 from commonroad.prediction.prediction import TrajectoryPrediction
 import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 
 
-def visualize_state_list(collision_checker, state_list: List[State], scenario, obs_shape):
+def visualize_state_list(collision_checker, state_list: List[CustomState], scenario, obs_shape):
     rnd = MPRenderer()
     trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
-    scenario.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True},
-                                    "occupancy": {"draw_occupancies": 1}})
-    trajectory.draw(rnd, draw_params={'time_begin': 0, 'trajectory': {'draw_trajectory': True},
-                                      "occupancy": {"draw_occupancies": 1}})
-    collision_checker.draw(rnd, draw_params={'time_begin': 0, 'facecolor': 'blue', 'draw_mesh': False})
+    rnd.draw_params.time_begin = 0
+    rnd.draw_params.trajectory.draw_trajectory = True
+    rnd.draw_params.occupancy.draw_occupancies = True
+    scenario.draw(rnd)
+    trajectory.draw(rnd)
+    collision_checker.draw(rnd)
     rnd.render()
     plt.show()
 
 
-def check_velocity_feasibility(state: State):
+def check_velocity_feasibility(state: CustomState):
     # the vehicle model in highD doesn't comply with commonroad vehicle models, thus the velocity limit for bmw320i
     # doesn't work for highD scenarios
     if state.velocity < 0 or \
@@ -34,7 +35,7 @@ def check_velocity_feasibility(state: State):
     return True
 
 
-def check_steering_angle_feasibility(state: State, parameters: parameters_vehicle1):
+def check_steering_angle_feasibility(state: CustomState, parameters: parameters_vehicle1):
     # if not hasattr(state, "steering_angle")
     if state.steering_angle < parameters.steering.min or \
             state.steering_angle > parameters.steering.max:
@@ -67,14 +68,25 @@ def transfer_state_list_to_prediction(state_list, shape, dt):
     :param state_list: given state list
     :return:
     """
-    dynamic_obstacle_trajectory = Trajectory(state_list[0].time_step, state_list)
+    unified_state_list = []
+    for state in state_list:
+        unified_state_list.append(CustomState(
+            time_step=state.time_step,
+            position=state.position,
+            velocity=state.velocity,
+        ))
+        if hasattr(state, "orientation"):
+            unified_state_list[-1].orientation = state.orientation
+        else:
+            unified_state_list[-1].orientation = math.atan2(state.velocity_y, state.velocity)
+    dynamic_obstacle_trajectory = Trajectory(state_list[0].time_step, unified_state_list)
     dynamic_obstacle_prediction = TrajectoryPrediction(dynamic_obstacle_trajectory, shape)
     return dynamic_obstacle_prediction
 
 
 def update_ego_vehicle(road_network: RoadNetwork,
                        ego_vehicle: Vehicle,
-                       updated_ego_states: List[State],
+                       updated_ego_states: List[CustomState],
                        cut_off_time: int,
                        dt):
     """
