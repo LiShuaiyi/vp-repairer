@@ -9,8 +9,6 @@ osqp>=0.6.2
 Mosek
 pandas~=1.2.4
 pyyaml
-antlr4-python3-runtime<=4.8
-rtamt==0.3
 ruamel-yaml>=0.16.12
 commonroad-io>=2022.3
 commonroad-vehicle-models
