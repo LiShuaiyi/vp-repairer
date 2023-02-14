@@ -137,7 +137,7 @@ class TC(CutOffBase, ABC):
             self._mid = int(int_round(low + high) / 2)
             if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
                 self._sim_lon.update_action(maneuver, self._mid)
-                state_list = self._sim_lon.simulate_state_list()
+                state_list = self._sim_lon.simulate_state_list(self._mid)
             elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
                 self._sim_lat.update_action(maneuver, self._mid)
                 state_list = self._sim_lat.simulate_state_list()

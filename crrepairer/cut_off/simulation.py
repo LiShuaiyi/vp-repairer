@@ -2,6 +2,8 @@ import math
 from enum import Enum
 from math import sqrt
 from typing import Union
+import numpy as np
+import copy
 from abc import ABC, abstractmethod
 
 from commonroad.common.solution import VehicleType
@@ -73,7 +75,7 @@ class SimulationBase(ABC):
         pass
 
     @abstractmethod
-    def simulate_state_list(self):
+    def simulate_state_list(self, start_time):
         """
         forward simulation of the state list
         """
@@ -98,8 +100,8 @@ class SimulationBase(ABC):
         if self._start_time != 0:
             # if the state list doesn't start with time step 0, then states_in_time_interval returns None for it
             self._state_list = [self._simulated_vehicle.initial_state] + \
-                               self._simulated_vehicle.prediction.trajectory.states_in_time_interval(1,
-                                                                                                     self._start_time)
+                               copy.deepcopy(self._simulated_vehicle.prediction.trajectory.states_in_time_interval(1,
+                                                                                                                   self._start_time))
         else:
             self._state_list = []
         for state in self._state_list:
@@ -112,7 +114,8 @@ class SimulationLong(SimulationBase, ABC):
                  simulated_vehicle: DynamicObstacle,
                  start_time: Union[int, None],
                  dt: float):
-        self.j_limit = 5
+        self.j_limit_max = 10
+        self.j_limit_min = -10
         super().__init__(action, simulated_vehicle, start_time, dt=dt)
 
     def set_inputs(self, pre_state: PMState):
@@ -124,25 +127,35 @@ class SimulationLong(SimulationBase, ABC):
         a_max = self._vehicle_dynamics.parameters.longitudinal.a_max
         if self.action == CutOffAction.BRAKE:
             # braking
-            self._input.acceleration = - a_max
+            a_target = - a_max
+
         elif self.action == CutOffAction.KICKDOWN:
             # kickdowning
             v_switch = self._vehicle_dynamics.parameters.longitudinal.v_switch
+            a_target = a_max
             if velocity > v_switch:
-                a_max = self._vehicle_dynamics.parameters.longitudinal.a_max * v_switch / velocity
+                a_target = a_max * v_switch / velocity
             self._input.acceleration = a_max
         else:
             # constant velocity
-            self._input.acceleration = min(0, self._input.acceleration + self.j_limit * self._dt)
+            a_target = 0
+        self._input.acceleration = np.clip(a_target,
+                                           max(pre_state.acceleration + self.j_limit_min * self._dt,
+                                           -self._vehicle_dynamics.parameters.longitudinal.a_max),
+                                           min(pre_state.acceleration + self.j_limit_max * self._dt,
+                                           self._vehicle_dynamics.parameters.longitudinal.a_max))
+
         pre_state.acceleration = self._input.acceleration
         pre_state.acceleration_y = self._input.acceleration_y
 
-
-    def simulate_state_list(self):
+    def simulate_state_list(self, start_time):
+        self._start_time = start_time
+        self.initialize_state_list()
         pre_state = PMState(time_step=self.cut_off_state.time_step,
                             position=self.cut_off_state.position,
                             velocity=self.cut_off_state.velocity * math.cos(self.cut_off_state.orientation),
-                            velocity_y=self.cut_off_state.velocity * math.sin(self.cut_off_state.orientation))
+                            velocity_y=self.cut_off_state.velocity * math.sin(self.cut_off_state.orientation),)
+        pre_state.acceleration = self.cut_off_state.acceleration
         self.set_inputs(pre_state)
         while pre_state.time_step < self._time_horizon:
             #self._input.time_step = pre_state.time_step
@@ -150,7 +163,7 @@ class SimulationLong(SimulationBase, ABC):
             if suc_state and check_velocity_feasibility(suc_state):
                 check_elements_state(suc_state)
                 if not hasattr(suc_state, "acceleration"):
-                    suc_state.acceleration = (suc_state.velocity - pre_state.velocity) / self._dt
+                    suc_state.acceleration = pre_state.acceleration
                 # if abs(suc_state.orientation) > np.pi/2:
                 #     suc_state.orientation = np.sign(suc_state.orientation)*abs(suc_state.orientation-np.pi/2)
                 self._state_list.append(suc_state)
@@ -315,7 +328,8 @@ def check_elements_state_list(state_list, dt):
         state_list[k].velocity = math.sqrt(state_list[k].velocity**2 + state_list[k].velocity_y**2)
         state_list[k].velocity_y = 0
         if hasattr(state_list[k], 'acceleration_y'):
-            state_list[k].acceleration = math.sqrt(state_list[k].acceleration**2 + state_list[k].acceleration_y**2)
+            state_list[k].acceleration = math.sin(state_list[k].acceleration)*\
+                                         math.sqrt(state_list[k].acceleration**2 + state_list[k].acceleration_y**2)
         state_list[k].acceleration_y = 0
         if not hasattr(state_list[k], "slip_angle"):
             state_list[k].slip_angle = 0
