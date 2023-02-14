@@ -14,8 +14,8 @@ vehicle_settings:
         a_max_y: 6.0                    # a_y constraint (see Eq. 6b in Manzinger, 2020)
         a_min_y: -6.0
         a_max: 15.0
-        j_min_x: -20.0                  # jerk constraint (for planning)
-        j_max_x: 20.0
+        j_min_x: -500.0                  # jerk constraint (for planning)
+        j_max_x: 500.0
         j_min_y: -10.0
         j_max_y: 10.0
         length: 4.508                   # vehicle length
@@ -51,7 +51,7 @@ qp_planner:
         W_S_A_L: 10.0 # weight for lower acceleration slack
         W_S_A_U: 2.0  # weight for upper acceleration slack
         L_ENLARGE: 0.0 # add 0.3m to the length of every vehicle for collision avoidance
-        W_R: 0.01 # weight for robustness term
+        W_R: 1. # weight for robustness term
 
     lateral_parameters:
         W_D: 15. # weight for d deviation
