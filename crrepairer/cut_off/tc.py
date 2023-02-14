@@ -40,7 +40,7 @@ class TC(CutOffBase, ABC):
         self._tc = -math.inf
         self._tc_dict = defaultdict(float)
         self._mid = None
-        self._search_mode = TCSearchMode.LINEAR
+        self._search_mode = TCSearchMode.BINARY
 
         # simulators
         self._sim_lon = SimulationLong(None,
@@ -147,27 +147,7 @@ class TC(CutOffBase, ABC):
         high = int(int_round(self.tv / self.dT))
         while low < high:
             self._mid = int(int_round(low + high) / 2)
-            if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
-                self._sim_lon.update_action(maneuver, self._mid)
-                state_list = self._sim_lon.simulate_state_list(self._mid)
-            elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
-                self._sim_lat.update_action(maneuver, self._mid)
-                state_list = self._sim_lat.simulate_state_list(self._mid)
-            else:
-                raise ValueError("<TC>: given compliant maneuver {} is not supported".format(maneuver))
-            if state_list is None:
-                flag_collision = True
-                tv = -math.inf
-            else:
-                if self._visualize:
-                    visualize_state_list(self._collision_checker, state_list, self.scenario,
-                                         self._sim_lat.vehicle_dynamics.shape)
-                # flag_collision = self._detect_collision(state_list)  # bool value
-                check_elements_state_list(state_list, self.dT)
-                try:
-                    tv, _ = self.calc_tv_updated(state_list, self._mid)  # which should be tv instead of ttm
-                except:
-                    tv = -math.inf
+            tv = self.singleton_search(maneuver, self._mid)
             # if violation-free and collision-free
             if tv == math.inf:  # and not flag_collision:
                 low = self._mid + 1
