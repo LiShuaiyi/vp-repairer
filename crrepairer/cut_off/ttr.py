@@ -75,7 +75,7 @@ class TTR(CutOffBase, ABC):
                                        dt=self.dT)
             else:
                 raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))
-            state_list = SL.simulate_state_list()
+            state_list = SL.simulate_state_list(mid)
             check_elements_state_list(state_list, self.dT)
             if state_list is None:
                 return -math.inf

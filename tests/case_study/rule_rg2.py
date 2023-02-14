@@ -5,6 +5,7 @@ from crrepairer.repairer.visualization import (visualize_repairing_result,
                                                                    visualize_v_profile)
 
 from commonroad.common.file_reader import CommonRoadFileReader
+from commonroad.scenario.trajectory import Trajectory
 
 import math
 
@@ -30,8 +31,8 @@ if __name__ == '__main__':
         for state in veh.prediction.trajectory.state_list:
             state.time_step -= initial_time_step
         veh.initial_state = veh.prediction.trajectory.state_list[initial_time_step-1]
-        veh.prediction.trajectory.state_list = veh.prediction.trajectory.state_list[initial_time_step:
-                                                                                    final_time_step]
+        veh.prediction.trajectory = Trajectory(1, veh.prediction.trajectory.state_list[initial_time_step:
+                                                                                       final_time_step])
         veh.prediction.occupancy_set = veh.prediction.occupancy_set[initial_time_step:final_time_step]
         veh.prediction.final_time_step = 20
         veh.prediction.initial_time_step = 0
