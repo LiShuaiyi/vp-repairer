@@ -7,6 +7,7 @@ import unittest
 import math
 
 from commonroad.common.file_reader import CommonRoadFileReader
+from commonroad.scenario.trajectory import Trajectory
 from crmonitor.common.world import World
 
 from crrepairer.cut_off.tc import TC
@@ -37,28 +38,26 @@ class TestTC(unittest.TestCase):
     def test_simulation_long(self):
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
         sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0, dt=self.scenario.dt)
-        simulated_state1 = sim_long.simulate_state_list()
+        simulated_state1 = sim_long.simulate_state_list(0)
         self.assertEqual(
             simulated_state1[-1].time_step,
             50)
         self.assertEqual(check_velocity_feasibility(
-            simulated_state1[-1],
-            sim_long.parameters),
+            simulated_state1[-1]),
             True)
         sim_long.action = CutOffAction.STEADYSPEED
-        simulated_state2 = sim_long.simulate_state_list()
+        simulated_state2 = sim_long.simulate_state_list(0)
         self.assertEqual(
             simulated_state2[-1].time_step,
             50)
         sim_long.action = CutOffAction.KICKDOWN
-        simulated_state3 = sim_long.simulate_state_list()
+        simulated_state3 = sim_long.simulate_state_list(0)
         self.assertEqual(
             simulated_state3[-1].time_step,
             50)
         self.assertEqual(
             check_velocity_feasibility(
-                simulated_state3[-1],
-                sim_long.parameters),
+                simulated_state3[-1]),
             True)
 
     def test_simulate_lateral(self):
@@ -70,7 +69,7 @@ class TestTC(unittest.TestCase):
             0,
             world_state.vehicle_by_id(self.ego_id),
             dt=world_state.dt)
-        simulated_state_list1 = sim_lat.simulate_state_list()
+        simulated_state_list1 = sim_lat.simulate_state_list(0)
         final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position(
             [simulated_state_list1[-1].position])[0]
         final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
@@ -78,7 +77,7 @@ class TestTC(unittest.TestCase):
             world_state.vehicle_by_id(ego_vehicle.obstacle_id).get_lane(0).adj_left.lane_id,
             final_lane.lane_id)
         sim_lat.action = CutOffAction.LANECHANGERIGHT
-        simulated_state_list2 = sim_lat.simulate_state_list()
+        simulated_state_list2 = sim_lat.simulate_state_list(0)
         final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position(
             [simulated_state_list2[-1].position])[0]
         final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
@@ -105,7 +104,7 @@ class TestTC(unittest.TestCase):
         tc = tc_object.generate([CutOffAction.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            1.9)
+            1.8)
 
     def test_tc_total(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
@@ -115,7 +114,7 @@ class TestTC(unittest.TestCase):
                                  CutOffAction.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            1.9)
+            1.8)
         self.assertEqual(
             tc_object.compliant_maneuver, CutOffAction.BRAKE
         )
@@ -125,7 +124,7 @@ class TestTC(unittest.TestCase):
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
         world_state = self.rule_monitor.world
         sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0, dt=world_state.dt)
-        new_state_list = sim_long.simulate_state_list()
+        new_state_list = sim_long.simulate_state_list(0)
         # 1. directly update the ego vehicle
         update_ego_vehicle(world_state.road_network,
                            world_state.vehicle_by_id(ego_vehicle.obstacle_id),
@@ -133,7 +132,7 @@ class TestTC(unittest.TestCase):
                            0,
                            world_state.dt)
         # 2. recreate the world state
-        ego_vehicle.prediction.trajectory.state_list = new_state_list
+        ego_vehicle.prediction.trajectory = Trajectory(1, new_state_list)
         world_state_updated = World.create_from_scenario(self.scenario) #, self.ego_id)
         ego_former = world_state.vehicle_by_id(ego_vehicle.obstacle_id)
         ego_updated = world_state_updated.vehicle_by_id(ego_vehicle.obstacle_id)

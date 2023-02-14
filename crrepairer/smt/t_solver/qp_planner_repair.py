@@ -11,7 +11,8 @@ from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.rule_constraints import RuleConstraints
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
-from commonroad.scenario.trajectory import Trajectory, State
+from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.state import CustomState, InitialState
 from commonroad.scenario.scenario import DynamicObstacle, TrajectoryPrediction, ObstacleType
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
@@ -48,10 +49,18 @@ class QPPlannerRepair(QPPlanner):
             self._cut_off_state = self._ego_vehicle.initial_state
         else:
             self._cut_off_state = self._initial_trajectory.state_at_time_step(self._cut_off_time_step)
-        self._reformulate_planning_problem()
         self._time_horizon = round((self._N - self._cut_off_time_step) * self._scenario.dt, 1)
-        self._planning_problem.initial_state = self._cut_off_state
-
+        self._planning_problem.initial_state = InitialState(
+            position=self._cut_off_state.position,
+            velocity=self._cut_off_state.velocity,
+            orientation=self._cut_off_state.orientation,
+            time_step=self._cut_off_state.time_step,
+            acceleration=self._cut_off_state.acceleration,
+            # not needed but mandatory field
+            yaw_rate=0,
+            slip_angle=0
+        )
+        self._planning_problem.goal = update_goal_state(self._initial_trajectory)
         # load and set up the configuration
         self._settings = self.config_settings()
         self._vehicle_configuration: PlanningConfigurationVehicle = set_up(self._settings,
@@ -86,15 +95,6 @@ class QPPlannerRepair(QPPlanner):
     @property
     def total_time_steps(self):
         return self._N - self._cut_off_time_step
-
-    def _reformulate_planning_problem(self, ):
-        """
-        Reformulates the planning problem: initial state and goal
-        """
-        if not hasattr(self._planning_problem, "initial_state"):
-            raise ValueError("<QPPlannerRepair>: the initial state needs to be specified")
-        self._planning_problem.initial_state = self._ego_vehicle.initial_state
-        self._planning_problem.goal = update_goal_state(self._initial_trajectory)
 
     def plan(self):
         """
@@ -197,7 +197,13 @@ class QPPlannerRepair(QPPlanner):
                                self._initial_trajectory.states_in_time_interval(1, self._cut_off_time_step-1)
         for state in cr_traj_repaired.state_list:
             state.time_step += self._cut_off_time_step
-        cr_traj_repaired.state_list = remaining_states + cr_traj_repaired.state_list
+        state_list = [CustomState(time_step=state.time_step,
+                                  position=state.position,
+                                  velocity=state.velocity,
+                                  orientation=state.orientation,
+                                  acceleration=state.acceleration) for state
+                      in remaining_states + cr_traj_repaired.state_list]
+        cr_traj_repaired = Trajectory(0, state_list)
         return cr_traj_repaired
 
     def config_settings(self):
@@ -230,7 +236,7 @@ def update_goal_state(initial_trajectory: Trajectory):
     goal_orientation = AngleInterval(ini_final_state.orientation - 0.2, ini_final_state.orientation + 0.2)
     goal_velocity = Interval(ini_final_state.velocity, ini_final_state.velocity + 5.)
     goal_time_step = Interval(0, len(initial_trajectory.state_list) + 5)
-    goal_state = State(
+    goal_state = CustomState(
         position=Rectangle(1, 1, ini_final_state.position),
         velocity=goal_velocity,
         orientation=goal_orientation,
