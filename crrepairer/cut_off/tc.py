@@ -3,6 +3,7 @@ from collections import defaultdict
 import math
 import functools
 from abc import ABC
+import enum
 
 import numpy as np
 from commonroad.scenario.obstacle import State, DynamicObstacle
@@ -14,6 +15,11 @@ from crrepairer.cut_off.simulation import (CutOffAction,
                                            SimulationLateral,
                                            SimulationLong,
                                            check_elements_state_list)
+
+
+class TCSearchMode(str, enum.Enum):
+    LINEAR = "linear search"
+    BINARY = "binary search"
 
 
 class TC(CutOffBase, ABC):
@@ -34,6 +40,9 @@ class TC(CutOffBase, ABC):
         self._tc = -math.inf
         self._tc_dict = defaultdict(float)
         self._mid = None
+        self._search_mode = TCSearchMode.BINARY
+
+        # simulators
         self._sim_lon = SimulationLong(None,
                                        self.ego_vehicle,
                                        None,
@@ -119,7 +128,10 @@ class TC(CutOffBase, ABC):
             ttm = dict()
             for maneuver in cut_off_maneuvers:
                 if maneuver not in self._tc_dict:
-                    ttm[maneuver] = self.search_ttm(maneuver)
+                    if self._search_mode == TCSearchMode.BINARY:
+                        ttm[maneuver] = self.search_ttm_binary(maneuver)
+                    else:
+                        ttm[maneuver] = self.search_ttm_linear(maneuver)
                     self._tc_dict[maneuver] = ttm[maneuver]
                 else:
                     ttm[maneuver] = self._tc_dict[maneuver]
@@ -129,33 +141,13 @@ class TC(CutOffBase, ABC):
         return self._tc
 
     @functools.lru_cache(128)
-    def search_ttm(self, maneuver: CutOffAction):
+    def search_ttm_binary(self, maneuver: CutOffAction):
         ttm = - math.inf
         low = 0
         high = int(int_round(self.tv / self.dT))
         while low < high:
             self._mid = int(int_round(low + high) / 2)
-            if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
-                self._sim_lon.update_action(maneuver, self._mid)
-                state_list = self._sim_lon.simulate_state_list(self._mid)
-            elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
-                self._sim_lat.update_action(maneuver, self._mid)
-                state_list = self._sim_lat.simulate_state_list(self._mid)
-            else:
-                raise ValueError("<TC>: given compliant maneuver {} is not supported".format(maneuver))
-            if state_list is None:
-                flag_collision = True
-                tv = -math.inf
-            else:
-                if self._visualize:
-                    visualize_state_list(self._collision_checker, state_list, self.scenario,
-                                         self._sim_lat.vehicle_dynamics.shape)
-                # flag_collision = self._detect_collision(state_list)  # bool value
-                check_elements_state_list(state_list, self.dT)
-                try:
-                    tv, _ = self.calc_tv_updated(state_list, self._mid)  # which should be tv instead of ttm
-                except:
-                    tv = -math.inf
+            tv = self.singleton_search(maneuver, self._mid)
             # if violation-free and collision-free
             if tv == math.inf:  # and not flag_collision:
                 low = self._mid + 1
@@ -166,3 +158,39 @@ class TC(CutOffBase, ABC):
             ttm = (low - 1) * self.dT
         return ttm
 
+    @functools.lru_cache(128)
+    def search_ttm_linear(self, maneuver: CutOffAction):
+        ts = int(int_round(self.tv / self.dT))
+        while ts > 0:
+            tv = self.singleton_search(maneuver, ts)
+            if tv == math.inf:
+                break
+            else:
+                ts -= 1
+        if ts == 0:
+            ttm = - math.inf
+        else:
+            ttm = ts * self.dT
+        return ttm
+
+    def singleton_search(self, maneuver: CutOffAction, start_time: int):
+        if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
+            self._sim_lon.update_action(maneuver, start_time)
+            state_list = self._sim_lon.simulate_state_list(start_time)
+        elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
+            self._sim_lat.update_action(maneuver, start_time)
+            state_list = self._sim_lat.simulate_state_list(start_time)
+        else:
+            raise ValueError(": given compliant maneuver {} is not supported".format(maneuver))
+        if state_list is None:
+            tv = -math.inf
+        else:
+            if self._visualize:
+                visualize_state_list(self._collision_checker, state_list, self.scenario,
+                                     self._sim_lat.vehicle_dynamics.shape)
+            check_elements_state_list(state_list, self.dT)
+            try:
+                tv, _ = self.calc_tv_updated(state_list, self._mid)  # which should be tv instead of ttm
+            except:
+                tv = -math.inf
+        return tv

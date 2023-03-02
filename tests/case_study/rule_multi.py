@@ -1,10 +1,11 @@
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 from crrepairer.repairer.visualization import (visualize_repairing_result,
-                                                                   visualize_a_profile,
-                                                                   visualize_v_profile)
+                                               visualize_a_profile,
+                                               visualize_v_profile)
 
 from commonroad.common.file_reader import CommonRoadFileReader
+from commonroad.scenario.trajectory import Trajectory
 import math
 
 scenario_id = "DEU_Gar-1_1_T-1"
@@ -22,12 +23,14 @@ if __name__ == '__main__':
     rule = ["R_G1", "R_G2", "R_G3"]
     N = 21
     ego_initial = scenario.obstacle_by_id(ego_id)
-    ego_initial.prediction.trajectory.state_list = ego_initial.prediction.trajectory.state_list[:N]
+    ego_initial.prediction.trajectory = Trajectory(1, ego_initial.prediction.trajectory.state_list[:N])
     ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:N]
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(scenario,
-                                          ego_id, rule)
+                                          ego_id,
+                                          rule,
+                                          multiproc=True)
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor,

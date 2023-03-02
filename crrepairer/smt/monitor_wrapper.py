@@ -7,6 +7,8 @@ import dataclasses
 from dataclasses import dataclass
 import copy
 from difflib import SequenceMatcher, get_close_matches
+from multiprocessing import Process, Queue
+import concurrent.futures
 
 from crmonitor.evaluation.evaluation import RuleEvaluator
 from crmonitor.common.world import World
@@ -36,9 +38,10 @@ class STLRuleMonitor:
     def __init__(self,
                  scenario: Scenario,
                  vehicle_id: int,
-                 rules: Union[str, Iterable[str]], ): 
+                 rules: Union[str, Iterable[str]], multiproc=True): 
         self._world: World = World.create_from_scenario(scenario)
         self._vehicle_id = vehicle_id
+        self.multiproc = multiproc
         self._rules = [rules] if isinstance(rules, str) else rules 
         # todo: now only one rule is supported
         # todo: create multiple rule evaluators
@@ -47,6 +50,7 @@ class STLRuleMonitor:
             self._rule_eval.append(RuleEvaluator.create_from_config(self._world,
                                                            self._world.vehicle_by_id(self._vehicle_id),
                                                            rule))
+        if len(self._rule_eval) == 1: self.multiproc = False
         self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
             self.other_ids = self.evaluate_initially()
         # obtain the time-to-violation
@@ -202,39 +206,56 @@ class STLRuleMonitor:
         prop_rob_all = []
         prop_names_all = []
         pred_rob_all = []
-        other_ids_all =[]
-        for evaluator in self._rule_eval:
-            #TODO: Incorporate support for multiple rules.
-            rule_rob = [] #init as list, convert to ndarray 2x faster, but 2x more memory
-            prop_rob = []
-            prop_names = []
-            pred_rob = []
-            other_ids = []
-            # update until start time is reached
-            # while self._rule_eval.current_time < self._rule_eval.ego_vehicle.start_time:
-            #     self._rule_eval.update()
-            for _ in range(
-                    evaluator.ego_vehicle.start_time, evaluator.ego_vehicle.end_time + 1
-            ):
-                rule_rob.append(evaluator.update())
-                other_ids.append(evaluator.other_ids)
-                prop, _, _ = evaluator.get_propositions()
-                if prop:
-                    prop_names.append([prop_name for prop_name in prop.keys()])
-                    prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
-                else:
-                    prop_names.append([])
-                    prop_rob.append([])
-                pred = evaluator.get_predicates()
-                if pred:
-                    pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
-                else:
-                    pred_rob.append([])
-            rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
-            prop_rob_all.append(np.array(prop_rob, dtype=np.float64))
-            prop_names_all.append(np.array(prop_names, dtype=object))
-            pred_rob_all.append(np.array(pred_rob, dtype=np.float64))
-            other_ids_all.append(other_ids)
+        other_ids_all = []
+        
+        if self.multiproc:
+            rule_ids = []
+            queue = Queue()
+            processes = [Process(target=self.multiproc_evaluate, args=[i, queue]) for i in range(len(self._rule_eval))]
+            for p in processes:
+                p.start()
+            for _ in range(len(self._rule_eval)):
+                res = queue.get()
+                rule_rob_all.append(res['rule'])
+                prop_rob_all.append(res['prop'])
+                prop_names_all.append(res['prop_name'])
+                pred_rob_all.append(res['pred'])
+                other_ids_all.append(res['other'])
+                rule_ids.append(res['index'])
+            for p in processes:
+                p.join()
+            self._rule_eval = [self._rule_eval[i] for i in rule_ids]
+        
+        else:
+            for evaluator in self._rule_eval:
+                rule_rob = []
+                prop_rob = []
+                prop_names = []
+                pred_rob = []
+                other_ids = []
+                for _ in range(
+                        evaluator.ego_vehicle.start_time, evaluator.ego_vehicle.end_time + 1
+                ):
+                    rule_rob.append(evaluator.update())
+                    other_ids.append(evaluator.other_ids)
+                    prop, _, _ = evaluator.get_propositions()
+                    if prop:
+                        prop_names.append([prop_name for prop_name in prop.keys()])
+                        prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
+                    else:
+                        prop_names.append([])
+                        prop_rob.append([])
+                    pred = evaluator.get_predicates()
+                    if pred:
+                        pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
+                    else:
+                        pred_rob.append([])
+                rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
+                prop_rob_all.append(np.array(prop_rob, dtype=np.float64))
+                prop_names_all.append(np.array(prop_names, dtype=object))
+                pred_rob_all.append(np.array(pred_rob, dtype=np.float64))
+                other_ids_all.append(other_ids)
+                
         assert len(rule_rob_all) == len(self._rule_eval)
         max_n_props = max([p.shape[1] for p in prop_rob_all])
         for idx, prop_array in enumerate(prop_rob_all):
@@ -245,6 +266,38 @@ class STLRuleMonitor:
                                              'constant', constant_values=np.nan)
         return np.array(rule_rob_all), np.array(pred_rob_all), np.array(prop_rob_all), np.array(prop_names_all), other_ids_all          
 
+    def multiproc_evaluate(self, index, q):
+        evaluator = self._rule_eval[index]
+        rule_rob = []
+        prop_rob = []
+        prop_names = []
+        pred_rob = []
+        other_ids = []
+        for _ in range(
+            evaluator.ego_vehicle.start_time, evaluator.ego_vehicle.end_time + 1
+        ):
+            rule_rob.append(evaluator.update())
+            other_ids.append(evaluator.other_ids)
+            prop, _, _ = evaluator.get_propositions()
+            if prop:
+                prop_names.append([prop_name for prop_name in prop.keys()])
+                prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
+            else:
+                prop_names.append([])
+                prop_rob.append([])
+            pred = evaluator.get_predicates()
+            if pred:
+                pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
+            else:
+                pred_rob.append([])
+        return_dict = {'rule': np.array(rule_rob, dtype=np.float64),
+                       'other': other_ids,
+                       'prop': np.array(prop_rob, dtype=np.float64),
+                       'prop_name': np.array(prop_names, dtype=object),
+                       'pred': np.array(pred_rob, dtype=np.float64), 
+                       'index': index}
+        q.put(return_dict)
+    
     def evaluate_consecutively(self, world, reset_time):
         """
         Evaluate the updated vehicle states (boolean assignments) in order to speed up the evaluation progress
@@ -260,6 +313,8 @@ class STLRuleMonitor:
             while evaluator.current_time < evaluator.ego_vehicle.end_time:
                 rule_rob.append(evaluator.update())
                 other_ids.append(evaluator.other_ids)
+                if rule_rob[-1] < 0:
+                    break
             rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
             other_ids_all.append(other_ids)
         return np.array(rule_rob_all), other_ids_all
