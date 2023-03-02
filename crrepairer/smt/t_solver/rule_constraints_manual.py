@@ -28,9 +28,9 @@ from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad.scenario.trajectory import Trajectory
 
 
-class RuleConstraints:
+class RuleConstraintsManual:
     """
-    Class for traffic rule constraints
+    Class for traffic rule constraints (manual definition)
     """
 
     def __init__(self,

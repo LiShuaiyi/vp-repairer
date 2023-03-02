@@ -8,7 +8,7 @@ from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 from crrepairer.smt.monitor_wrapper import PropositionNode
 
 from crrepairer.cut_off.tc import TC
-from crrepairer.smt.t_solver.rule_constraints import RuleConstraints
+from crrepairer.smt.t_solver.rule_constraints_manual import RuleConstraintsManual
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 from commonroad.scenario.trajectory import Trajectory
@@ -81,12 +81,12 @@ class QPPlannerRepair(QPPlanner):
                          verbose=verbose)
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
-        self._rule_constraints = RuleConstraints(tc_object,
-                                                 rule_monitor,
-                                                 sel_proposition,
-                                                 proposition_full,
-                                                 self._vehicle_configuration,
-                                                 self._initial_trajectory)
+        self._rule_constraints = RuleConstraintsManual(tc_object,
+                                                       rule_monitor,
+                                                       sel_proposition,
+                                                       proposition_full,
+                                                       self._vehicle_configuration,
+                                                       self._initial_trajectory)
 
     @property
     def rule_constraints(self):
