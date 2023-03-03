@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 from collections import defaultdict
 
 from crrepairer.cut_off.simulation import CutOffAction
@@ -58,6 +58,7 @@ class RuleConstraintsReach:
         self._tc_obj = tc_object
         self._rule_monitor = rule_monitor
         self._world_state = self._rule_monitor.world
+        self._nr_ts = self._tc_obj.N - self._tc_obj.tc_time_step
 
         # ego vehicle
         self._ego_id = self._rule_monitor.vehicle_id  # if no target vehicle, the other_id stands for the ego
@@ -89,8 +90,14 @@ class RuleConstraintsReach:
         # we use the default path of the reach folder
         self.reach_config = ConfigurationBuilder.build_configuration(
             str(self._world_state.scenario.scenario_id))
-        # update the time step size
+        # update the time step and nr of computation
         self.reach_config.planning.dt = self._world_state.dt
+        self.reach_config.planning.steps_computation = self._nr_ts
+        # update the path
+        self.reach_config.general.path_scenario = "../../scenarios/" +\
+                                                  str(self._world_state.scenario.scenario_id) + '.xml'
+        self.reach_config.update()
+
         # remove the ego
         self.reach_config.scenario.remove_obstacle(
             self.reach_config.scenario.obstacle_by_id(self._ego_id)
@@ -138,7 +145,6 @@ class RuleConstraintsReach:
         )
 
     def compute_semantic_reachable_set(self, verbose=True):
-        time_horizon = self._tc_obj.N - self._tc_obj.tc_time_step
         self.reach_interface.compute_reachable_sets(
-            0, time_horizon, verbose
+            0, self._nr_ts, verbose
         )
