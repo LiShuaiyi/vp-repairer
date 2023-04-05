@@ -31,7 +31,7 @@ class TSolver:
         self._qp_planner = None
         self._planning_problem = planning_problem
 
-        self.verbose = False
+        self.verbose = True
 
     @property
     def tc_object(self):
@@ -71,6 +71,9 @@ class TSolver:
                                                                PositionPredicates.InFrontOf,
                                                                PositionPredicates.Precedes]:
                     compliant_maneuver += [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
+                elif predicate_category == "Pos" and \
+                        predicate.evaluator.predicate_name in [PositionPredicates.StopLineInFront]:
+                    compliant_maneuver += [CutOffAction.BRAKE]
                 elif predicate_category == "Pos":
                     compliant_maneuver += [CutOffAction.LANECHANGELEFT,
                                            CutOffAction.LANECHANGERIGHT]
