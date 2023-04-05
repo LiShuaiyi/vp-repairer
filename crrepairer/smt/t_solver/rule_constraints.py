@@ -8,7 +8,7 @@ from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 # class from STL monitor
 from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane, 
-                                           PredInFrontOf, PredPreceding)
+                                           PredInFrontOf, PredPreceding, PredStopLineInFront)
 
 from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit,
                                            PredBrSpeedLimit, PredTypeSpeedLimit)
@@ -148,6 +148,11 @@ class RuleConstraints:
                             a_abruptly = predicate.evaluator.config["a_abrupt"]
                             a_constr = self.ConstrAccNotAbruptly(a_abruptly)
                             a_limit = self._get_overlap(a_constr, a_limit)
+                        #--------------------------------------------------------------------------------------------#
+                        elif predicate.base_name in (PredStopLineInFront.predicate_name,):
+                            s_constr = self.ConstrStopLine(k)
+                            s_limit = self._get_overlap(s_limit, s_constr)
+                        # --------------------------------------------------------------------------------------------#
                         else:
                             print("<QPRepairer/_rule_constraints>: the provided predicate {} "
                                   "is not supported".format(predicate.name))
@@ -344,3 +349,7 @@ class RuleConstraints:
     @staticmethod
     def _get_overlap(interval1: list, interval2: list):
         return [max(interval1[0], interval2[0]), min(interval1[1], interval2[1])]
+
+    def ConstrStopLine(self, time_step: int):
+        return [-np.inf, 15]
+
