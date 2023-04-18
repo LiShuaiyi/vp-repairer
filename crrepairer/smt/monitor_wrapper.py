@@ -10,9 +10,6 @@ from difflib import SequenceMatcher, get_close_matches
 from multiprocessing import Process, Queue
 import concurrent.futures
 
-import sys
-import os
-sys.path.append("/home/zekun/MA/monitor_intersection/commonroad-stl-monitor")
 from crmonitor.evaluation.evaluation import RuleEvaluator
 from crmonitor.common.world import World
 from crmonitor.monitor.rule import PredicateNode
