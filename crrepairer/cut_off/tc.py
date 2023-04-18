@@ -8,6 +8,8 @@ import enum
 import numpy as np
 from commonroad.scenario.obstacle import State, DynamicObstacle
 
+import copy
+
 from crrepairer.cut_off.base import CutOffBase
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list, int_round
@@ -30,11 +32,13 @@ class TC(CutOffBase, ABC):
     def __init__(self,
                  ego_vehicle: DynamicObstacle,
                  rule_monitor: STLRuleMonitor):
-        super().__init__(ego_vehicle, rule_monitor.world)
-        self.rule_monitor = rule_monitor
+        rule_monitor_deepcopy = copy.deepcopy(rule_monitor)
+        ego_vehicle_deepcopy = copy.deepcopy(ego_vehicle)
+        super().__init__(ego_vehicle_deepcopy, rule_monitor_deepcopy.world)
+        self.rule_monitor = rule_monitor_deepcopy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
-        self._tv_time_step = rule_monitor.tv_time_step
-        self._other_id = rule_monitor.other_id
+        self._tv_time_step = self.rule_monitor.tv_time_step
+        self._other_id = self.rule_monitor.other_id
         self._visualize = False
         self._compliant_maneuver = None
         self._tc = -math.inf
@@ -46,12 +50,12 @@ class TC(CutOffBase, ABC):
         self._sim_lon = SimulationLong(None,
                                        self.ego_vehicle,
                                        None,
-                                       dt=rule_monitor.world.dt)
+                                       dt=self.rule_monitor.world.dt)
         self._sim_lat = SimulationLateral(None,
                                           self.ego_vehicle,
                                           None,
-                                          rule_monitor.world.vehicle_by_id(ego_vehicle.obstacle_id),
-                                          dt=rule_monitor.world.dt)
+                                          self.rule_monitor.world.vehicle_by_id(ego_vehicle.obstacle_id),
+                                          dt=self.rule_monitor.world.dt)
 
     @property
     def simulation_lateral(self) -> Union[SimulationLateral]:
