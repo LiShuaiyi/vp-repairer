@@ -47,7 +47,7 @@ if __name__ == '__main__':
                                 tc=repairer.tc, tv=repairer.tv)
             visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=0,
                                 time_end=N, tc=repairer.tc, tv=repairer.tv)
-            for time_step in range(N):
+            for time_step in range(20, N):
                 visualize_repairing_result(scenario,
                                            ego_initial,
                                            ego_repaired,
@@ -55,5 +55,5 @@ if __name__ == '__main__':
                                            tc=repairer.tc,
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
-                                           target_veh=target_veh,
+                                           target_veh=None,
                                            world=traffic_rule_monitor.world)  # , save_path=figure_path)
