@@ -132,25 +132,29 @@ def visualize_repairing_result(scenario: Scenario,
     rnd_1 = MPRenderer(ax=ax1, plot_limits=plot_limits)
 
     # visualize scenario
+
     for rnd in (rnd_0, rnd_1):
         rnd.draw_params.time_begin = time_step
         if end_time:
             rnd.draw_params.time_end = end_time
-        rnd.draw_params.trajectory.draw_trajectory = True
+        rnd.draw_params.trajectory.draw_trajectory = False
         rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
         rnd.draw_params.occupancy.draw_occupancies = False
         rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = False
-        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
-        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
+        rnd.draw_params.dynamic_obstacle.occupancy.draw_occupancies = False
+        rnd.draw_params.dynamic_obstacle.draw_shape = False
+        # rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
+        # rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
         scenario.draw(rnd)
+        rnd.draw_params.dynamic_obstacle.draw_shape = True
 
     if time_step >= tv:
         ego_color = 'red'
     else:
         ego_color = TUMcolor.TUMblue.value
     ego_mark = 'x'
-    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
-    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
     ego_initial.draw(rnd_0)
     # render scenario and ego vehicle
     rnd_0.render()
@@ -177,8 +181,8 @@ def visualize_repairing_result(scenario: Scenario,
         ego_color = TUMcolor.TUMblue.value
         ego_mark = 'x'
 
-    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
-    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
     ego_repaired.draw(rnd_1)
 
     # render scenario and ego vehicle
