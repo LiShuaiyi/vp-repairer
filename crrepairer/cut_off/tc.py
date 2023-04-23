@@ -32,8 +32,8 @@ class TC(CutOffBase, ABC):
     def __init__(self,
                  ego_vehicle: DynamicObstacle,
                  rule_monitor: STLRuleMonitor):
-        ego_vehicle_deepcopy = copy.deepcopy(ego_vehicle)
         rule_monitor_deepcopy = copy.deepcopy(rule_monitor)
+        ego_vehicle_deepcopy = copy.deepcopy(ego_vehicle)
         super().__init__(ego_vehicle_deepcopy, rule_monitor_deepcopy.world)
         self.rule_monitor = rule_monitor_deepcopy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
