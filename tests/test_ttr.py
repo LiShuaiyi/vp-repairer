@@ -8,8 +8,9 @@ import math
 
 from commonroad.common.file_reader import CommonRoadFileReader
 
+from commonroad_crime.utility.simulation import Maneuver
+
 from crrepairer.cut_off.ttr import TTR
-from crrepairer.cut_off.simulation import CutOffAction
 
 from crmonitor.common.world import World
 
@@ -31,14 +32,14 @@ class TestTTR(unittest.TestCase):
         assert math.isclose(ttc, 2.4, abs_tol=1e-2)
 
     def test_ttr_1(self):
-        maneuver_set = [CutOffAction.STEERLEFT,
-                        CutOffAction.BRAKE,
-                        CutOffAction.KICKDOWN,
-                        CutOffAction.STEERRIGHT]  # all maneuvers
+        maneuver_set = [Maneuver.STEERLEFT,
+                        Maneuver.BRAKE,
+                        Maneuver.KICKDOWN,
+                        Maneuver.STEERRIGHT]  # all maneuvers
         ttr = self.ttr_object.generate(maneuver_set)
-        assert math.isclose(ttr, 2.3, abs_tol=1e-2)
+        assert math.isclose(ttr, 2.2, abs_tol=1e-2)
 
     def test_ttr_2(self):
-        maneuver_set = [CutOffAction.STEERRIGHT]  # impossible maneuver
+        maneuver_set = [Maneuver.STEERRIGHT]  # impossible maneuver
         ttr = self.ttr_object.generate(maneuver_set)
         assert math.isclose(ttr, -math.inf, abs_tol=1e-2)
