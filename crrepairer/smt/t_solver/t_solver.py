@@ -3,13 +3,14 @@ import time
 from typing import List
 
 from crrepairer.cut_off.tc import TC
-from crrepairer.cut_off.simulation import CutOffAction
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.planning.planning_problem import PlanningProblem
+
+from commonroad_crime.utility.simulation import Maneuver
 
 from crmonitor.predicates.position import PositionPredicates
 
@@ -70,15 +71,15 @@ class TSolver:
                         predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
                                                                PositionPredicates.InFrontOf,
                                                                PositionPredicates.Precedes]:
-                    compliant_maneuver += [CutOffAction.BRAKE, CutOffAction.KICKDOWN]
+                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
                 elif predicate_category == "Pos":
-                    compliant_maneuver += [CutOffAction.LANECHANGELEFT,
-                                           CutOffAction.LANECHANGERIGHT]
+                    compliant_maneuver += [Maneuver.STEERRIGHT,
+                                           Maneuver.STEERLEFT]
                 elif predicate_category == "Vel":
-                    compliant_maneuver += [CutOffAction.BRAKE,
-                                           CutOffAction.KICKDOWN]
+                    compliant_maneuver += [Maneuver.BRAKE,
+                                           Maneuver.KICKDOWN]
                 elif predicate_category == "Acc":
-                    compliant_maneuver += [CutOffAction.STEADYSPEED]
+                    compliant_maneuver += [Maneuver.CONSTANT]
                 else:
                     pass  # general predicate
                     # raise ValueError('<T-Solver>: the category {} is not specified'

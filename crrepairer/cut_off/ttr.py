@@ -4,8 +4,10 @@ import functools
 
 from crrepairer.cut_off.base import CutOffBase
 from crrepairer.cut_off.utils import visualize_state_list, int_round
-from crrepairer.cut_off.simulation import (CutOffAction, SimulationLateral, SimulationLong,
-                                           check_elements_state_list)
+
+from commonroad_crime.utility.simulation import SimulationLong, SimulationLat, Maneuver
+from commonroad_crime.utility.general import check_elements_state_list
+from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
 
 from crmonitor.common.world import World
 
@@ -23,6 +25,9 @@ class TTR(CutOffBase, ABC):
         # calculate the time-to-collision as default value
         self._ttc = self._calc_ttc(ego_vehicle.states_cr)
         self._visualize = False
+
+        self.config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
+        self.config.scenario = self.scenario
 
     @property
     def ttc(self):
@@ -57,22 +62,17 @@ class TTR(CutOffBase, ABC):
         high = int(self._ttc / self.dT)
         while low < high:
             mid = int((low + high) / 2)
-            if maneuver in [CutOffAction.BRAKE,
-                            CutOffAction.KICKDOWN,
-                            CutOffAction.STEADYSPEED]:
+            if maneuver in [Maneuver.BRAKE,
+                            Maneuver.KICKDOWN,
+                            Maneuver.CONSTANT]:
                 SL = SimulationLong(maneuver,
                                     self.ego_vehicle,
-                                    mid,
-                                    dt=self.dT)
-            elif maneuver in [CutOffAction.LANECHANGELEFT,
-                              CutOffAction.LANECHANGERIGHT,
-                              CutOffAction.STEERLEFT,
-                              CutOffAction.STEERRIGHT, ]:
-                SL = SimulationLateral(maneuver,
-                                       self.ego_vehicle,
-                                       mid,
-                                       self.world.vehicle_by_id(self.ego_vehicle.obstacle_id),
-                                       dt=self.dT)
+                                    self.config)
+            elif maneuver in [Maneuver.STEERLEFT,
+                              Maneuver.STEERRIGHT]:
+                SL = SimulationLat(maneuver,
+                                   self.ego_vehicle,
+                                   self.config)
             else:
                 raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))
             state_list = SL.simulate_state_list(mid)
