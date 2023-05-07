@@ -1,6 +1,7 @@
 from abc import ABC
 import math
 import functools
+import os
 
 from crrepairer.cut_off.base import CutOffBase
 from crrepairer.cut_off.utils import visualize_state_list, int_round
@@ -27,7 +28,8 @@ class TTR(CutOffBase, ABC):
         self._visualize = False
 
         self.config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
-        self.config.scenario = self.scenario
+        self.config.general.path_scenarios = os.path.dirname(os.path.realpath(__file__)) + '/../../scenarios/'
+        self.config.update()
 
     @property
     def ttc(self):

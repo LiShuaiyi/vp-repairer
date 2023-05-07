@@ -23,7 +23,7 @@ class TestTC(unittest.TestCase):
         super().setUp()
         root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
         self.scenario_root_path = os.path.join(root_path, "scenarios")
-        scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
+        scenario_file = os.path.join(self.scenario_root_path, "DEU_test-1_1_T-1.xml")
         self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         self.ego_id = 1003
         self._ego_obs = self.scenario.obstacle_by_id(self.ego_id)

@@ -20,7 +20,7 @@ class TestTTR(unittest.TestCase):
         super().setUp()
         root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
         self.scenario_root_path = os.path.join(root_path, "scenarios")
-        scenario_file = os.path.join(self.scenario_root_path, "ZAM_Urban-3_3_Repair.xml")
+        scenario_file = os.path.join(self.scenario_root_path, "ZAM_Urban-3_1.xml")
         self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         ego_id = 8
         self.world_state = World.create_from_scenario(self.scenario)

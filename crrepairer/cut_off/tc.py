@@ -4,16 +4,16 @@ import math
 import functools
 from abc import ABC
 import enum
-
+import os
+import copy
 import numpy as np
+
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.state import CustomState, PMState, KSState
 
 from commonroad_crime.utility.simulation import SimulationLong, SimulationLat, Maneuver
 from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
 from commonroad_crime.utility.general import check_elements_state_list
-
-import copy
 
 from crrepairer.cut_off.base import CutOffBase
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
@@ -48,7 +48,8 @@ class TC(CutOffBase, ABC):
         self._search_mode = TCSearchMode.BINARY
 
         config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
-        config.scenario = self.scenario
+        config.general.path_scenarios = os.path.dirname(os.path.realpath(__file__)) + '/../../scenarios/'
+        config.update()
         config.time.steer_width = 2  # use the lane width mode
 
         # simulators
