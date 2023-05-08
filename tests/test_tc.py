@@ -78,7 +78,7 @@ class TestTC(unittest.TestCase):
         config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
         config.scenario = self.scenario
         sim_long = SimulationLong(Maneuver.BRAKE, ego_vehicle, config)
-        new_state_list = sim_long.simulate_state_list(0)
+        new_state_list = sim_long.simulate_state_list(0)[1:]
         # 1. directly update the ego vehicle
         update_ego_vehicle(world_state.road_network,
                            world_state.vehicle_by_id(ego_vehicle.obstacle_id),
@@ -86,7 +86,7 @@ class TestTC(unittest.TestCase):
                            0,
                            world_state.dt)
         # 2. recreate the world state
-        ego_vehicle.prediction.trajectory = Trajectory(0, new_state_list)
+        ego_vehicle.prediction.trajectory = Trajectory(1, new_state_list)
         world_state_updated = World.create_from_scenario(self.scenario) #, self.ego_id)
         ego_former = world_state.vehicle_by_id(ego_vehicle.obstacle_id)
         ego_updated = world_state_updated.vehicle_by_id(ego_vehicle.obstacle_id)
