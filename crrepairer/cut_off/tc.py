@@ -48,8 +48,7 @@ class TC(CutOffBase, ABC):
         self._search_mode = TCSearchMode.BINARY
 
         config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
-        config.general.path_scenarios = os.path.dirname(os.path.realpath(__file__)) + '/../../scenarios/'
-        config.update()
+        config.scenario = self.scenario
         config.time.steer_width = 2  # use the lane width mode
 
         # simulators

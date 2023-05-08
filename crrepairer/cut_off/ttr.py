@@ -28,8 +28,7 @@ class TTR(CutOffBase, ABC):
         self._visualize = False
 
         self.config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
-        self.config.general.path_scenarios = os.path.dirname(os.path.realpath(__file__)) + '/../../scenarios/'
-        self.config.update()
+        self.config.scenario = self.scenario
 
     @property
     def ttc(self):
