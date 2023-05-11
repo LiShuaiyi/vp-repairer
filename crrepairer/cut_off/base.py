@@ -2,14 +2,13 @@ import math
 from abc import ABC, abstractmethod
 from typing import List, Union
 import matplotlib.pyplot as plt
-import copy
 
 # CommonRoad STL monitor
 from crmonitor.common.world import World
 
 # CommonRoad Toolbox
 from commonroad.scenario.obstacle import DynamicObstacle, Shape
-from commonroad.scenario.trajectory import State
+from commonroad.scenario.state import PMState, KSState, CustomState
 import commonroad_dc.pycrcc as pycrcc
 from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch import create_collision_checker, \
     create_collision_object
@@ -82,7 +81,7 @@ class CutOffBase(ABC):
         """
         pass
 
-    def _calc_ttc(self, state_list: List[State]):
+    def _calc_ttc(self, state_list: List[Union[CustomState, PMState, KSState]]):
         """
         Detects the collision time given the trajectory of ego_vehicle using a for loop over
         the state list.
@@ -104,13 +103,14 @@ class CutOffBase(ABC):
                                              0.5 * self._shape.width,
                                              theta, pos1, pos2)
                     draw_collision_rectobb(ego_obb, rnd)
-                    self.scenario.draw(rnd, draw_params={'time_begin': i, })
+                    rnd.draw_params.time_begin = i
+                    self.scenario.draw(rnd)
                     rnd.render()
                     plt.show()
                 return i*self.dT
         return math.inf
 
-    def _detect_collision(self, state_list: Union[State]) -> bool:
+    def _detect_collision(self, state_list: List[Union[CustomState, PMState, KSState]]) -> bool:
         """
         return whether the state list of the ego vehicle is collision-free
         """

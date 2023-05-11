@@ -1,8 +1,11 @@
 import numpy as np
-
+from typing import List
 from collections import defaultdict
 
-from crrepairer.cut_off.simulation import CutOffAction
+from commonroad.scenario.trajectory import Trajectory
+
+from commonroad_crime.utility.simulation import Maneuver
+
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
@@ -19,14 +22,12 @@ from crmonitor.predicates.utils import (lanelets_dir, ref_path_lanelets)
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
 
-from typing import List
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
-from commonroad.scenario.trajectory import Trajectory
 
 
 class RuleConstraints:
@@ -66,16 +67,15 @@ class RuleConstraints:
         self._foll_veh = None
         # whether safe distance needs to be obeyed
         self._safe_dis_mode = [False for _ in range(self._tc_obj.N - self._tc_obj.tc_time_step + 1)]
-        if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
-                                        CutOffAction.LANECHANGERIGHT]:
+        if self._compliant_maneuver in [Maneuver.STEERLEFT,
+                                        Maneuver.STEERRIGHT]:
             # time for leaving the current lane
-            self._tc_obj.simulation_lateral.set_inputs(
-                self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).v)
+            self._tc_obj.simulation_lateral.set_inputs(self._ego_vehicle.state_list_cr[tc_object.tc_time_step])
             lane_dist = self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
                 self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s) / 2 - \
                         abs(self._ego_vehicle.get_lat_state(0).d) - self._veh_config.width / 2
-            self._time_leave_lane = int(
-                self._tc_obj.simulation_lateral.calc_leave_time(lane_dist) / self._world_state.dt)
+            leave_time = np.sqrt(2 * abs(lane_dist / self._tc_obj.simulation_lateral.a_lat))
+            self._time_leave_lane = int(leave_time / self._world_state.dt)
 
     @property
     def safe_distance_modes(self):
@@ -295,14 +295,14 @@ class RuleConstraints:
                 tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(list(tar_veh_lanelet)[0])
                 #if prop_assignment > 0:
                 #    target_lane = [tar_veh_lane]
-                if self._compliant_maneuver == CutOffAction.LANECHANGELEFT:
+                if self._compliant_maneuver == Maneuver.STEERLEFT:
                     target_lane = [tar_veh_lane.adj_right]
-                elif self._compliant_maneuver == CutOffAction.LANECHANGERIGHT:
+                elif self._compliant_maneuver == Maneuver.STEERRIGHT:
                     target_lane = [tar_veh_lane.adj_left]
                 else:
                     target_lane = [tar_veh_lane]
-                if self._compliant_maneuver in [CutOffAction.LANECHANGELEFT,
-                                                CutOffAction.LANECHANGERIGHT]:
+                if self._compliant_maneuver in [Maneuver.STEERLEFT,
+                                                Maneuver.STEERRIGHT]:
                     if time_step <= self._time_leave_lane:
                         target_lane = [tar_veh_lane]
                     elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:

@@ -3,17 +3,19 @@ from collections import defaultdict
 import math
 from crmonitor.common.vehicle import Vehicle, CurvilinearStateManager
 from crmonitor.common.road_network import RoadNetwork
-from typing import List
+from typing import List, Union
 from vehiclemodels.parameters_vehicle1 import parameters_vehicle1
 from commonroad.scenario.obstacle import ObstacleType, DynamicObstacle
 from commonroad.scenario.trajectory import Trajectory
-from commonroad.scenario.state import CustomState
+from commonroad.scenario.state import CustomState, PMState, KSState
 from commonroad.prediction.prediction import TrajectoryPrediction
+
+from commonroad_crime.utility.visualization import draw_state_list
 import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 
 
-def visualize_state_list(collision_checker, state_list: List[CustomState], scenario, obs_shape):
+def visualize_state_list(collision_checker, state_list: List[Union[CustomState, PMState, KSState]], scenario, obs_shape):
     rnd = MPRenderer()
     trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
     rnd.draw_params.time_begin = 0
@@ -21,8 +23,8 @@ def visualize_state_list(collision_checker, state_list: List[CustomState], scena
     rnd.draw_params.occupancy.draw_occupancies = True
     scenario.draw(rnd)
     trajectory.draw(rnd)
-    collision_checker.draw(rnd)
     rnd.render()
+    draw_state_list(rnd, state_list)
     plt.show()
 
 
