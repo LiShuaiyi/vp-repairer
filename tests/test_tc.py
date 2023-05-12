@@ -11,9 +11,11 @@ from commonroad.scenario.trajectory import Trajectory
 from crmonitor.common.world import World
 
 from crrepairer.cut_off.tc import TC
-from crrepairer.cut_off.simulation import SimulationLong, SimulationLateral, CutOffAction
-from crrepairer.cut_off.utils import check_velocity_feasibility, update_ego_vehicle
+from crrepairer.cut_off.utils import update_ego_vehicle
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+
+from commonroad_crime.utility.simulation import Maneuver, SimulationLong
+from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
 
 
 class TestTC(unittest.TestCase):
@@ -21,7 +23,7 @@ class TestTC(unittest.TestCase):
         super().setUp()
         root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
         self.scenario_root_path = os.path.join(root_path, "scenarios")
-        scenario_file = os.path.join(self.scenario_root_path, "test_interstate/DEU_test_safe_distance.xml")
+        scenario_file = os.path.join(self.scenario_root_path, "DEU_test-1_1_T-1.xml")
         self.scenario, planning_problem_set = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
         self.ego_id = 1003
         self._ego_obs = self.scenario.obstacle_by_id(self.ego_id)
@@ -35,96 +37,48 @@ class TestTC(unittest.TestCase):
                             2.0,
                             abs_tol=1e-2)
 
-    def test_simulation_long(self):
-        ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
-        sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0, dt=self.scenario.dt)
-        simulated_state1 = sim_long.simulate_state_list(0)
-        self.assertEqual(
-            simulated_state1[-1].time_step,
-            50)
-        self.assertEqual(check_velocity_feasibility(
-            simulated_state1[-1]),
-            True)
-        sim_long.action = CutOffAction.STEADYSPEED
-        simulated_state2 = sim_long.simulate_state_list(0)
-        self.assertEqual(
-            simulated_state2[-1].time_step,
-            50)
-        sim_long.action = CutOffAction.KICKDOWN
-        simulated_state3 = sim_long.simulate_state_list(0)
-        self.assertEqual(
-            simulated_state3[-1].time_step,
-            50)
-        self.assertEqual(
-            check_velocity_feasibility(
-                simulated_state3[-1]),
-            True)
-
-    def test_simulate_lateral(self):
-        ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
-        world_state = self.rule_monitor.world
-        sim_lat = SimulationLateral(
-            CutOffAction.LANECHANGELEFT,
-            ego_vehicle,
-            0,
-            world_state.vehicle_by_id(self.ego_id),
-            dt=world_state.dt)
-        simulated_state_list1 = sim_lat.simulate_state_list(0)
-        final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position(
-            [simulated_state_list1[-1].position])[0]
-        final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
-        self.assertEqual(
-            world_state.vehicle_by_id(ego_vehicle.obstacle_id).get_lane(0).adj_left.lane_id,
-            final_lane.lane_id)
-        sim_lat.action = CutOffAction.LANECHANGERIGHT
-        simulated_state_list2 = sim_lat.simulate_state_list(0)
-        final_lanelet = self.scenario.lanelet_network.find_lanelet_by_position(
-            [simulated_state_list2[-1].position])[0]
-        final_lane = world_state.road_network.find_lane_by_lanelet(final_lanelet[0])
-        self.assertEqual(
-            world_state.vehicle_by_id(ego_vehicle.obstacle_id).get_lane(0).adj_right.lane_id,
-            final_lane.lane_id)
-
     def test_tc_1(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
-        tc = tc_object.generate([CutOffAction.LANECHANGELEFT])
+        tc = tc_object.generate([Maneuver.STEERLEFT])
         self.assertEqual(
             tc,
             -math.inf)
 
     def test_tc_2(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
-        tc = tc_object.generate([CutOffAction.LANECHANGERIGHT])
+        tc = tc_object.generate([Maneuver.STEERRIGHT])
         self.assertEqual(
             round(tc, 1),
-            .5)
+            .4)
 
     def test_tc_3(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
-        tc = tc_object.generate([CutOffAction.BRAKE])
+        tc = tc_object.generate([Maneuver.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            1.8)
+            1.9)
 
     def test_tc_total(self):
         tc_object = TC(self._ego_obs, self.rule_monitor)
-        tc = tc_object.generate([CutOffAction.LANECHANGELEFT,
-                                 CutOffAction.LANECHANGERIGHT,
-                                 CutOffAction.KICKDOWN,
-                                 CutOffAction.BRAKE])
+        tc = tc_object.generate([Maneuver.STEERLEFT,
+                                 Maneuver.STEERRIGHT,
+                                 Maneuver.KICKDOWN,
+                                 Maneuver.BRAKE])
         self.assertEqual(
             round(tc, 1),
-            1.8)
+            1.9)
         self.assertEqual(
-            tc_object.compliant_maneuver, CutOffAction.BRAKE
+            tc_object.compliant_maneuver, Maneuver.BRAKE
         )
 
     def test_update_world_state(self):
         # simulate a new trajectory of the ego vehicle
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
         world_state = self.rule_monitor.world
-        sim_long = SimulationLong(CutOffAction.BRAKE, ego_vehicle, 0, dt=world_state.dt)
-        new_state_list = sim_long.simulate_state_list(0)
+        config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
+        config.scenario = self.scenario
+        sim_long = SimulationLong(Maneuver.BRAKE, ego_vehicle, config)
+        new_state_list = sim_long.simulate_state_list(0)[1:]
         # 1. directly update the ego vehicle
         update_ego_vehicle(world_state.road_network,
                            world_state.vehicle_by_id(ego_vehicle.obstacle_id),

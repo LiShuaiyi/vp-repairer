@@ -4,17 +4,20 @@ import math
 import functools
 from abc import ABC
 import enum
-
+import os
+import copy
 import numpy as np
-from commonroad.scenario.obstacle import State, DynamicObstacle
+
+from commonroad.scenario.obstacle import DynamicObstacle
+from commonroad.scenario.state import CustomState, PMState, KSState
+
+from commonroad_crime.utility.simulation import SimulationLong, SimulationLat, Maneuver
+from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
+from commonroad_crime.utility.general import check_elements_state_list
 
 from crrepairer.cut_off.base import CutOffBase
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.cut_off.utils import update_ego_vehicle, visualize_state_list, int_round
-from crrepairer.cut_off.simulation import (CutOffAction,
-                                           SimulationLateral,
-                                           SimulationLong,
-                                           check_elements_state_list)
 
 
 class TCSearchMode(str, enum.Enum):
@@ -30,11 +33,13 @@ class TC(CutOffBase, ABC):
     def __init__(self,
                  ego_vehicle: DynamicObstacle,
                  rule_monitor: STLRuleMonitor):
-        super().__init__(ego_vehicle, rule_monitor.world)
-        self.rule_monitor = rule_monitor
+        rule_monitor_deepcopy = copy.deepcopy(rule_monitor)
+        ego_vehicle_deepcopy = copy.deepcopy(ego_vehicle)
+        super().__init__(ego_vehicle_deepcopy, rule_monitor_deepcopy.world)
+        self.rule_monitor = rule_monitor_deepcopy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
-        self._tv_time_step = rule_monitor.tv_time_step
-        self._other_id = rule_monitor.other_id
+        self._tv_time_step = self.rule_monitor.tv_time_step
+        self._other_id = self.rule_monitor.other_id
         self._visualize = False
         self._compliant_maneuver = None
         self._tc = -math.inf
@@ -42,19 +47,20 @@ class TC(CutOffBase, ABC):
         self._mid = None
         self._search_mode = TCSearchMode.BINARY
 
+        config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
+        config.scenario = self.scenario
+        config.time.steer_width = 2  # use the lane width mode
+
         # simulators
-        self._sim_lon = SimulationLong(None,
+        self._sim_lon = SimulationLong(Maneuver.NONE,
                                        self.ego_vehicle,
-                                       None,
-                                       dt=rule_monitor.world.dt)
-        self._sim_lat = SimulationLateral(None,
-                                          self.ego_vehicle,
-                                          None,
-                                          rule_monitor.world.vehicle_by_id(ego_vehicle.obstacle_id),
-                                          dt=rule_monitor.world.dt)
+                                       config)
+        self._sim_lat = SimulationLat(Maneuver.NONE,
+                                      self.ego_vehicle,
+                                      config)
 
     @property
-    def simulation_lateral(self) -> Union[SimulationLateral]:
+    def simulation_lateral(self) -> Union[SimulationLat]:
         return self._sim_lat
 
     @property
@@ -69,7 +75,7 @@ class TC(CutOffBase, ABC):
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
-        return int_round(self._tc, 1)
+        return int_round(self._tc - 0.1, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:
@@ -82,10 +88,11 @@ class TC(CutOffBase, ABC):
         return self._tv_time_step
 
     @property
-    def compliant_maneuver(self) -> CutOffAction:
+    def compliant_maneuver(self) -> Maneuver:
         return self._compliant_maneuver
 
-    def calc_tv_updated(self, updated_states: List[State], cut_off_time: int) -> Tuple[float, Any]:
+    def calc_tv_updated(self, updated_states: List[Union[CustomState, PMState, KSState]], cut_off_time: int) \
+            -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
         self.rule_monitor.world.time_step = 0
@@ -112,7 +119,7 @@ class TC(CutOffBase, ABC):
         else:
             print("Violated rule changed.")
 
-    def generate(self, cut_off_maneuvers: List[CutOffAction]):
+    def generate(self, cut_off_maneuvers: List[Maneuver]):
         """
         Computes the Time-to-Compliance (with traffic rules).
         :param cut_off_maneuvers: the given maneuvers of ego vehicle
@@ -141,7 +148,7 @@ class TC(CutOffBase, ABC):
         return self._tc
 
     @functools.lru_cache(128)
-    def search_ttm_binary(self, maneuver: CutOffAction):
+    def search_ttm_binary(self, maneuver: Maneuver):
         ttm = - math.inf
         low = 0
         high = int(int_round(self.tv / self.dT))
@@ -159,7 +166,7 @@ class TC(CutOffBase, ABC):
         return ttm
 
     @functools.lru_cache(128)
-    def search_ttm_linear(self, maneuver: CutOffAction):
+    def search_ttm_linear(self, maneuver: Maneuver):
         ts = int(int_round(self.tv / self.dT))
         while ts > 0:
             tv = self.singleton_search(maneuver, ts)
@@ -173,12 +180,12 @@ class TC(CutOffBase, ABC):
             ttm = ts * self.dT
         return ttm
 
-    def singleton_search(self, maneuver: CutOffAction, start_time: int):
-        if maneuver in [CutOffAction.BRAKE, CutOffAction.KICKDOWN, CutOffAction.STEADYSPEED]:
-            self._sim_lon.update_action(maneuver, start_time)
+    def singleton_search(self, maneuver: Maneuver, start_time: int):
+        if maneuver in [Maneuver.BRAKE, Maneuver.KICKDOWN, Maneuver.CONSTANT]:
+            self._sim_lon.update_maneuver(maneuver)
             state_list = self._sim_lon.simulate_state_list(start_time)
-        elif maneuver in [CutOffAction.LANECHANGELEFT, CutOffAction.LANECHANGERIGHT]:
-            self._sim_lat.update_action(maneuver, start_time)
+        elif maneuver in [Maneuver.STEERLEFT, Maneuver.STEERRIGHT]:
+            self._sim_lat.update_maneuver(maneuver)
             state_list = self._sim_lat.simulate_state_list(start_time)
         else:
             raise ValueError(": given compliant maneuver {} is not supported".format(maneuver))

@@ -6,10 +6,12 @@ from sympy.logic.boolalg import is_cnf, is_dnf
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.smt.sat_solver.sat_solver import SATSolver
 from crrepairer.smt.sat_solver.dpll import DPLL
-from crrepairer.smt.t_solver.t_solver import TSolver, CutOffAction
+from crrepairer.smt.t_solver.t_solver import TSolver
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 
 from commonroad.common.file_reader import CommonRoadFileReader
+
+from commonroad_crime.utility.simulation import Maneuver
 
 from z3 import sat, unsat
 
@@ -74,17 +76,17 @@ class TestSMTSolver(unittest.TestCase):
         t_solver.assign_proposition([proposition], ["a"])
         # safe distance
         self.assertEqual(set(t_solver.compliant_maneuvers),
-                         {CutOffAction.BRAKE, CutOffAction.KICKDOWN})
+                         {Maneuver.BRAKE, Maneuver.KICKDOWN})
         tc = t_solver.search_tc()
         assert math.isclose(tc,
-                            1.8,
+                            1.9,
                             abs_tol=1e-2)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
                             if prop.name == '(in_same_lane__a0_a1_i)>=(0.0)'), None)
         t_solver.assign_proposition([proposition], ["~c"])
         tc = t_solver.search_tc()
         assert math.isclose(tc,
-                            0.5,
+                            0.4,
                             abs_tol=1e-2)
 
     def test_dpll(self):

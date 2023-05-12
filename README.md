@@ -49,7 +49,6 @@ commonroad-repairer
 ├─ crrepairer
 │  ├─ cut_off
 |     ├─ base                           # Base class for detecting cut-off states 
-|     ├─ simulation                     # Simulation of possible compliant maneuvers 
 |     ├─ tc                             # Time-To-Comply (with traffic rules)                                              
 |     ├─ ttr                            # Time-To-React (collsion avoidance) 
 |     ├─ utils                          # Utility functions for detecting cut-off states 
