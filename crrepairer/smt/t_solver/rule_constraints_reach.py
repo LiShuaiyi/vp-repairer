@@ -2,7 +2,6 @@ import numpy as np
 import os
 from collections import defaultdict
 
-from crrepairer.cut_off.simulation import CutOffAction
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
@@ -38,6 +37,7 @@ try:
     from commonroad_reach_semantic.data_structure.reach.reach_interface import ReachableSetInterface
     from commonroad_reach_semantic.data_structure.spot_interface import SpotInterface
     from commonroad_reach_semantic.data_structure.driving_corridor_extractor import DrivingCorridorExtractor
+    from commonroad_reach_semantic.utility import visualization as util_visual
 except ImportWarning:
     print("commonroad-reach-semantic is not installed")
 
@@ -98,11 +98,6 @@ class RuleConstraintsReach:
                                                   str(self._world_state.scenario.scenario_id) + '.xml'
         self.reach_config.update()
 
-        # remove the ego
-        self.reach_config.scenario.remove_obstacle(
-            self.reach_config.scenario.obstacle_by_id(self._ego_id)
-        )
-
         # semantic models
         self.semantic_model = SemanticModel(self.reach_config)
         self.rule_interface = TrafficRuleInterface(self.reach_config)
@@ -127,14 +122,18 @@ class RuleConstraintsReach:
                                                              "doesn't match the corresponding state!"
 
         # set the cut-off state as the initial state
-        self.reach_config.planning_problem.initial_state = InitialState(
-            time_step=cut_off_state.time_step,
-            position=cut_off_state.position,
-            velocity=cut_off_state.velocity,
-            orientation=cut_off_state.orientation
-        )
+        self.reach_config.planning_problem.initial_state.position = cut_off_state.position
+        self.reach_config.planning_problem.initial_state.velocity = cut_off_state.velocity
+        self.reach_config.planning_problem.initial_state.orientation = cut_off_state.orientation
+        self.reach_config.planning_problem.initial_state.time_step = cut_off_state.time_step
+
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem
+        )
+
+        # remove the ego
+        self.reach_config.scenario.remove_obstacle(
+            self.reach_config.scenario.obstacle_by_id(self._ego_vehicle_cr.obstacle_id  )
         )
 
         # todo: update the semantics model
@@ -143,8 +142,19 @@ class RuleConstraintsReach:
         self.reach_interface.reset(
             self.reach_config, self.semantic_model, self.rule_interface
         )
+        self.reach_interface.compute_reachable_sets(
+            step_start=1, step_end=self._nr_ts, verbose=True
+        )
 
     def compute_semantic_reachable_set(self, verbose=True):
-        self.reach_interface.compute_reachable_sets(
-            0, self._nr_ts, verbose
-        )
+        self.update_reach_interface()
+
+        pass
+
+    def longitudinal_constraints(self):
+        self.compute_semantic_reachable_set()
+        util_visual.plot_scenario_with_reachable_sets(
+            step_start=1, step_end=self._nr_ts,
+            reach_interface=self.reach_interface, save_gif=True)
+        pass
+
