@@ -25,7 +25,7 @@ from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
-from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.trajectory import Trajectory, CustomState
 from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.state import InitialState
 
@@ -99,16 +99,7 @@ class RuleConstraintsReach:
         self.reach_config.update()
 
         # semantic models
-        self.semantic_model = SemanticModel(self.reach_config)
-        self.rule_interface = TrafficRuleInterface(self.reach_config)
-        self.semantic_model.determine_traffic_priorities(self.rule_interface.dict_traffic_sign_to_priorities)
-        self.rule_interface.concretize_traffic_rules(self.semantic_model)
-        self.rule_interface.print_summary()
 
-        # initialize the reach interface
-        self.reach_interface = ReachableSetInterface(self.reach_config,
-                                                     self.semantic_model,
-                                                     self.rule_interface)
 
     def update_reach_interface(self):
         # obtain the cut-off state
@@ -125,35 +116,72 @@ class RuleConstraintsReach:
         self.reach_config.planning_problem.initial_state.position = cut_off_state.position
         self.reach_config.planning_problem.initial_state.velocity = cut_off_state.velocity
         self.reach_config.planning_problem.initial_state.orientation = cut_off_state.orientation
-        self.reach_config.planning_problem.initial_state.time_step = cut_off_state.time_step
+        self.reach_config.planning_problem.initial_state.time_step = 0
 
-        self.reach_config.update(
-            planning_problem=self.reach_config.planning_problem
-        )
-
+        for obs in self.reach_config.scenario.dynamic_obstacles:
+            new_state_list = []
+            obs.initial_state = InitialState(time_step=0,
+                                             position=obs.state_at_time(cut_off_time_step).position,
+                                             velocity=obs.state_at_time(cut_off_time_step).velocity,
+                                             orientation=obs.state_at_time(cut_off_time_step).orientation,
+                                             acceleration=0.0,
+                                             yaw_rate=0.0,
+                                             slip_angle=0.0)
+            for i in range(cut_off_time_step+1, self._tc_obj.N + 1):
+                new_state_list.append(CustomState(
+                    time_step=i - cut_off_time_step,
+                    position=obs.state_at_time(i).position,
+                    velocity=obs.state_at_time(i).velocity,
+                    orientation=obs.state_at_time(i).orientation
+                ))
+            new_traj = Trajectory(initial_time_step=1,
+                                  state_list=new_state_list)
+            obs.prediction.trajectory = new_traj
         # remove the ego
         self.reach_config.scenario.remove_obstacle(
-            self.reach_config.scenario.obstacle_by_id(self._ego_vehicle_cr.obstacle_id  )
+            self.reach_config.scenario.obstacle_by_id(self._ego_vehicle_cr.obstacle_id)
         )
 
+        self.reach_config.update(
+            planning_problem=self.reach_config.planning_problem,
+            scenario=self.reach_config.scenario
+        )
+        semantic_model = SemanticModel(self.reach_config)
+        rule_interface = TrafficRuleInterface(self.reach_config)
+        semantic_model.determine_traffic_priorities(rule_interface.dict_traffic_sign_to_priorities)
+        rule_interface.concretize_traffic_rules(semantic_model)
+        rule_interface.print_summary()
         # todo: update the semantics model
+        # initialize the reach interface
+        self.reach_interface = ReachableSetInterface(self.reach_config,
+                                                semantic_model,
+                                                rule_interface)
 
-        # reset the reach interface
-        self.reach_interface.reset(
-            self.reach_config, self.semantic_model, self.rule_interface
-        )
         self.reach_interface.compute_reachable_sets(
             step_start=1, step_end=self._nr_ts, verbose=True
         )
 
     def compute_semantic_reachable_set(self, verbose=True):
         self.update_reach_interface()
+        self.reach_interface.check()
 
+        # ==== extract optimal driving corridor
+        self.reach_interface.determine_optimal_corridor()
+        import matplotlib.pyplot as plt
+        for time, node in self.reach_interface.reachable_set.items():
+            print(time)
+            for id, reach_node in node.items():
+                print(reach_node[0].p_lon_min, reach_node[0].p_lon_max,
+                      reach_node[0].v_lon_min, reach_node[0].v_lon_max)
+                if time >= 7:
+                    plt.plot(*reach_node[0].polygon_lon.exterior.xy)
+                    plt.title(str(time))
+            plt.show()
         pass
 
     def longitudinal_constraints(self):
         self.compute_semantic_reachable_set()
-        util_visual.plot_scenario_with_reachable_sets(
+        util_visual.plot_scenario_with_driving_corridor(
             step_start=1, step_end=self._nr_ts,
             reach_interface=self.reach_interface, save_gif=True)
         pass
