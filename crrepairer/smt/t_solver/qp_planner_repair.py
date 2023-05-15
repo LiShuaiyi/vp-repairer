@@ -1,4 +1,3 @@
-
 from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongDesired
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
@@ -9,7 +8,7 @@ from crrepairer.smt.monitor_wrapper import PropositionNode
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.rule_constraints_manual import RuleConstraintsManual
-from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
+# from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 from commonroad.scenario.trajectory import Trajectory
