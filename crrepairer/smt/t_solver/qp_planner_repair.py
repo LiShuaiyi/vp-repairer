@@ -8,7 +8,7 @@ from crrepairer.smt.monitor_wrapper import PropositionNode
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.rule_constraints_manual import RuleConstraintsManual
-# from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
+from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 from commonroad.scenario.trajectory import Trajectory
@@ -77,20 +77,20 @@ class QPPlannerRepair(QPPlanner):
                                                        self._vehicle_configuration,
                                                        self._initial_trajectory)
         # initialize the QP planner
-        super().__init__(vehicle_configuration=self._vehicle_configuration,
-                         num_planning_steps=self._N - self._cut_off_time_step,
-                         qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
-                         qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
-                         verbose=verbose,
-                         safe_dis_modes=self._rule_constraints.safe_distance_modes)
+        # super().__init__(vehicle_configuration=self._vehicle_configuration,
+        #                  num_planning_steps=self._N - self._cut_off_time_step,
+        #                  qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
+        #                  qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
+        #                  verbose=verbose,
+        #                  safe_dis_modes=self._rule_constraints.safe_distance_modes)
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
-        # self._rule_constraints = RuleConstraintsReach(tc_object,
-        #                                               rule_monitor,
-        #                                               sel_proposition,
-        #                                               proposition_full,
-        #                                               self._vehicle_configuration,
-        #                                               self._initial_trajectory)
+        self._rule_constraints = RuleConstraintsReach(tc_object,
+                                                      rule_monitor,
+                                                      sel_proposition,
+                                                      proposition_full,
+                                                      self._vehicle_configuration,
+                                                      self._initial_trajectory)
         # pass
 
     @property

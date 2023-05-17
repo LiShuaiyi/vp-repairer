@@ -21,9 +21,12 @@ from typing import List
 import copy
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
+from commonroad_qp_planner.utility.compute_constraints import longitudinal_position_constraints, \
+    lateral_position_constraints
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
+from commonroad_qp_planner.constraints import LatConstraints, LonConstraints
 
 from commonroad.scenario.trajectory import Trajectory, CustomState
 from commonroad.planning.planning_problem import PlanningProblem
@@ -160,6 +163,10 @@ class RuleConstraintsReach:
         self.reach_interface.compute_reachable_sets(
             step_start=1, step_end=self._nr_ts, verbose=True
         )
+        self.spot_interface = SpotInterface(self.reach_interface)
+        self.spot_interface.translate_ltl_formulas()
+        self.spot_interface.translate_reachability_graph()
+        self.spot_interface.check()
 
     def compute_semantic_reachable_set(self, verbose=True):
         self.update_reach_interface()
@@ -167,16 +174,20 @@ class RuleConstraintsReach:
 
         # ==== extract optimal driving corridor
         self.reach_interface.determine_optimal_corridor()
-        import matplotlib.pyplot as plt
-        for time, node in self.reach_interface.reachable_set.items():
-            print(time)
-            for id, reach_node in node.items():
-                print(reach_node[0].p_lon_min, reach_node[0].p_lon_max,
-                      reach_node[0].v_lon_min, reach_node[0].v_lon_max)
-                if time >= 7:
-                    plt.plot(*reach_node[0].polygon_lon.exterior.xy)
-                    plt.title(str(time))
-            plt.show()
+        corridor = self.reach_interface.corridor_optimal
+        s_min, s_max = longitudinal_position_constraints(corridor)
+        c_tv_lon = LonConstraints.construct_constraints(s_min, s_max, s_min, s_max)
+        # * for debugging the reach semantic
+        # import matplotlib.pyplot as plt
+        # for time, node in self.reach_interface.reachable_set.items():
+        #     print(time)
+        #     for id, reach_node in node.items():
+        #         print(reach_node[0].p_lon_min, reach_node[0].p_lon_max,
+        #               reach_node[0].v_lon_min, reach_node[0].v_lon_max)
+        #         if time >= 7:
+        #             plt.plot(*reach_node[0].polygon_lon.exterior.xy)
+        #             plt.title(str(time))
+        #     plt.show()
         pass
 
     def longitudinal_constraints(self):
