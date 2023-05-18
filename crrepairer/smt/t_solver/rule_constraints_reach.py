@@ -104,7 +104,7 @@ class RuleConstraintsReach:
         self.corridor = None
 
 
-    def update_reach_interface(self):
+    def update_reach_interface(self, vehicle_configuration: PlanningConfigurationVehicle):
         # obtain the cut-off state
         cut_off_time_step = self._tc_obj.tc_time_step
         if cut_off_time_step == 0:
@@ -119,7 +119,13 @@ class RuleConstraintsReach:
         self.reach_config.planning_problem.initial_state.position = cut_off_state.position
         self.reach_config.planning_problem.initial_state.velocity = cut_off_state.velocity
         self.reach_config.planning_problem.initial_state.orientation = cut_off_state.orientation
+        self.reach_config.planning_problem.initial_state.acceleration = cut_off_state.acceleration
         self.reach_config.planning_problem.initial_state.time_step = 0
+
+        # remove the ego
+        self.reach_config.scenario.remove_obstacle(
+            self.reach_config.scenario.obstacle_by_id(self._ego_vehicle_cr.obstacle_id)
+        )
 
         for obs in self.reach_config.scenario.dynamic_obstacles:
             new_state_list = []
@@ -130,24 +136,24 @@ class RuleConstraintsReach:
                                              acceleration=0.0,
                                              yaw_rate=0.0,
                                              slip_angle=0.0)
-            for i in range(cut_off_time_step+1, self._tc_obj.N + 1):
+            for i in range(cut_off_time_step, self._tc_obj.N + 1):
                 new_state_list.append(CustomState(
                     time_step=i - cut_off_time_step,
                     position=obs.state_at_time(i).position,
                     velocity=obs.state_at_time(i).velocity,
                     orientation=obs.state_at_time(i).orientation
                 ))
-            new_traj = Trajectory(initial_time_step=1,
+            new_traj = Trajectory(initial_time_step=0,
                                   state_list=new_state_list)
+            obs.prediction.occupancy_set = obs.prediction.occupancy_set[cut_off_time_step:]
+            for occ in obs.prediction.occupancy_set:
+                occ.time_step -= cut_off_time_step
             obs.prediction.trajectory = new_traj
-        # remove the ego
-        self.reach_config.scenario.remove_obstacle(
-            self.reach_config.scenario.obstacle_by_id(self._ego_vehicle_cr.obstacle_id)
-        )
 
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
-            scenario=self.reach_config.scenario
+            scenario=self.reach_config.scenario,
+            CLCS=vehicle_configuration.CLCS
         )
         semantic_model = SemanticModel(self.reach_config)
         rule_interface = TrafficRuleInterface(self.reach_config)
@@ -168,32 +174,33 @@ class RuleConstraintsReach:
         self.spot_interface.translate_reachability_graph()
         self.spot_interface.check()
 
-    def compute_semantic_reachable_set(self, verbose=True):
-        self.update_reach_interface()
+    def compute_semantic_reachable_set(self, vehicle_configuration, verbose=True):
+        self.update_reach_interface(vehicle_configuration)
         self.reach_interface.check()
 
         # ==== extract optimal driving corridor
         self.reach_interface.determine_optimal_corridor()
         self.corridor = self.reach_interface.corridor_optimal
 
-        # * for debugging the reach semantic
+        # # * for debugging the reach semantic
         # import matplotlib.pyplot as plt
         # for time, node in self.reach_interface.reachable_set.items():
         #     print(time)
         #     for id, reach_node in node.items():
         #         print(reach_node[0].p_lon_min, reach_node[0].p_lon_max,
         #               reach_node[0].v_lon_min, reach_node[0].v_lon_max)
-        #         if time >= 7:
-        #             plt.plot(*reach_node[0].polygon_lon.exterior.xy)
-        #             plt.title(str(time))
-        #     plt.show()
+        #         plt.plot(*reach_node[0].polygon_lon.exterior.xy)
+        #         plt.title(str(time))
+        # plt.show()
 
-    def longitudinal_constraints(self):
+    def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
-        self.compute_semantic_reachable_set()
+        self.compute_semantic_reachable_set(vehicle_configuration)
         # util_visual.plot_scenario_with_driving_corridor(
         #     step_start=1, step_end=self._nr_ts,
         #     reach_interface=self.reach_interface, save_gif=True)
+        # from matplotlib import pyplot as plt
+        # plt.close('all')
         if self.corridor is None:
             raise Exception("the driving corridor is either not computed or empty")
         else:
@@ -202,4 +209,13 @@ class RuleConstraintsReach:
         c_tv_lon = LonConstraints.construct_constraints(s_min, s_max, s_min, s_max,
                                                         v_min=v_min, v_max=v_max)
         return c_tv_lon
+
+    def lateral_constraints(self, traj_lon, configuration_qp):
+        traj_lon_positions = traj_lon.get_positions()[:, 0]
+        lateral_driving_corridors = self.reach_interface.extract_driving_corridors(corridor_lon=self.corridor,
+                                                                                   list_p_lon=traj_lon_positions)
+        lat_dc = list(lateral_driving_corridors)[0]
+        d_min, d_max = lateral_position_constraints(lat_dc, self.corridor, traj_lon_positions, configuration_qp)
+        c_tv_lat = LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
+        return c_tv_lat
 
