@@ -22,7 +22,7 @@ import copy
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.utility.compute_constraints import longitudinal_position_constraints, \
-    lateral_position_constraints
+    lateral_position_constraints, longitudinal_velocity_constraints
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
@@ -101,7 +101,7 @@ class RuleConstraintsReach:
                                                   str(self._world_state.scenario.scenario_id) + '.xml'
         self.reach_config.update()
 
-        # semantic models
+        self.corridor = None
 
 
     def update_reach_interface(self):
@@ -174,9 +174,8 @@ class RuleConstraintsReach:
 
         # ==== extract optimal driving corridor
         self.reach_interface.determine_optimal_corridor()
-        corridor = self.reach_interface.corridor_optimal
-        s_min, s_max = longitudinal_position_constraints(corridor)
-        c_tv_lon = LonConstraints.construct_constraints(s_min, s_max, s_min, s_max)
+        self.corridor = self.reach_interface.corridor_optimal
+
         # * for debugging the reach semantic
         # import matplotlib.pyplot as plt
         # for time, node in self.reach_interface.reachable_set.items():
@@ -188,12 +187,19 @@ class RuleConstraintsReach:
         #             plt.plot(*reach_node[0].polygon_lon.exterior.xy)
         #             plt.title(str(time))
         #     plt.show()
-        pass
 
     def longitudinal_constraints(self):
+        # compute the driving corridor
         self.compute_semantic_reachable_set()
-        util_visual.plot_scenario_with_driving_corridor(
-            step_start=1, step_end=self._nr_ts,
-            reach_interface=self.reach_interface, save_gif=True)
-        pass
+        # util_visual.plot_scenario_with_driving_corridor(
+        #     step_start=1, step_end=self._nr_ts,
+        #     reach_interface=self.reach_interface, save_gif=True)
+        if self.corridor is None:
+            raise Exception("the driving corridor is either not computed or empty")
+        else:
+            s_min, s_max = longitudinal_position_constraints(self.corridor)
+            v_min, v_max = longitudinal_velocity_constraints(self.corridor)
+        c_tv_lon = LonConstraints.construct_constraints(s_min, s_max, s_min, s_max,
+                                                        v_min=v_min, v_max=v_max)
+        return c_tv_lon
 
