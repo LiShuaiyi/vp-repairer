@@ -17,7 +17,6 @@ from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit
                                            PredBrSpeedLimit, PredTypeSpeedLimit)
 from crmonitor.predicates.general import PredCutIn
 from crmonitor.predicates.acceleration import (PredAbruptBreaking, PredRelAbruptBreaking)
-from crmonitor.predicates.utils import (lanelets_dir, ref_path_lanelets)
 
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
@@ -353,12 +352,10 @@ class RuleConstraints:
 
     def ConstrStopLine(self, time_step: int):
         wold = self._rule_monitor.world
-        lanelets_dir_id = lanelets_dir(self._ego_vehicle, time_step, wold.road_network)
-        ref_path = ref_path_lanelets(self._ego_vehicle, wold.road_network, time_step)
-        for lanelet_id in lanelets_dir_id:
+        for lanelet_id in self._ego_vehicle.lanelets_dir:
             lanelet = wold.road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
             if lanelet.stop_line is not None:
-                stop_line_s = ref_path.clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0]
+                stop_line_s = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0]
         test = stop_line_s - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2 - 0.25
         return [-np.inf, test]
 
