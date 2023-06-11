@@ -137,7 +137,7 @@ class QPPlannerRepair(QPPlanner):
             # raise ValueError('<QPPlannerRepair/_lateral_trajectory_planning>: failed')
         cr_trajectory = self.transform_merge_trajectory(trajectory)
 
-        plot_position_constraints(trajectory, (long_constr.s_hard_min, long_constr.s_hard_max), (lat_constr.d_hard_min, lat_constr.d_hard_max))
+        # plot_position_constraints(trajectory, (long_constr.s_hard_min, long_constr.s_hard_max), (lat_constr.d_hard_min, lat_constr.d_hard_max))
         return cr_trajectory
 
     def construct_s_reference(self, lon_constr: LonConstraints):

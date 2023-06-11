@@ -163,16 +163,16 @@ class RuleConstraintsReach:
         # todo: update the semantics model
         # initialize the reach interface
         self.reach_interface = ReachableSetInterface(self.reach_config,
-                                                semantic_model,
-                                                rule_interface)
+                                                     semantic_model,
+                                                     rule_interface)
 
         self.reach_interface.compute_reachable_sets(
             step_start=1, step_end=self._nr_ts, verbose=True
         )
-        self.spot_interface = SpotInterface(self.reach_interface)
-        self.spot_interface.translate_ltl_formulas()
-        self.spot_interface.translate_reachability_graph()
-        self.spot_interface.check()
+        # self.spot_interface = SpotInterface(self.reach_interface)
+        # self.spot_interface.translate_ltl_formulas()
+        # self.spot_interface.translate_reachability_graph()
+        # self.spot_interface.check()
 
     def compute_semantic_reachable_set(self, vehicle_configuration, verbose=True):
         self.update_reach_interface(vehicle_configuration)
@@ -212,8 +212,7 @@ class RuleConstraintsReach:
 
     def lateral_constraints(self, traj_lon, configuration_qp):
         traj_lon_positions = traj_lon.get_positions()[:, 0]
-        lateral_driving_corridors = self.reach_interface.extract_driving_corridors(corridor_lon=self.corridor,
-                                                                                   list_p_lon=traj_lon_positions)
+        lateral_driving_corridors = self.reach_interface.extract_driving_corridors()
         lat_dc = list(lateral_driving_corridors)[0]
         d_min, d_max = lateral_position_constraints(lat_dc, self.corridor, traj_lon_positions, configuration_qp)
         c_tv_lat = LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
