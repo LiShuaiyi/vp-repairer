@@ -145,7 +145,6 @@ class STLRuleMonitor:
     def prop_robust_ttv(self):
         return self.rob_abstraction[self._violated_rule_idx][self._tv]
 
-
     def _initialize_prop_rob(self):
         """
         Construct 'nodes' for propositions for better backward compatibility.
@@ -186,7 +185,6 @@ class STLRuleMonitor:
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
-
 
     def evaluate_initially(self):
         """
