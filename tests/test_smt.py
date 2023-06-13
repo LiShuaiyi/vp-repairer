@@ -72,7 +72,7 @@ class TestSMTSolver(unittest.TestCase):
     def test_t_solver(self):
         t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(keeps_safe_distance_prec__a0_a1)>=(0.0)'), None)
+                            if prop.name == 'keeps_safe_distance_prec__a0_a1'), None)
         t_solver.assign_proposition([proposition], ["a"])
         # safe distance
         self.assertEqual(set(t_solver.compliant_maneuvers),
@@ -82,7 +82,7 @@ class TestSMTSolver(unittest.TestCase):
                             1.9,
                             abs_tol=1e-2)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(in_same_lane__a0_a1_i)>=(0.0)'), None)
+                            if prop.name == 'in_same_lane__a0_a1_i'), None)
         t_solver.assign_proposition([proposition], ["~c"])
         tc = t_solver.search_tc()
         assert math.isclose(tc,
@@ -112,7 +112,7 @@ class TestSMTSolver(unittest.TestCase):
     def test_construct_qp_repair(self):
         t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(keeps_safe_distance_prec__a0_a1)>=(0.0)'), None)
+                            if prop.name == 'keeps_safe_distance_prec__a0_a1'), None)
         assign_prop = [proposition]
         t_solver.assign_proposition(assign_prop, ["a"])
         t_solver.search_tc()
@@ -133,7 +133,7 @@ class TestSMTSolver(unittest.TestCase):
     def test_rule_constraints(self):
         t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
         proposition = next((prop for prop in list(self.rule_monitor.proposition_nodes)
-                            if prop.name == '(in_same_lane__a0_a1_i)>=(0.0)'), None)
+                            if prop.name == 'in_same_lane__a0_a1_i'), None)
         assign_prop = [proposition]
         t_solver.assign_proposition(assign_prop, ["~c"])
         t_solver.search_tc()
