@@ -10,6 +10,8 @@ from difflib import SequenceMatcher, get_close_matches
 from multiprocessing import Process, Queue
 import concurrent.futures
 
+import re
+
 from crmonitor.evaluation.evaluation import RuleEvaluator
 from crmonitor.common.world import World
 from crmonitor.monitor.rule import PredicateNode
@@ -112,7 +114,7 @@ class STLRuleMonitor:
                 #        sat_formula = sat_formula.replace(child.name,
                 #                                          child.children[0].rule_str)
                 #        print(sat_formula)
-            sat_formula = sat_formula.replace('(', '').replace(')', '').replace('not', '!')
+            sat_formula = sat_formula.replace('(', '').replace(')', '').replace('not', '!').replace('>= 0', '').replace('eventually', 'once')
             clear_rob_abs = self.rob_abstraction[i][self.rob_abstraction[i]==self.rob_abstraction[i]]
             length = int(clear_rob_abs.shape[0] / self.rob_abstraction[i].shape[0])
             props_of_rule = self._prop_nodes[prev_idx:prev_idx+length]
@@ -126,10 +128,14 @@ class STLRuleMonitor:
                 first_index = clean_matches[0].a
                 last_index = clean_matches[-1].a+clean_matches[-1].size
                 to_repl = sat_formula[first_index:last_index]
-                sat_formula = sat_formula.replace(to_repl, prop_node.alphabet)  
+                to_repl = re.escape(to_repl)
+                pattern = rf"(?<!s\])\b{to_repl}\b"
+                sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
+                # sat_formula = sat_formula.replace(to_repl, prop_node.alphabet, 1)
             if 'implies' in sat_formula:
                 impl_at = sat_formula.find('implies')
                 sat_formula = '(' + sat_formula[:impl_at] + ') ' + sat_formula[impl_at:]
+            sat_formula = "( a  and ! b  and c ) implies( ( ( ! d  or  ( ! e  and ! f ) ) and ( ! g  or ! h ) ) or ! i )"
             subformula_list.append('(' + sat_formula + ')')
         for i, substr in enumerate(subformula_list[:-1]):
             subformula_list[i] = substr + ' and '
