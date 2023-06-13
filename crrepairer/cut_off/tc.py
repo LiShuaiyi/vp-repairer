@@ -33,10 +33,11 @@ class TC(CutOffBase, ABC):
     def __init__(self,
                  ego_vehicle: DynamicObstacle,
                  rule_monitor: STLRuleMonitor):
-        rule_monitor_deepcopy = copy.deepcopy(rule_monitor)
+        rule_monitor_copy = copy.copy(rule_monitor)
+        rule_monitor_copy._world = copy.deepcopy(rule_monitor.world)
         ego_vehicle_deepcopy = copy.deepcopy(ego_vehicle)
-        super().__init__(ego_vehicle_deepcopy, rule_monitor_deepcopy.world)
-        self.rule_monitor = rule_monitor_deepcopy
+        super().__init__(ego_vehicle_deepcopy, rule_monitor_copy.world)
+        self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = self.rule_monitor.tv_time_step
         self._other_id = self.rule_monitor.other_id
