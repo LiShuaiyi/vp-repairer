@@ -11,7 +11,8 @@ from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 # class from STL monitor
 from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane, 
-                                           PredInFrontOf, PredPreceding, PredStopLineInFront)
+                                           PredInFrontOf, PredPreceding, PredStopLineInFront,
+                                           PredInIntersectionConflictArea)
 
 from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit,
                                            PredBrSpeedLimit, PredTypeSpeedLimit)
@@ -151,6 +152,9 @@ class RuleConstraints:
                         #--------------------------------------------------------------------------------------------#
                         elif predicate.base_name in (PredStopLineInFront.predicate_name,):
                             s_constr = self.ConstrStopLine(k)
+                            s_limit = self._get_overlap(s_limit, s_constr)
+                        elif predicate.base_name in (PredInIntersectionConflictArea.predicate_name,):
+                            s_constr = self.ConstrInIntersectionConflictAreaEgo(k)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         # --------------------------------------------------------------------------------------------#
                         else:
@@ -358,5 +362,20 @@ class RuleConstraints:
                 stop_line_s = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0]
         test = stop_line_s - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2 - 0.25
         return [-np.inf, test]
+
+    def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
+        index_prop_conflict_area_target = 0
+        rule_monitor = self._rule_monitor
+        world = rule_monitor.world
+        for i in range(len(rule_monitor.proposition_nodes)):
+            if rule_monitor.proposition_nodes[i].name == '(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)':
+                index_prop_conflict_area_target = i
+                break
+        prop_conflict_area_target = rule_monitor.prop_robust_all[0, time_step, index_prop_conflict_area_target]
+        if prop_conflict_area_target >= 0:
+            front_constr = 66 - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2
+        else:
+            front_constr = np.inf
+        return [-np.inf, front_constr]
 
 
