@@ -75,8 +75,11 @@ class TSolver:
                 elif predicate_category == "Pos" and \
                         predicate.evaluator.predicate_name in [PositionPredicates.StopLineInFront]:
                     compliant_maneuver += [Maneuver.BRAKE]
-                elif predicate_category == "Pos" and predicate.evaluator.predicate_name in [PositionPredicates.InIntersectionConflictArea]:
+                elif predicate_category == "Pos" and predicate.evaluator.predicate_name in [PositionPredicates.InIntersectionConflictArea] and predicate.agent_placeholders == (0, 1):
                     compliant_maneuver += [Maneuver.BRAKE]
+                elif predicate_category == "Pos" and predicate.evaluator.predicate_name in [PositionPredicates.InIntersectionConflictArea] and predicate.agent_placeholders == (1, 0):
+                    compliant_maneuver += [Maneuver.STEERRIGHT,
+                                           Maneuver.STEERLEFT]
                 elif predicate_category == "Pos":
                     compliant_maneuver += [Maneuver.STEERRIGHT,
                                            Maneuver.STEERLEFT]
