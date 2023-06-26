@@ -45,14 +45,15 @@ class STLRuleMonitor:
         self.multiproc = multiproc
         self._rules = [rules] if isinstance(rules, str) else rules
         self._rule_eval = []
+        self._world.vehicle_by_id(
+            self._vehicle_id).vehicle_param = create_ego_vehicle_param(
+            get_evaluation_config().get("ego_vehicle_param"), self._world.dt
+        )
         for rule in self._rules:
             prop_rule_eval = PropositionRuleEvaluator.create_from_config(self._world,
                                                                          self._world.vehicle_by_id(
                                                                              self._vehicle_id),
                                                                          rule)
-            prop_rule_eval.ego_vehicle.vehicle_param = create_ego_vehicle_param(
-                get_evaluation_config().get("ego_vehicle_param"), self._world.dt
-            )
             self._rule_eval.append(prop_rule_eval)
         if len(self._rule_eval) == 1:
             self.multiproc = False
