@@ -77,7 +77,7 @@ class TC(CutOffBase, ABC):
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
-        return int_round(self._tc - 0.1, 1)
+        return int_round(self._tc, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:

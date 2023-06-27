@@ -51,8 +51,7 @@ class STLRuleMonitor:
         )
         for rule in self._rules:
             prop_rule_eval = PropositionRuleEvaluator.create_from_config(self._world,
-                                                                         self._world.vehicle_by_id(
-                                                                             self._vehicle_id),
+                                                                         self._vehicle_id,
                                                                          rule)
             self._rule_eval.append(prop_rule_eval)
         if len(self._rule_eval) == 1:
