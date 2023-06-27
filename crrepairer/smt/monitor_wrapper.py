@@ -10,7 +10,8 @@ from difflib import SequenceMatcher, get_close_matches
 from multiprocessing import Process, Queue
 import concurrent.futures
 
-from crmonitor.evaluation.evaluation import RuleEvaluator
+from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
+from crmonitor.evaluation.evaluation import get_evaluation_config, create_ego_vehicle_param
 from crmonitor.common.world import World
 from crmonitor.monitor.rule import PredicateNode
 
@@ -42,15 +43,19 @@ class STLRuleMonitor:
         self._world: World = World.create_from_scenario(scenario)
         self._vehicle_id = vehicle_id
         self.multiproc = multiproc
-        self._rules = [rules] if isinstance(rules, str) else rules 
-        # todo: now only one rule is supported
-        # todo: create multiple rule evaluators
+        self._rules = [rules] if isinstance(rules, str) else rules
         self._rule_eval = []
+        self._world.vehicle_by_id(
+            self._vehicle_id).vehicle_param = create_ego_vehicle_param(
+            get_evaluation_config().get("ego_vehicle_param"), self._world.dt
+        )
         for rule in self._rules:
-            self._rule_eval.append(RuleEvaluator.create_from_config(self._world,
-                                                           self._world.vehicle_by_id(self._vehicle_id),
-                                                           rule))
-        if len(self._rule_eval) == 1: self.multiproc = False
+            prop_rule_eval = PropositionRuleEvaluator.create_from_config(self._world,
+                                                                         self._vehicle_id,
+                                                                         rule)
+            self._rule_eval.append(prop_rule_eval)
+        if len(self._rule_eval) == 1:
+            self.multiproc = False
         self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
             self.other_ids = self.evaluate_initially()
         # obtain the time-to-violation

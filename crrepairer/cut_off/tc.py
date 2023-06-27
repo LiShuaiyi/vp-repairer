@@ -36,8 +36,7 @@ class TC(CutOffBase, ABC):
         # avoid changing of rule_monitor in TSolver
         rule_monitor_copy = copy.copy(rule_monitor)
         rule_monitor_copy._world = copy.deepcopy(rule_monitor.world)
-        ego_vehicle_deepcopy = copy.deepcopy(ego_vehicle)
-        super().__init__(ego_vehicle_deepcopy, rule_monitor_copy.world)
+        super().__init__(ego_vehicle, rule_monitor_copy.world)
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = self.rule_monitor.tv_time_step
@@ -55,10 +54,10 @@ class TC(CutOffBase, ABC):
 
         # simulators
         self._sim_lon = SimulationLong(Maneuver.NONE,
-                                       self.ego_vehicle,
+                                       copy.deepcopy(self.ego_vehicle),
                                        config)
         self._sim_lat = SimulationLat(Maneuver.NONE,
-                                      self.ego_vehicle,
+                                      copy.deepcopy(self.ego_vehicle),
                                       config)
 
     @property
@@ -77,7 +76,7 @@ class TC(CutOffBase, ABC):
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
-        return int_round(self._tc - 0.1, 1)
+        return int_round(self._tc, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:

@@ -67,6 +67,11 @@ class QPPlannerRepair(QPPlanner):
                                                                            self._scenario,
                                                                            self._planning_problem)
 
+        # use the coordinate system from the world
+        self._vehicle_configuration.curvilinear_coordinate_system = rule_monitor.world.vehicle_by_id(
+            self._ego_vehicle.obstacle_id
+        ).get_lane(0).clcs
+
         # update the vehicle shape
         self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
         self._vehicle_configuration.length = self._ego_vehicle.obstacle_shape.length
