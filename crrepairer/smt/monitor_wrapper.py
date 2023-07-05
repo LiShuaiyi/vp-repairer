@@ -186,7 +186,7 @@ class STLRuleMonitor:
                         proposition.children.append(pred)
                 else:
                     other_props = np.delete(all_prop_names[idx[0]], idx[-1], 0)
-                    if not any([pred.name in p_name for p_name in other_props[other_props==other_props]]):
+                    if not any([pred.name in p_name for p_name in other_props[other_props == other_props]]):
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
@@ -249,6 +249,7 @@ class STLRuleMonitor:
                         prop_names.append([])
                         prop_rob.append([])
                     pred = evaluator.get_predicates()
+                    mpr_grad = evaluator.get_mpr_gradient()
                     if pred:
                         pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
                     else:
@@ -263,11 +264,17 @@ class STLRuleMonitor:
         max_n_props = max([p.shape[1] for p in prop_rob_all])
         for idx, prop_array in enumerate(prop_rob_all):
             if prop_array.shape[1] < max_n_props:
-                prop_rob_all[idx] = np.pad(prop_array, ((0,0),(0, max_n_props-prop_array.shape[1])), 
+                prop_rob_all[idx] = np.pad(prop_array, ((0, 0), (0, max_n_props - prop_array.shape[1])),
                                            'constant', constant_values=np.nan)
-                prop_names_all[idx] = np.pad(prop_names_all[idx], ((0,0), (0, max_n_props-prop_array.shape[1])), 
+                prop_names_all[idx] = np.pad(prop_names_all[idx], ((0, 0), (0, max_n_props-prop_array.shape[1])),
                                              'constant', constant_values=np.nan)
-        return np.array(rule_rob_all), np.array(pred_rob_all), np.array(prop_rob_all), np.array(prop_names_all), other_ids_all          
+        return (
+                np.array(rule_rob_all),
+                np.array(pred_rob_all),
+                np.array(prop_rob_all),
+                np.array(prop_names_all),
+                other_ids_all
+        )
 
     def multiproc_evaluate(self, index, q):
         evaluator = self._rule_eval[index]
