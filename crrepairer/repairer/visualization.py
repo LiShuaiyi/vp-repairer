@@ -130,6 +130,8 @@ def visualize_repairing_result(scenario: Scenario,
     fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(20, 10))
     rnd_0 = MPRenderer(ax=ax0, plot_limits=plot_limits)
     rnd_1 = MPRenderer(ax=ax1, plot_limits=plot_limits)
+    rnd_0_target = MPRenderer(ax=ax0, plot_limits=plot_limits)
+    rnd_1_target = MPRenderer(ax=ax1, plot_limits=plot_limits)
 
     # visualize scenario
 
@@ -137,14 +139,13 @@ def visualize_repairing_result(scenario: Scenario,
         rnd.draw_params.time_begin = time_step
         if end_time:
             rnd.draw_params.time_end = end_time
-        rnd.draw_params.trajectory.draw_trajectory = False
+        rnd.draw_params.trajectory.draw_trajectory = True
         rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
         rnd.draw_params.occupancy.draw_occupancies = False
         rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = False
-        rnd.draw_params.dynamic_obstacle.occupancy.draw_occupancies = False
-        rnd.draw_params.dynamic_obstacle.draw_shape = False
-        # rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
-        # rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
+
         scenario.draw(rnd)
         rnd.draw_params.dynamic_obstacle.draw_shape = True
 
@@ -155,7 +156,11 @@ def visualize_repairing_result(scenario: Scenario,
     ego_mark = 'x'
     rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
     rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
+    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
+    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
     ego_initial.draw(rnd_0)
+    target_veh.draw(rnd_0_target)
+
     # render scenario and ego vehicle
     rnd_0.render()
 
@@ -183,7 +188,10 @@ def visualize_repairing_result(scenario: Scenario,
 
     rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
     rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
+    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
+    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
     ego_repaired.draw(rnd_1)
+    target_veh.draw(rnd_1_target)
 
     # render scenario and ego vehicle
     rnd_1.render()
@@ -201,17 +209,17 @@ def visualize_repairing_result(scenario: Scenario,
                   markersize=7.5, zorder=22, linewidth=1.5,
                   label='repaired trajectory')
 
-    if target_veh:
-        ego_veh_state_ini = ego_initial.state_at_time(time_step)
-        ego_veh_state_rep = ego_repaired.state_at_time(time_step)
-        tar_veh_state = target_veh.state_at_time(time_step)
-        tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
-        unsafe_poly_ini = compute_unsafe_polygon(ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane)
-        rnd_0.ax.fill(*unsafe_poly_ini.exterior.xy, zorder=30, alpha=0.2,
-                      facecolor=TUMcolor.TUMorange.value, edgecolor=None)
-        unsafe_poly_rep = compute_unsafe_polygon(ego_veh_state_rep, tar_veh_state, target_veh, tar_veh_lane)
-        rnd_1.ax.fill(*unsafe_poly_rep.exterior.xy, zorder=30, alpha=0.2,
-                      facecolor=TUMcolor.TUMorange.value, edgecolor=None)
+    # if target_veh:
+    #     ego_veh_state_ini = ego_initial.state_at_time(time_step)
+    #     ego_veh_state_rep = ego_repaired.state_at_time(time_step)
+    #     tar_veh_state = target_veh.state_at_time(time_step)
+    #     tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
+    #     unsafe_poly_ini = compute_unsafe_polygon(ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane)
+    #     rnd_0.ax.fill(*unsafe_poly_ini.exterior.xy, zorder=30, alpha=0.2,
+    #                   facecolor=TUMcolor.TUMorange.value, edgecolor=None)
+    #     unsafe_poly_rep = compute_unsafe_polygon(ego_veh_state_rep, tar_veh_state, target_veh, tar_veh_lane)
+    #     rnd_1.ax.fill(*unsafe_poly_rep.exterior.xy, zorder=30, alpha=0.2,
+    #                   facecolor=TUMcolor.TUMorange.value, edgecolor=None)
 
     ax0.set_title('Initial configuration.')
     ax1.set_title('Repaired configuration.')
