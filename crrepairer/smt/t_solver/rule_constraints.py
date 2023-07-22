@@ -21,6 +21,9 @@ from crmonitor.predicates.acceleration import (PredAbruptBreaking, PredRelAbrupt
 
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
+from crmonitor.common.road_network import RoadNetwork
+from commonroad.scenario.lanelet import LaneletType
+from shapely.geometry import Polygon, LineString
 
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
@@ -364,16 +367,60 @@ class RuleConstraints:
         return [-np.inf, test]
 
     def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
+        def compute_conflict_start_end_points(ego_vehicle: Vehicle, target_vehicle: Vehicle, road_network: RoadNetwork, time_step):
+            all_conflict_points = list()
+            for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
+                lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
+                if LaneletType.INTERSECTION in lanelet.lanelet_type:
+                    # find conflict points between center vertices of lanelets_dir of k-th vehicle and reference path
+                    # lanelets of p-th vehicle
+                    conflict_points = find_conflict_points(ego_vehicle.lanelets_dir_center_vertices,
+                                                           lanelet.polygon.shapely_object)
+                    if conflict_points is not None:
+                        all_conflict_points.append(conflict_points)
+            if len(all_conflict_points) == 0:
+                return [np.inf, -np.inf]
+            start_conflict_s = ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*all_conflict_points[0][0])[0]
+            end_conflict_s = ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*all_conflict_points[-1][-1])[0]
+            return [start_conflict_s, end_conflict_s]
+
+        def find_conflict_points(line, conflict_polygon):
+            conflict_line_points = list()
+            # Create curved line
+            curved_line = LineString(line)
+            # Get intersection of line and polygon
+            intersection = curved_line.intersection(conflict_polygon)
+            if intersection.geom_type == 'Point':
+                conflict_line_points.append(intersection)
+            elif intersection.geom_type == 'LineString' or intersection.geom_type == 'LinearRing':
+                for point in intersection.coords:
+                    conflict_line_points.append(np.array(point))
+            elif intersection.geom_type == 'MultiPoint' or intersection.geom_type == 'MultiLineString':
+                for geom in intersection.geoms:
+                    for point in geom.coords:
+                        conflict_line_points.append(point)
+            if len(conflict_line_points) == 0:
+                conflict_points = None
+            else:
+                conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
+            if conflict_points is None:
+                return [np.inf, -np.inf]
+            return conflict_points
+
         index_prop_conflict_area_target = 0
         rule_monitor = self._rule_monitor
         world = rule_monitor.world
+        ego_vehicle = self._ego_vehicle
+        target_vehicle = self._target_vehicle
         for i in range(len(rule_monitor.proposition_nodes)):
             if rule_monitor.proposition_nodes[i].name == '(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)':
                 index_prop_conflict_area_target = i
                 break
         prop_conflict_area_target = rule_monitor.prop_robust_all[0, time_step, index_prop_conflict_area_target]
         if prop_conflict_area_target >= 0:
-            front_constr = 66 - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2
+            conflict_points = compute_conflict_start_end_points(ego_vehicle, target_vehicle, world.road_network,
+                                                                time_step)
+            front_constr = conflict_points[0] - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2 - 2
         else:
             front_constr = np.inf
         return [-np.inf, front_constr]
