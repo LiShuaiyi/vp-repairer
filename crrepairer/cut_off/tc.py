@@ -54,10 +54,10 @@ class TC(CutOffBase, ABC):
 
         # simulators
         self._sim_lon = SimulationLong(Maneuver.NONE,
-                                       self.ego_vehicle,
+                                       copy.deepcopy(self.ego_vehicle),
                                        config)
         self._sim_lat = SimulationLat(Maneuver.NONE,
-                                      self.ego_vehicle,
+                                      copy.deepcopy(self.ego_vehicle),
                                       config)
 
     @property
