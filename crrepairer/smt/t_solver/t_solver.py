@@ -4,6 +4,7 @@ from typing import List
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
+# from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
@@ -30,9 +31,10 @@ class TSolver:
         self._compliant_maneuvers = list()
         self._repairability = False
         self._qp_planner = None
+        self._miqp_planner = None
         self._planning_problem = planning_problem
 
-        self.verbose = False
+        self.verbose = True
 
     @property
     def tc_object(self):
@@ -122,8 +124,14 @@ class TSolver:
                                            self._prop_full,
                                            self._planning_problem,
                                            verbose=self.verbose)
+        # self._miqp_planner = MIQPPlannerRepair(self._rule_monitor,
+        #                                        self._tc_obj,
+        #                                        self._sel_prop,
+        #                                        self._prop_full,
+        #                                        self._planning_problem)
         start_time = time.time()
         repaired_trajectory = self._qp_planner.plan()
+        # repaired_trajectory = self._miqp_planner.plan()
         print(f"* \t<TSolver>: solving time {time.time()-start_time:.3f}s")
         return repaired_trajectory
 
