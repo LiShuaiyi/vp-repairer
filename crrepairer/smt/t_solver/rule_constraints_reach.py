@@ -20,7 +20,7 @@ from crmonitor.common.vehicle import Vehicle
 from typing import List
 import copy
 
-from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
+from commonroad_qp_planner.configuration import PlanningConfigurationVehicle, ReferencePoint
 from commonroad_qp_planner.utility.compute_constraints import longitudinal_position_constraints, \
     lateral_position_constraints, longitudinal_velocity_constraints
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
@@ -33,16 +33,25 @@ from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.state import InitialState
 
 # specification-compliant reachable set
-try:
-    from commonroad_reach_semantic.data_structure.configuration_builder import ConfigurationBuilder
-    from commonroad_reach_semantic.data_structure.semantic_model import SemanticModel
-    from commonroad_reach_semantic.data_structure.traffic_rule_interface import TrafficRuleInterface
-    from commonroad_reach_semantic.data_structure.reach.reach_interface import ReachableSetInterface
-    from commonroad_reach_semantic.data_structure.spot_interface import SpotInterface
-    from commonroad_reach_semantic.data_structure.driving_corridor_extractor import DrivingCorridorExtractor
-    from commonroad_reach_semantic.utility import visualization as util_visual
-except ImportWarning:
-    print("commonroad-reach-semantic is not installed")
+import commonroad_reach_semantic.data_structure.rule.priorities as priorities
+from commonroad_reach_semantic.data_structure.config.semantic_configuration_builder import \
+    SemanticConfigurationBuilder
+from commonroad_reach_semantic.data_structure.driving_corridor_extractor import DrivingCorridorExtractor
+from commonroad_reach.data_structure.reach.reach_interface import ReachableSetInterface
+from commonroad_reach_semantic.data_structure.environment_model.semantic_model import SemanticModel
+from commonroad_reach_semantic.data_structure.model_checking.spot_interface import SpotInterface
+from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_py import \
+    PySemanticLabelingReachableSet
+from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_cpp import \
+    CppSemanticLabelingReachableSet
+from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_py import PySemanticOTFReachableSet
+from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_cpp import CppSemanticOTFReachableSet
+from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_py import \
+    PySemanticSplittingOTFReachableSet
+from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_cpp import \
+    CppSemanticSplittingOTFReachableSet
+from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import TrafficRuleInterface
+from commonroad_reach_semantic.utility import visualization as util_visual
 
 
 class RuleConstraintsReach:
@@ -91,18 +100,20 @@ class RuleConstraintsReach:
 
         # initialize the commonroad-reach
         # we use the default path of the reach folder
-        self.reach_config = ConfigurationBuilder.build_configuration(
+        # todo: use params for path
+
+        path_root = "/home/yuanfei/repairverse/commonroad-reach-semantic"
+        self.reach_config = SemanticConfigurationBuilder(path_root=path_root).build_configuration(
             str(self._world_state.scenario.scenario_id))
         # update the time step and nr of computation
         self.reach_config.planning.dt = self._world_state.dt
         self.reach_config.planning.steps_computation = self._nr_ts
         # update the path
-        self.reach_config.general.path_scenario = "../../scenarios/" +\
+        self.reach_config.general.path_scenario = "../../scenarios/" + \
                                                   str(self._world_state.scenario.scenario_id) + '.xml'
         self.reach_config.update()
 
         self.corridor = None
-
 
     def update_reach_interface(self, vehicle_configuration: PlanningConfigurationVehicle):
         # obtain the cut-off state
@@ -156,55 +167,44 @@ class RuleConstraintsReach:
             CLCS=vehicle_configuration.CLCS
         )
         semantic_model = SemanticModel(self.reach_config)
-        rule_interface = TrafficRuleInterface(self.reach_config)
-        semantic_model.determine_traffic_priorities(rule_interface.dict_traffic_sign_to_priorities)
-        rule_interface.concretize_traffic_rules(semantic_model)
+        semantic_model.determine_traffic_priorities(priorities.dict_traffic_sign_to_priorities)
+
+        rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
         rule_interface.print_summary()
+
         # todo: update the semantics model
         # initialize the reach interface
-        self.reach_interface = ReachableSetInterface(self.reach_config,
-                                                     semantic_model,
-                                                     rule_interface)
+        self.reach_interface = ReachableSetInterface(self.reach_config)
+        self.reach_interface._reach = PySemanticLabelingReachableSet(self.reach_config, semantic_model, rule_interface)
 
         self.reach_interface.compute_reachable_sets(
-            step_start=1, step_end=self._nr_ts, verbose=True
+            step_start=0, step_end=self._nr_ts, verbose=True
         )
-        # self.spot_interface = SpotInterface(self.reach_interface)
-        # self.spot_interface.translate_ltl_formulas()
-        # self.spot_interface.translate_reachability_graph()
-        # self.spot_interface.check()
+        self.spot_interface = SpotInterface(self.reach_interface, rule_interface)
+        self.spot_interface.translate_ltl_formulas()
+        self.spot_interface.translate_reachability_graph()
+        self.spot_interface.check()
 
     def compute_semantic_reachable_set(self, vehicle_configuration, verbose=True):
         self.update_reach_interface(vehicle_configuration)
-        self.reach_interface.check()
+        dc_extractor = DrivingCorridorExtractor(self.spot_interface)
+        dc_extractor.extract_corridors(search=True)
+        self.corridor = dc_extractor.determine_optimal_corridor()
 
-        # ==== extract optimal driving corridor
-        self.reach_interface.determine_optimal_corridor()
-        self.corridor = self.reach_interface.corridor_optimal
-
-        # # * for debugging the reach semantic
-        # import matplotlib.pyplot as plt
-        # for time, node in self.reach_interface.reachable_set.items():
-        #     print(time)
-        #     for id, reach_node in node.items():
-        #         print(reach_node[0].p_lon_min, reach_node[0].p_lon_max,
-        #               reach_node[0].v_lon_min, reach_node[0].v_lon_max)
-        #         plt.plot(*reach_node[0].polygon_lon.exterior.xy)
-        #         plt.title(str(time))
-        # plt.show()
+        # * for debugging the reach semantic
+        #util_visual.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
 
     def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
         self.compute_semantic_reachable_set(vehicle_configuration)
-        # util_visual.plot_scenario_with_driving_corridor(
-        #     step_start=1, step_end=self._nr_ts,
-        #     reach_interface=self.reach_interface, save_gif=True)
-        # from matplotlib import pyplot as plt
-        # plt.close('all')
+
         if self.corridor is None:
             raise Exception("the driving corridor is either not computed or empty")
         else:
-            s_min, s_max = longitudinal_position_constraints(self.corridor)
+            if vehicle_configuration.reference_point == ReferencePoint.REAR:
+                s_min, s_max = np.array(longitudinal_position_constraints(self.corridor)) - vehicle_configuration.wb_ra
+            else:
+                s_min, s_max = longitudinal_position_constraints(self.corridor)
             v_min, v_max = longitudinal_velocity_constraints(self.corridor)
         c_tv_lon = LonConstraints.construct_constraints(s_min, s_max, s_min, s_max,
                                                         v_min=v_min, v_max=v_max)
@@ -217,4 +217,3 @@ class RuleConstraintsReach:
         d_min, d_max = lateral_position_constraints(lat_dc, self.corridor, traj_lon_positions, configuration_qp)
         c_tv_lat = LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
         return c_tv_lat
-
