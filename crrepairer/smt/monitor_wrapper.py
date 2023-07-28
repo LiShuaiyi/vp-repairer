@@ -13,7 +13,7 @@ import concurrent.futures
 from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
 from crmonitor.evaluation.evaluation import get_evaluation_config, create_ego_vehicle_param
 from crmonitor.common.world import World
-from crmonitor.monitor.rule import PredicateNode
+from crmonitor.rule.rule_node import PredicateNode
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
@@ -249,7 +249,7 @@ class STLRuleMonitor:
                         prop_names.append([])
                         prop_rob.append([])
                     pred = evaluator.get_predicates()
-                    mpr_grad = evaluator.get_mpr_gradient()
+                    # mpr_grad = evaluator.get_mpr_gradient()
                     if pred:
                         pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
                     else:
