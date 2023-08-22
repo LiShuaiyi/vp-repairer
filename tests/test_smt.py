@@ -34,7 +34,7 @@ class TestSMTSolver(unittest.TestCase):
     def test_construction(self):
         self.assertEqual(len(self.rule_monitor.proposition_nodes), 4)
         rule_monitor = self.rule_monitor
-        for i,node in enumerate(self.rule_monitor.proposition_nodes):
+        for i, node in enumerate(self.rule_monitor.proposition_nodes):
             self.assertEqual(
                 rule_monitor.prop_robust_ttv[i],
                 node.ttv_value)
