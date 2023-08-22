@@ -8,7 +8,7 @@ from crrepairer.cut_off.utils import visualize_state_list, int_round
 
 from commonroad_crime.utility.simulation import SimulationLong, SimulationLat, Maneuver
 from commonroad_crime.utility.general import check_elements_state_list
-from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
+from commonroad_crime.data_structure.configuration import CriMeConfiguration
 
 from crmonitor.common.world import World
 

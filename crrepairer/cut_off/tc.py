@@ -12,7 +12,7 @@ from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.state import CustomState, PMState, KSState
 
 from commonroad_crime.utility.simulation import SimulationLong, SimulationLat, Maneuver
-from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
+from commonroad_crime.data_structure.configuration import CriMeConfiguration
 from commonroad_crime.utility.general import check_elements_state_list
 
 from crrepairer.cut_off.base import CutOffBase
@@ -48,7 +48,14 @@ class TC(CutOffBase, ABC):
         self._mid = None
         self._search_mode = TCSearchMode.BINARY
 
-        config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
+        # todo fix in params
+        if os.path.exists("../../../commonroad-criticality-measures"):
+            config = CriMeConfiguration.load(os.path.join(os.getcwd(),
+                                                          "../../../commonroad-criticality-measures/config_files/" + str(
+                                                              self.scenario.scenario_id) + ".yaml"),
+                                             str(self.scenario.scenario_id))
+        else:
+            config = CriMeConfiguration()
         config.scenario = self.scenario
         config.time.steer_width = 2  # use the lane width mode
 
