@@ -13,7 +13,7 @@ import concurrent.futures
 from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
 from crmonitor.evaluation.evaluation import get_evaluation_config, create_ego_vehicle_param
 from crmonitor.common.world import World
-from crmonitor.monitor.rule import PredicateNode
+from crmonitor.rule.rule_node import PredicateNode
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
