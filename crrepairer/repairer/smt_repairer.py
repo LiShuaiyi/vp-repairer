@@ -89,8 +89,8 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                                     vehicle_id: int = 0) -> DynamicObstacle:
         """
         Converts trajectory object to CommonRoad obstacle with specified width and length
-        :param width: The width of the ego vehicle
-        :param length: The length of the ego vehicle
+        :param shape: The vehicle shape
+        :param initial_state: The initial state of the ego vehicle
         :param vehicle_id: ID of ego vehicle
         :return: The CommonRoad DynamicObstacle object containing the current trajectory
         """
