@@ -20,7 +20,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 30
-    rule = ["TEST_R_IN3"]
+    rule = ["R_IN3"]
     N = 49
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory = Trajectory(1, ego_initial.prediction.trajectory.state_list[:N])
