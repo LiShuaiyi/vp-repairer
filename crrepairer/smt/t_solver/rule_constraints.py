@@ -359,12 +359,13 @@ class RuleConstraints:
 
     def ConstrStopLine(self, time_step: int):
         wold = self._rule_monitor.world
+        upper_bound = np.inf
         for lanelet_id in self._ego_vehicle.lanelets_dir:
             lanelet = wold.road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
             if lanelet.stop_line is not None:
                 stop_line_s = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0]
-        test = stop_line_s - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2 - 0.25
-        return [-np.inf, test]
+                upper_bound = stop_line_s - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2 - 0.25
+        return [-np.inf, upper_bound]
 
     def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
         def compute_conflict_start_end_points(ego_vehicle: Vehicle, target_vehicle: Vehicle, road_network: RoadNetwork, time_step):
