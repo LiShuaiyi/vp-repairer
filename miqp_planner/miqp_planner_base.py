@@ -40,7 +40,7 @@ class MIQPPlanner:
         self.N = round(time_horizon/self.dt)
         if isinstance(planning_problem.initial_state, State):
             # this state is in curvilinear coordinate system
-            self.initial_state = compute_initial_state(planning_problem, vehicle_configuration)
+            self.initial_state = compute_initial_state(planning_problem.initial_state, vehicle_configuration)
         elif not isinstance(planning_problem.initial_state, TrajPoint):
             raise ValueError('<QPPlanner/__init__>: Initial state must be of type {} or '
                              'of type {}. Got type {}.'.format(type(State),
@@ -58,7 +58,7 @@ class MIQPPlanner:
             self.vehicle_configuration.desired_speed = self.initial_state.v
 
         # TODO: for bug at lateral planner initial state
-        self.initial_state_lat_orientation = planning_problem.initial_state.orientation
+        self.initial_state_lat_orientation = self.initial_state.orientation
 
     def longitudinal_trajectory_planning(self, reference_path, long_constraints: LongitudinalConstraint):
         long_planner = MIQPLongPlanner(horizon=self.t_h,

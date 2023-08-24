@@ -159,7 +159,8 @@ def visualize_repairing_result(scenario: Scenario,
     rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
     rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
     ego_initial.draw(rnd_0)
-    target_veh.draw(rnd_0_target)
+    if target_veh:
+        target_veh.draw(rnd_0_target)
 
     # render scenario and ego vehicle
     rnd_0.render()
@@ -191,7 +192,8 @@ def visualize_repairing_result(scenario: Scenario,
     rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
     rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
     ego_repaired.draw(rnd_1)
-    target_veh.draw(rnd_1_target)
+    if target_veh:
+        target_veh.draw(rnd_1_target)
 
     # render scenario and ego vehicle
     rnd_1.render()

@@ -51,8 +51,8 @@ class STLRuleMonitor:
         self._rule_eval = []
         for rule in self._rules:
             self._rule_eval.append(RuleEvaluator.create_from_config(self._world,
-                                                           self._world.vehicle_by_id(self._vehicle_id),
-                                                           rule))
+                                                                    self._world.vehicle_by_id(self._vehicle_id),
+                                                                    rule))
         if len(self._rule_eval) == 1: self.multiproc = False
         self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
             self.other_ids = self.evaluate_initially()
