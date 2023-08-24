@@ -20,7 +20,7 @@ if __name__ == '__main__':
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(lanelet_assignment=True)
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 30
-    rule = ["TEST_R_IN3"]
+    rule = ["R_IN3"]
     N = 49
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory = Trajectory(1, ego_initial.prediction.trajectory.state_list[:N])
@@ -47,7 +47,7 @@ if __name__ == '__main__':
                                 tc=repairer.tc, tv=repairer.tv)
             visualize_a_profile(scenario.dt, ego_initial, ego_repaired, time_start=0,
                                 time_end=N, tc=repairer.tc, tv=repairer.tv)
-            for time_step in range(20, N):
+            for time_step in range(11, N):
                 visualize_repairing_result(scenario,
                                            ego_initial,
                                            ego_repaired,
@@ -55,5 +55,5 @@ if __name__ == '__main__':
                                            tc=repairer.tc,
                                            tv=repairer.tv,
                                            plot_limits=plot_limits,
-                                           target_veh=None,
+                                           target_veh=target_veh,
                                            world=traffic_rule_monitor.world)  # , save_path=figure_path)
