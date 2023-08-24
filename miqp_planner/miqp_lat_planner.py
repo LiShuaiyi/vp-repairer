@@ -183,7 +183,9 @@ class MIQPLatPlanner:
         self.solver.costfunc_lat(self._x_ref_lat, self.weight, d_reference=self.d_reference)
         self.solver.solve()
         self.var_x = self.solver.get_var_x()
-        print("pass")
+        self.control_u = self.solver.get_control_u()
+        trajectory = self.create_output_trajectory()
+        return trajectory
 
     def _init_state_var(self):
         x_shape = self._lateral_constraints.var_lat_x_lb.shape
@@ -270,3 +272,25 @@ class MIQPLatPlanner:
             kappa_lim_k = min(np.sqrt(self.vehicle_configuration.a_max ** 2 - a ** 2) / (np.max([v, 0.5]) ** 2), self.kappa_max)
             kappa_lim.append(kappa_lim_k)
         self._lateral_constraints.kappa_lim = np.array(kappa_lim)
+
+    def create_output_trajectory(self):
+        long_traj_states = self._lateral_constraints.long_traj.states
+        traj = list()
+        # add initial state
+        traj.append(TrajPoint(self._x_init_lat.t, self._x_init_lat.s, self._x_init_lat.d, self._x_init_lat.theta,
+                              self._x_init_lat.v, self._x_init_lat.a, j=self._x_init_lat.j))
+        for k in range(self.N):
+            traj.append(TrajPoint(t=self._x_init_lat.t + self.dt * (k + 1),
+                                  x=long_traj_states[k + 1].position[0],
+                                  y=self.var_x[0, k + 1],
+                                  theta=self.var_x[1, k + 1],
+                                  v=long_traj_states[k + 1].v,
+                                  a=long_traj_states[k + 1].a,
+                                  kappa=self.var_x[2, k + 1],
+                                  j=long_traj_states[k + 1].j,
+                                  kappa_dot=self.var_x[3, k + 1],
+                                  lane=-1))
+        traj = Trajectory(traj, TrajectoryType.CARTESIAN)
+        traj._u_lon = self._lateral_constraints.long_traj.u_lon
+        traj._u_lat = self.control_u
+        return traj
