@@ -97,4 +97,5 @@ class MIQPPlanner:
                                      x_ref_lat=x_ref_lat,
                                      vehicle_configuration=self.vehicle_configuration,
                                      miqp_lat_params=None)  # TODO: need to add
-        lat_planner.plan()
+        trajectory = lat_planner.plan()
+        return trajectory
