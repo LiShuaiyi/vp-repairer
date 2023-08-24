@@ -4,6 +4,8 @@ from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstra
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
+from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
+from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 from crrepairer.smt.monitor_wrapper import PropositionNode
 
@@ -103,7 +105,9 @@ class MIQPPlannerRepair(MIQPPlanner):
                                                 traj_lon,
                                                 self._long_constraints.sel_prop_full)
         lateral_constraints.create_d_constraints(traj_lon)
-        self.lateral_trajectory_planning(traj_lon, lateral_constraints, d_reference=None)
+        trajectory = self.lateral_trajectory_planning(traj_lon, lateral_constraints, d_reference=None)
+        cr_trajectory = self.transform_merge_trajectory(trajectory)
+        return cr_trajectory
 
 
     def construct_s_reference(self):
@@ -124,8 +128,39 @@ class MIQPPlannerRepair(MIQPPlanner):
     def convert_traj_to_ego_vehicle(self):
         pass
 
-    def transform_merge_trajectory(self):
-        pass
+    def transform_merge_trajectory(self, trajectory: QPTrajectory):
+        """
+        Transforms and merges the trajectory (before and after repairing)
+        """
+        cartesian_traj_points = list()
+        for state in trajectory.states:
+            cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
+                state.position[0], state.position[1])
+            cartesian_traj_points.append(TrajPoint(
+                t=state.t, x=cart_pos[0], y=cart_pos[1], theta=state.orientation, v=state.v,
+                a=state.a,
+                kappa=state.kappa, kappa_dot=state.kappa_dot, j=state.j, lane=state.lane))
+
+        traj = QPTrajectory(cartesian_traj_points, TrajectoryType.CARTESIAN)
+
+        traj._u_lon = trajectory.u_lon
+        traj._u_lat = trajectory.u_lat
+        cr_traj_repaired = traj.convert_to_cr_trajectory(self._vehicle_configuration.wheelbase)
+        if self._cut_off_time_step == 0:
+            remaining_states = [self._ego_vehicle.initial_state]
+        else:
+            remaining_states = [self._ego_vehicle.initial_state] + \
+                               self._initial_trajectory.states_in_time_interval(1, self._cut_off_time_step - 1)
+        for state in cr_traj_repaired.state_list:
+            state.time_step += self._cut_off_time_step
+        state_list = [CustomState(time_step=state.time_step,
+                                  position=state.position,
+                                  velocity=state.velocity,
+                                  orientation=state.orientation,
+                                  acceleration=state.acceleration) for state
+                      in remaining_states + cr_traj_repaired.state_list]
+        cr_traj_repaired = Trajectory(0, state_list)
+        return cr_traj_repaired
 
     def config_settings(self):
         """
