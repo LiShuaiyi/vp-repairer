@@ -252,7 +252,7 @@ class MIQPLatPlanner:
                 ini_kappa = (self.theta_r[1] - self.theta_r[0]) / (
                             self._x_ref_lat.reference[1].s - self._x_ref_lat.reference[0].s)
                 # TODO: initial state t = 0s
-                self._lateral_constraints.init_state = np.array([0, self.theta_r[0], ini_kappa, 0.0]).transpose()
+                self._lateral_constraints.init_state = np.array([self._x_init_lat.d, self.theta_r[0], ini_kappa, 0.0]).transpose()
 
             # selection matrix for output
             S = np.array([[1, 0, 0, 0, 0],
