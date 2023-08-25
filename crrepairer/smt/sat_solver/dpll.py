@@ -7,15 +7,15 @@ from z3 import sat, unsat
 
 
 class DPLL:
-    def __init__(self, sympy_cnf: str,
-                 prop_nodes=None,
-                 tv_time_step=0):
+    def __init__(self, sympy_cnf: str, prop_nodes=None, tv_time_step=0):
         """
         Based on the pseudocode in Wikipedia page:
         https://en.wikipedia.org/wiki/DPLL_algorithm
         """
-        assert is_cnf(sympy_cnf), "<DPLL>: the given formula {} is not CNF or" \
-                                  " not in the sympy CNF standard".format(sympy_cnf)
+        assert is_cnf(sympy_cnf), (
+            "<DPLL>: the given formula {} is not CNF or"
+            " not in the sympy CNF standard".format(sympy_cnf)
+        )
         self._cnf = self._assign_cnf(sympy_cnf)
         self._prop_nodes = prop_nodes
         self._tv_time_step = tv_time_step
@@ -50,6 +50,7 @@ class DPLL:
             # print("<DPLL>: the robustness of instances in TV of alphabet {} is {}"
             #       .format(alp, prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step]))
             return rob_min_tv_h
+
         literals = []
         for sub in cnf:
             split_cnf = sub.split()
@@ -65,11 +66,19 @@ class DPLL:
 
     @staticmethod
     def _assign_cnf(sympy_cnf):
-        return sympy_cnf.replace('(', '').replace('~~', '').replace(')', '').replace('|', '').split(' & ')
+        return (
+            sympy_cnf.replace("(", "")
+            .replace("~~", "")
+            .replace(")", "")
+            .replace("|", "")
+            .split(" & ")
+        )
 
     def update_cnf(self, cnf):
         self._cnf = self._assign_cnf(cnf)
-        self._literals = self.get_literal(self._cnf, self._prop_nodes, self._tv_time_step)
+        self._literals = self.get_literal(
+            self._cnf, self._prop_nodes, self._tv_time_step
+        )
         self._assign_true = set()
         self._assign_false = set()
         self._new_true = []
@@ -92,7 +101,7 @@ class DPLL:
         self._assign_true = set(self._assign_true)
         self._assign_false = set(self._assign_false)
         if len(units):
-            cnf = [clause.replace('~~', '') for clause in cnf]
+            cnf = [clause.replace("~~", "") for clause in cnf]
             cnf = self.unit_propagation(cnf, units)
         if len(cnf) == 0:
             # if \phi is a consistent set of literals
@@ -106,7 +115,7 @@ class DPLL:
         # print('<DPLL>: literal ({}) is selected'.format(lit))
         if self._solve(deepcopy(cnf) + [lit]) == sat:
             return sat
-        elif self._solve(deepcopy(cnf) + ['~'+lit]) == sat:
+        elif self._solve(deepcopy(cnf) + ["~" + lit]) == sat:
             return sat
         else:
             self._assign_true = set()
@@ -118,7 +127,7 @@ class DPLL:
 
     def unit_propagation(self, cnf, units):
         for unit in units:
-            if '~' in unit:
+            if "~" in unit:
                 self._assign_false.add(unit)
                 self._new_false.append(unit)
                 i = 0
@@ -127,9 +136,9 @@ class DPLL:
                         cnf.remove(cnf[i])
                         i -= 1
                     elif unit[-1] in cnf[i]:
-                        cnf[i] = cnf[i].replace(unit[-1], '').strip()
-                        if '  ' in cnf[i]:
-                            cnf[i] = cnf[i].replace('  ', ' ')
+                        cnf[i] = cnf[i].replace(unit[-1], "").strip()
+                        if "  " in cnf[i]:
+                            cnf[i] = cnf[i].replace("  ", " ")
                     i += 1
                     if i >= len(cnf):
                         break
@@ -138,10 +147,10 @@ class DPLL:
                 self._new_true.append(unit)
                 i = 0
                 while True:
-                    if '~'+unit in cnf[i]:
-                        cnf[i] = cnf[i].replace('~'+unit, '').strip()
-                        if '  ' in cnf[i]:
-                            cnf[i] = cnf[i].replace('  ', ' ')
+                    if "~" + unit in cnf[i]:
+                        cnf[i] = cnf[i].replace("~" + unit, "").strip()
+                        if "  " in cnf[i]:
+                            cnf[i] = cnf[i].replace("  ", " ")
                     elif unit in cnf[i]:
                         cnf.remove(cnf[i])
                         i -= 1
@@ -151,7 +160,7 @@ class DPLL:
         return cnf
 
 
-if __name__ == '__main__':
-    dpll_solver = DPLL('a & ~a')
+if __name__ == "__main__":
+    dpll_solver = DPLL("a & ~a")
     print(dpll_solver.solve())
     print(dpll_solver.model)
