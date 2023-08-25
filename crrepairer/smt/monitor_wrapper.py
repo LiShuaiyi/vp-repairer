@@ -133,7 +133,8 @@ class STLRuleMonitor:
                                           sat_formula, 
                                           prop_node_name,
                                           autojunk=True).get_matching_blocks()
-                clean_matches = [match for match in matches if match.size>2]
+                # TODO: match.size>1, further check necessary
+                clean_matches = [match for match in matches if match.size>1]
                 first_index = clean_matches[0].a
                 last_index = clean_matches[-1].a+clean_matches[-1].size
                 to_repl = sat_formula[first_index:last_index]
