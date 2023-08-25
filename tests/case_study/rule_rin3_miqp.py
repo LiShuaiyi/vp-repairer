@@ -1,4 +1,4 @@
-from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor, ScenarioType
 from crrepairer.repairer.smt_repairer_miqp import SMTTrajectoryRepairer
 from crrepairer.repairer.visualization import (visualize_repairing_result,
                                                visualize_a_profile,
@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(scenario,
-                                          ego_id, rule[0])
+                                          ego_id, rule[0], ScenarioType.INTERSECTION)
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor,
