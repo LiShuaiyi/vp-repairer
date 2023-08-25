@@ -2631,6 +2631,36 @@
     </position>
     <virtual>false</virtual>
   </trafficSign>
+  <intersection id="25">
+    <incoming id="21">
+      <incomingLanelet ref="1"/>
+      <successorsRight ref="20"/>
+      <successorsStraight ref="3"/>
+      <successorsLeft ref="5"/>
+      <isLeftOf ref="24"/>
+    </incoming>
+    <incoming id="22">
+      <incomingLanelet ref="8"/>
+      <successorsRight ref="6"/>
+      <successorsStraight ref="13"/>
+      <successorsLeft ref="11"/>
+      <isLeftOf ref="21"/>
+    </incoming>
+    <incoming id="23">
+      <incomingLanelet ref="10"/>
+      <successorsRight ref="12"/>
+      <successorsStraight ref="4"/>
+      <successorsLeft ref="17"/>
+      <isLeftOf ref="22"/>
+    </incoming>
+    <incoming id="24">
+      <incomingLanelet ref="16"/>
+      <successorsRight ref="18"/>
+      <successorsStraight ref="14"/>
+      <successorsLeft ref="19"/>
+      <isLeftOf ref="23"/>
+    </incoming>
+  </intersection>
   <dynamicObstacle id="31">
     <type>car</type>
     <shape>
