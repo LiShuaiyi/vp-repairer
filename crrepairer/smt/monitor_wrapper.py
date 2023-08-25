@@ -15,7 +15,7 @@ from crmonitor.evaluation.evaluation import (
     get_evaluation_config,
     create_ego_vehicle_param,
 )
-from crmonitor.common.world import World
+from crmonitor.common.world import World, get_world_config
 from crmonitor.rule.rule_node import PredicateNode
 
 # CommonRoad Toolbox
