@@ -4,6 +4,7 @@ from typing import List
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
+
 # from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
@@ -87,14 +88,26 @@ class TSolver:
                     ]
                 ):
                     compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
-                elif predicate_category == "Pos" and \
-                        predicate.evaluator.predicate_name in [PositionPredicates.StopLineInFront]:
+                elif (
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.StopLineInFront]
+                ):
                     compliant_maneuver += [Maneuver.BRAKE]
-                elif predicate_category == "Pos" and predicate.evaluator.predicate_name in [PositionPredicates.InIntersectionConflictArea] and predicate.agent_placeholders == (0, 1):
+                elif (
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.InIntersectionConflictArea]
+                    and predicate.agent_placeholders == (0, 1)
+                ):
                     compliant_maneuver += [Maneuver.BRAKE]
-                elif predicate_category == "Pos" and predicate.evaluator.predicate_name in [PositionPredicates.InIntersectionConflictArea] and predicate.agent_placeholders == (1, 0):
-                    compliant_maneuver += [Maneuver.STEERRIGHT,
-                                           Maneuver.STEERLEFT]
+                elif (
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.InIntersectionConflictArea]
+                    and predicate.agent_placeholders == (1, 0)
+                ):
+                    compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
                 elif predicate_category == "Pos":
                     compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
                 elif predicate_category == "Vel":
@@ -129,12 +142,14 @@ class TSolver:
         """
         Initializes the qp planner and uses it for trajectory repairing.
         """
-        self._qp_planner = QPPlannerRepair(self._rule_monitor,
-                                           self._tc_obj,
-                                           self._sel_prop,
-                                           self._prop_full,
-                                           self._planning_problem,
-                                           verbose=self.verbose)
+        self._qp_planner = QPPlannerRepair(
+            self._rule_monitor,
+            self._tc_obj,
+            self._sel_prop,
+            self._prop_full,
+            self._planning_problem,
+            verbose=self.verbose,
+        )
         # self._miqp_planner = MIQPPlannerRepair(self._rule_monitor,
         #                                        self._tc_obj,
         #                                        self._sel_prop,

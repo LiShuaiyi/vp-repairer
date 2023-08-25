@@ -55,7 +55,7 @@ class DPLL:
         for sub in cnf:
             split_cnf = sub.split()
             for lit in split_cnf:
-                if lit[-1] not in literals and '~' + lit[-1] not in literals:
+                if lit[-1] not in literals and "~" + lit[-1] not in literals:
                     test = lit[-1]
                     literals.append(lit)
         # use robustness as heuristics to rank the literals

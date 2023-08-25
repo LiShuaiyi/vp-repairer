@@ -43,17 +43,20 @@ class ScenarioType(str, Enum):
     """
     Type of scenario used for repairing.
     """
+
     INTERSTATE = "interstate"
     INTERSECTION = "intersection"
 
 
 class STLRuleMonitor:
-    def __init__(self,
-                 scenario: Scenario,
-                 vehicle_id: int,
-                 rules: Union[str, Iterable[str]],
-                 scenario_type: ScenarioType = ScenarioType.INTERSTATE,
-                 multiproc: bool = True):
+    def __init__(
+        self,
+        scenario: Scenario,
+        vehicle_id: int,
+        rules: Union[str, Iterable[str]],
+        scenario_type: ScenarioType = ScenarioType.INTERSTATE,
+        multiproc: bool = True,
+    ):
         # update the world configuration for repairing purposes
         world_config = get_world_config()
         world_config["scenario"] = scenario_type
@@ -142,43 +145,52 @@ class STLRuleMonitor:
                 sat_formula = rule_node.children[0].rule_str
             else:
                 sat_formula = rule_node.rule_str
-                #for child in rule_node.children:
+                # for child in rule_node.children:
                 #    if hasattr(child, 'quantified_vehicle'):
                 #        sat_formula = sat_formula.replace(child.name,
                 #                                          child.children[0].rule_str)
                 #        print(sat_formula)
             # do not delete brackets in the rule
             # 'eventually' is replaced by 'once' because of the same replacement in rtamt
-            sat_formula = sat_formula.replace('not', '!').replace(' >= 0', '').replace('eventually', 'once')
-            clear_rob_abs = self.rob_abstraction[i][self.rob_abstraction[i]==self.rob_abstraction[i]]
+            sat_formula = (
+                sat_formula.replace("not", "!")
+                .replace(" >= 0", "")
+                .replace("eventually", "once")
+            )
+            clear_rob_abs = self.rob_abstraction[i][
+                self.rob_abstraction[i] == self.rob_abstraction[i]
+            ]
             length = int(clear_rob_abs.shape[0] / self.rob_abstraction[i].shape[0])
-            props_of_rule = self._prop_nodes[prev_idx:prev_idx+length]
+            props_of_rule = self._prop_nodes[prev_idx : prev_idx + length]
             prev_idx += length
             for prop_node in props_of_rule:
                 prop_node_name = prop_node.name
                 # if proposition name starts with "(once[x,x]", it will be considered as predicate
-                if prop_node_name[0:5] == '(once' and prop_node_name[6:7] == prop_node_name[8:9]:
-                    prop_node_name = prop_node_name.replace(prop_node_name[0:10], '').replace(')>=(0.0)', '')
+                if (
+                    prop_node_name[0:5] == "(once"
+                    and prop_node_name[6:7] == prop_node_name[8:9]
+                ):
+                    prop_node_name = prop_node_name.replace(
+                        prop_node_name[0:10], ""
+                    ).replace(")>=(0.0)", "")
                 else:
-                    prop_node_name = prop_node_name.replace('>=(0.0)', '')
-                matches = SequenceMatcher(None,
-                                          sat_formula,
-                                          prop_node_name,
-                                          autojunk=True).get_matching_blocks()
+                    prop_node_name = prop_node_name.replace(">=(0.0)", "")
+                matches = SequenceMatcher(
+                    None, sat_formula, prop_node_name, autojunk=True
+                ).get_matching_blocks()
                 # TODO: match.size>1, further check necessary
-                clean_matches = [match for match in matches if match.size>1]
+                clean_matches = [match for match in matches if match.size > 1]
                 first_index = clean_matches[0].a
-                last_index = clean_matches[-1].a+clean_matches[-1].size
+                last_index = clean_matches[-1].a + clean_matches[-1].size
                 to_repl = sat_formula[first_index:last_index]
                 to_repl = re.escape(to_repl)
                 # avoid issue of replacing wrong proposition
                 pattern = rf"(?<!\]\(){to_repl}"
                 sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
-            subformula_list.append('(' + sat_formula + ')')
+            subformula_list.append("(" + sat_formula + ")")
         for i, substr in enumerate(subformula_list[:-1]):
-            subformula_list[i] = substr + ' and '
-        return ''.join(subformula_list)
-
+            subformula_list[i] = substr + " and "
+        return "".join(subformula_list)
 
     @property
     @functools.lru_cache(128)

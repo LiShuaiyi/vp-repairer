@@ -197,11 +197,19 @@ def visualize_repairing_result(
         ego_color = "red"
     else:
         ego_color = TUMcolor.TUMblue.value
-    ego_mark = 'x'
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
-    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
-    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
+    ego_mark = "x"
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        ego_color
+    )
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        ego_color
+    )
+    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMcolor.TUMblack.value
+    )
+    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        TUMcolor.TUMblack.value
+    )
     ego_initial.draw(rnd_0)
     if target_veh:
         target_veh.draw(rnd_0_target)
@@ -245,10 +253,18 @@ def visualize_repairing_result(
         ego_color = TUMcolor.TUMblue.value
         ego_mark = "x"
 
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
-    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
-    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        ego_color
+    )
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        ego_color
+    )
+    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMcolor.TUMblack.value
+    )
+    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        TUMcolor.TUMblack.value
+    )
     ego_repaired.draw(rnd_1)
     if target_veh:
         target_veh.draw(rnd_1_target)
