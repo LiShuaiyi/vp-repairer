@@ -6,15 +6,13 @@ import numpy as np
 import dataclasses
 from dataclasses import dataclass
 import copy
-from difflib import SequenceMatcher, get_close_matches
+from difflib import SequenceMatcher
 from multiprocessing import Process, Queue
-import concurrent.futures
 
 import re
 
 from crmonitor.evaluation.evaluation import RuleEvaluator
-# from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
-from crmonitor.common.world import World
+from crmonitor.common.world import World, get_world_config
 from crmonitor.monitor.rule import PredicateNode
 
 # CommonRoad Toolbox
@@ -37,12 +35,25 @@ class MonitorType(Enum):
     STL = "signal temporal logic"
 
 
+class ScenarioType(str, Enum):
+    """
+    Type of scenario used for repairing.
+    """
+    INTERSTATE = "interstate"
+    INTERSECTION = "intersection"
+
+
 class STLRuleMonitor:
     def __init__(self,
                  scenario: Scenario,
                  vehicle_id: int,
-                 rules: Union[str, Iterable[str]], multiproc=True): 
-        self._world: World = World.create_from_scenario(scenario)
+                 rules: Union[str, Iterable[str]],
+                 scenario_type: ScenarioType = ScenarioType.INTERSTATE,
+                 multiproc: bool = True):
+        # update the world configuration for repairing purposes
+        world_config = get_world_config()
+        world_config["scenario"] = scenario_type
+        self._world: World = World.create_from_scenario(scenario, config=world_config)
         self._vehicle_id = vehicle_id
         self.multiproc = multiproc
         self._rules = [rules] if isinstance(rules, str) else rules 
@@ -50,9 +61,11 @@ class STLRuleMonitor:
         # todo: create multiple rule evaluators
         self._rule_eval = []
         for rule in self._rules:
-            self._rule_eval.append(RuleEvaluator.create_from_config(self._world,
-                                                                    self._world.vehicle_by_id(self._vehicle_id),
-                                                                    rule))
+            rule_evaluator = RuleEvaluator.create_from_config(self._world,
+                                                              self._world.vehicle_by_id(self._vehicle_id),
+                                                              rule)
+            self._rule_eval.append(rule_evaluator)
+
         if len(self._rule_eval) == 1: self.multiproc = False
         self.rob_rule, self.rob_predicate, self.rob_abstraction, self.abstraction_names, \
             self.other_ids = self.evaluate_initially()
