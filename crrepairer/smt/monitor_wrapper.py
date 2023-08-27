@@ -13,9 +13,10 @@ import concurrent.futures
 import re
 
 from crmonitor.evaluation.evaluation import RuleEvaluator
+from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
 # from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
 from crmonitor.common.world import World
-from crmonitor.monitor.rule import PredicateNode
+from crmonitor.rule.rule_node import PredicateNode
 
 # CommonRoad Toolbox
 from commonroad.scenario.scenario import Scenario
@@ -50,7 +51,7 @@ class STLRuleMonitor:
         # todo: create multiple rule evaluators
         self._rule_eval = []
         for rule in self._rules:
-            self._rule_eval.append(RuleEvaluator.create_from_config(self._world,
+            self._rule_eval.append(PropositionRuleEvaluator.create_from_config(self._world,
                                                                     self._world.vehicle_by_id(self._vehicle_id),
                                                                     rule))
         if len(self._rule_eval) == 1: self.multiproc = False
