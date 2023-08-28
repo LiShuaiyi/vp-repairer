@@ -12,9 +12,7 @@ import concurrent.futures
 
 import re
 
-from crmonitor.evaluation.evaluation import RuleEvaluator
 from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
-# from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
 from crmonitor.common.world import World
 from crmonitor.rule.rule_node import PredicateNode
 
