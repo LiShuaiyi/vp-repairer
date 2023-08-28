@@ -9,13 +9,17 @@ from commonroad.common.util import Interval
 from miqp_planner.gurobi_optimizer import GurobiSolver
 from miqp_planner.miqp_constraints import LongitudinalConstraint
 
-from commonroad_qp_planner.configuration import PlanningConfigurationVehicle, ReferencePoint
+from commonroad_qp_planner.configuration import (
+    PlanningConfigurationVehicle,
+    ReferencePoint,
+)
 from commonroad_qp_planner.trajectory import Trajectory, TrajPoint, TrajectoryType
 
 import matplotlib.pyplot as plt
 
+
 class MIQPLongState(object):
-    def __init__(self, s: float, v: float, a: float, j: float, t=0.):
+    def __init__(self, s: float, v: float, a: float, j: float, t=0.0):
         self.s = s
         self.v = v
         self.a = a
@@ -35,7 +39,8 @@ class MIQPLongReference(object):
     def reference(self, state):
         # check if state is single state or list of states
         assert isinstance(state, MIQPLongState) or (
-                isinstance(state, list) and (isinstance(s, MIQPLongState) for s in state))
+            isinstance(state, list) and (isinstance(s, MIQPLongState) for s in state)
+        )
         self._reference = state
 
     def length(self) -> int:
@@ -46,22 +51,29 @@ class MIQPLongReference(object):
 
 
 class MIQPLongPlanner:
-    def __init__(self,
-                 horizon: float,
-                 N: int,
-                 dT: float,
-                 qp_long_params,
-                 scenario: Scenario,
-                 vehicle_configuration: PlanningConfigurationVehicle,
-                 initial_state: TrajPoint,
-                 long_constraints: LongitudinalConstraint):
+    def __init__(
+        self,
+        horizon: float,
+        N: int,
+        dT: float,
+        qp_long_params,
+        scenario: Scenario,
+        vehicle_configuration: PlanningConfigurationVehicle,
+        initial_state: TrajPoint,
+        long_constraints: LongitudinalConstraint,
+    ):
         self.time_horizon = horizon
         self.N = N
         self.dt = dT
         self.scenario = scenario
         self.vehicle_configuration = vehicle_configuration
         self.initial_state = initial_state
-        self.s0 = MIQPLongState(self.initial_state.position[0], self.initial_state.v, self.initial_state.a, self.initial_state.j)
+        self.s0 = MIQPLongState(
+            self.initial_state.position[0],
+            self.initial_state.v,
+            self.initial_state.a,
+            self.initial_state.j,
+        )
         self.long_constraints = long_constraints
         self.weight = [0.1, 0.4, 1, 2, 0.1]
 
@@ -78,10 +90,14 @@ class MIQPLongPlanner:
     def plan(self, reference_path):
         self._init_state_var()
         self._init_control_var()
-        self.solver.add_long_dynamic_cons(self.long_constraints.dynamic_matrix_list, self.long_constraints.init_state)
+        self.solver.add_long_dynamic_cons(
+            self.long_constraints.dynamic_matrix_list, self.long_constraints.init_state
+        )
         self.long_constraints.add_rule_constraints()
         self.long_constraints.add_collision_free_constraints()
-        self.solver.add_collision_free_cons(self.long_constraints.collision_free_constraints)
+        self.solver.add_collision_free_cons(
+            self.long_constraints.collision_free_constraints
+        )
         self.solver.add_rule_cons(self.long_constraints.rule_constraints)
         self.solver.costfunc_long(reference_path, self.weight)
         self.solver.solve()
@@ -139,8 +155,12 @@ class MIQPLongPlanner:
         self.long_constraints.var_long_x_lb = -1000 * np.ones((self._n, self.N + 1))
         self.long_constraints.var_long_x_ub = 1000 * np.ones((self._n, self.N + 1))
         # lower and upper bound for velocity
-        self.long_constraints.var_long_x_lb[1, :] = self.vehicle_configuration.min_speed_x
-        self.long_constraints.var_long_x_ub[1, :] = self.vehicle_configuration.max_speed_x
+        self.long_constraints.var_long_x_lb[
+            1, :
+        ] = self.vehicle_configuration.min_speed_x
+        self.long_constraints.var_long_x_ub[
+            1, :
+        ] = self.vehicle_configuration.max_speed_x
         # lower and upper bound for acceleration
         self.long_constraints.var_long_x_lb[2, :] = self.vehicle_configuration.a_min_x
         self.long_constraints.var_long_x_ub[2, :] = self.vehicle_configuration.a_max_x
@@ -151,32 +171,68 @@ class MIQPLongPlanner:
     def _init_dynamic_constraints(self):
         dT = self.dt
         A = np.array(
-            [[1, dT, (dT ** 2.) / 2., (dT ** 3.) / 6.], [0, 1., dT, (dT ** 2.) / 2.], [0, 0, 1., dT], [0, 0, 0, 1]])
-        B = np.array([[(dT ** 4.) / 24.], [(dT ** 3.) / 6.], [(dT ** 2.) / 2.], [dT]])
+            [
+                [1, dT, (dT**2.0) / 2.0, (dT**3.0) / 6.0],
+                [0, 1.0, dT, (dT**2.0) / 2.0],
+                [0, 0, 1.0, dT],
+                [0, 0, 0, 1],
+            ]
+        )
+        B = np.array(
+            [[(dT**4.0) / 24.0], [(dT**3.0) / 6.0], [(dT**2.0) / 2.0], [dT]]
+        )
         D = np.array([0, 0, 0, 0]).reshape([-1, 1])
-        self.long_constraints.dynamic_matrix_list = [{'A': A, 'B': B, 'D': D}] * self.N
-        self.long_constraints.init_state = np.array([self.s0.s, self.s0.v, self.s0.a, self.s0.j]).transpose()
+        self.long_constraints.dynamic_matrix_list = [{"A": A, "B": B, "D": D}] * self.N
+        self.long_constraints.init_state = np.array(
+            [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
+        ).transpose()
 
     def _init_state_var(self):
         x_shape = self.long_constraints.var_long_x_lb.shape
         x = np.empty(x_shape, dtype=object)
-        self.solver.add_long_state_var(x, x_shape, self.long_constraints.var_long_x_lb,
-                                         self.long_constraints.var_long_x_ub)
+        self.solver.add_long_state_var(
+            x,
+            x_shape,
+            self.long_constraints.var_long_x_lb,
+            self.long_constraints.var_long_x_ub,
+        )
 
     def _init_control_var(self):
         u_shape = self.long_constraints.var_long_u_lb.shape
         u = np.empty(u_shape, dtype=object)
-        self.solver.add_long_control_var(u, u_shape, self.long_constraints.var_long_u_lb, self.long_constraints.var_long_u_ub)
+        self.solver.add_long_control_var(
+            u,
+            u_shape,
+            self.long_constraints.var_long_u_lb,
+            self.long_constraints.var_long_u_ub,
+        )
 
     def create_output_trajectory(self):
         traj = list()
         # add initial state
-        traj.append(TrajPoint(self.initial_state.t, self.initial_state.position[0], 0, 0,
-                              self.initial_state.v, self.initial_state.a, j=self.initial_state.j))
+        traj.append(
+            TrajPoint(
+                self.initial_state.t,
+                self.initial_state.position[0],
+                0,
+                0,
+                self.initial_state.v,
+                self.initial_state.a,
+                j=self.initial_state.j,
+            )
+        )
         for k in range(self.N):
-            traj.append(TrajPoint(self.initial_state.t + self.dt * (k + 1), self.var_x[0, k + 1], 0, 0,
-                                  self.var_x[1, k + 1] if self.var_x[1, k + 1] >= 0. else 0.,
-                                  self.var_x[2, k + 1], j=self.var_x[3, k + 1]))
+            traj.append(
+                TrajPoint(
+                    self.initial_state.t + self.dt * (k + 1),
+                    self.var_x[0, k + 1],
+                    0,
+                    0,
+                    self.var_x[1, k + 1] if self.var_x[1, k + 1] >= 0.0 else 0.0,
+                    self.var_x[2, k + 1],
+                    j=self.var_x[3, k + 1],
+                )
+            )
         traj = Trajectory(traj, TrajectoryType.CARTESIAN)
         traj._u_lon = self.control_u
         return traj

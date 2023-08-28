@@ -30,13 +30,11 @@ class TC(CutOffBase, ABC):
     Time-To-Compliance.
     """
 
-    def __init__(self,
-                 ego_vehicle: DynamicObstacle,
-                 rule_monitor: STLRuleMonitor):
+    def __init__(self, ego_vehicle: DynamicObstacle, rule_monitor: STLRuleMonitor):
+        # avoid changing of rule_monitor in TSolver
         rule_monitor_copy = copy.copy(rule_monitor)
         rule_monitor_copy._world = copy.deepcopy(rule_monitor.world)
-        ego_vehicle_deepcopy = copy.deepcopy(ego_vehicle)
-        super().__init__(ego_vehicle_deepcopy, rule_monitor_copy.world)
+        super().__init__(ego_vehicle, rule_monitor_copy.world)
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = self.rule_monitor.tv_time_step
@@ -49,25 +47,29 @@ class TC(CutOffBase, ABC):
         self._search_mode = TCSearchMode.BINARY
 
         # todo fix in params
-        yaml_file = os.path.join(os.getcwd(),
-                                 "../../../commonroad-criticality-measures/config_files/" + str(
-                                     self.scenario.scenario_id) + ".yaml")
+        yaml_file = os.path.join(
+            os.getcwd(),
+            "../../../commonroad-criticality-measures/config_files/"
+            + str(self.scenario.scenario_id)
+            + ".yaml",
+        )
         if os.path.exists(yaml_file):
-            config = CriMeConfiguration.load(yaml_file,
-                                             str(self.scenario.scenario_id))
+            config = CriMeConfiguration.load(
+                yaml_file,
+                str(self.scenario.scenario_id),
+            )
         else:
             config = CriMeConfiguration()
-
         config.scenario = self.scenario
         config.time.steer_width = 2  # use the lane width mode
 
         # simulators
-        self._sim_lon = SimulationLong(Maneuver.NONE,
-                                       copy.deepcopy(self.ego_vehicle),
-                                       config)
-        self._sim_lat = SimulationLat(Maneuver.NONE,
-                                      copy.deepcopy(self.ego_vehicle),
-                                      config)
+        self._sim_lon = SimulationLong(
+            Maneuver.NONE, copy.deepcopy(self.ego_vehicle), config
+        )
+        self._sim_lat = SimulationLat(
+            Maneuver.NONE, copy.deepcopy(self.ego_vehicle), config
+        )
 
     @property
     def simulation_lateral(self) -> Union[SimulationLat]:
@@ -85,7 +87,7 @@ class TC(CutOffBase, ABC):
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
-        return int_round(self._tc - 0.1, 1)
+        return int_round(self._tc, 1)
 
     @property
     def tc_time_step(self) -> Union[int, float]:
@@ -101,17 +103,20 @@ class TC(CutOffBase, ABC):
     def compliant_maneuver(self) -> Maneuver:
         return self._compliant_maneuver
 
-    def calc_tv_updated(self, updated_states: List[Union[CustomState, PMState, KSState]], cut_off_time: int) \
-            -> Tuple[float, Any]:
+    def calc_tv_updated(
+        self,
+        updated_states: List[Union[CustomState, PMState, KSState]],
+        cut_off_time: int,
+    ) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
         self.rule_monitor.world.time_step = 0
-        update_ego_vehicle(self.world.road_network,
-                           self._world_ego,
-                           updated_states,
-                           0,
-                           self.dT)
-        rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(self.world, cut_off_time)
+        update_ego_vehicle(
+            self.world.road_network, self._world_ego, updated_states, 0, self.dT
+        )
+        rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
+            self.world, cut_off_time
+        )
         if np.any(rule_rob[:, 0] < 0):
             rule_idx = np.where(rule_rob[:, 0] < 0)[0][0]
             if other_ids[rule_idx][0] is ():
@@ -119,7 +124,7 @@ class TC(CutOffBase, ABC):
             return -math.inf, other_ids[rule_idx][0][0]
         tv_per_rule = np.argmax(rule_rob < 0, axis=-1)
         if np.all(tv_per_rule == 0):
-            return math.inf, None # no violation
+            return math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if rule_idx == self.rule_monitor._violated_rule_idx:
@@ -138,7 +143,9 @@ class TC(CutOffBase, ABC):
         if not cut_off_maneuvers:
             return -math.inf
         if self.tv == -math.inf:
-            raise ValueError("<TC>: the trajectory is not repairable since it already disobeys the rules")
+            raise ValueError(
+                "<TC>: the trajectory is not repairable since it already disobeys the rules"
+            )
         elif self.tv == math.inf:
             self._tc = math.inf
         else:
@@ -159,7 +166,7 @@ class TC(CutOffBase, ABC):
 
     @functools.lru_cache(128)
     def search_ttm_binary(self, maneuver: Maneuver):
-        ttm = - math.inf
+        ttm = -math.inf
         low = 0
         high = int(int_round(self.tv / self.dT))
         while low < high:
@@ -185,7 +192,7 @@ class TC(CutOffBase, ABC):
             else:
                 ts -= 1
         if ts == 0:
-            ttm = - math.inf
+            ttm = -math.inf
         else:
             ttm = ts * self.dT
         return ttm
@@ -198,16 +205,24 @@ class TC(CutOffBase, ABC):
             self._sim_lat.update_maneuver(maneuver)
             state_list = self._sim_lat.simulate_state_list(start_time)
         else:
-            raise ValueError(": given compliant maneuver {} is not supported".format(maneuver))
+            raise ValueError(
+                ": given compliant maneuver {} is not supported".format(maneuver)
+            )
         if state_list is None:
             tv = -math.inf
         else:
             if self._visualize:
-                visualize_state_list(self._collision_checker, state_list, self.scenario,
-                                     self._sim_lat.vehicle_dynamics.shape)
+                visualize_state_list(
+                    self._collision_checker,
+                    state_list,
+                    self.scenario,
+                    self._sim_lat.vehicle_dynamics.shape,
+                )
             check_elements_state_list(state_list, self.dT)
             try:
-                tv, _ = self.calc_tv_updated(state_list, self._mid)  # which should be tv instead of ttm
+                tv, _ = self.calc_tv_updated(
+                    state_list, self._mid
+                )  # which should be tv instead of ttm
             except:
                 tv = -math.inf
         return tv

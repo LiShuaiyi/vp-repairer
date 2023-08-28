@@ -12,7 +12,7 @@ The code is written in Python 3.8 and has been tested on Ubuntu 20.04.
 
 You have to mannually install the following packages:
 * [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature_safe_distance
-* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /new_interface
+* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /develop
 
 ## Installation Guide
 We recommend using [Anaconda](https://www.anaconda.com/) to manage your environment so that even if you mess something up, you can always have a safe and clean restart. A guide for managing python environments with Anaconda can be found [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).

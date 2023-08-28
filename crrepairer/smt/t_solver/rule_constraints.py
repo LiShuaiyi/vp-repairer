@@ -10,14 +10,23 @@ from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 # class from STL monitor
-from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane, 
-                                           PredInFrontOf, PredPreceding, PredStopLineInFront,
-                                           PredInIntersectionConflictArea)
+from crmonitor.predicates.position import (
+    PredSafeDistPrec,
+    PredInSameLane,
+    PredInFrontOf,
+    PredPreceding,
+    PredStopLineInFront,
+    PredInIntersectionConflictArea,
+)
 
-from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit,
-                                           PredBrSpeedLimit, PredTypeSpeedLimit)
+from crmonitor.predicates.velocity import (
+    PredLaneSpeedLimit,
+    PredFovSpeedLimit,
+    PredBrSpeedLimit,
+    PredTypeSpeedLimit,
+)
 from crmonitor.predicates.general import PredCutIn
-from crmonitor.predicates.acceleration import (PredAbruptBreaking, PredRelAbruptBreaking)
+from crmonitor.predicates.acceleration import PredAbruptBreaking, PredRelAbruptBreaking
 
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
@@ -32,25 +41,28 @@ from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 
-
 class RuleConstraints:
     """
     Class for traffic rule constraints
     """
 
-    def __init__(self,
-                 tc_object: TC,
-                 rule_monitor: STLRuleMonitor,
-                 sel_proposition_full: List[PropositionNode],
-                 proposition_full: List[PropositionNode],
-                 veh_config: PlanningConfigurationVehicle,
-                 initial_trajectory: Trajectory):
+    def __init__(
+        self,
+        tc_object: TC,
+        rule_monitor: STLRuleMonitor,
+        sel_proposition_full: List[PropositionNode],
+        proposition_full: List[PropositionNode],
+        veh_config: PlanningConfigurationVehicle,
+        initial_trajectory: Trajectory,
+    ):
         # initialize the needed components
         self._tc_obj = tc_object
         self._rule_monitor = rule_monitor
         self._world_state = self._rule_monitor.world
         self._other_id = self._rule_monitor.other_id
-        self._ego_id = self._rule_monitor.vehicle_id  # if no target vehicle, the other_id stands for the ego
+        self._ego_id = (
+            self._rule_monitor.vehicle_id
+        )  # if no target vehicle, the other_id stands for the ego
         self._ego_vehicle = self._world_state.vehicle_by_id(self._ego_id)
         self._ini_traj = initial_trajectory
         self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
@@ -69,15 +81,25 @@ class RuleConstraints:
         self._prec_veh = None
         self._foll_veh = None
         # whether safe distance needs to be obeyed
-        self._safe_dis_mode = [False for _ in range(self._tc_obj.N - self._tc_obj.tc_time_step + 1)]
-        if self._compliant_maneuver in [Maneuver.STEERLEFT,
-                                        Maneuver.STEERRIGHT]:
+        self._safe_dis_mode = [
+            False for _ in range(self._tc_obj.N - self._tc_obj.tc_time_step + 1)
+        ]
+        if self._compliant_maneuver in [Maneuver.STEERLEFT, Maneuver.STEERRIGHT]:
             # time for leaving the current lane
-            self._tc_obj.simulation_lateral.set_inputs(self._ego_vehicle.state_list_cr[tc_object.tc_time_step])
-            lane_dist = self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
-                self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s) / 2 - \
-                        abs(self._ego_vehicle.get_lat_state(0).d) - self._veh_config.width / 2
-            leave_time = np.sqrt(2 * abs(lane_dist / self._tc_obj.simulation_lateral.a_lat))
+            self._tc_obj.simulation_lateral.set_inputs(
+                self._ego_vehicle.state_list_cr[tc_object.tc_time_step]
+            )
+            lane_dist = (
+                self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
+                    self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s
+                )
+                / 2
+                - abs(self._ego_vehicle.get_lat_state(0).d)
+                - self._veh_config.width / 2
+            )
+            leave_time = np.sqrt(
+                2 * abs(lane_dist / self._tc_obj.simulation_lateral.a_lat)
+            )
             self._time_leave_lane = int(leave_time / self._world_state.dt)
 
     @property
@@ -108,19 +130,26 @@ class RuleConstraints:
             a_limit = [-np.inf, np.inf]
             for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:
-                    prop_assignment = total_assignment[total_assignment == total_assignment][idx]
+                    prop_assignment = total_assignment[
+                        total_assignment == total_assignment
+                    ][idx]
                 except:
                     # no assignment can be found
                     continue
                 for predicate in proposition.children:
-                    if proposition in self._prop_full and k >= self._tc_obj.tv_time_step:
+                    if (
+                        proposition in self._prop_full
+                        and k >= self._tc_obj.tv_time_step
+                    ):
                         # proposition to be repaired (greater than the time-to-violation)
-                        robs_at_tv = self._rule_monitor.prop_robust_all[:, self._tc_obj.tv_time_step]
+                        robs_at_tv = self._rule_monitor.prop_robust_all[
+                            :, self._tc_obj.tv_time_step
+                        ]
                         prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
                         if proposition in self._sel_prop_full:
                             prop_assignment = -prop_assignment
                     if k < self._tc_obj.tv_time_step or proposition in self._prop_full:
-                        if not hasattr(predicate, 'base_name'):
+                        if not hasattr(predicate, "base_name"):
                             continue
                         if predicate.base_name == PredInSameLane.predicate_name:
                             self.ConstrInSameLane(k, prop_assignment)
@@ -136,33 +165,43 @@ class RuleConstraints:
                             self.ConstrSafeDist(k, prop_assignment)
                         elif predicate.base_name == PredCutIn.predicate_name:
                             self.ConstrCutIn(k, prop_assignment)
-                        elif predicate.base_name in (PredFovSpeedLimit.predicate_name,
-                                                     PredBrSpeedLimit.predicate_name,
-                                                     PredTypeSpeedLimit.predicate_name,
-                                                     PredLaneSpeedLimit.predicate_name):
-                            speed_limit = predicate.evaluator.get_speed_limit(self._world_state,
-                                                                              k, 
-                                                                              [self._ego_id])
+                        elif predicate.base_name in (
+                            PredFovSpeedLimit.predicate_name,
+                            PredBrSpeedLimit.predicate_name,
+                            PredTypeSpeedLimit.predicate_name,
+                            PredLaneSpeedLimit.predicate_name,
+                        ):
+                            speed_limit = predicate.evaluator.get_speed_limit(
+                                self._world_state, k, [self._ego_id]
+                            )
                             if speed_limit is None:
                                 speed_limit = np.inf
                             v_constr = self.ConstrSpeedLimit(speed_limit)
                             v_limit = self._get_overlap(v_limit, v_constr)
-                        elif predicate.base_name in (PredAbruptBreaking.predicate_name,
-                                                     PredRelAbruptBreaking.predicate_name):
+                        elif predicate.base_name in (
+                            PredAbruptBreaking.predicate_name,
+                            PredRelAbruptBreaking.predicate_name,
+                        ):
                             a_abruptly = predicate.evaluator.config["a_abrupt"]
                             a_constr = self.ConstrAccNotAbruptly(a_abruptly)
                             a_limit = self._get_overlap(a_constr, a_limit)
-                        #--------------------------------------------------------------------------------------------#
-                        elif predicate.base_name in (PredStopLineInFront.predicate_name,):
+                        # --------------------------------------------------------------------------------------------#
+                        elif predicate.base_name in (
+                            PredStopLineInFront.predicate_name,
+                        ):
                             s_constr = self.ConstrStopLine(k)
                             s_limit = self._get_overlap(s_limit, s_constr)
-                        elif predicate.base_name in (PredInIntersectionConflictArea.predicate_name,):
+                        elif predicate.base_name in (
+                            PredInIntersectionConflictArea.predicate_name,
+                        ):
                             s_constr = self.ConstrInIntersectionConflictAreaEgo(k)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         # --------------------------------------------------------------------------------------------#
                         else:
-                            print("<QPRepairer/_rule_constraints>: the provided predicate {} "
-                                  "is not supported".format(predicate.name))
+                            print(
+                                "<QPRepairer/_rule_constraints>: the provided predicate {} "
+                                "is not supported".format(predicate.name)
+                            )
             self._lon_dis_constraints.append(s_limit)
             self._lon_vel_constraints.append(v_limit)
             self._lon_acc_constraints.append(a_limit)
@@ -178,19 +217,24 @@ class RuleConstraints:
         longitudinal_distance_constraints = np.array(self._lon_dis_constraints)
         longitudinal_velocity_constraints = np.array(self._lon_vel_constraints)
         longitudinal_acceleration_constraints = np.array(self._lon_acc_constraints)
-        return LonConstraints.construct_constraints(longitudinal_distance_constraints[1:, 0],
-                                                    longitudinal_distance_constraints[1:, 1],
-                                                    longitudinal_distance_constraints[1:, 0],
-                                                    longitudinal_distance_constraints[1:, 1],
-                                                    v_min=longitudinal_velocity_constraints[1:, 0],
-                                                    v_max=longitudinal_velocity_constraints[1:, 1],
-                                                    a_min=longitudinal_acceleration_constraints[1:, 0],
-                                                    a_max=longitudinal_acceleration_constraints[1:, 1],
-                                                    prec_veh=self._target_vehicle,
-                                                    tc_time_step=self._tc_obj.tc_time_step,
-                                                    select_proposition=self._sel_prop_full)
+        return LonConstraints.construct_constraints(
+            longitudinal_distance_constraints[1:, 0],
+            longitudinal_distance_constraints[1:, 1],
+            longitudinal_distance_constraints[1:, 0],
+            longitudinal_distance_constraints[1:, 1],
+            v_min=longitudinal_velocity_constraints[1:, 0],
+            v_max=longitudinal_velocity_constraints[1:, 1],
+            a_min=longitudinal_acceleration_constraints[1:, 0],
+            a_max=longitudinal_acceleration_constraints[1:, 1],
+            prec_veh=self._target_vehicle,
+            tc_time_step=self._tc_obj.tc_time_step,
+            select_proposition=self._sel_prop_full,
+        )
 
-    def lateral_constraints(self, long_traj: QPTrajectory, ):
+    def lateral_constraints(
+        self,
+        long_traj: QPTrajectory,
+    ):
         """
         Set the lateral constraints (based on the planned longitudinal trajectory and the previously
         added lane constraints - target lanes)
@@ -202,25 +246,49 @@ class RuleConstraints:
             if k in self._target_lanes:
                 target_lanes = self._target_lanes[k]
                 index = k - self._tc_obj.tc_time_step
-                lane_boundary_left = target_lanes[-1].clcs_left. \
-                    convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
-                lane_boundary_right = target_lanes[0].clcs_right. \
-                    convert_to_cartesian_coords(long_traj.states[index].position[0], 0.)
-                d_max = min(self._veh_config.curvilinear_coordinate_system.
-                            convert_to_curvilinear_coords(lane_boundary_left[0],
-                                                          lane_boundary_left[1])[1], d_max)
-                d_min = max(self._veh_config.curvilinear_coordinate_system.
-                            convert_to_curvilinear_coords(lane_boundary_right[0],
-                                                          lane_boundary_right[1])[1], d_min)
-            self._lat_dis_constraints.append([d_min,
-                                              d_max])
+                lane_boundary_left = target_lanes[
+                    -1
+                ].clcs_left.convert_to_cartesian_coords(
+                    long_traj.states[index].position[0], 0.0
+                )
+                lane_boundary_right = target_lanes[
+                    0
+                ].clcs_right.convert_to_cartesian_coords(
+                    long_traj.states[index].position[0], 0.0
+                )
+                d_max = min(
+                    self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
+                        lane_boundary_left[0], lane_boundary_left[1]
+                    )[
+                        1
+                    ],
+                    d_max,
+                )
+                d_min = max(
+                    self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
+                        lane_boundary_right[0], lane_boundary_right[1]
+                    )[
+                        1
+                    ],
+                    d_min,
+                )
+            self._lat_dis_constraints.append([d_min, d_max])
         lateral_constraints = np.array(self._lat_dis_constraints)
-        d_min = np.array((lateral_constraints[1:, 0], lateral_constraints[1:, 0],
-                          lateral_constraints[1:, 0])).transpose()
-        d_max = np.array((lateral_constraints[1:, 1], lateral_constraints[1:, 1],
-                          lateral_constraints[1:, 1])).transpose()
-        return LatConstraints.construct_constraints(d_min, d_max,
-                                                    d_min, d_max)
+        d_min = np.array(
+            (
+                lateral_constraints[1:, 0],
+                lateral_constraints[1:, 0],
+                lateral_constraints[1:, 0],
+            )
+        ).transpose()
+        d_max = np.array(
+            (
+                lateral_constraints[1:, 1],
+                lateral_constraints[1:, 1],
+                lateral_constraints[1:, 1],
+            )
+        ).transpose()
+        return LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
 
     def _determine_related_veh(self, time_step: int, lanes: List[Lane]):
         """
@@ -244,9 +312,9 @@ class RuleConstraints:
             else:
                 ego_state = self._ini_traj.state_at_time_step(time_step)
             ego_lon_s = convert_pos_curvilinear(ego_state, self._veh_config)[0]
-            #if time_step in other_vehicle.states_lon:
+            # if time_step in other_vehicle.states_lon:
             #    dist = other_vehicle.states_lon[time_step].s - ego_lon_s
-            #else:
+            # else:
             #    continue
             try:
                 dist = other_vehicle.get_lon_state(time_step).s - ego_lon_s
@@ -271,21 +339,34 @@ class RuleConstraints:
     def ConstrCollisionFree(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
             if k in self._target_lanes:
-                self._prec_veh, self._foll_veh = self._determine_related_veh(k, self._target_lanes[k])
+                self._prec_veh, self._foll_veh = self._determine_related_veh(
+                    k, self._target_lanes[k]
+                )
             else:
-                lanelet = self._world_state.scenario.lanelet_network.find_lanelet_by_position(
-                    [self._ego_vehicle.states_cr[k].position])[0]
-                lanes = self._world_state.road_network.find_lanes_by_lanelets(set(lanelet))
+                lanelet = (
+                    self._world_state.scenario.lanelet_network.find_lanelet_by_position(
+                        [self._ego_vehicle.states_cr[k].position]
+                    )[0]
+                )
+                lanes = self._world_state.road_network.find_lanes_by_lanelets(
+                    set(lanelet)
+                )
                 if lanes:
-                    self._prec_veh, self._foll_veh = self._determine_related_veh(k, list(lanes))
+                    self._prec_veh, self._foll_veh = self._determine_related_veh(
+                        k, list(lanes)
+                    )
             index = k - self._tc_obj.tc_time_step
             if self._prec_veh is not None:
                 if k <= self._prec_veh.end_time:
-                    self._lon_dis_constraints[index] = self._get_overlap(self._lon_dis_constraints[index],
-                                                                         [-np.inf, self._prec_veh.rear_s(k)
-                                                                          - self._veh_config.wheelbase / 2
-                                                                          - self._veh_config.length / 2
-                                                                          ])
+                    self._lon_dis_constraints[index] = self._get_overlap(
+                        self._lon_dis_constraints[index],
+                        [
+                            -np.inf,
+                            self._prec_veh.rear_s(k)
+                            - self._veh_config.wheelbase / 2
+                            - self._veh_config.length / 2,
+                        ],
+                    )
             # discard the following vehicles since the scenario is not interactive
             # if self._foll_veh is not None:
             #     if k <= self._foll_veh.end_time:
@@ -298,8 +379,10 @@ class RuleConstraints:
         if time_step in self._target_vehicle.lanelet_assignment.keys():
             tar_veh_lanelet = self._target_vehicle.lanelet_assignment[time_step]
             try:
-                tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(list(tar_veh_lanelet)[0])
-                #if prop_assignment > 0:
+                tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(
+                    list(tar_veh_lanelet)[0]
+                )
+                # if prop_assignment > 0:
                 #    target_lane = [tar_veh_lane]
                 if self._compliant_maneuver == Maneuver.STEERLEFT:
                     target_lane = [tar_veh_lane.adj_right]
@@ -307,8 +390,10 @@ class RuleConstraints:
                     target_lane = [tar_veh_lane.adj_left]
                 else:
                     target_lane = [tar_veh_lane]
-                if self._compliant_maneuver in [Maneuver.STEERLEFT,
-                                                Maneuver.STEERRIGHT]:
+                if self._compliant_maneuver in [
+                    Maneuver.STEERLEFT,
+                    Maneuver.STEERRIGHT,
+                ]:
                     if time_step <= self._time_leave_lane:
                         target_lane = [tar_veh_lane]
                     elif self._time_leave_lane < time_step <= self._tc_obj.tv_time_step:
@@ -317,7 +402,7 @@ class RuleConstraints:
             except:
                 tar_veh_lane = [None]
                 target_lane = [None]
-            
+
         else:
             target_lane = [None]
         self._target_lanes[time_step] = list(set(target_lane))
@@ -345,7 +430,11 @@ class RuleConstraints:
         else:
             pass
 
-    def ConstrCutIn(self, time_step: int, prop_assignment: float, ):
+    def ConstrCutIn(
+        self,
+        time_step: int,
+        prop_assignment: float,
+    ):
         # print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
         return None
 
@@ -363,26 +452,50 @@ class RuleConstraints:
         for lanelet_id in self._ego_vehicle.lanelets_dir:
             lanelet = wold.road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
             if lanelet.stop_line is not None:
-                stop_line_s = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0]
-                upper_bound = stop_line_s - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2 - 0.25
+                stop_line_s = (
+                    self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *lanelet.stop_line.start
+                    )[0]
+                )
+                upper_bound = (
+                    stop_line_s
+                    - self._ego_vehicle.shape.length / 2
+                    - self._veh_config.wheelbase / 2
+                    - 0.25
+                )
         return [-np.inf, upper_bound]
 
     def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
-        def compute_conflict_start_end_points(ego_vehicle: Vehicle, target_vehicle: Vehicle, road_network: RoadNetwork, time_step):
+        def compute_conflict_start_end_points(
+            ego_vehicle: Vehicle,
+            target_vehicle: Vehicle,
+            road_network: RoadNetwork,
+            time_step,
+        ):
             all_conflict_points = list()
             for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
                 lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
                 if LaneletType.INTERSECTION in lanelet.lanelet_type:
                     # find conflict points between center vertices of lanelets_dir of k-th vehicle and reference path
                     # lanelets of p-th vehicle
-                    conflict_points = find_conflict_points(ego_vehicle.lanelets_dir_center_vertices,
-                                                           lanelet.polygon.shapely_object)
+                    conflict_points = find_conflict_points(
+                        ego_vehicle.lanelets_dir_center_vertices,
+                        lanelet.polygon.shapely_object,
+                    )
                     if conflict_points is not None:
                         all_conflict_points.append(conflict_points)
             if len(all_conflict_points) == 0:
                 return [np.inf, -np.inf]
-            start_conflict_s = ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*all_conflict_points[0][0])[0]
-            end_conflict_s = ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*all_conflict_points[-1][-1])[0]
+            start_conflict_s = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points[0][0]
+                )[0]
+            )
+            end_conflict_s = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points[-1][-1]
+                )[0]
+            )
             return [start_conflict_s, end_conflict_s]
 
         def find_conflict_points(line, conflict_polygon):
@@ -391,12 +504,18 @@ class RuleConstraints:
             curved_line = LineString(line)
             # Get intersection of line and polygon
             intersection = curved_line.intersection(conflict_polygon)
-            if intersection.geom_type == 'Point':
+            if intersection.geom_type == "Point":
                 conflict_line_points.append(intersection)
-            elif intersection.geom_type == 'LineString' or intersection.geom_type == 'LinearRing':
+            elif (
+                intersection.geom_type == "LineString"
+                or intersection.geom_type == "LinearRing"
+            ):
                 for point in intersection.coords:
                     conflict_line_points.append(np.array(point))
-            elif intersection.geom_type == 'MultiPoint' or intersection.geom_type == 'MultiLineString':
+            elif (
+                intersection.geom_type == "MultiPoint"
+                or intersection.geom_type == "MultiLineString"
+            ):
                 for geom in intersection.geoms:
                     for point in geom.coords:
                         conflict_line_points.append(point)
@@ -414,16 +533,25 @@ class RuleConstraints:
         ego_vehicle = self._ego_vehicle
         target_vehicle = self._target_vehicle
         for i in range(len(rule_monitor.proposition_nodes)):
-            if rule_monitor.proposition_nodes[i].name == '(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)':
+            if (
+                rule_monitor.proposition_nodes[i].name
+                == "(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)"
+            ):
                 index_prop_conflict_area_target = i
                 break
-        prop_conflict_area_target = rule_monitor.prop_robust_all[0, time_step, index_prop_conflict_area_target]
+        prop_conflict_area_target = rule_monitor.prop_robust_all[
+            0, time_step, index_prop_conflict_area_target
+        ]
         if prop_conflict_area_target >= 0:
-            conflict_points = compute_conflict_start_end_points(ego_vehicle, target_vehicle, world.road_network,
-                                                                time_step)
-            front_constr = conflict_points[0] - self._ego_vehicle.shape.length / 2 - self._veh_config.wheelbase / 2 - 2
+            conflict_points = compute_conflict_start_end_points(
+                ego_vehicle, target_vehicle, world.road_network, time_step
+            )
+            front_constr = (
+                conflict_points[0]
+                - self._ego_vehicle.shape.length / 2
+                - self._veh_config.wheelbase / 2
+                - 2
+            )
         else:
             front_constr = np.inf
         return [-np.inf, front_constr]
-
-

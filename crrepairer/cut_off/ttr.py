@@ -8,7 +8,7 @@ from crrepairer.cut_off.utils import visualize_state_list, int_round
 
 from commonroad_crime.utility.simulation import SimulationLong, SimulationLat, Maneuver
 from commonroad_crime.utility.general import check_elements_state_list
-from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
+from commonroad_crime.data_structure.configuration import CriMeConfiguration
 
 from crmonitor.common.world import World
 
@@ -18,16 +18,16 @@ class TTR(CutOffBase, ABC):
     Time-To-React.
     """
 
-    def __init__(self,
-                 ego_obstacle,
-                 world: World):
+    def __init__(self, ego_obstacle, world: World):
         super().__init__(ego_obstacle, world)
         ego_vehicle = world.vehicle_by_id(ego_obstacle.obstacle_id)
         # calculate the time-to-collision as default value
         self._ttc = self._calc_ttc(ego_vehicle.states_cr)
         self._visualize = False
 
-        self.config = ConfigurationBuilder.build_configuration(str(self.scenario.scenario_id))
+        self.config = ConfigurationBuilder.build_configuration(
+            str(self.scenario.scenario_id)
+        )
         self.config.scenario = self.scenario
 
     @property
@@ -63,25 +63,27 @@ class TTR(CutOffBase, ABC):
         high = int(self._ttc / self.dT)
         while low < high:
             mid = int((low + high) / 2)
-            if maneuver in [Maneuver.BRAKE,
-                            Maneuver.KICKDOWN,
-                            Maneuver.CONSTANT]:
-                SL = SimulationLong(maneuver,
-                                    self.ego_vehicle,
-                                    self.config)
-            elif maneuver in [Maneuver.STEERLEFT,
-                              Maneuver.STEERRIGHT]:
-                SL = SimulationLat(maneuver,
-                                   self.ego_vehicle,
-                                   self.config)
+            if maneuver in [Maneuver.BRAKE, Maneuver.KICKDOWN, Maneuver.CONSTANT]:
+                SL = SimulationLong(maneuver, self.ego_vehicle, self.config)
+            elif maneuver in [Maneuver.STEERLEFT, Maneuver.STEERRIGHT]:
+                SL = SimulationLat(maneuver, self.ego_vehicle, self.config)
             else:
-                raise ValueError("<TTR>: given compliant maneuver {} is not supported".format(maneuver))
+                raise ValueError(
+                    "<TTR>: given compliant maneuver {} is not supported".format(
+                        maneuver
+                    )
+                )
             state_list = SL.simulate_state_list(mid)
             check_elements_state_list(state_list, self.dT)
             if state_list is None:
                 return -math.inf
             if self._visualize:
-                visualize_state_list(self._collision_checker, state_list, self.scenario, SL.vehicle_dynamics.shape)
+                visualize_state_list(
+                    self._collision_checker,
+                    state_list,
+                    self.scenario,
+                    SL.vehicle_dynamics.shape,
+                )
             flag_collision = self._detect_collision(state_list)  # bool value
             # if collision-free
             if not flag_collision:

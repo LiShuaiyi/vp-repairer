@@ -21,26 +21,34 @@ class GurobiSolver:
         self.x_shape = x_shape
         for i in range(self.x_shape[0]):
             for j in range(self.x_shape[1]):
-                self.x[i, j] = self.add_var("continuous", "x_long_{}_{}".format(i, j), x_lb[i, j], x_ub[i, j])
+                self.x[i, j] = self.add_var(
+                    "continuous", "x_long_{}_{}".format(i, j), x_lb[i, j], x_ub[i, j]
+                )
 
     def add_long_control_var(self, u, u_shape, u_lb, u_ub):
         self.u = u
         self.u_shape = u_shape
         for i in range(self.u_shape[0]):
-            self.u[i] = self.add_var("continuous", "u_long_{}".format(i), u_lb[i], u_ub[i])
+            self.u[i] = self.add_var(
+                "continuous", "u_long_{}".format(i), u_lb[i], u_ub[i]
+            )
 
     def add_lat_state_var(self, x, x_shape, x_lb, x_ub):
         self.x = x
         self.x_shape = x_shape
         for i in range(self.x_shape[0]):
             for j in range(self.x_shape[1]):
-                self.x[i, j] = self.add_var("continuous", "x_lat_{}_{}".format(i, j), x_lb[i, j], x_ub[i, j])
+                self.x[i, j] = self.add_var(
+                    "continuous", "x_lat_{}_{}".format(i, j), x_lb[i, j], x_ub[i, j]
+                )
 
     def add_lat_control_var(self, u, u_shape, u_lb, u_ub):
         self.u = u
         self.u_shape = u_shape
         for i in range(self.u_shape[0]):
-            self.u[i] = self.add_var("continuous", "u_lat_{}".format(i), u_lb[i], u_ub[i])
+            self.u[i] = self.add_var(
+                "continuous", "u_lat_{}".format(i), u_lb[i], u_ub[i]
+            )
 
     def add_var(self, typeofvar, name, lb=0, ub=0):
         if typeofvar == "continuous":
@@ -61,31 +69,46 @@ class GurobiSolver:
             dynamic_matrix_dict = dynamic_matrix_list[i]
             if i == 0:
                 # TODO: initial states constraints t = 0 (this should be a time invariant cons)
-                self.add_matrix_eq_cons(np.eye(dynamic_matrix_dict["A"].shape[0]),
-                                        np.zeros_like(dynamic_matrix_dict["B"]),
-                                        np.zeros_like(dynamic_matrix_dict["D"]),
-                                        self.x[:, i],
-                                        init_state,
-                                        0, -1, 0)
-                self.add_matrix_eq_cons(dynamic_matrix_dict["A"],
-                                        dynamic_matrix_dict["B"],
-                                        dynamic_matrix_dict["D"],
-                                        self.x[:, i + 1],
-                                        self.x[:, i],
-                                        self.u[i], i, theta_r[i])
+                self.add_matrix_eq_cons(
+                    np.eye(dynamic_matrix_dict["A"].shape[0]),
+                    np.zeros_like(dynamic_matrix_dict["B"]),
+                    np.zeros_like(dynamic_matrix_dict["D"]),
+                    self.x[:, i],
+                    init_state,
+                    0,
+                    -1,
+                    0,
+                )
+                self.add_matrix_eq_cons(
+                    dynamic_matrix_dict["A"],
+                    dynamic_matrix_dict["B"],
+                    dynamic_matrix_dict["D"],
+                    self.x[:, i + 1],
+                    self.x[:, i],
+                    self.u[i],
+                    i,
+                    theta_r[i],
+                )
             else:
-                self.add_matrix_eq_cons(dynamic_matrix_dict["A"],
-                                        dynamic_matrix_dict["B"],
-                                        dynamic_matrix_dict["D"],
-                                        self.x[:, i + 1],
-                                        self.x[:, i],
-                                        self.u[i], i, theta_r[i])
+                self.add_matrix_eq_cons(
+                    dynamic_matrix_dict["A"],
+                    dynamic_matrix_dict["B"],
+                    dynamic_matrix_dict["D"],
+                    self.x[:, i + 1],
+                    self.x[:, i],
+                    self.u[i],
+                    i,
+                    theta_r[i],
+                )
 
     def add_rule_cons(self, rule_constraints):
         for rule_constraint_name in rule_constraints:
             rule_constraint = rule_constraints[rule_constraint_name]
-            if rule_constraint['decision_variable']:
-                self.create_binary_variable_in_cons(rule_constraint['num_decision_variables'], rule_constraint['constraint_name'])
+            if rule_constraint["decision_variable"]:
+                self.create_binary_variable_in_cons(
+                    rule_constraint["num_decision_variables"],
+                    rule_constraint["constraint_name"],
+                )
                 self.add_binary_variables_cons()
                 # TODO: fix constraint name
                 self.add_binary_rule_constraint(rule_constraint, big_M=3000)
@@ -98,16 +121,23 @@ class GurobiSolver:
         x = Ax+Bu+Dz
         """
         x_right = x_right.reshape([-1, 1])
-        x_prop = A.dot(x_right) + B.dot(u) +D.dot(z)
+        x_prop = A.dot(x_right) + B.dot(u) + D.dot(z)
         # Constraints for enforcing consistency of motion
         for i_x in range(x_right.size):
-            self.model.addConstr(x_left[i_x] == x_prop[i_x, 0], "state_trans{}_at_time{}".format(i_x, t))
+            self.model.addConstr(
+                x_left[i_x] == x_prop[i_x, 0], "state_trans{}_at_time{}".format(i_x, t)
+            )
 
     def create_binary_variable_in_cons(self, num_variables, constraint_name):
         for i in range(num_variables):
             delta_tmp = list()
             for k in range(self.x_shape[1]):
-                delta_tmp.append(self.add_var(typeofvar='binary', name="delta_{}_{}_{}".format(constraint_name, i + 1, k)))
+                delta_tmp.append(
+                    self.add_var(
+                        typeofvar="binary",
+                        name="delta_{}_{}_{}".format(constraint_name, i + 1, k),
+                    )
+                )
             self.delta["{}_{}".format(constraint_name, i + 1)] = np.array(delta_tmp)
 
     def add_binary_variables_cons(self):
@@ -115,22 +145,58 @@ class GurobiSolver:
             # if i == 0:
             #     params_dict = {"vars": [[1, self.delta['conflict_area_1'][i]]]}
             #     self.add_eq_cons(params_dict, "binary_variable_conflict_area_constraint_init")
-            params_dict = {"vars": [[1, self.delta['conflict_area_1'][i]], [-1, self.delta['conflict_area_1'][i + 1]]]}
-            self.add_eq_cons(params_dict, "binary_variable_conflict_area_constraint_{}".format(i))
+            params_dict = {
+                "vars": [
+                    [1, self.delta["conflict_area_1"][i]],
+                    [-1, self.delta["conflict_area_1"][i + 1]],
+                ]
+            }
+            self.add_eq_cons(
+                params_dict, "binary_variable_conflict_area_constraint_{}".format(i)
+            )
 
     def add_binary_rule_constraint(self, rule_constraint, big_M):
-        if rule_constraint['constraint_name'] == 'conflict_area':
-            for time_step in range(len(rule_constraint['s_limit_front'])):
+        if rule_constraint["constraint_name"] == "conflict_area":
+            for time_step in range(len(rule_constraint["s_limit_front"])):
                 params_dict = {}
-                params_dict["vars"] = [[1, self.x[0, time_step]],
-                                       [-big_M, self.delta["{}_1".format(rule_constraint['constraint_name'])][time_step]]]
-                params_dict["constants"] = [-rule_constraint["s_limit_front"][time_step]]
-                self.add_ineq_cons(params_dict, "{}_front_t{}".format(rule_constraint['constraint_name'], time_step))
+                params_dict["vars"] = [
+                    [1, self.x[0, time_step]],
+                    [
+                        -big_M,
+                        self.delta["{}_1".format(rule_constraint["constraint_name"])][
+                            time_step
+                        ],
+                    ],
+                ]
+                params_dict["constants"] = [
+                    -rule_constraint["s_limit_front"][time_step]
+                ]
+                self.add_ineq_cons(
+                    params_dict,
+                    "{}_front_t{}".format(
+                        rule_constraint["constraint_name"], time_step
+                    ),
+                )
 
-                params_dict["vars"] = [[-1, self.x[0, time_step]],
-                                       [big_M, self.delta["{}_1".format(rule_constraint['constraint_name'])][time_step]]]
-                params_dict["constants"] = [rule_constraint["s_limit_behind"][time_step], -big_M]
-                self.add_ineq_cons(params_dict, "{}_behind_t{}".format(rule_constraint['constraint_name'], time_step))
+                params_dict["vars"] = [
+                    [-1, self.x[0, time_step]],
+                    [
+                        big_M,
+                        self.delta["{}_1".format(rule_constraint["constraint_name"])][
+                            time_step
+                        ],
+                    ],
+                ]
+                params_dict["constants"] = [
+                    rule_constraint["s_limit_behind"][time_step],
+                    -big_M,
+                ]
+                self.add_ineq_cons(
+                    params_dict,
+                    "{}_behind_t{}".format(
+                        rule_constraint["constraint_name"], time_step
+                    ),
+                )
 
     def add_rule_constraint(self, rule_constraint):
         pass
@@ -138,42 +204,62 @@ class GurobiSolver:
     def add_collision_free_cons(self, collision_free_constraint):
         for index in range(len(collision_free_constraint["index_lb"])):
             params_dict = {}
-            params_dict["vars"] = [[-1, self.x[0, collision_free_constraint["index_lb"][index]]]]
-            params_dict["constants"] = [collision_free_constraint["collision_free_lb"][index]]
-            self.add_ineq_cons(params_dict,
-                               "collision_free_cons_lb_at_time_{}".format(collision_free_constraint["index_lb"][index]))
+            params_dict["vars"] = [
+                [-1, self.x[0, collision_free_constraint["index_lb"][index]]]
+            ]
+            params_dict["constants"] = [
+                collision_free_constraint["collision_free_lb"][index]
+            ]
+            self.add_ineq_cons(
+                params_dict,
+                "collision_free_cons_lb_at_time_{}".format(
+                    collision_free_constraint["index_lb"][index]
+                ),
+            )
 
         for index in range(len(collision_free_constraint["index_ub"])):
             params_dict = {}
-            params_dict["vars"] = [[1, self.x[0, collision_free_constraint["index_ub"][index]]]]
-            params_dict["constants"] = [-collision_free_constraint["collision_free_ub"][index]]
-            self.add_ineq_cons(params_dict,
-                               "collision_free_cons_ub_at_time_{}".format(collision_free_constraint["index_ub"][index]))
+            params_dict["vars"] = [
+                [1, self.x[0, collision_free_constraint["index_ub"][index]]]
+            ]
+            params_dict["constants"] = [
+                -collision_free_constraint["collision_free_ub"][index]
+            ]
+            self.add_ineq_cons(
+                params_dict,
+                "collision_free_cons_ub_at_time_{}".format(
+                    collision_free_constraint["index_ub"][index]
+                ),
+            )
 
     def add_lat_dis_cons(self, lat_dis_cons_matrix, theta, d_min, d_max):
         # TODO: need to be tested
         for i in range(self.x_shape[1] - 1):
             if list(d_min[i]) != [-np.inf, -np.inf, -np.inf]:
-                S = lat_dis_cons_matrix[i]['S']
-                C = lat_dis_cons_matrix[i]['C']
-                E = lat_dis_cons_matrix[i]['E']
+                S = lat_dis_cons_matrix[i]["S"]
+                C = lat_dis_cons_matrix[i]["C"]
+                E = lat_dis_cons_matrix[i]["E"]
                 distance = S.dot(C.dot(self.x[:, i + 1]) + E.dot(theta[i]))
                 for k in range(distance.size):
                     params_dict = {}
                     params_dict["vars"] = [[-1, distance[k]]]
                     params_dict["constants"] = [d_min[i, k]]
-                    self.add_ineq_cons(params_dict, "lat_dist_cons_min_{}_{}".format(i + 1, k + 1))
+                    self.add_ineq_cons(
+                        params_dict, "lat_dist_cons_min_{}_{}".format(i + 1, k + 1)
+                    )
 
             if list(d_max[i]) != [np.inf, np.inf, np.inf]:
-                S = lat_dis_cons_matrix[i]['S']
-                C = lat_dis_cons_matrix[i]['C']
-                E = lat_dis_cons_matrix[i]['E']
+                S = lat_dis_cons_matrix[i]["S"]
+                C = lat_dis_cons_matrix[i]["C"]
+                E = lat_dis_cons_matrix[i]["E"]
                 distance = S.dot(C.dot(self.x[:, i + 1]) + E.dot(theta[i]))
                 for k in range(distance.size):
                     params_dict = {}
                     params_dict["vars"] = [[1, distance[k]]]
                     params_dict["constants"] = [-d_max[i, k]]
-                    self.add_ineq_cons(params_dict, "lat_dist_cons_max_{}_{}".format(i + 1, k + 1))
+                    self.add_ineq_cons(
+                        params_dict, "lat_dist_cons_max_{}_{}".format(i + 1, k + 1)
+                    )
 
     def add_kappa_limit(self, kappa_lim):
         for i in range(self.x_shape[1] - 1):
@@ -280,8 +366,8 @@ class GurobiSolver:
 
     def get_var_x(self):
         """
-                Get state variables from solution
-                """
+        Get state variables from solution
+        """
         x_value = np.empty(self.x_shape)
         for i in range(self.x_shape[0]):
             for j in range(self.x_shape[1]):

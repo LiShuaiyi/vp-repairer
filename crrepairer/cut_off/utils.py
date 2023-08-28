@@ -15,7 +15,12 @@ import matplotlib.pyplot as plt
 from commonroad.visualization.mp_renderer import MPRenderer
 
 
-def visualize_state_list(collision_checker, state_list: List[Union[CustomState, PMState, KSState]], scenario, obs_shape):
+def visualize_state_list(
+    collision_checker,
+    state_list: List[Union[CustomState, PMState, KSState]],
+    scenario,
+    obs_shape,
+):
     rnd = MPRenderer()
     trajectory = transfer_state_list_to_obstacle(scenario, state_list, obs_shape)
     rnd.draw_params.time_begin = 0
@@ -31,16 +36,19 @@ def visualize_state_list(collision_checker, state_list: List[Union[CustomState, 
 def check_velocity_feasibility(state: CustomState):
     # the vehicle model in highD doesn't comply with commonroad vehicle models, thus the velocity limit for bmw320i
     # doesn't work for highD scenarios
-    if state.velocity < 0 or \
-            state.velocity > 60:  # parameters.longitudinal.v_max:
+    if state.velocity < 0 or state.velocity > 60:  # parameters.longitudinal.v_max:
         return False
     return True
 
 
-def check_steering_angle_feasibility(state: CustomState, parameters: parameters_vehicle1):
+def check_steering_angle_feasibility(
+    state: CustomState, parameters: parameters_vehicle1
+):
     # if not hasattr(state, "steering_angle")
-    if state.steering_angle < parameters.steering.min or \
-            state.steering_angle > parameters.steering.max:
+    if (
+        state.steering_angle < parameters.steering.min
+        or state.steering_angle > parameters.steering.max
+    ):
         return False
     return True
 
@@ -52,15 +60,19 @@ def transfer_state_list_to_obstacle(scenario, state_list, shape):
     :param state_list: given state list
     :return:
     """
-    dynamic_obstacle_prediction = transfer_state_list_to_prediction(state_list, shape, scenario.dt)
+    dynamic_obstacle_prediction = transfer_state_list_to_prediction(
+        state_list, shape, scenario.dt
+    )
 
     dynamic_obstacle_id = scenario.generate_object_id()
     dynamic_obstacle_type = ObstacleType.CAR
-    dynamic_obstacle_new = DynamicObstacle(dynamic_obstacle_id,
-                                           dynamic_obstacle_type,
-                                           shape,
-                                           state_list[0],
-                                           dynamic_obstacle_prediction)
+    dynamic_obstacle_new = DynamicObstacle(
+        dynamic_obstacle_id,
+        dynamic_obstacle_type,
+        shape,
+        state_list[0],
+        dynamic_obstacle_prediction,
+    )
     return dynamic_obstacle_new
 
 
@@ -72,35 +84,48 @@ def transfer_state_list_to_prediction(state_list, shape, dt):
     """
     unified_state_list = []
     for state in state_list:
-        unified_state_list.append(CustomState(
-            time_step=state.time_step,
-            position=state.position,
-            velocity=state.velocity,
-        ))
+        unified_state_list.append(
+            CustomState(
+                time_step=state.time_step,
+                position=state.position,
+                velocity=state.velocity,
+            )
+        )
         if hasattr(state, "orientation"):
             unified_state_list[-1].orientation = state.orientation
         else:
-            unified_state_list[-1].orientation = math.atan2(state.velocity_y, state.velocity)
-    dynamic_obstacle_trajectory = Trajectory(state_list[0].time_step, unified_state_list)
-    dynamic_obstacle_prediction = TrajectoryPrediction(dynamic_obstacle_trajectory, shape)
+            unified_state_list[-1].orientation = math.atan2(
+                state.velocity_y, state.velocity
+            )
+    dynamic_obstacle_trajectory = Trajectory(
+        state_list[0].time_step, unified_state_list
+    )
+    dynamic_obstacle_prediction = TrajectoryPrediction(
+        dynamic_obstacle_trajectory, shape
+    )
     return dynamic_obstacle_prediction
 
 
-def update_ego_vehicle(road_network: RoadNetwork,
-                       ego_vehicle: Vehicle,
-                       updated_ego_states: List[CustomState],
-                       cut_off_time: int,
-                       dt):
+def update_ego_vehicle(
+    road_network: RoadNetwork,
+    ego_vehicle: Vehicle,
+    updated_ego_states: List[CustomState],
+    cut_off_time: int,
+    dt,
+):
     """
     Update the ego vehicle based on the new given trajectory
     """
     for state in updated_ego_states[cut_off_time:]:
         ego_vehicle.states_cr[state.time_step] = state
-        ego_shape = ego_vehicle.shape.rotate_translate_local(state.position, state.orientation)
+        ego_shape = ego_vehicle.shape.rotate_translate_local(
+            state.position, state.orientation
+        )
         ego_vehicle.ccosy_cache = CurvilinearStateManager(road_network)
         # use the shape lanelet assignment
-        ego_vehicle.lanelet_assignment[state.time_step] = \
-            set(road_network.lanelet_network.find_lanelet_by_shape(ego_shape))
+        ego_vehicle.lanelet_assignment[state.time_step] = set(
+            road_network.lanelet_network.find_lanelet_by_shape(ego_shape)
+        )
         ego_vehicle.predicate_cache.cache[state.time_step] = defaultdict()
     pass
     # ego_initial_state = ego_vehicle.states_cr[0]
@@ -164,7 +189,7 @@ def int_round(some_float, tolerance=1):
     :param tolerance: float point
     :return: rounded number
     """
-    p = float(10 ** tolerance)
+    p = float(10**tolerance)
     if some_float < 0:
         return int(some_float * p - 0.5) / p
     else:
