@@ -6,13 +6,21 @@ from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 # class from STL monitor
-from crmonitor.predicates.position import (PredSafeDistPrec, PredInSameLane,
-                                           PredInFrontOf, PredPreceding)
+from crmonitor.predicates.position import (
+    PredSafeDistPrec,
+    PredInSameLane,
+    PredInFrontOf,
+    PredPreceding,
+)
 
-from crmonitor.predicates.velocity import (PredLaneSpeedLimit, PredFovSpeedLimit,
-                                           PredBrSpeedLimit, PredTypeSpeedLimit)
+from crmonitor.predicates.velocity import (
+    PredLaneSpeedLimit,
+    PredFovSpeedLimit,
+    PredBrSpeedLimit,
+    PredTypeSpeedLimit,
+)
 from crmonitor.predicates.general import PredCutIn
-from crmonitor.predicates.acceleration import (PredAbruptBreaking, PredRelAbruptBreaking)
+from crmonitor.predicates.acceleration import PredAbruptBreaking, PredRelAbruptBreaking
 
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
@@ -20,9 +28,15 @@ from crmonitor.common.vehicle import Vehicle
 from typing import List
 import copy
 
-from commonroad_qp_planner.configuration import PlanningConfigurationVehicle, ReferencePoint
-from commonroad_qp_planner.utility.compute_constraints import longitudinal_position_constraints, \
-    lateral_position_constraints, longitudinal_velocity_constraints
+from commonroad_qp_planner.configuration import (
+    PlanningConfigurationVehicle,
+    ReferencePoint,
+)
+from commonroad_qp_planner.utility.compute_constraints import (
+    longitudinal_position_constraints,
+    lateral_position_constraints,
+    longitudinal_velocity_constraints,
+)
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
@@ -34,23 +48,40 @@ from commonroad.scenario.state import InitialState
 
 # specification-compliant reachable set
 import commonroad_reach_semantic.data_structure.rule.priorities as priorities
-from commonroad_reach_semantic.data_structure.config.semantic_configuration_builder import \
-    SemanticConfigurationBuilder
-from commonroad_reach_semantic.data_structure.driving_corridor_extractor import DrivingCorridorExtractor
+from commonroad_reach_semantic.data_structure.config.semantic_configuration_builder import (
+    SemanticConfigurationBuilder,
+)
+from commonroad_reach_semantic.data_structure.driving_corridor_extractor import (
+    DrivingCorridorExtractor,
+)
 from commonroad_reach.data_structure.reach.reach_interface import ReachableSetInterface
-from commonroad_reach_semantic.data_structure.environment_model.semantic_model import SemanticModel
-from commonroad_reach_semantic.data_structure.model_checking.spot_interface import SpotInterface
-from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_py import \
-    PySemanticLabelingReachableSet
-from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_cpp import \
-    CppSemanticLabelingReachableSet
-from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_py import PySemanticOTFReachableSet
-from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_cpp import CppSemanticOTFReachableSet
-from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_py import \
-    PySemanticSplittingOTFReachableSet
-from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_cpp import \
-    CppSemanticSplittingOTFReachableSet
-from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import TrafficRuleInterface
+from commonroad_reach_semantic.data_structure.environment_model.semantic_model import (
+    SemanticModel,
+)
+from commonroad_reach_semantic.data_structure.model_checking.spot_interface import (
+    SpotInterface,
+)
+from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_py import (
+    PySemanticLabelingReachableSet,
+)
+from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_cpp import (
+    CppSemanticLabelingReachableSet,
+)
+from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_py import (
+    PySemanticOTFReachableSet,
+)
+from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_cpp import (
+    CppSemanticOTFReachableSet,
+)
+from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_py import (
+    PySemanticSplittingOTFReachableSet,
+)
+from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_cpp import (
+    CppSemanticSplittingOTFReachableSet,
+)
+from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import (
+    TrafficRuleInterface,
+)
 from commonroad_reach_semantic.utility import visualization as util_visual
 
 
@@ -59,13 +90,15 @@ class RuleConstraintsReach:
     Class for traffic rule constraints (manual definition)
     """
 
-    def __init__(self,
-                 tc_object: TC,
-                 rule_monitor: STLRuleMonitor,
-                 sel_proposition_full: List[PropositionNode],
-                 proposition_full: List[PropositionNode],
-                 veh_config: PlanningConfigurationVehicle,
-                 initial_trajectory: Trajectory):
+    def __init__(
+        self,
+        tc_object: TC,
+        rule_monitor: STLRuleMonitor,
+        sel_proposition_full: List[PropositionNode],
+        proposition_full: List[PropositionNode],
+        veh_config: PlanningConfigurationVehicle,
+        initial_trajectory: Trajectory,
+    ):
         # initialize the needed components
         self._tc_obj = tc_object
         self._rule_monitor = rule_monitor
@@ -73,7 +106,9 @@ class RuleConstraintsReach:
         self._nr_ts = self._tc_obj.N - self._tc_obj.tc_time_step
 
         # ego vehicle
-        self._ego_id = self._rule_monitor.vehicle_id  # if no target vehicle, the other_id stands for the ego
+        self._ego_id = (
+            self._rule_monitor.vehicle_id
+        )  # if no target vehicle, the other_id stands for the ego
         self._ego_vehicle_cr = self._tc_obj.ego_vehicle
         self._ego_vehicle_world = self._world_state.vehicle_by_id(self._ego_id)
         self._ini_traj = initial_trajectory
@@ -103,34 +138,50 @@ class RuleConstraintsReach:
         # todo: use params for path
 
         path_root = "/home/yuanfei/repairverse/commonroad-reach-semantic"
-        self.reach_config = SemanticConfigurationBuilder(path_root=path_root).build_configuration(
-            str(self._world_state.scenario.scenario_id))
+        self.reach_config = SemanticConfigurationBuilder(
+            path_root=path_root
+        ).build_configuration(str(self._world_state.scenario.scenario_id))
         # update the time step and nr of computation
         self.reach_config.planning.dt = self._world_state.dt
         self.reach_config.planning.steps_computation = self._nr_ts
         # update the path
-        self.reach_config.general.path_scenario = "../../scenarios/" + \
-                                                  str(self._world_state.scenario.scenario_id) + '.xml'
+        self.reach_config.general.path_scenario = (
+            "../../scenarios/" + str(self._world_state.scenario.scenario_id) + ".xml"
+        )
         self.reach_config.update()
 
         self.corridor = None
 
-    def update_reach_interface(self, vehicle_configuration: PlanningConfigurationVehicle):
+    def update_reach_interface(
+        self, vehicle_configuration: PlanningConfigurationVehicle
+    ):
         # obtain the cut-off state
         cut_off_time_step = self._tc_obj.tc_time_step
         if cut_off_time_step == 0:
             cut_off_state = copy.deepcopy(self._ego_vehicle_cr.initial_state)
         else:
-            cut_off_state = copy.deepcopy(self._ini_traj.state_at_time_step(cut_off_time_step))
+            cut_off_state = copy.deepcopy(
+                self._ini_traj.state_at_time_step(cut_off_time_step)
+            )
 
-        assert cut_off_state.time_step == cut_off_time_step, "the time step of the state_at_time_step " \
-                                                             "doesn't match the corresponding state!"
+        assert cut_off_state.time_step == cut_off_time_step, (
+            "the time step of the state_at_time_step "
+            "doesn't match the corresponding state!"
+        )
 
         # set the cut-off state as the initial state
-        self.reach_config.planning_problem.initial_state.position = cut_off_state.position
-        self.reach_config.planning_problem.initial_state.velocity = cut_off_state.velocity
-        self.reach_config.planning_problem.initial_state.orientation = cut_off_state.orientation
-        self.reach_config.planning_problem.initial_state.acceleration = cut_off_state.acceleration
+        self.reach_config.planning_problem.initial_state.position = (
+            cut_off_state.position
+        )
+        self.reach_config.planning_problem.initial_state.velocity = (
+            cut_off_state.velocity
+        )
+        self.reach_config.planning_problem.initial_state.orientation = (
+            cut_off_state.orientation
+        )
+        self.reach_config.planning_problem.initial_state.acceleration = (
+            cut_off_state.acceleration
+        )
         self.reach_config.planning_problem.initial_state.time_step = 0
 
         # remove the ego
@@ -140,23 +191,28 @@ class RuleConstraintsReach:
 
         for obs in self.reach_config.scenario.dynamic_obstacles:
             new_state_list = []
-            obs.initial_state = InitialState(time_step=0,
-                                             position=obs.state_at_time(cut_off_time_step).position,
-                                             velocity=obs.state_at_time(cut_off_time_step).velocity,
-                                             orientation=obs.state_at_time(cut_off_time_step).orientation,
-                                             acceleration=0.0,
-                                             yaw_rate=0.0,
-                                             slip_angle=0.0)
+            obs.initial_state = InitialState(
+                time_step=0,
+                position=obs.state_at_time(cut_off_time_step).position,
+                velocity=obs.state_at_time(cut_off_time_step).velocity,
+                orientation=obs.state_at_time(cut_off_time_step).orientation,
+                acceleration=0.0,
+                yaw_rate=0.0,
+                slip_angle=0.0,
+            )
             for i in range(cut_off_time_step, self._tc_obj.N + 1):
-                new_state_list.append(CustomState(
-                    time_step=i - cut_off_time_step,
-                    position=obs.state_at_time(i).position,
-                    velocity=obs.state_at_time(i).velocity,
-                    orientation=obs.state_at_time(i).orientation
-                ))
-            new_traj = Trajectory(initial_time_step=0,
-                                  state_list=new_state_list)
-            obs.prediction.occupancy_set = obs.prediction.occupancy_set[cut_off_time_step:]
+                new_state_list.append(
+                    CustomState(
+                        time_step=i - cut_off_time_step,
+                        position=obs.state_at_time(i).position,
+                        velocity=obs.state_at_time(i).velocity,
+                        orientation=obs.state_at_time(i).orientation,
+                    )
+                )
+            new_traj = Trajectory(initial_time_step=0, state_list=new_state_list)
+            obs.prediction.occupancy_set = obs.prediction.occupancy_set[
+                cut_off_time_step:
+            ]
             for occ in obs.prediction.occupancy_set:
                 occ.time_step -= cut_off_time_step
             obs.prediction.trajectory = new_traj
@@ -164,10 +220,12 @@ class RuleConstraintsReach:
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
             scenario=self.reach_config.scenario,
-            CLCS=vehicle_configuration.CLCS
+            CLCS=vehicle_configuration.CLCS,
         )
         semantic_model = SemanticModel(self.reach_config)
-        semantic_model.determine_traffic_priorities(priorities.dict_traffic_sign_to_priorities)
+        semantic_model.determine_traffic_priorities(
+            priorities.dict_traffic_sign_to_priorities
+        )
 
         rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
         rule_interface.print_summary()
@@ -175,7 +233,9 @@ class RuleConstraintsReach:
         # todo: update the semantics model
         # initialize the reach interface
         self.reach_interface = ReachableSetInterface(self.reach_config)
-        self.reach_interface._reach = PySemanticLabelingReachableSet(self.reach_config, semantic_model, rule_interface)
+        self.reach_interface._reach = PySemanticLabelingReachableSet(
+            self.reach_config, semantic_model, rule_interface
+        )
 
         self.reach_interface.compute_reachable_sets(
             step_start=0, step_end=self._nr_ts, verbose=True
@@ -192,7 +252,7 @@ class RuleConstraintsReach:
         self.corridor = dc_extractor.determine_optimal_corridor()
 
         # * for debugging the reach semantic
-        #util_visual.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
+        # util_visual.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
 
     def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
@@ -202,18 +262,24 @@ class RuleConstraintsReach:
             raise Exception("the driving corridor is either not computed or empty")
         else:
             if vehicle_configuration.reference_point == ReferencePoint.REAR:
-                s_min, s_max = np.array(longitudinal_position_constraints(self.corridor)) - vehicle_configuration.wb_ra
+                s_min, s_max = (
+                    np.array(longitudinal_position_constraints(self.corridor))
+                    - vehicle_configuration.wb_ra
+                )
             else:
                 s_min, s_max = longitudinal_position_constraints(self.corridor)
             v_min, v_max = longitudinal_velocity_constraints(self.corridor)
-        c_tv_lon = LonConstraints.construct_constraints(s_min, s_max, s_min, s_max,
-                                                        v_min=v_min, v_max=v_max)
+        c_tv_lon = LonConstraints.construct_constraints(
+            s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
+        )
         return c_tv_lon
 
     def lateral_constraints(self, traj_lon, configuration_qp):
         traj_lon_positions = traj_lon.get_positions()[:, 0]
         lateral_driving_corridors = self.reach_interface.extract_driving_corridors()
         lat_dc = list(lateral_driving_corridors)[0]
-        d_min, d_max = lateral_position_constraints(lat_dc, self.corridor, traj_lon_positions, configuration_qp)
+        d_min, d_max = lateral_position_constraints(
+            lat_dc, self.corridor, traj_lon_positions, configuration_qp
+        )
         c_tv_lat = LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
         return c_tv_lat

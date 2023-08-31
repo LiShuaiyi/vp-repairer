@@ -29,90 +29,129 @@ class TUMcolor(Enum):
 
 
 def visualize_v_profile(
-        ego_initial: DynamicObstacle,
-        ego_repaired: DynamicObstacle,
-        time_start,
-        time_end,
-        tc,
-        tv,
-        speed_limit: float = 13.88):
+    ego_initial: DynamicObstacle,
+    ego_repaired: DynamicObstacle,
+    time_start,
+    time_end,
+    tc,
+    tv,
+    speed_limit: float = 13.88,
+):
     # plt.figure(figsize=(20, 8))
     time_list = []
     ego_ini_vel_list = []
     ego_rep_vel_list = []
     plt.axhline(y=speed_limit)
     for time_step in range(time_start, time_end):
-        time_list.append(time_step-time_start)
+        time_list.append(time_step - time_start)
         ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
         ego_rep_vel_list.append(ego_repaired.state_at_time(time_step).velocity)
-    plt.plot(time_list[:tv + 1 - time_start],
-             ego_ini_vel_list[:tv + 1 - time_start],
-             color=TUMcolor.TUMblue.value, marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tv - time_start:],
-             ego_ini_vel_list[tv - time_start:],
-             color='red', marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tc - time_start:],
-             ego_rep_vel_list[tc - time_start:],
-             color=TUMcolor.TUMgreen.value, marker='.',
-             markersize=7.5, zorder=21, linewidth=1.5)
+    plt.plot(
+        time_list[: tv + 1 - time_start],
+        ego_ini_vel_list[: tv + 1 - time_start],
+        color=TUMcolor.TUMblue.value,
+        marker="x",
+        markersize=7.5,
+        zorder=21,
+        linewidth=1.5,
+    )
+    plt.plot(
+        time_list[tv - time_start :],
+        ego_ini_vel_list[tv - time_start :],
+        color="red",
+        marker="x",
+        markersize=7.5,
+        zorder=21,
+        linewidth=1.5,
+    )
+    plt.plot(
+        time_list[tc - time_start :],
+        ego_rep_vel_list[tc - time_start :],
+        color=TUMcolor.TUMgreen.value,
+        marker=".",
+        markersize=7.5,
+        zorder=21,
+        linewidth=1.5,
+    )
     plt.xticks(range(time_start - time_start, time_end - time_start, 5))
     plt.yticks(range(5, 15, 5))
-    plt.xlabel('time step')
-    plt.ylabel('velocity')
+    plt.xlabel("time step")
+    plt.ylabel("velocity")
     plt.show()
 
 
-def visualize_a_profile(dt,
-                        ego_initial: DynamicObstacle,
-                        ego_repaired: DynamicObstacle,
-                        time_start,
-                        time_end,
-                        tc,
-                        tv):
+def visualize_a_profile(
+    dt,
+    ego_initial: DynamicObstacle,
+    ego_repaired: DynamicObstacle,
+    time_start,
+    time_end,
+    tc,
+    tv,
+):
     # plt.figure(figsize=(20, 8))
     time_list = []
     ego_ini_acc_list = []
     ego_rep_acc_list = []
     for time_step in range(time_start, time_end):
         time_list.append(time_step - time_start)
-        if hasattr(ego_initial.state_at_time(time_step), 'acceleration'):
+        if hasattr(ego_initial.state_at_time(time_step), "acceleration"):
             ego_ini_acc_list.append(ego_initial.state_at_time(time_step).acceleration)
         else:
-            ego_ini_acc_list.append((ego_initial.state_at_time(time_step + 1).velocity -
-                                     ego_initial.state_at_time(time_step).velocity) / dt)
+            ego_ini_acc_list.append(
+                (
+                    ego_initial.state_at_time(time_step + 1).velocity
+                    - ego_initial.state_at_time(time_step).velocity
+                )
+                / dt
+            )
         ego_rep_acc_list.append(ego_repaired.state_at_time(time_step).acceleration)
-    plt.plot(time_list[:tv - time_start + 1],
-             ego_ini_acc_list[:tv - time_start + 1],
-             color=TUMcolor.TUMblue.value,
-             marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tv - time_start:],
-             ego_ini_acc_list[tv - time_start:],
-             color='red', marker='x',
-             markersize=7.5, zorder=21, linewidth=1.5)
-    plt.plot(time_list[tc - time_start:],
-             ego_rep_acc_list[tc - time_start:],
-             color=TUMcolor.TUMgreen.value, marker='.',
-             markersize=7.5, zorder=21, linewidth=1.5)
+    plt.plot(
+        time_list[: tv - time_start + 1],
+        ego_ini_acc_list[: tv - time_start + 1],
+        color=TUMcolor.TUMblue.value,
+        marker="x",
+        markersize=7.5,
+        zorder=21,
+        linewidth=1.5,
+    )
+    plt.plot(
+        time_list[tv - time_start :],
+        ego_ini_acc_list[tv - time_start :],
+        color="red",
+        marker="x",
+        markersize=7.5,
+        zorder=21,
+        linewidth=1.5,
+    )
+    plt.plot(
+        time_list[tc - time_start :],
+        ego_rep_acc_list[tc - time_start :],
+        color=TUMcolor.TUMgreen.value,
+        marker=".",
+        markersize=7.5,
+        zorder=21,
+        linewidth=1.5,
+    )
     plt.xticks(range(time_start - time_start, time_end - time_start, 5))
-    plt.xlabel('time step')
-    plt.ylabel('acceleration')
+    plt.xlabel("time step")
+    plt.ylabel("acceleration")
     plt.show()
 
 
-def visualize_repairing_result(scenario: Scenario,
-                               ego_initial: DynamicObstacle,
-                               ego_repaired: DynamicObstacle,
-                               time_step: int,
-                               save_path: str = None,
-                               plot_limits=None,
-                               end_time=None,
-                               tc=None,
-                               tv=None,
-                               target_veh=None,
-                               world: World = None):
+def visualize_repairing_result(
+    scenario: Scenario,
+    ego_initial: DynamicObstacle,
+    ego_repaired: DynamicObstacle,
+    time_step: int,
+    save_path: str = None,
+    plot_limits=None,
+    end_time=None,
+    tc=None,
+    tv=None,
+    target_veh=None,
+    world: World = None,
+):
     """
     Function to visualize the repairing result given time step
     :param scenario: CommonRoad scenario object
@@ -139,16 +178,22 @@ def visualize_repairing_result(scenario: Scenario,
         rnd.draw_params.trajectory.draw_trajectory = True
         rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
         rnd.draw_params.occupancy.draw_occupancies = False
-        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = False
-        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = TUMcolor.TUMblack.value
-        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = TUMcolor.TUMblack.value
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = (
+            False
+        )
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+            TUMcolor.TUMblack.value
+        )
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+            TUMcolor.TUMblack.value
+        )
         scenario.draw(rnd)
 
     if time_step >= tv:
-        ego_color = 'red'
+        ego_color = "red"
     else:
         ego_color = TUMcolor.TUMblue.value
-    ego_mark = 'x'
+    ego_mark = "x"
     rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
     rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
     ego_initial.draw(rnd_0)
@@ -162,20 +207,34 @@ def visualize_repairing_result(scenario: Scenario,
         pos_y_initial.append(state.position[1])
 
     if time_step >= tv:
-        rnd_0.ax.plot(pos_x_initial[time_step:end_time], pos_y_initial[time_step:end_time], color=ego_color,
-                      marker=ego_mark, markersize=7.5, zorder=35, linewidth=1.5,
-                      label='initial trajectory')
+        rnd_0.ax.plot(
+            pos_x_initial[time_step:end_time],
+            pos_y_initial[time_step:end_time],
+            color=ego_color,
+            marker=ego_mark,
+            markersize=7.5,
+            zorder=35,
+            linewidth=1.5,
+            label="initial trajectory",
+        )
     else:
-        rnd_0.ax.plot(pos_x_initial[time_step:end_time], pos_y_initial[time_step:end_time], color=ego_color,
-                      marker=ego_mark, markersize=7.5, zorder=35, linewidth=1.5,
-                      label='initial trajectory')
+        rnd_0.ax.plot(
+            pos_x_initial[time_step:end_time],
+            pos_y_initial[time_step:end_time],
+            color=ego_color,
+            marker=ego_mark,
+            markersize=7.5,
+            zorder=35,
+            linewidth=1.5,
+            label="initial trajectory",
+        )
 
     if time_step >= tc:
         ego_color = TUMcolor.TUMgreen.value
-        ego_mark = '.'
+        ego_mark = "."
     else:
         ego_color = TUMcolor.TUMblue.value
-        ego_mark = 'x'
+        ego_mark = "x"
 
     rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = ego_color
     rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = ego_color
@@ -191,26 +250,45 @@ def visualize_repairing_result(scenario: Scenario,
         pos_y_repaired.append(state.position[1])
 
     # visualize optimal trajectory
-    rnd_1.ax.plot(pos_x_repaired[time_step:end_time],
-                  pos_y_repaired[time_step:end_time],
-                  color=ego_color, marker=ego_mark,
-                  markersize=7.5, zorder=22, linewidth=1.5,
-                  label='repaired trajectory')
+    rnd_1.ax.plot(
+        pos_x_repaired[time_step:end_time],
+        pos_y_repaired[time_step:end_time],
+        color=ego_color,
+        marker=ego_mark,
+        markersize=7.5,
+        zorder=22,
+        linewidth=1.5,
+        label="repaired trajectory",
+    )
 
     if target_veh:
         ego_veh_state_ini = ego_initial.state_at_time(time_step)
         ego_veh_state_rep = ego_repaired.state_at_time(time_step)
         tar_veh_state = target_veh.state_at_time(time_step)
         tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
-        unsafe_poly_ini = compute_unsafe_polygon(ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane)
-        rnd_0.ax.fill(*unsafe_poly_ini.exterior.xy, zorder=30, alpha=0.2,
-                      facecolor=TUMcolor.TUMorange.value, edgecolor=None)
-        unsafe_poly_rep = compute_unsafe_polygon(ego_veh_state_rep, tar_veh_state, target_veh, tar_veh_lane)
-        rnd_1.ax.fill(*unsafe_poly_rep.exterior.xy, zorder=30, alpha=0.2,
-                      facecolor=TUMcolor.TUMorange.value, edgecolor=None)
+        unsafe_poly_ini = compute_unsafe_polygon(
+            ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane
+        )
+        rnd_0.ax.fill(
+            *unsafe_poly_ini.exterior.xy,
+            zorder=30,
+            alpha=0.2,
+            facecolor=TUMcolor.TUMorange.value,
+            edgecolor=None,
+        )
+        unsafe_poly_rep = compute_unsafe_polygon(
+            ego_veh_state_rep, tar_veh_state, target_veh, tar_veh_lane
+        )
+        rnd_1.ax.fill(
+            *unsafe_poly_rep.exterior.xy,
+            zorder=30,
+            alpha=0.2,
+            facecolor=TUMcolor.TUMorange.value,
+            edgecolor=None,
+        )
 
-    ax0.set_title('Initial configuration.')
-    ax1.set_title('Repaired configuration.')
+    ax0.set_title("Initial configuration.")
+    ax1.set_title("Repaired configuration.")
 
     # show plot
     for ax in (ax0, ax1):
@@ -223,50 +301,81 @@ def visualize_repairing_result(scenario: Scenario,
     # save as .svg file
     if save_path is not None:
         if time_step < 10:
-            plt.savefig(f"{save_path}/{0}{time_step}.svg", format='svg', dpi=300,
-                        bbox_inches='tight')
+            plt.savefig(
+                f"{save_path}/{0}{time_step}.svg",
+                format="svg",
+                dpi=300,
+                bbox_inches="tight",
+            )
         else:
-            plt.savefig(f"{save_path}/{time_step}.svg", format='svg', dpi=300,
-                        bbox_inches='tight')
+            plt.savefig(
+                f"{save_path}/{time_step}.svg",
+                format="svg",
+                dpi=300,
+                bbox_inches="tight",
+            )
     else:
         plt.show(block=True)
 
 
-def compute_unsafe_polygon(ego_veh_state,
-                           tar_veh_state,
-                           target_veh,
-                           tar_veh_lane):
-    safe_distance = calculate_safe_distance(ego_veh_state.velocity,
-                                            tar_veh_state.velocity,
-                                            -10.5, -10.0, 0.4)
-    tar_pos_rear_CART = [tar_veh_state.position[0] - target_veh.obstacle_shape.length / 2,
-                         tar_veh_state.position[1]]
-    tar_pos_rear_CVLN = tar_veh_lane.clcs. \
-        convert_to_curvilinear_coords(tar_pos_rear_CART[0], tar_pos_rear_CART[1])
-    safe_pos_CVLN = tar_pos_rear_CVLN - [safe_distance, 0.]
-    safe_pos_CART = tar_veh_lane.clcs. \
-        convert_to_cartesian_coords(safe_pos_CVLN[0], safe_pos_CVLN[1])
+def compute_unsafe_polygon(ego_veh_state, tar_veh_state, target_veh, tar_veh_lane):
+    safe_distance = calculate_safe_distance(
+        ego_veh_state.velocity, tar_veh_state.velocity, -10.5, -10.0, 0.4
+    )
+    tar_pos_rear_CART = [
+        tar_veh_state.position[0] - target_veh.obstacle_shape.length / 2,
+        tar_veh_state.position[1],
+    ]
+    tar_pos_rear_CVLN = tar_veh_lane.clcs.convert_to_curvilinear_coords(
+        tar_pos_rear_CART[0], tar_pos_rear_CART[1]
+    )
+    safe_pos_CVLN = tar_pos_rear_CVLN - [safe_distance, 0.0]
+    safe_pos_CART = tar_veh_lane.clcs.convert_to_cartesian_coords(
+        safe_pos_CVLN[0], safe_pos_CVLN[1]
+    )
 
     # left vertices
-    tar_pos_rear_left_CART = tar_veh_lane.clcs_left.convert_to_cartesian_coords(tar_pos_rear_CVLN[0], 0.0)
-    safe_pos_left_CART = tar_veh_lane.clcs_left.convert_to_cartesian_coords(safe_pos_CVLN[0], 0.0)
+    tar_pos_rear_left_CART = tar_veh_lane.clcs_left.convert_to_cartesian_coords(
+        tar_pos_rear_CVLN[0], 0.0
+    )
+    safe_pos_left_CART = tar_veh_lane.clcs_left.convert_to_cartesian_coords(
+        safe_pos_CVLN[0], 0.0
+    )
     ref_left = np.vstack(tar_veh_lane.clcs_left.reference_path())
-    vertices_left = ref_left[(ref_left[:, 0] > safe_pos_left_CART[0]) &
-                             (ref_left[:, 0] < tar_pos_rear_left_CART[0]), :]
-    vertices_left = np.concatenate(([safe_pos_left_CART], vertices_left, [tar_pos_rear_left_CART]))
+    vertices_left = ref_left[
+        (ref_left[:, 0] > safe_pos_left_CART[0])
+        & (ref_left[:, 0] < tar_pos_rear_left_CART[0]),
+        :,
+    ]
+    vertices_left = np.concatenate(
+        ([safe_pos_left_CART], vertices_left, [tar_pos_rear_left_CART])
+    )
 
     # right vertices
-    tar_pos_rear_right_CART = tar_veh_lane.clcs_right.convert_to_cartesian_coords(tar_pos_rear_CVLN[0], 0.0)
-    safe_pos_right_CART = tar_veh_lane.clcs_right.convert_to_cartesian_coords(safe_pos_CVLN[0], 0.0)
+    tar_pos_rear_right_CART = tar_veh_lane.clcs_right.convert_to_cartesian_coords(
+        tar_pos_rear_CVLN[0], 0.0
+    )
+    safe_pos_right_CART = tar_veh_lane.clcs_right.convert_to_cartesian_coords(
+        safe_pos_CVLN[0], 0.0
+    )
     ref_right = np.vstack(tar_veh_lane.clcs_right.reference_path())
-    vertices_right = ref_right[(ref_right[:, 0] > safe_pos_right_CART[0]) &
-                               (ref_right[:, 0] < tar_pos_rear_right_CART[0]), :]
-    vertices_right = np.concatenate(([safe_pos_right_CART], vertices_right, [tar_pos_rear_right_CART]))
+    vertices_right = ref_right[
+        (ref_right[:, 0] > safe_pos_right_CART[0])
+        & (ref_right[:, 0] < tar_pos_rear_right_CART[0]),
+        :,
+    ]
+    vertices_right = np.concatenate(
+        ([safe_pos_right_CART], vertices_right, [tar_pos_rear_right_CART])
+    )
 
     # the polygon vertices
-    vertices_total = np.concatenate(([safe_pos_CART],
-                                     vertices_left,
-                                     [tar_pos_rear_CART],
-                                     np.flip(vertices_right, 0),
-                                     [safe_pos_CART])).tolist()
+    vertices_total = np.concatenate(
+        (
+            [safe_pos_CART],
+            vertices_left,
+            [tar_pos_rear_CART],
+            np.flip(vertices_right, 0),
+            [safe_pos_CART],
+        )
+    ).tolist()
     return Polygon(vertices_total)

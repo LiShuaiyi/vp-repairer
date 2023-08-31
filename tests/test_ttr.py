@@ -21,7 +21,9 @@ class TestTTR(unittest.TestCase):
         root_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
         self.scenario_root_path = os.path.join(root_path, "scenarios")
         scenario_file = os.path.join(self.scenario_root_path, "ZAM_Urban-3_1.xml")
-        self.scenario, _ = CommonRoadFileReader(scenario_file).open(lanelet_assignment=True)
+        self.scenario, _ = CommonRoadFileReader(scenario_file).open(
+            lanelet_assignment=True
+        )
         ego_id = 8
         self.world_state = World.create_from_scenario(self.scenario)
         ego_vehicle = self.scenario.obstacle_by_id(ego_id)
@@ -32,10 +34,12 @@ class TestTTR(unittest.TestCase):
         assert math.isclose(ttc, 2.4, abs_tol=1e-2)
 
     def test_ttr_1(self):
-        maneuver_set = [Maneuver.STEERLEFT,
-                        Maneuver.BRAKE,
-                        Maneuver.KICKDOWN,
-                        Maneuver.STEERRIGHT]  # all maneuvers
+        maneuver_set = [
+            Maneuver.STEERLEFT,
+            Maneuver.BRAKE,
+            Maneuver.KICKDOWN,
+            Maneuver.STEERRIGHT,
+        ]  # all maneuvers
         ttr = self.ttr_object.generate(maneuver_set)
         assert math.isclose(ttr, 2.2, abs_tol=1e-2)
 

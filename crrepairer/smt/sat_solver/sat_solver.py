@@ -5,13 +5,14 @@ from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 
 class SATSolver:
-    def __init__(self,
-                 rule_monitor: STLRuleMonitor):
+    def __init__(self, rule_monitor: STLRuleMonitor):
         self._formula = self.construct_cnf(rule_monitor.sat_formula)
         self._prop_nodes = rule_monitor.proposition_nodes
         self._prop_robust_all = rule_monitor.rob_abstraction
         self._init_assign = list()
-        self._dpll_solver = DPLL(self._formula, self._prop_nodes, rule_monitor.tv_time_step)
+        self._dpll_solver = DPLL(
+            self._formula, self._prop_nodes, rule_monitor.tv_time_step
+        )
         self._dpll_model = None
 
     @property
@@ -24,7 +25,12 @@ class SATSolver:
 
     @staticmethod
     def stl2sympy(input_formula: str):
-        return input_formula.replace("and", "&").replace("or", "|").replace("!", "~").replace("implies", ">>")
+        return (
+            input_formula.replace("and", "&")
+            .replace("or", "|")
+            .replace("!", "~")
+            .replace("implies", ">>")
+        )
 
     @staticmethod
     def construct_cnf(stl_formula):
@@ -61,8 +67,14 @@ class SATSolver:
         self._dpll_model = self._dpll_solver.model
         prop_list = list()
         for m in list(self._dpll_model):
-            sel_prop_node = next((prop_node for prop_node in self._prop_nodes
-                                  if prop_node.alphabet == m[-1]), None)
+            sel_prop_node = next(
+                (
+                    prop_node
+                    for prop_node in self._prop_nodes
+                    if prop_node.alphabet == m[-1]
+                ),
+                None,
+            )
             prop_list.append(sel_prop_node)
         print("* \t<SATSolver>: model is {}".format(self._dpll_model))
         return prop_list, self._dpll_model
@@ -72,15 +84,14 @@ class SATSolver:
         Based on the syntax for sympy, the SAT formula is updated by negating the unsatisfiable abstraction:
         phi_SAT = phi_SAT and (not abs)
         """
-        if self._formula[0] is not '(':
-            self._formula = '(' + self.formula + ')'
+        if self._formula[0] is not "(":
+            self._formula = "(" + self.formula + ")"
         # generate counterexample
-        counter_ex = '~' + list(self._dpll_model)[0]
+        counter_ex = "~" + list(self._dpll_model)[0]
         if len(list(self._dpll_model)) > 1:
-            counter_ex = '(' + counter_ex
+            counter_ex = "(" + counter_ex
             for atom in list(self._dpll_model)[1:]:
-                counter_ex += ' | ~' + atom
-            counter_ex += ')'
-        self._formula += ' & ' + counter_ex
+                counter_ex += " | ~" + atom
+            counter_ex += ")"
+        self._formula += " & " + counter_ex
         print("* \t<SATSolver>: the formula is updated to {}".format(self._formula))
-

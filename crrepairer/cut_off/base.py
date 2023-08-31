@@ -10,23 +10,23 @@ from crmonitor.common.world import World
 from commonroad.scenario.obstacle import DynamicObstacle, Shape
 from commonroad.scenario.state import PMState, KSState, CustomState
 import commonroad_dc.pycrcc as pycrcc
-from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch import create_collision_checker, \
-    create_collision_object
+from commonroad_dc.collision.collision_detection.pycrcc_collision_dispatch import (
+    create_collision_checker,
+    create_collision_object,
+)
 import commonroad_dc.boundary.boundary as boundary
 from commonroad.visualization.mp_renderer import MPRenderer
-from commonroad_dc.collision.visualization.drawing \
-    import draw_collision_rectobb
+from commonroad_dc.collision.visualization.drawing import draw_collision_rectobb
 
 from crrepairer.cut_off.utils import transfer_state_list_to_prediction
 
 
 class CutOffBase(ABC):
     """
-        Abstract base class for calculating cut-off states
+    Abstract base class for calculating cut-off states
     """
-    def __init__(self,
-                 ego_vehicle: DynamicObstacle,
-                 world: World):
+
+    def __init__(self, ego_vehicle: DynamicObstacle, world: World):
         self._world = world
         self.scenario = self._world.scenario
         self._ego_vehicle = ego_vehicle
@@ -35,7 +35,10 @@ class CutOffBase(ABC):
         self._visualize = False
         if self.scenario.obstacle_by_id(self._ego_vehicle.obstacle_id) is not None:
             self.scenario.remove_obstacle(self._ego_vehicle)
-        road_boundary_obstacle, road_boundary_sg_rectangles = boundary.create_road_boundary_obstacle(self.scenario)
+        (
+            road_boundary_obstacle,
+            road_boundary_sg_rectangles,
+        ) = boundary.create_road_boundary_obstacle(self.scenario)
         self.scenario.add_objects(road_boundary_obstacle)
         self._collision_checker = create_collision_checker(self.scenario)
         self.scenario.remove_obstacle(road_boundary_obstacle)
@@ -93,24 +96,32 @@ class CutOffBase(ABC):
             theta = state_list[i].orientation
             # i: time_start_idx
             ego = pycrcc.TimeVariantCollisionObject(i)
-            ego.append_obstacle(pycrcc.RectOBB(0.5 * self._shape.length,
-                                               0.5 * self._shape.width,
-                                               theta, pos1, pos2))
+            ego.append_obstacle(
+                pycrcc.RectOBB(
+                    0.5 * self._shape.length, 0.5 * self._shape.width, theta, pos1, pos2
+                )
+            )
             if self._collision_checker.collide(ego):
                 if self._visualize:
                     rnd = MPRenderer()
-                    ego_obb = pycrcc.RectOBB(0.5 * self._shape.length,
-                                             0.5 * self._shape.width,
-                                             theta, pos1, pos2)
+                    ego_obb = pycrcc.RectOBB(
+                        0.5 * self._shape.length,
+                        0.5 * self._shape.width,
+                        theta,
+                        pos1,
+                        pos2,
+                    )
                     draw_collision_rectobb(ego_obb, rnd)
                     rnd.draw_params.time_begin = i
                     self.scenario.draw(rnd)
                     rnd.render()
                     plt.show()
-                return i*self.dT
+                return i * self.dT
         return math.inf
 
-    def _detect_collision(self, state_list: List[Union[CustomState, PMState, KSState]]) -> bool:
+    def _detect_collision(
+        self, state_list: List[Union[CustomState, PMState, KSState]]
+    ) -> bool:
         """
         return whether the state list of the ego vehicle is collision-free
         """
@@ -119,4 +130,3 @@ class CutOffBase(ABC):
         # create a collision object using the trajectory prediction of the ego vehicle
         co = create_collision_object(traj_pred)
         return self._collision_checker.collide(co)
-
