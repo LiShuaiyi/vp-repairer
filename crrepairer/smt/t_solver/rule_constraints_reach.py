@@ -261,13 +261,7 @@ class RuleConstraintsReach:
         if self.corridor is None:
             raise Exception("the driving corridor is either not computed or empty")
         else:
-            if vehicle_configuration.reference_point == ReferencePoint.REAR:
-                s_min, s_max = (
-                    np.array(longitudinal_position_constraints(self.corridor))
-                    - vehicle_configuration.wb_ra
-                )
-            else:
-                s_min, s_max = longitudinal_position_constraints(self.corridor)
+            s_min, s_max = longitudinal_position_constraints(self.corridor)
             v_min, v_max = longitudinal_velocity_constraints(self.corridor)
         c_tv_lon = LonConstraints.construct_constraints(
             s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
