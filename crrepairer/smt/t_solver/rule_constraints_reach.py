@@ -17,6 +17,20 @@ from commonroad_qp_planner.utility.compute_constraints import (
     longitudinal_velocity_constraints,
 )
 
+from crmonitor.predicates.position import (
+    PredSafeDistPrec,
+    PredInSameLane,
+    PredInFrontOf,
+    PredPreceding,
+)
+
+from crmonitor.predicates.velocity import (
+    PredLaneSpeedLimit,
+    PredFovSpeedLimit,
+    PredBrSpeedLimit,
+    PredTypeSpeedLimit,
+)
+
 from commonroad_qp_planner.constraints import LatConstraints, LonConstraints
 
 from commonroad.scenario.trajectory import Trajectory, CustomState
@@ -42,6 +56,9 @@ from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_
 )
 from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import (
     TrafficRuleInterface,
+)
+from commonroad_reach_semantic.data_structure.rule.proposition import (
+    Proposition
 )
 
 
@@ -188,10 +205,9 @@ class RuleConstraintsReach:
             priorities.dict_traffic_sign_to_priorities
         )
 
-        rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
-        rule_interface.print_summary()
+        rule_interface = self.repair_rule_interface(semantic_model)
 
-        # todo: update the semantics model
+        # update the rule interface
         # initialize the reach interface
         self.reach_interface = ReachableSetInterface(self.reach_config)
         self.reach_interface._reach = PySemanticLabelingReachableSet(
@@ -205,6 +221,26 @@ class RuleConstraintsReach:
         self.spot_interface.translate_ltl_formulas()
         self.spot_interface.translate_reachability_graph()
         self.spot_interface.check()
+
+    def repair_rule_interface(self, semantic_model: SemanticModel) -> TrafficRuleInterface:
+        """
+        Based on the SAT result, deciding which propositions need to be added.
+            either to LTL or TPL constraints.
+        """
+        repaired_rules = []
+        # add the repairing propositions
+        for prop in self._sel_prop_full:
+            if PredSafeDistPrec.predicate_name in prop.name:
+                semantic_prop = Proposition.safe_following_distance_to(self._other_id)
+                if prop.ttv_value > 0:
+                    # change the sign
+                    semantic_prop = "!" + semantic_prop
+                # fixme: safe following works only for TPL somehow
+                repaired_rules.append('TPL ' + semantic_prop)
+        self.reach_config.traffic_rule.activated_rules = repaired_rules
+        rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
+        rule_interface.print_summary()
+        return rule_interface
 
     def compute_semantic_reachable_set(self, vehicle_configuration, verbose=True):
         self.update_reach_interface(vehicle_configuration)
