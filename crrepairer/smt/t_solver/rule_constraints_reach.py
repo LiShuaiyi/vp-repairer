@@ -1,28 +1,8 @@
-import numpy as np
 import os
-from collections import defaultdict
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
-# class from STL monitor
-from crmonitor.predicates.position import (
-    PredSafeDistPrec,
-    PredInSameLane,
-    PredInFrontOf,
-    PredPreceding,
-)
-
-from crmonitor.predicates.velocity import (
-    PredLaneSpeedLimit,
-    PredFovSpeedLimit,
-    PredBrSpeedLimit,
-    PredTypeSpeedLimit,
-)
-from crmonitor.predicates.general import PredCutIn
-from crmonitor.predicates.acceleration import PredAbruptBreaking, PredRelAbruptBreaking
-
-from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
 
 from typing import List
@@ -30,20 +10,16 @@ import copy
 
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
-    ReferencePoint,
 )
 from commonroad_qp_planner.utility.compute_constraints import (
     longitudinal_position_constraints,
     lateral_position_constraints,
     longitudinal_velocity_constraints,
 )
-from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
-from commonroad_qp_planner.initialization import convert_pos_curvilinear
-from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
+
 from commonroad_qp_planner.constraints import LatConstraints, LonConstraints
 
 from commonroad.scenario.trajectory import Trajectory, CustomState
-from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.state import InitialState
 
 # specification-compliant reachable set
@@ -64,25 +40,9 @@ from commonroad_reach_semantic.data_structure.model_checking.spot_interface impo
 from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_py import (
     PySemanticLabelingReachableSet,
 )
-from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_cpp import (
-    CppSemanticLabelingReachableSet,
-)
-from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_py import (
-    PySemanticOTFReachableSet,
-)
-from commonroad_reach_semantic.data_structure.reach.semantic_otf_reach_set_cpp import (
-    CppSemanticOTFReachableSet,
-)
-from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_py import (
-    PySemanticSplittingOTFReachableSet,
-)
-from commonroad_reach_semantic.data_structure.reach.semantic_splitting_otf_reach_set_cpp import (
-    CppSemanticSplittingOTFReachableSet,
-)
 from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import (
     TrafficRuleInterface,
 )
-from commonroad_reach_semantic.utility import visualization as util_visual
 
 
 class RuleConstraintsReach:
@@ -137,7 +97,8 @@ class RuleConstraintsReach:
         # we use the default path of the reach folder
         # todo: use params for path
 
-        path_root = "/home/yuanfei/repairverse/commonroad-reach-semantic"
+        path_root = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "../../../../commonroad-reach-semantic")
         self.reach_config = SemanticConfigurationBuilder(
             path_root=path_root
         ).build_configuration(str(self._world_state.scenario.scenario_id))
