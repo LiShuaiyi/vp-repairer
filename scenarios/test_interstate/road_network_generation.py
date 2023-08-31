@@ -434,7 +434,6 @@ def create_straight_scenario(
     lanelet_types: List[Set[LaneletType]],
     lane_width: List[float],
 ):
-
     # desired number of lanes and parameters
     lanelet_length = int(road_length / num_lanelets_per_lane)
     scenario = create_scenario(commonroad_benchmark_id, dt)

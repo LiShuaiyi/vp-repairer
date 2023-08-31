@@ -15,7 +15,7 @@ from crrepairer.cut_off.utils import update_ego_vehicle
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 
 from commonroad_crime.utility.simulation import Maneuver, SimulationLong
-from commonroad_crime.data_structure.configuration_builder import ConfigurationBuilder
+from commonroad_crime.data_structure.configuration import CriMeConfiguration
 
 
 class TestTC(unittest.TestCase):
@@ -62,9 +62,7 @@ class TestTC(unittest.TestCase):
         # simulate a new trajectory of the ego vehicle
         ego_vehicle = self.scenario.obstacle_by_id(self.ego_id)
         world_state = self.rule_monitor.world
-        config = ConfigurationBuilder.build_configuration(
-            str(self.scenario.scenario_id)
-        )
+        config = CriMeConfiguration()
         config.scenario = self.scenario
         sim_long = SimulationLong(Maneuver.BRAKE, ego_vehicle, config)
         new_state_list = sim_long.simulate_state_list(0)[1:]

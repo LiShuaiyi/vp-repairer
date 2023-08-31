@@ -17,7 +17,6 @@ from crmonitor.common.world_state import WorldState
 from crmonitor.evaluation.evaluation import RuleSetEvaluator
 
 if __name__ == "__main__":
-
     # the highD-cr scenario directory
     file_path = "../../highD-dataset/highD-cr-scenarios/"
     # file_path = "../../commonroad-scenarios-master-scenarios/scenarios/cooperative"
