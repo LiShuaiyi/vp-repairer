@@ -47,14 +47,14 @@ class TC(CutOffBase, ABC):
         self._search_mode = TCSearchMode.BINARY
 
         # todo fix in params
-        if os.path.exists("../../../commonroad-criticality-measures"):
+        path_yaml = os.path.join(
+            os.getcwd(),
+            "../../../commonroad-criticality-measures/config_files/"
+            + str(self.scenario.scenario_id)
+            + ".yaml")
+        if os.path.exists(path_yaml):
             config = CriMeConfiguration.load(
-                os.path.join(
-                    os.getcwd(),
-                    "../../../commonroad-criticality-measures/config_files/"
-                    + str(self.scenario.scenario_id)
-                    + ".yaml",
-                ),
+                path_yaml,
                 str(self.scenario.scenario_id),
             )
         else:
