@@ -32,18 +32,20 @@ from crmonitor.predicates.velocity import (
 )
 
 from commonroad_qp_planner.constraints import LatConstraints, LonConstraints
-
+from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.trajectory import Trajectory, CustomState
 from commonroad.scenario.state import InitialState
 
+from commonroad_reach.data_structure.reach.reach_set import ReachableSet
 # specification-compliant reachable set
 import commonroad_reach_semantic.data_structure.rule.priorities as priorities
 from commonroad_reach_semantic.data_structure.config.semantic_configuration_builder import (
     SemanticConfigurationBuilder,
 )
 from commonroad_reach_semantic.data_structure.driving_corridor_extractor import (
-    DrivingCorridorExtractor,
+    DrivingCorridorExtractor as DrivingCorridorExtractorSemantic,
 )
+from commonroad_reach.data_structure.reach.driving_corridor_extractor import DrivingCorridorExtractor
 from commonroad_reach.data_structure.reach.reach_interface import ReachableSetInterface
 from commonroad_reach_semantic.data_structure.environment_model.semantic_model import (
     SemanticModel,
@@ -54,12 +56,20 @@ from commonroad_reach_semantic.data_structure.model_checking.spot_interface impo
 from commonroad_reach_semantic.data_structure.reach.semantic_labeling_reach_set_py import (
     PySemanticLabelingReachableSet,
 )
-from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import (
-    TrafficRuleInterface,
-)
 from commonroad_reach_semantic.data_structure.rule.proposition import (
     Proposition
 )
+from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import (
+    TrafficRuleInterface,
+)
+from crmonitor.common.vehicle import Vehicle
+from crmonitor.predicates.position import (
+    PredSafeDistPrec,
+    PredInSameLane,
+    PredInFrontOf,
+)
+from crrepairer.cut_off.tc import TC
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 
 class RuleConstraintsReach:
@@ -207,27 +217,36 @@ class RuleConstraintsReach:
             scenario=self.reach_config.scenario,
             CLCS=vehicle_configuration.CLCS,
         )
-        semantic_model = SemanticModel(self.reach_config)
-        semantic_model.determine_traffic_priorities(
-            priorities.dict_traffic_sign_to_priorities
-        )
 
-        rule_interface = self.repair_rule_interface(semantic_model)
+        if self.reach_config.traffic_rule.activated_rules:
+            semantic_model = SemanticModel(self.reach_config)
+            semantic_model.determine_traffic_priorities(
+                priorities.dict_traffic_sign_to_priorities
+            )
 
-        # update the rule interface
-        # initialize the reach interface
-        self.reach_interface = ReachableSetInterface(self.reach_config)
-        self.reach_interface._reach = PySemanticLabelingReachableSet(
-            self.reach_config, semantic_model, rule_interface
-        )
+            # update the rule interface
+            rule_interface = self.repair_rule_interface(semantic_model)
+
+            # update the rule interface
+            # initialize the reach interface
+            self.reach_interface = ReachableSetInterface(self.reach_config)
+
+            self.reach_interface._reach = PySemanticLabelingReachableSet(
+                self.reach_config, semantic_model, rule_interface
+            )
+        else:
+            self.reach_interface = ReachableSetInterface(self.reach_config)
+            self.reach_interface._reach = ReachableSet.instantiate(self.reach_config)
 
         self.reach_interface.compute_reachable_sets(
             step_start=0, step_end=self._nr_ts, verbose=True
         )
-        self.spot_interface = SpotInterface(self.reach_interface, rule_interface)
-        self.spot_interface.translate_ltl_formulas()
-        self.spot_interface.translate_reachability_graph()
-        self.spot_interface.check()
+
+        if self.reach_config.traffic_rule.activated_rules:
+            self.spot_interface = SpotInterface(self.reach_interface, rule_interface)
+            self.spot_interface.translate_ltl_formulas()
+            self.spot_interface.translate_reachability_graph()
+            self.spot_interface.check()
 
     def repair_rule_interface(self, semantic_model: SemanticModel) -> TrafficRuleInterface:
         """
@@ -244,6 +263,20 @@ class RuleConstraintsReach:
                     semantic_prop = "!" + semantic_prop
                 # fixme: safe following works only for TPL somehow
                 repaired_rules.append('TPL ' + semantic_prop)
+            else:
+                if PredInSameLane.predicate_name in prop.name:
+                    semantic_prop = Proposition.in_same_lane(self._other_id)
+                elif PredInFrontOf.predicate_name in prop.name:
+                    semantic_prop = Proposition.in_front_of(self._other_id)
+                else:
+                    # for instance unnecessary_braking
+                    semantic_prop = None
+                if semantic_prop:
+                    if prop.ttv_value > 0:
+                        # change the sign
+                        semantic_prop = "!" + semantic_prop
+                    repaired_rules.append('LTL G[' + str(self._tc_obj.tv_time_step) + '..' +
+                                          str(self._tc_obj.N) + '](' + semantic_prop + ')')
         self.reach_config.traffic_rule.activated_rules = repaired_rules
         rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
         rule_interface.print_summary()
@@ -251,12 +284,20 @@ class RuleConstraintsReach:
 
     def compute_semantic_reachable_set(self, vehicle_configuration, verbose=True):
         self.update_reach_interface(vehicle_configuration)
-        dc_extractor = DrivingCorridorExtractor(self.spot_interface)
-        dc_extractor.extract_corridors(search=True)
-        self.corridor = dc_extractor.determine_optimal_corridor()
+        if self.reach_config.traffic_rule.activated_rules:
+            dc_extractor = DrivingCorridorExtractorSemantic(self.spot_interface)
+            dc_extractor.extract_corridors(search=True)
+            self.corridor = dc_extractor.determine_optimal_corridor()
+        else:
+            dc_extractor = DrivingCorridorExtractor(self.reach_interface.reachable_set, self.reach_config)
+            driving_corridors = dc_extractor.extract()
+            self.corridor = driving_corridors[0]
+
 
         # * for debugging the reach semantic
-        # util_visual.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
+        #node_to_group = util_visual.groups_from_propositions(self.reach_interface._reach.labeler.reachable_set_to_propositions)
+        #util_visual.show_interactive_reach_graph(self.reach_interface, use_images=True, node_to_group=node_to_group)
+        #util_visual.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
 
     def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
