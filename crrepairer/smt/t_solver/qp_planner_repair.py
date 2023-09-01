@@ -97,6 +97,7 @@ class QPPlannerRepair(QPPlanner):
             .get_lane(0)
             .clcs
         )
+
         # update the vehicle shape
         self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
         self._vehicle_configuration.length = self._ego_vehicle.obstacle_shape.length
@@ -115,6 +116,7 @@ class QPPlannerRepair(QPPlanner):
             proposition_full,
             self._vehicle_configuration,
             self._initial_trajectory,
+            self._planning_problem
         )
 
         # initialize the QP planner

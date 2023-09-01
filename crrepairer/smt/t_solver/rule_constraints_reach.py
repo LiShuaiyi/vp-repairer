@@ -75,6 +75,7 @@ class RuleConstraintsReach:
         proposition_full: List[PropositionNode],
         veh_config: PlanningConfigurationVehicle,
         initial_trajectory: Trajectory,
+        planning_problem: PlanningProblem
     ):
         # initialize the needed components
         self._tc_obj = tc_object
@@ -126,7 +127,8 @@ class RuleConstraintsReach:
         self.reach_config.general.path_scenario = (
             "../../scenarios/" + str(self._world_state.scenario.scenario_id) + ".xml"
         )
-        self.reach_config.update()
+        self.reach_config.update(scenario=tc_object.scenario, planning_problem=planning_problem)
+        # use the original scenario
 
         self.corridor = None
 
@@ -162,38 +164,43 @@ class RuleConstraintsReach:
         )
         self.reach_config.planning_problem.initial_state.time_step = 0
 
-        # remove the ego
-        self.reach_config.scenario.remove_obstacle(
-            self.reach_config.scenario.obstacle_by_id(self._ego_vehicle_cr.obstacle_id)
-        )
-
         for obs in self.reach_config.scenario.dynamic_obstacles:
             new_state_list = []
-            obs.initial_state = InitialState(
-                time_step=0,
-                position=obs.state_at_time(cut_off_time_step).position,
-                velocity=obs.state_at_time(cut_off_time_step).velocity,
-                orientation=obs.state_at_time(cut_off_time_step).orientation,
-                acceleration=0.0,
-                yaw_rate=0.0,
-                slip_angle=0.0,
-            )
-            for i in range(cut_off_time_step, self._tc_obj.N + 1):
-                new_state_list.append(
-                    CustomState(
-                        time_step=i - cut_off_time_step,
-                        position=obs.state_at_time(i).position,
-                        velocity=obs.state_at_time(i).velocity,
-                        orientation=obs.state_at_time(i).orientation,
-                    )
+            if obs.state_at_time(cut_off_time_step):
+                obs.initial_state = InitialState(
+                    time_step=0,
+                    position=obs.state_at_time(cut_off_time_step).position,
+                    velocity=obs.state_at_time(cut_off_time_step).velocity,
+                    orientation=obs.state_at_time(cut_off_time_step).orientation,
+                    acceleration=0.0,
+                    yaw_rate=0.0,
+                    slip_angle=0.0,
                 )
-            new_traj = Trajectory(initial_time_step=0, state_list=new_state_list)
-            obs.prediction.occupancy_set = obs.prediction.occupancy_set[
-                cut_off_time_step:
-            ]
-            for occ in obs.prediction.occupancy_set:
-                occ.time_step -= cut_off_time_step
-            obs.prediction.trajectory = new_traj
+            else:
+                self.reach_config.scenario.remove_obstacle(obs)
+                continue
+            for i in range(cut_off_time_step, self._tc_obj.N + 1):
+                if obs.state_at_time(i):
+                    new_state_list.append(
+                        CustomState(
+                            time_step=i - cut_off_time_step,
+                            position=obs.state_at_time(i).position,
+                            velocity=obs.state_at_time(i).velocity,
+                            orientation=obs.state_at_time(i).orientation,
+                        )
+                    )
+                else:
+                    break
+            if len(new_state_list) > 0:
+                new_traj = Trajectory(initial_time_step=0, state_list=new_state_list)
+                obs.prediction.occupancy_set = obs.prediction.occupancy_set[
+                        cut_off_time_step-1:
+                    ]
+                for occ in obs.prediction.occupancy_set:
+                    occ.time_step -= cut_off_time_step - 1
+                obs.prediction.trajectory = new_traj
+            else:
+                self.reach_config.scenario.remove_obstacle(obs)
 
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
