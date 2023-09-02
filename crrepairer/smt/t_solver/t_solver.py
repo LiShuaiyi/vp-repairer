@@ -38,7 +38,7 @@ class TSolver:
         self._miqp_planner = None
         self._planning_problem = planning_problem
 
-        self.verbose = True
+        self.verbose = False
 
     @property
     def tc_object(self):
