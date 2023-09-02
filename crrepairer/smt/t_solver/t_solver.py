@@ -53,10 +53,10 @@ class TSolver:
         self._sel_prop = list()
         for prop in propositions:
             # if not the same value
-            if (prop.ttv_value < 0 and prop.alphabet in model) or (
-                prop.ttv_value > 0 and "~" + prop.alphabet in model
-            ):
-                self._sel_prop.append(prop)
+            # if (prop.ttv_value < 0 and prop.alphabet in model) or (
+            #     prop.ttv_value > 0 and "~" + prop.alphabet in model
+            # ):
+            self._sel_prop.append(prop)
         self._compliant_maneuvers = self.set_compliant_maneuver()
 
     def set_compliant_maneuver(self):
