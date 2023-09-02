@@ -40,6 +40,8 @@ if __name__ == "__main__":
         veh.prediction.occupancy_set = veh.prediction.occupancy_set[
             initial_time_step:final_time_step
         ]
+        for os in veh.prediction.occupancy_set:
+            os.time_step -= initial_time_step
         veh.prediction.final_time_step = 20
         veh.prediction.initial_time_step = 0
 

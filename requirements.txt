@@ -17,5 +17,5 @@ commonroad-drivability-checker>=2022.2
 commonroad-crime>=0.3.0
 
 # qp planner
--e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_safe_distance#egg=commonroad-qp-planner
+-e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature-reach-semantic#egg=commonroad-qp-planner
 

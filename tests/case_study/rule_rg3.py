@@ -10,6 +10,10 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.scenario.trajectory import Trajectory
 import math
 
+"""
+!! DOESN'T work for having a very high acc in the beginning
+"""
+
 scenario_id = "DEU_Muc-4_2_T-1"
 file_path = "../../scenarios/" + scenario_id + ".xml"
 figure_path = "./figures"

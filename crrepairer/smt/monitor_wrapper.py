@@ -311,6 +311,7 @@ class STLRuleMonitor:
                         prop_names.append([])
                         prop_rob.append([])
                     pred = evaluator.get_predicates()
+                    # mpr_grad = evaluator.get_mpr_gradient()
                     if pred:
                         pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
                     else:

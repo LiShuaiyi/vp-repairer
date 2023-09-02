@@ -39,8 +39,8 @@ qp_planner:
     # forbidden_lanelets: [452, 462, 474, 472, 470]
 
     longitudinal_parameters:
-        W_S: 1.0 # weight for state deviation
-        W_V: 0.4 # weight for velocity deviation
+        W_S: 20. # weight for state deviation
+        W_V: 20. # weight for velocity deviation
         W_A: 1.0 # weight for acceleration deviation
         W_J: 2.0 # weight for jerk deviation
         W_U: 0.1 # weight for input
