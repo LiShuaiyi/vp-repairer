@@ -19,6 +19,7 @@ from crmonitor.predicates.position import (
     PredInSameLane,
     PredInFrontOf,
     PredPreceding,
+    PredStopLineInFront
 )
 
 from crmonitor.predicates.velocity import (
@@ -35,6 +36,7 @@ from commonroad.scenario.trajectory import Trajectory, CustomState
 from commonroad.scenario.state import InitialState
 
 from commonroad_reach.data_structure.reach.reach_set import ReachableSet
+
 # specification-compliant reachable set
 import commonroad_reach_semantic.data_structure.rule.priorities as priorities
 from commonroad_reach_semantic.data_structure.config.semantic_configuration_builder import (
@@ -60,6 +62,9 @@ from commonroad_reach_semantic.data_structure.rule.proposition import (
 from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import (
     TrafficRuleInterface,
 )
+import commonroad_reach_semantic.utility.visualization as util_visual_semantic
+from commonroad_reach.utility import visualization as util_visual
+
 from crmonitor.common.vehicle import Vehicle
 from crmonitor.predicates.position import (
     PredSafeDistPrec,
@@ -129,6 +134,8 @@ class RuleConstraintsReach:
             path_root=path_root
         ).build_configuration(str(self._world_state.scenario.scenario_id))
         # update the time step and nr of computation
+        self.reach_config.vehicle.ego.width = self._ego_vehicle_cr.obstacle_shape.width
+        self.reach_config.vehicle.ego.length = self._ego_vehicle_cr.obstacle_shape.length
         self.reach_config.planning.dt = self._world_state.dt
         self.reach_config.planning.steps_computation = self._nr_ts
         # update the path
@@ -294,6 +301,8 @@ class RuleConstraintsReach:
                     semantic_prop = Proposition.in_same_lane(self._other_id)
                 elif PredInFrontOf.predicate_name in prop.name:
                     semantic_prop = Proposition.in_front_of(self._other_id)
+                elif PredStopLineInFront.predicate_name in prop.name:
+                    semantic_prop = Proposition.behind_stop_line()
                 else:
                     # for instance unnecessary_braking
                     semantic_prop = None
@@ -303,7 +312,7 @@ class RuleConstraintsReach:
                         semantic_prop = "!" + semantic_prop
                     repaired_rules.append('LTL G[' + str(self._tc_obj.tv_time_step) + '..' +
                                           str(self._tc_obj.N) + '](' + semantic_prop + ')')
-        self.reach_config.traffic_rule.activated_rules = repaired_rules
+        self.reach_config.traffic_rule.activated_rules = list(set(repaired_rules))
         rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
         rule_interface.print_summary()
         return rule_interface
@@ -319,11 +328,12 @@ class RuleConstraintsReach:
             driving_corridors = dc_extractor.extract()
             self.corridor = driving_corridors[0]
 
-
         # * for debugging the reach semantic
-        #node_to_group = util_visual.groups_from_propositions(self.reach_interface._reach.labeler.reachable_set_to_propositions)
-        #util_visual.show_interactive_reach_graph(self.reach_interface, use_images=True, node_to_group=node_to_group)
-        #util_visual.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
+        #node_to_group = util_visual_semantic.groups_from_propositions(self.reach_interface._reach.labeler.reachable_set_to_propositions)
+        #util_visual_semantic.show_interactive_reach_graph(self.reach_interface, use_images=True, node_to_group=node_to_group)
+        #util_visual_semantic.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
+        # * for debugging the original reach
+        #util_visual.plot_scenario_with_reachable_sets(self.reach_interface)
 
     def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
