@@ -1,9 +1,6 @@
+import math
 import os
 
-from crrepairer.cut_off.tc import TC
-from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
-
-from crmonitor.common.vehicle import Vehicle
 
 from typing import List
 import copy
@@ -30,6 +27,7 @@ from crmonitor.predicates.velocity import (
     PredBrSpeedLimit,
     PredTypeSpeedLimit,
 )
+from crmonitor.predicates.acceleration import PredAbruptBreaking, PredRelAbruptBreaking
 
 from commonroad_qp_planner.constraints import LatConstraints, LonConstraints
 from commonroad.planning.planning_problem import PlanningProblem
@@ -218,6 +216,34 @@ class RuleConstraintsReach:
             CLCS=vehicle_configuration.CLCS,
         )
 
+        #########################################################
+        ##     update the velocity and acceleration rules      ##
+        #########################################################
+        v_max = self.reach_config.vehicle.ego.v_max
+        a_min = self.reach_config.vehicle.ego.a_lon_min
+        for prop in self._sel_prop_full:
+            # velocity limit
+            for predicate in prop.children:
+                if predicate.base_name in (
+                    PredFovSpeedLimit.predicate_name,
+                    PredBrSpeedLimit.predicate_name,
+                    PredTypeSpeedLimit.predicate_name,
+                    PredLaneSpeedLimit.predicate_name,
+                ):
+                    speed_limit = predicate.evaluator.get_speed_limit(
+                        self._world_state, self._tc_obj.tv_time_step, [self._ego_id]
+                    )
+                    if speed_limit:  # not None
+                        if speed_limit < v_max:
+                            v_max = speed_limit
+                if predicate.base_name in [PredAbruptBreaking]:
+                    acc_min = predicate.evaluator.config["a_abrupt"]
+                    if acc_min > a_min:
+                        a_min = acc_min
+
+        self.reach_config.vehicle.ego.v_max = v_max
+        self.reach_config.vehicle.ego.a_lon_min = a_min
+        #########################################################
         if self.reach_config.traffic_rule.activated_rules:
             semantic_model = SemanticModel(self.reach_config)
             semantic_model.determine_traffic_priorities(
