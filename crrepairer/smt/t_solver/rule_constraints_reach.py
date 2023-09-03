@@ -344,6 +344,16 @@ class RuleConstraintsReach:
         else:
             s_min, s_max = longitudinal_position_constraints(self.corridor)
             v_min, v_max = longitudinal_velocity_constraints(self.corridor)
+        if self.reach_config.traffic_rule.activated_rules:
+            for prop in self._sel_prop_full:
+                # velocity limit
+                # fixme: adding stopping distance!!
+                for predicate in prop.children:
+                    if predicate.base_name in [PredStopLineInFront.predicate_name]:
+                        for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step, self._tc_obj.N - self._tc_obj.tc_time_step):
+                            # since Edmond only consider the vehicle center/fixme
+                            s_max[ts] -= (predicate.evaluator.config["d_sl"] + self._veh_config.wb_ra)
+                            s_min -= self._veh_config.wb_ra
         c_tv_lon = LonConstraints.construct_constraints(
             s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
         )
