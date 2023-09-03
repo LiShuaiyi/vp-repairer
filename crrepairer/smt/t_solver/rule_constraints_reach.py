@@ -361,10 +361,14 @@ class RuleConstraintsReach:
 
     def lateral_constraints(self, traj_lon, configuration_qp):
         traj_lon_positions = traj_lon.get_positions()[:, 0]
-        lateral_driving_corridors = self.reach_interface.extract_driving_corridors()
-        lat_dc = list(lateral_driving_corridors)[0]
+        # fixme: not the same interface as reach
+        # lateral_driving_corridors = self.reach_interface.extract_driving_corridors(
+        #     corridor_lon=self.corridor,
+        #     list_p_lon=traj_lon_positions
+        # )
+        # lat_dc = list(lateral_driving_corridors)[0]
         d_min, d_max = lateral_position_constraints(
-            lat_dc, self.corridor, traj_lon_positions, configuration_qp
+            self.corridor, self.corridor, traj_lon_positions, configuration_qp
         )
         c_tv_lat = LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
         return c_tv_lat
