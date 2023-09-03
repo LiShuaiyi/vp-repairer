@@ -310,8 +310,8 @@ class RuleConstraintsReach:
                     if prop.ttv_value > 0:
                         # change the sign
                         semantic_prop = "!" + semantic_prop
-                    repaired_rules.append('LTL G[' + str(self._tc_obj.tv_time_step) + '..' +
-                                          str(self._tc_obj.N) + '](' + semantic_prop + ')')
+                    repaired_rules.append('LTL G[' + str(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step) + '..' +
+                                          str(self._tc_obj.N - self._tc_obj.tc_time_step) + '](' + semantic_prop + ')')
         self.reach_config.traffic_rule.activated_rules = list(set(repaired_rules))
         rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
         rule_interface.print_summary()
