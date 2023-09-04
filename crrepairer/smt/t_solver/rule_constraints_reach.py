@@ -31,6 +31,8 @@ from crmonitor.predicates.velocity import (
 from crmonitor.predicates.acceleration import PredAbruptBreaking, PredRelAbruptBreaking
 
 from commonroad_qp_planner.constraints import LatConstraints, LonConstraints
+
+from commonroad_route_planner.route_planner import RoutePlanner
 from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.scenario.trajectory import Trajectory, CustomState
 from commonroad.scenario.state import InitialState
@@ -142,7 +144,8 @@ class RuleConstraintsReach:
         self.reach_config.general.path_scenario = (
             "../../scenarios/" + str(self._world_state.scenario.scenario_id) + ".xml"
         )
-        self.reach_config.update(scenario=tc_object.scenario, planning_problem=planning_problem)
+        self.reach_config.scenario = tc_object.scenario
+        self.reach_config.planning_problem = planning_problem
         # use the original scenario
 
         self.corridor = None
@@ -216,11 +219,19 @@ class RuleConstraintsReach:
                 obs.prediction.trajectory = new_traj
             else:
                 self.reach_config.scenario.remove_obstacle(obs)
+        route_planner = RoutePlanner(lanelet_network=self.reach_config.scenario.lanelet_network,
+                                     planning_problem=self.reach_config.planning_problem,
+                                     state_initial=self.reach_config.planning_problem.initial_state,
+                                     goal_region=self.reach_config.planning_problem.goal)
+        candidate_holder = route_planner.plan_routes()
+        route = candidate_holder.retrieve_first_route()
+        self.reach_config.planning.route = route
 
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
             scenario=self.reach_config.scenario,
             CLCS=vehicle_configuration.CLCS,
+
         )
 
         #########################################################
@@ -333,7 +344,7 @@ class RuleConstraintsReach:
         #util_visual_semantic.show_interactive_reach_graph(self.reach_interface, use_images=True, node_to_group=node_to_group)
         #util_visual_semantic.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
         # * for debugging the original reach
-        #util_visual.plot_scenario_with_reachable_sets(self.reach_interface)
+        util_visual.plot_scenario_with_reachable_sets(self.reach_interface)
 
     def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
