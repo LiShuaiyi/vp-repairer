@@ -19,6 +19,7 @@ from crmonitor.predicates.position import (
     PredInSameLane,
     PredInFrontOf,
     PredPreceding,
+    PredInIntersectionConflictArea,
     PredStopLineInFront
 )
 
@@ -268,6 +269,9 @@ class RuleConstraintsReach:
                 priorities.dict_traffic_sign_to_priorities
             )
 
+            # Plot the regions
+            util_visual_semantic.plot_scenario_with_regions(semantic_model, "CVLN")
+
             # update the rule interface
             rule_interface = self.repair_rule_interface(semantic_model)
 
@@ -314,6 +318,8 @@ class RuleConstraintsReach:
                     semantic_prop = Proposition.in_front_of(self._other_id)
                 elif PredStopLineInFront.predicate_name in prop.name:
                     semantic_prop = Proposition.behind_stop_line()
+                elif PredInIntersectionConflictArea.predicate_name in prop.name:
+                    semantic_prop = Proposition.in_conflict_with(self._other_id)
                 else:
                     # for instance unnecessary_braking
                     semantic_prop = None
