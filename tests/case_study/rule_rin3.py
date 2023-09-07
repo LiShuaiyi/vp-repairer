@@ -10,7 +10,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.prediction.prediction import Trajectory
 import math
 
-scenario_id = "DEU_TestRIN3-3_1_T-2"
+scenario_id = "DEU_TestRIN3-3_1_T-3"
 file_path = "../../scenarios/" + scenario_id + ".xml"
 figure_path = "./figures"
 
