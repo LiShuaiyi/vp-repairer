@@ -34,7 +34,6 @@ from crmonitor.common.road_network import RoadNetwork
 from commonroad.scenario.lanelet import LaneletType
 from shapely.geometry import Polygon, LineString
 
-
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
@@ -47,13 +46,13 @@ class RuleConstraints:
     """
 
     def __init__(
-        self,
-        tc_object: TC,
-        rule_monitor: STLRuleMonitor,
-        sel_proposition_full: List[PropositionNode],
-        proposition_full: List[PropositionNode],
-        veh_config: PlanningConfigurationVehicle,
-        initial_trajectory: Trajectory,
+            self,
+            tc_object: TC,
+            rule_monitor: STLRuleMonitor,
+            sel_proposition_full: List[PropositionNode],
+            proposition_full: List[PropositionNode],
+            veh_config: PlanningConfigurationVehicle,
+            initial_trajectory: Trajectory,
     ):
         # initialize the needed components
         self._tc_obj = tc_object
@@ -90,12 +89,12 @@ class RuleConstraints:
                 self._ego_vehicle.state_list_cr[tc_object.tc_time_step]
             )
             lane_dist = (
-                self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
-                    self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s
-                )
-                / 2
-                - abs(self._ego_vehicle.get_lat_state(0).d)
-                - self._veh_config.width / 2
+                    self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
+                        self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s
+                    )
+                    / 2
+                    - abs(self._ego_vehicle.get_lat_state(0).d)
+                    - self._veh_config.width / 2
             )
             leave_time = np.sqrt(
                 2 * abs(lane_dist / self._tc_obj.simulation_lateral.a_lat)
@@ -132,19 +131,19 @@ class RuleConstraints:
                 try:
                     prop_assignment = total_assignment[
                         total_assignment == total_assignment
-                    ][idx]
+                        ][idx]
                 except:
                     # no assignment can be found
                     continue
                 for predicate in proposition.children:
                     if (
-                        proposition in self._prop_full
-                        and k >= self._tc_obj.tv_time_step
+                            proposition in self._prop_full
+                            and k >= self._tc_obj.tv_time_step
                     ):
                         # proposition to be repaired (greater than the time-to-violation)
                         robs_at_tv = self._rule_monitor.prop_robust_all[
-                            :, self._tc_obj.tv_time_step
-                        ]
+                                     :, self._tc_obj.tv_time_step
+                                     ]
                         prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
                         if proposition in self._sel_prop_full:
                             prop_assignment = -prop_assignment
@@ -166,10 +165,10 @@ class RuleConstraints:
                         elif predicate.base_name == PredCutIn.predicate_name:
                             self.ConstrCutIn(k, prop_assignment)
                         elif predicate.base_name in (
-                            PredFovSpeedLimit.predicate_name,
-                            PredBrSpeedLimit.predicate_name,
-                            PredTypeSpeedLimit.predicate_name,
-                            PredLaneSpeedLimit.predicate_name,
+                                PredFovSpeedLimit.predicate_name,
+                                PredBrSpeedLimit.predicate_name,
+                                PredTypeSpeedLimit.predicate_name,
+                                PredLaneSpeedLimit.predicate_name,
                         ):
                             speed_limit = predicate.evaluator.get_speed_limit(
                                 self._world_state, k, [self._ego_id]
@@ -179,20 +178,20 @@ class RuleConstraints:
                             v_constr = self.ConstrSpeedLimit(speed_limit)
                             v_limit = self._get_overlap(v_limit, v_constr)
                         elif predicate.base_name in (
-                            PredAbruptBreaking.predicate_name,
-                            PredRelAbruptBreaking.predicate_name,
+                                PredAbruptBreaking.predicate_name,
+                                PredRelAbruptBreaking.predicate_name,
                         ):
                             a_abruptly = predicate.evaluator.config["a_abrupt"]
                             a_constr = self.ConstrAccNotAbruptly(a_abruptly)
                             a_limit = self._get_overlap(a_constr, a_limit)
                         # --------------------------------------------------------------------------------------------#
                         elif predicate.base_name in (
-                            PredStopLineInFront.predicate_name,
+                                PredStopLineInFront.predicate_name,
                         ):
                             s_constr = self.ConstrStopLine(k)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         elif predicate.base_name in (
-                            PredInIntersectionConflictArea.predicate_name,
+                                PredInIntersectionConflictArea.predicate_name,
                         ):
                             s_constr = self.ConstrInIntersectionConflictAreaEgo(k)
                             s_limit = self._get_overlap(s_limit, s_constr)
@@ -232,8 +231,8 @@ class RuleConstraints:
         )
 
     def lateral_constraints(
-        self,
-        long_traj: QPTrajectory,
+            self,
+            long_traj: QPTrajectory,
     ):
         """
         Set the lateral constraints (based on the planned longitudinal trajectory and the previously
@@ -431,9 +430,9 @@ class RuleConstraints:
             pass
 
     def ConstrCutIn(
-        self,
-        time_step: int,
-        prop_assignment: float,
+            self,
+            time_step: int,
+            prop_assignment: float,
     ):
         # print("<QPRepairer/_rule_constraints>: we cannot add constraints for cut in")
         return None
@@ -452,51 +451,108 @@ class RuleConstraints:
         for lanelet_id in self._ego_vehicle.lanelets_dir:
             lanelet = wold.road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
             if lanelet.stop_line is not None:
-                stop_line_s = (
+                stop_line_center = (lanelet.stop_line.start + lanelet.stop_line.end) / 2
+                stop_line_direction = (lanelet.stop_line.start - lanelet.stop_line.end) / np.linalg.norm(
+                    lanelet.stop_line.start - lanelet.stop_line.end)
+                direction_1 = np.array([stop_line_direction[1],
+                                        -stop_line_direction[0]])
+                direction_2 = np.array([-stop_line_direction[1],
+                                        stop_line_direction[0]])
+                stop_line_bound_1 = stop_line_center + (
+                            self._veh_config.length / 2 + self._veh_config.wheelbase / 2) * direction_1
+                stop_line_bound_2 = stop_line_center + (
+                        self._veh_config.length / 2 + self._veh_config.wheelbase / 2) * direction_2
+                s_1 = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *stop_line_bound_1
+                )[0]
+                s_2 = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *stop_line_bound_2
+                )[0]
+                stop_line_s = min(
                     self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
                         *lanelet.stop_line.start
+                    )[0],
+                    self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *lanelet.stop_line.end
                     )[0]
                 )
-                upper_bound = (
+                max_distance_to_vehicle = np.sqrt(
+                    (self._veh_config.length / 2 + self._veh_config.wheelbase / 2) ** 2 + (
+                                self._veh_config.width / 2) ** 2)
+                upper_bound = min(
+                    upper_bound,
                     stop_line_s
-                    - self._ego_vehicle.shape.length / 2
-                    - self._veh_config.wheelbase / 2
-                    - 0.25
+                    - max_distance_to_vehicle
                 )
         return [-np.inf, upper_bound]
 
     def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
         def compute_conflict_start_end_points(
-            ego_vehicle: Vehicle,
-            target_vehicle: Vehicle,
-            road_network: RoadNetwork,
-            time_step,
+                ego_vehicle: Vehicle,
+                target_vehicle: Vehicle,
+                road_network: RoadNetwork,
+                time_step,
         ):
-            all_conflict_points = list()
+            all_conflict_points_center = list()
+            all_conflict_points_right = list()
+            all_conflict_points_left = list()
             for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
                 lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
                 if LaneletType.INTERSECTION in lanelet.lanelet_type:
                     # find conflict points between center vertices of lanelets_dir of k-th vehicle and reference path
                     # lanelets of p-th vehicle
-                    conflict_points = find_conflict_points(
+                    conflict_points_center = find_conflict_points(
                         ego_vehicle.lanelets_dir_center_vertices,
                         lanelet.polygon.shapely_object,
                     )
-                    if conflict_points is not None:
-                        all_conflict_points.append(conflict_points)
-            if len(all_conflict_points) == 0:
+                    conflict_points_right = find_conflict_points(
+                        ego_vehicle.lanelets_dir_right_vertices,
+                        lanelet.polygon.shapely_object,
+                    )
+                    conflict_points_left = find_conflict_points(
+                        ego_vehicle.lanelets_dir_left_vertices,
+                        lanelet.polygon.shapely_object,
+                    )
+                    if conflict_points_center is not None:
+                        all_conflict_points_center.append(conflict_points_center)
+                    if conflict_points_right is not None:
+                        all_conflict_points_right.append(conflict_points_right)
+                    if conflict_points_left is not None:
+                        all_conflict_points_left.append(conflict_points_left)
+            if len(all_conflict_points_center) == 0:
                 return [np.inf, -np.inf]
-            start_conflict_s = (
+            start_conflict_s_center = (
                 ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points[0][0]
+                    *all_conflict_points_center[0][0]
                 )[0]
             )
-            end_conflict_s = (
+            start_conflict_s_right = (
                 ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points[-1][-1]
+                    *all_conflict_points_right[0][0]
                 )[0]
             )
-            return [start_conflict_s, end_conflict_s]
+            start_conflict_s_left = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_left[0][0]
+                )[0]
+            )
+            end_conflict_s_center = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_center[-1][-1]
+                )[0]
+            )
+            end_conflict_s_right = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_right[-1][-1]
+                )[0]
+            )
+            end_conflict_s_left = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_left[-1][-1]
+                )[0]
+            )
+            return [np.min([start_conflict_s_center, start_conflict_s_right, start_conflict_s_left]),
+                    np.max([end_conflict_s_center, end_conflict_s_right, end_conflict_s_left])]
 
         def find_conflict_points(line, conflict_polygon):
             conflict_line_points = list()
@@ -505,16 +561,16 @@ class RuleConstraints:
             # Get intersection of line and polygon
             intersection = curved_line.intersection(conflict_polygon)
             if intersection.geom_type == "Point":
-                conflict_line_points.append(intersection)
+                conflict_line_points.append([intersection.x, intersection.y])
             elif (
-                intersection.geom_type == "LineString"
-                or intersection.geom_type == "LinearRing"
+                    intersection.geom_type == "LineString"
+                    or intersection.geom_type == "LinearRing"
             ):
                 for point in intersection.coords:
                     conflict_line_points.append(np.array(point))
             elif (
-                intersection.geom_type == "MultiPoint"
-                or intersection.geom_type == "MultiLineString"
+                    intersection.geom_type == "MultiPoint"
+                    or intersection.geom_type == "MultiLineString"
             ):
                 for geom in intersection.geoms:
                     for point in geom.coords:
@@ -534,8 +590,8 @@ class RuleConstraints:
         target_vehicle = self._target_vehicle
         for i in range(len(rule_monitor.proposition_nodes)):
             if (
-                rule_monitor.proposition_nodes[i].name
-                == "(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)"
+                    rule_monitor.proposition_nodes[i].name
+                    == "(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)"
             ):
                 index_prop_conflict_area_target = i
                 break
@@ -547,10 +603,14 @@ class RuleConstraints:
                 ego_vehicle, target_vehicle, world.road_network, time_step
             )
             front_constr = (
-                conflict_points[0]
-                - self._ego_vehicle.shape.length / 2
-                - self._veh_config.wheelbase / 2
-                - 2
+                    conflict_points[0]
+                    - self._ego_vehicle.shape.length / 2
+                    - self._veh_config.wheelbase / 2
+            )
+            rear_constr = (
+                    conflict_points[1]
+                    + self._ego_vehicle.shape.length / 2
+                    + self._veh_config.wheelbase / 2
             )
         else:
             front_constr = np.inf
