@@ -47,6 +47,10 @@ class ScenarioType(str, Enum):
     INTERSTATE = "interstate"
     INTERSECTION = "intersection"
 
+class IntersectionType(str, Enum):
+    HAND_DRAFT = "hand_draft"
+    DATASET = "dataset"
+
 
 class STLRuleMonitor:
     def __init__(
@@ -55,11 +59,14 @@ class STLRuleMonitor:
         vehicle_id: int,
         rules: Union[str, Iterable[str]],
         scenario_type: ScenarioType = ScenarioType.INTERSTATE,
+        intersection_type: IntersectionType = IntersectionType.DATASET,
         multiproc: bool = True,
     ):
         # update the world configuration for repairing purposes
         world_config = get_world_config()
         world_config["scenario"] = scenario_type
+        if scenario_type == ScenarioType.INTERSECTION:
+            world_config["intersection_road_network_param"]["map_type"] = intersection_type
         self._world: World = World.create_from_scenario(scenario, config=world_config)
         self._vehicle_id = vehicle_id
         self.multiproc = multiproc
