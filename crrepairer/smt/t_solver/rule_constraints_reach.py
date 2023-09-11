@@ -348,9 +348,9 @@ class RuleConstraintsReach:
         # * for debugging the reach semantic
         #node_to_group = util_visual_semantic.groups_from_propositions(self.reach_interface._reach.labeler.reachable_set_to_propositions)
         #util_visual_semantic.show_interactive_reach_graph(self.reach_interface, use_images=True, node_to_group=node_to_group)
-        #util_visual_semantic.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=True)
+        #util_visual_semantic.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=False)
         # * for debugging the original reach
-        util_visual.plot_scenario_with_reachable_sets(self.reach_interface)
+        #util_visual.plot_scenario_with_reachable_sets(self.reach_interface)
 
     def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
@@ -367,8 +367,13 @@ class RuleConstraintsReach:
                 # fixme: adding stopping distance!!
                 for predicate in prop.children:
                     if predicate.base_name in [PredStopLineInFront.predicate_name]:
-                        for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step, self._tc_obj.N - self._tc_obj.tc_time_step):
+                        for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step,
+                                        self._tc_obj.N - self._tc_obj.tc_time_step):
                             s_max[ts] -= (predicate.evaluator.config["d_sl"])
+                    if predicate.base_name in [PredInIntersectionConflictArea.predicate_name]:
+                        for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step - 1,
+                                        self._tc_obj.N - self._tc_obj.tc_time_step):
+                            s_max[ts] -= (self._veh_config.length/2)
         c_tv_lon = LonConstraints.construct_constraints(
             s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
         )
