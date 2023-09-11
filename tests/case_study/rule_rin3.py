@@ -10,7 +10,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.prediction.prediction import Trajectory
 import math
 
-scenario_id = "DEU_TestRIN3-3_1_T-3"
+scenario_id = "DEU_TestRIN3-3_1_T-1"
 file_path = "../../scenarios/" + scenario_id + ".xml"
 figure_path = "./figures"
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 30
     rule = ["R_IN3"]
-    N = 30
+    N = 49
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory = Trajectory(
         1, ego_initial.prediction.trajectory.state_list[:N]
