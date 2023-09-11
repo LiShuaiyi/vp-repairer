@@ -34,13 +34,13 @@ class QPPlannerRepair(QPPlanner):
     """
 
     def __init__(
-        self,
-        rule_monitor: STLRuleMonitor,
-        tc_object: TC,
-        sel_proposition: List[PropositionNode],
-        proposition_full: List[PropositionNode],
-        planning_problem: PlanningProblem,
-        verbose=False,
+            self,
+            rule_monitor: STLRuleMonitor,
+            tc_object: TC,
+            sel_proposition: List[PropositionNode],
+            proposition_full: List[PropositionNode],
+            planning_problem: PlanningProblem,
+            verbose=False,
     ):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world.scenario
@@ -163,7 +163,7 @@ class QPPlannerRepair(QPPlanner):
         """
         x_ref = list()
         for state in self._initial_trajectory.states_in_time_interval(
-            self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
+                self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
         ):
             pos = convert_pos_curvilinear(state, self._vehicle_configuration)
             x_ref.append(QPLongState(pos[0], state.velocity, 0.0, 0.0, 0.0))
@@ -175,14 +175,14 @@ class QPPlannerRepair(QPPlanner):
         """
         d_ref = list()
         for state in self._initial_trajectory.states_in_time_interval(
-            self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
+                self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
         ):
             pos = convert_pos_curvilinear(state, self._vehicle_configuration)
             d_ref.append(pos[1])
         return d_ref
 
     def convert_traj_to_ego_vehicle(
-        self, cr_trajectory: Trajectory, vehicle_id: int = 0
+            self, cr_trajectory: Trajectory, vehicle_id: int = 0
     ) -> DynamicObstacle:
         """
         Converts trajectory object to CommonRoad obstacle with specified width and length
@@ -240,8 +240,8 @@ class QPPlannerRepair(QPPlanner):
             remaining_states = [self._ego_vehicle.initial_state]
         else:
             remaining_states = [
-                self._ego_vehicle.initial_state
-            ] + self._initial_trajectory.states_in_time_interval(
+                                   self._ego_vehicle.initial_state
+                               ] + self._initial_trajectory.states_in_time_interval(
                 1, self._cut_off_time_step - 1
             )
         for state in cr_traj_repaired.state_list:
