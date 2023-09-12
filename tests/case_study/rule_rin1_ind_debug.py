@@ -24,7 +24,7 @@ if __name__ == "__main__":
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 10065
     rule = ["R_IN1"]
-    N = 151
+    N = 149
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory = Trajectory(
         ego_initial.prediction.initial_time_step, ego_initial.prediction.trajectory.state_list[:N]
@@ -47,12 +47,12 @@ if __name__ == "__main__":
             )
 
             # ============= Visualization =============
-            plot_limits = [-5, 50, -4.5, 3]
+            plot_limits = [45, 70, -35, -15]
             target_veh = scenario.obstacle_by_id(traffic_rule_monitor.other_id)
             visualize_v_profile(
                 ego_initial,
                 ego_repaired,
-                time_start=0,
+                time_start=ego_initial.prediction.initial_time_step - 1,
                 time_end=N,
                 tc=repairer.tc,
                 tv=repairer.tv,
@@ -61,7 +61,7 @@ if __name__ == "__main__":
                 scenario.dt,
                 ego_initial,
                 ego_repaired,
-                time_start=0,
+                time_start=ego_initial.prediction.initial_time_step - 1,
                 time_end=N,
                 tc=repairer.tc,
                 tv=repairer.tv,
