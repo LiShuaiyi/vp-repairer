@@ -59,7 +59,7 @@ class QPPlannerRepair(QPPlanner):
                 self._cut_off_time_step
             )
         self._time_horizon = round(
-            (self._N - self._cut_off_time_step) * self._scenario.dt, 1
+            (self._N - self._cut_off_time_step) * self._scenario.dt, tc_object.round_tolerance
         )
         self._planning_problem.initial_state = InitialState(
             position=self._cut_off_state.position,
