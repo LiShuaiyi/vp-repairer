@@ -53,6 +53,7 @@ class RuleConstraints:
             proposition_full: List[PropositionNode],
             veh_config: PlanningConfigurationVehicle,
             initial_trajectory: Trajectory,
+            start_time_step: int,
     ):
         # initialize the needed components
         self._tc_obj = tc_object
@@ -64,6 +65,7 @@ class RuleConstraints:
         )  # if no target vehicle, the other_id stands for the ego
         self._ego_vehicle = self._world_state.vehicle_by_id(self._ego_id)
         self._ini_traj = initial_trajectory
+        self._start_time_step = start_time_step
         self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
         self._veh_config = veh_config
         self._compliant_maneuver = tc_object.compliant_maneuver
@@ -122,7 +124,7 @@ class RuleConstraints:
             lateral motion: lane
         """
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            total_assignment = self._rule_monitor.prop_robust_all[:, k]
+            total_assignment = self._rule_monitor.prop_robust_all[:, k - self._start_time_step]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
             v_limit = [0, np.inf]
