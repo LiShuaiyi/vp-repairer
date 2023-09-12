@@ -45,6 +45,7 @@ class QPPlannerRepair(QPPlanner):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world.scenario
         self._ego_vehicle = tc_object.ego_vehicle
+        self._start_time_step = tc_object.ego_vehicle.initial_state.time_step
         self._planning_problem = planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
 
@@ -108,6 +109,7 @@ class QPPlannerRepair(QPPlanner):
             proposition_full,
             self._vehicle_configuration,
             self._initial_trajectory,
+            self._start_time_step,
         )
 
     @property
@@ -242,7 +244,7 @@ class QPPlannerRepair(QPPlanner):
             remaining_states = [
                                    self._ego_vehicle.initial_state
                                ] + self._initial_trajectory.states_in_time_interval(
-                1, self._cut_off_time_step - 1
+                self._start_time_step + 1, self._cut_off_time_step - 1
             )
         for state in cr_traj_repaired.state_list:
             state.time_step += self._cut_off_time_step
@@ -256,7 +258,7 @@ class QPPlannerRepair(QPPlanner):
             )
             for state in remaining_states + cr_traj_repaired.state_list
         ]
-        cr_traj_repaired = Trajectory(0, state_list)
+        cr_traj_repaired = Trajectory(self._start_time_step, state_list)
         return cr_traj_repaired
 
     def config_settings(self):
