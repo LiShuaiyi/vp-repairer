@@ -80,11 +80,19 @@ class QPPlannerRepair(QPPlanner):
 
         # use the coordinate system from the world
         # TODO: separate intersection and interstate
-        self._vehicle_configuration.curvilinear_coordinate_system = (
-            rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
-            .ref_path_lane
-            .clcs
-        )
+        if rule_monitor.scenario_type == "intersection":
+            self._vehicle_configuration.curvilinear_coordinate_system = (
+                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+                .ref_path_lane
+                .clcs
+            )
+        else:
+            test = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).get_lane(0)
+            self._vehicle_configuration.curvilinear_coordinate_system = (
+                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+                .get_lane(0)
+                .clcs
+            )
 
         # update the vehicle shape
         self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
