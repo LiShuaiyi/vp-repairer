@@ -208,6 +208,7 @@ class STLRuleMonitor:
                 # avoid issue of replacing wrong proposition
                 pattern = rf"(?<!\]\)){to_repl}"
                 sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
+                # for nested propositions, for instance, once[0, 5](proposition) and proposition
                 for other_prop in props_of_rule:
                     if other_prop.alphabet != prop_node.alphabet:
                         other_prop.name = re.sub(pattern, prop_node.alphabet, other_prop.name)
