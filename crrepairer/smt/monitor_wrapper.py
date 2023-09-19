@@ -191,6 +191,9 @@ class STLRuleMonitor:
                     ).replace(")>=(0.0)", "")
                 else:
                     prop_node_name = prop_node_name.replace(">=(0.0)", "")
+                # removing the unnecessary bracket in case the proposition is located together with one open bracket
+                # for instance, (on_main_carriage_way__a0_i would be then replaced by the alphabet, which leads to the
+                # incomplete pairs of the brackets
                 if prop_node_name.startswith('(') and prop_node_name.endswith(')'):
                     prop_node_name = prop_node_name[1:-1]
                 matches = SequenceMatcher(
