@@ -182,8 +182,17 @@ class STLRuleMonitor:
                     prop_node_name = prop_node_name.replace(
                         prop_node_name[0:10], ""
                     ).replace(")>=(0.0)", "")
+                elif(
+                    prop_node_name[0:4] == "once"
+                    and prop_node_name[5:6] == prop_node_name[7:8]
+                    ):
+                    prop_node_name = prop_node_name.replace(
+                        prop_node_name[0:9], ""
+                    ).replace(")>=(0.0)", "")
                 else:
                     prop_node_name = prop_node_name.replace(">=(0.0)", "")
+                if prop_node_name.startswith('(') and prop_node_name.endswith(')'):
+                    prop_node_name = prop_node_name[1:-1]
                 matches = SequenceMatcher(
                     None, sat_formula, prop_node_name, autojunk=True
                 ).get_matching_blocks()
@@ -194,8 +203,11 @@ class STLRuleMonitor:
                 to_repl = sat_formula[first_index:last_index]
                 to_repl = re.escape(to_repl)
                 # avoid issue of replacing wrong proposition
-                pattern = rf"(?<!\]\(){to_repl}"
+                pattern = rf"(?<!\]\)){to_repl}"
                 sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
+                for other_prop in props_of_rule:
+                    if other_prop.alphabet != prop_node.alphabet:
+                        other_prop.name = re.sub(pattern, prop_node.alphabet, other_prop.name)
             subformula_list.append("(" + sat_formula + ")")
         for i, substr in enumerate(subformula_list[:-1]):
             subformula_list[i] = substr + " and "
