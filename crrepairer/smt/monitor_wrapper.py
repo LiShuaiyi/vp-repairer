@@ -163,7 +163,6 @@ class STLRuleMonitor:
             # 'eventually' is replaced by 'once' because of the same replacement in rtamt
             sat_formula = (
                 sat_formula.replace("not", "!")
-                .replace(" >= 0", "")
                 .replace("eventually", "once")
             )
             clear_rob_abs = self.rob_abstraction[i][
@@ -174,26 +173,14 @@ class STLRuleMonitor:
             prev_idx += length
             for prop_node in props_of_rule:
                 prop_node_name = prop_node.name
-                # if proposition name starts with "(once[x,x]", it will be considered as predicate
-                if (
-                    prop_node_name[0:5] == "(once"
-                    and prop_node_name[6:7] == prop_node_name[8:9]
-                ):
-                    prop_node_name = prop_node_name.replace(
-                        prop_node_name[0:10], ""
-                    ).replace(")>=(0.0)", "")
-                elif(
+                # if proposition name starts with "once[x,x]", it will be considered as predicate
+                if(
                     prop_node_name[0:4] == "once"
                     and prop_node_name[5:6] == prop_node_name[7:8]
                     ):
                     prop_node_name = prop_node_name.replace(
                         prop_node_name[0:9], ""
-                    ).replace(")>=(0.0)", "")
-                else:
-                    prop_node_name = prop_node_name.replace(">=(0.0)", "")
-                # removing the unnecessary bracket in case the proposition is located together with one open bracket
-                # for instance, (on_main_carriage_way__a0_i would be then replaced by the alphabet, which leads to the
-                # incomplete pairs of the brackets
+                    )
                 if prop_node_name.startswith('(') and prop_node_name.endswith(')'):
                     prop_node_name = prop_node_name[1:-1]
                 matches = SequenceMatcher(
@@ -206,12 +193,8 @@ class STLRuleMonitor:
                 to_repl = sat_formula[first_index:last_index]
                 to_repl = re.escape(to_repl)
                 # avoid issue of replacing wrong proposition
-                pattern = rf"(?<!\]\)){to_repl}"
+                pattern = rf"(?<!\]\(){to_repl}"
                 sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
-                # for nested propositions, for instance, once[0, 5](proposition) and proposition
-                for other_prop in props_of_rule:
-                    if other_prop.alphabet != prop_node.alphabet:
-                        other_prop.name = re.sub(pattern, prop_node.alphabet, other_prop.name)
             subformula_list.append("(" + sat_formula + ")")
         for i, substr in enumerate(subformula_list[:-1]):
             subformula_list[i] = substr + " and "
