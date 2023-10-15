@@ -1,5 +1,6 @@
 from typing import Dict, List
 import numpy as np
+import math
 import sys, os
 from commonroad_dc.pycrccosy import CurvilinearCoordinateSystem
 from commonroad.scenario.scenario import Scenario
@@ -61,6 +62,7 @@ class MIQPLongPlanner:
         vehicle_configuration: PlanningConfigurationVehicle,
         initial_state: TrajPoint,
         long_constraints: LongitudinalConstraint,
+        slack=False,
     ):
         self.time_horizon = horizon
         self.N = N
@@ -75,12 +77,17 @@ class MIQPLongPlanner:
             self.initial_state.j,
         )
         self.long_constraints = long_constraints
-        self.weight = [0.1, 0.4, 1, 2, 0.1]
+        self.weight = [0.1, 0.4, 1, 2, 0.1, 1000000]
+        # self.weight = [0.1, 0.4, 1, 2, 0.1, 10000]
 
         # number of x
         self._n = 4
         # number of u
         self._m = 1
+
+        # slack variable
+        self._slack_pos = slack
+        self._n_s = 2 if self._slack_pos else 0
 
         self._init_time_invariant_constraints()
         self._init_dynamic_constraints()
@@ -90,6 +97,8 @@ class MIQPLongPlanner:
     def plan(self, reference_path):
         self._init_state_var()
         self._init_control_var()
+        if self._slack_pos:
+            self._init_slack_var()
         self.solver.add_long_dynamic_cons(
             self.long_constraints.dynamic_matrix_list, self.long_constraints.init_state
         )
@@ -102,35 +111,40 @@ class MIQPLongPlanner:
         self.solver.costfunc_long(reference_path, self.weight)
         self.solver.solve()
 
-        self.var_x = self.solver.get_var_x()
-        self.all_delta = self.solver.get_delta()
-        self.control_u = self.solver.get_control_u()
-        trajectory = self.create_output_trajectory()
+        try:
+            self.var_x = self.solver.get_var_x()
+            self.all_delta = self.solver.get_delta()
+            self.control_u = self.solver.get_control_u()
+            self.slack_var = self.solver.get_slack_var()
+            print(self.slack_var)
+            trajectory = self.create_output_trajectory()
+        except:
+            return None
 
-        # # plot result
-        # fig, ax = plt.subplots()
-        # t = np.linspace(0, 36, 37)
-        # ax.plot(t, self.var_x[0, :], label='s')
-        # ax.plot(self.long_constraints.collision_free_constraints['index_ub'],
-        #         self.long_constraints.collision_free_constraints['collision_free_ub'], label='collision free')
-        # index = list()
-        # s_limit_front = list()
-        # s_limit_behind = list()
-        # for cons_name in self.long_constraints.rule_constraints:
-        #     constraint = self.long_constraints.rule_constraints[cons_name]
-        #     for i in range(len(constraint['s_limit_front'])):
-        #         if constraint['s_limit_front'][i] != np.inf:
-        #             index.append(i)
-        #             s_limit_front.append(constraint['s_limit_front'][i])
-        #             s_limit_behind.append(constraint['s_limit_behind'][i])
-        # ax.plot(index, s_limit_front, label='s_limit_front')
-        # ax.plot(index, s_limit_behind, label='s_limit_behind')
-        # ax.set_xlabel('time step')
-        # ax.set_ylabel('s')
-        # ax.legend()
-        #
-        # plt.show()
-        #
+        # plot result
+        fig, ax = plt.subplots()
+        t = np.linspace(0, self.solver.x_shape[1] - 1, self.solver.x_shape[1])
+        ax.plot(t, self.var_x[0, :], label='s')
+        ax.plot(self.long_constraints.collision_free_constraints['index_ub'],
+                self.long_constraints.collision_free_constraints['collision_free_ub'], label='collision free')
+        index = list()
+        s_limit_front = list()
+        s_limit_behind = list()
+        for cons_name in self.long_constraints.rule_constraints:
+            constraint = self.long_constraints.rule_constraints[cons_name]
+            for i in range(len(constraint['s_limit_front'])):
+                if constraint['s_limit_front'][i] != math.inf:
+                    index.append(i)
+                    s_limit_front.append(constraint['s_limit_front'][i])
+                    s_limit_behind.append(constraint['s_limit_behind'][i])
+        ax.plot(index, s_limit_front, label='s_limit_front')
+        ax.plot(index, s_limit_behind, label='s_limit_behind')
+        ax.set_xlabel('time step')
+        ax.set_ylabel('s')
+        ax.legend()
+
+        plt.show()
+
         # fig1, ax1 = plt.subplots()
         # ax1.plot(t, self.var_x[1, :])
         # ax1.set_xlabel('time step')
@@ -151,6 +165,12 @@ class MIQPLongPlanner:
         # lower and upper bound for control u
         self.long_constraints.var_long_u_lb = -5000 * np.ones(self.N)
         self.long_constraints.var_long_u_ub = 5000 * np.ones(self.N)
+        # lower and upper bound for slack variable
+        if self._slack_pos:
+            # self.long_constraints.var_slack_lb = np.zeros((self._n_s, self.N + 1))
+            # self.long_constraints.var_slack_ub = 5000 * np.ones((self._n_s, self.N + 1))
+            self.long_constraints.var_slack_lb = np.zeros(self._n_s)
+            self.long_constraints.var_slack_ub = 5000 * np.ones(self._n_s)
         # lower and upper bound for states x
         self.long_constraints.var_long_x_lb = -1000 * np.ones((self._n, self.N + 1))
         self.long_constraints.var_long_x_ub = 1000 * np.ones((self._n, self.N + 1))
@@ -205,6 +225,16 @@ class MIQPLongPlanner:
             u_shape,
             self.long_constraints.var_long_u_lb,
             self.long_constraints.var_long_u_ub,
+        )
+
+    def _init_slack_var(self):
+        slack_shape = self.long_constraints.var_slack_ub.shape
+        slack = np.empty(slack_shape, dtype=object)
+        self.solver.add_slack_var(
+            slack,
+            slack_shape,
+            self.long_constraints.var_slack_lb,
+            self.long_constraints.var_slack_ub,
         )
 
     def create_output_trajectory(self):
