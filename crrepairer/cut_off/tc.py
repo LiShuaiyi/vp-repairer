@@ -136,7 +136,7 @@ class TC(CutOffBase, ABC):
                 return -math.inf, None
             return -math.inf, other_ids[rule_idx][0][0]
         tv_per_rule = np.argmax(rule_rob < 0, axis=-1)
-        if np.all(tv_per_rule == 0):
+        if np.all(tv_per_rule + self._world_ego.start_time == self._world_ego.start_time):
             return math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
