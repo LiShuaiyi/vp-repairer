@@ -16,6 +16,7 @@ from crmonitor.evaluation.evaluation import (
     create_ego_vehicle_param,
 )
 from crmonitor.common.world import World, get_world_config
+from crmonitor.common.config import get_traffic_rule_config
 from crmonitor.rule.rule_node import PredicateNode
 
 # CommonRoad Toolbox
@@ -62,6 +63,8 @@ class STLRuleMonitor:
         scenario_type: ScenarioType = ScenarioType.INTERSTATE,
         intersection_type: IntersectionType = IntersectionType.DATASET,
         multiproc: bool = True,
+        use_mpr: bool = False,
+        mpr_scenario: str = "interstate",
     ):
         # update the world configuration for repairing purposes
         world_config = get_world_config()
@@ -69,11 +72,15 @@ class STLRuleMonitor:
         self.scenario_type = scenario_type
         if scenario_type == ScenarioType.INTERSECTION:
             world_config["intersection_road_network_param"]["map_type"] = intersection_type
+        traffic_rules_config = get_traffic_rule_config()
+        traffic_rules_config["traffic_rules_param"]["use_mpr"] = use_mpr
+        traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = mpr_scenario
         self._world: World = World.create_from_scenario(scenario, config=world_config)
         self._vehicle_id = vehicle_id
         self.multiproc = multiproc
         self._rules = [rules] if isinstance(rules, str) else rules
         self._rule_eval = []
+        self._start_time_step = self._world.vehicle_by_id(self._vehicle_id).start_time
         self._world.vehicle_by_id(
             self._vehicle_id
         ).vehicle_param = create_ego_vehicle_param(
@@ -81,7 +88,7 @@ class STLRuleMonitor:
         )
         for rule in self._rules:
             prop_rule_eval = PropositionRuleEvaluator.create_from_config(
-                self._world, self._vehicle_id, rule
+                self._world, self._vehicle_id, rule, traffic_rules_config=traffic_rules_config
             )
             self._rule_eval.append(prop_rule_eval)
         if len(self._rule_eval) == 1:
@@ -96,6 +103,7 @@ class STLRuleMonitor:
         # obtain the time-to-violation
         self._violated_rule_idx, self._tv, self._other_id = self._cal_tv_initial()
         self._prop_nodes = self._initialize_prop_rob()
+        self._future_time_step = self.search_future_time_step()[self._violated_rule_idx]
         print("# =========== Traffic Rule Monitor ========== #")
         print(
             "\tthe ego vehicle (id: {})'s initial\n\ttrajectory violates traffic rule {}".format(
@@ -111,7 +119,15 @@ class STLRuleMonitor:
 
     @property
     def tv_time_step(self) -> Union[int, float]:
-        return self._tv
+        return self._tv - self._future_time_step
+
+    @property
+    def furture_time_step(self) -> Union[int, float]:
+        return self._future_time_step
+
+    @property
+    def start_time_step(self):
+        return self._start_time_step
 
     @property
     def other_id(self) -> int:
@@ -181,6 +197,13 @@ class STLRuleMonitor:
                     prop_node_name = prop_node_name.replace(
                         prop_node_name[0:9], ""
                     )
+                else:
+                    pattern = r"once\[(.*?)\]"
+                    matches = re.findall(pattern, prop_node_name)
+                    if len(matches) == 2:
+                        delete_once_str = "once[" + matches[1] + "]("
+                        prop_node_name = prop_node_name.replace(delete_once_str, "")
+                        prop_node_name = prop_node_name[:-1]
                 if prop_node_name.startswith('(') and prop_node_name.endswith(')'):
                     prop_node_name = prop_node_name[1:-1]
                 matches = SequenceMatcher(
@@ -208,7 +231,7 @@ class STLRuleMonitor:
     @property
     @functools.lru_cache(128)
     def prop_robust_ttv(self):
-        return self.rob_abstraction[self._violated_rule_idx][self._tv]
+        return self.rob_abstraction[self._violated_rule_idx][self._tv - self._start_time_step]
 
     def _initialize_prop_rob(self):
         """
@@ -231,8 +254,8 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        all_prop_robs = self.rob_abstraction[:, self._tv]
-        all_prop_names = self.abstraction_names[:, self._tv]
+        all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
+        all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
         prop_nodes = []
         for idx in np.transpose(np.isfinite(all_prop_robs).nonzero()):
             proposition = PropositionNode(
@@ -257,6 +280,18 @@ class STLRuleMonitor:
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
+
+    def search_future_time_step(self):
+        future_time_step = np.zeros(len(self.rule_eval), dtype=int)
+        for i in range(len(future_time_step)):
+            prop_robust_rule = self.prop_robust_all[i, :, :]
+            for j in range(prop_robust_rule.shape[0]):
+                if np.any(np.isinf(prop_robust_rule[j, :])):
+                    future_time_step[i] += 1
+                else:
+                    break
+        return future_time_step
+
 
     def evaluate_initially(self):
         """
@@ -426,21 +461,25 @@ class STLRuleMonitor:
             if self.other_ids[rule_idx][0] is ():
                 return None, -math.inf, None
             return None, -math.inf, self.other_ids[rule_idx][0][0]  # all violated
-        tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1)
-        if np.all(tv_per_rule == 0):
+        tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1) + self._start_time_step
+        if np.all(tv_per_rule == self._start_time_step):
             return None, math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if (
-            self.other_ids[rule_idx][min_tv] is ()
+            self.other_ids[rule_idx][min_tv - self._start_time_step] is ()
         ):  # or self._rules[rule_idx] == 'R_G2':
             # R_G2: we focus on the ego vehicle
             return rule_idx, int(min_tv), self._vehicle_id
-        return rule_idx, int(min_tv), self.other_ids[rule_idx][min_tv][0]
+        return rule_idx, int(min_tv), self.other_ids[rule_idx][min_tv - self._start_time_step][0]
 
     def switch_to_boolean(self, evaluator):
         if not evaluator._eval_visitor.use_boolean:
             evaluator._eval_visitor.use_boolean = True
+
+    def switch_to_robustness(self, evaluator):
+        if evaluator._eval_visitor.use_boolean:
+            evaluator._eval_visitor.use_boolean = False
 
 
 # Currently, MTL monitor is not supported
