@@ -169,7 +169,7 @@ class TSolver:
         return repaired_trajectory
 
     def check(
-        self, proposition: List[PropositionNode], model: list
+        self, proposition: List[PropositionNode], model: list, nr
     ) -> (bool, Trajectory):
         """
         Checks the T-consistency.
@@ -180,6 +180,9 @@ class TSolver:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj
         start_time = time.time()
+        # TODO: tc maneuver config
+        if nr > 1:
+            self._tc_obj.update_config()
         tc = self.search_tc()
         print(
             "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv)
