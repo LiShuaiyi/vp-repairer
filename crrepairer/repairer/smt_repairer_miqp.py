@@ -72,7 +72,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 return None
             select_proposition, self._model = self.sat_solver.model()
             repairability, repaired_traj = self.t_solver.check(
-                select_proposition, list(self._model)
+                select_proposition, list(self._model), nr
             )
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
