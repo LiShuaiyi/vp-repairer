@@ -172,7 +172,7 @@ class TC(CutOffBase, ABC):
     @functools.lru_cache(128)
     def search_ttm_binary(self, maneuver: Maneuver):
         ttm = -math.inf
-        low = 0
+        low = self._world_ego.start_time
         high = int(int_round(self.tv / self.dT, self.round_tolerance))
         while low < high:
             self._mid = int(int_round(low + high) / 2)
@@ -183,7 +183,7 @@ class TC(CutOffBase, ABC):
             else:
                 high = self._mid
 
-        if low != 0:
+        if low != self._world_ego.start_time:
             ttm = (low - 1) * self.dT
         return ttm
 
