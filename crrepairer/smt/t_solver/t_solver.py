@@ -107,7 +107,12 @@ class TSolver:
                         in [PositionPredicates.InIntersectionConflictArea]
                         and predicate.agent_placeholders == (1, 0)
                 ):
-                    compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
+                    # TODO: maybe turning?
+                    compliant_maneuver += []
+                elif (predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.OnLaneletWithTypeIntersection]):
+                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
                 elif (predicate_category == "Pos"
                       and predicate.evaluator.predicate_name
                       in [PositionPredicates.OnIncomingLeftOf]
