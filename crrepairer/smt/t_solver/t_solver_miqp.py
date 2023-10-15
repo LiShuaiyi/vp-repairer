@@ -185,7 +185,7 @@ class TSolver:
             self._tc_obj.update_config()
         tc = self.search_tc()
         print(
-            "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv)
+            "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv - self._tc_obj.furture_time)
         )
         print(f"* \t<Tsolver>: run time {time.time() - start_time:.3f}s")
         if tc != -math.inf:
