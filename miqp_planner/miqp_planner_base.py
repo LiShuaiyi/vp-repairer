@@ -74,7 +74,7 @@ class MIQPPlanner:
         self.initial_state_lat_orientation = self.initial_state.orientation
 
     def longitudinal_trajectory_planning(
-        self, reference_path, long_constraints: LongitudinalConstraint
+        self, reference_path, long_constraints: LongitudinalConstraint, slack=False
     ):
         long_planner = MIQPLongPlanner(
             horizon=self.t_h,
@@ -85,6 +85,7 @@ class MIQPPlanner:
             vehicle_configuration=self.vehicle_configuration,
             initial_state=self.initial_state,
             long_constraints=long_constraints,
+            slack=slack,
         )
         traj_long = long_planner.plan(reference_path)
         return traj_long
