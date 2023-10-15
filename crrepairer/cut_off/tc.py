@@ -89,6 +89,14 @@ class TC(CutOffBase, ABC):
         return int_round(self._tv_time_step * self.dT, self.round_tolerance)
 
     @property
+    def furture_time(self):
+        return int_round(self.rule_monitor.furture_time_step * self.dT, self.round_tolerance)
+
+    @property
+    def future_time_step(self):
+        return self.rule_monitor.furture_time_step
+
+    @property
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
