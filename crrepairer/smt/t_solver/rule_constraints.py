@@ -1,8 +1,12 @@
 import numpy as np
-from typing import List
+from typing import List, Optional, Union
 from collections import defaultdict
 
+import shapely
 from commonroad.scenario.trajectory import Trajectory
+from commonroad.geometry.transform import rotate_translate
+
+from matplotlib import pyplot as plt
 
 from commonroad_crime.utility.simulation import Maneuver
 
@@ -17,6 +21,7 @@ from crmonitor.predicates.position import (
     PredPreceding,
     PredStopLineInFront,
     PredInIntersectionConflictArea,
+    PredOnLaneletWithTypeIntersection,
 )
 
 from crmonitor.predicates.velocity import (
@@ -32,7 +37,7 @@ from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
 from crmonitor.common.road_network import RoadNetwork
 from commonroad.scenario.lanelet import LaneletType
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon, LineString, Point
 
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.constraints import LonConstraints, LatConstraints
@@ -102,6 +107,16 @@ class RuleConstraints:
                 2 * abs(lane_dist / self._tc_obj.simulation_lateral.a_lat)
             )
             self._time_leave_lane = int(leave_time / self._world_state.dt)
+
+        # initial conflict area parameter
+        self.s_circle_center_front = None
+        self.s_circle_center_rear = None
+        self.conflict_line_front = None
+        self.conflict_line_rear = None
+        for proposition in proposition_full:
+            if "in_intersection_conflict_area__a0_a1" in proposition.name:
+                self.s_circle_center_front, self.s_circle_center_rear, self.conflict_line_front, self.conflict_line_rear = self.create_conflict_area_parameter()
+                break
 
     @property
     def safe_distance_modes(self):
@@ -190,13 +205,16 @@ class RuleConstraints:
                         elif predicate.base_name in (
                                 PredStopLineInFront.predicate_name,
                         ):
-                            s_constr = self.ConstrStopLine(k)
+                            s_constr = self.ConstrStopLine(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
                         elif predicate.base_name in (
                                 PredInIntersectionConflictArea.predicate_name,
                         ):
-                            s_constr = self.ConstrInIntersectionConflictAreaEgo(k)
+                            s_constr = self.ConstrInIntersectionConflictAreaEgo(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
+                        # elif predicate.base_name in (PredOnLaneletWithTypeIntersection.predicate_name,):
+                        #     s_constr = self.ConstrOnLaneletWithTypeIntersection(k)
+                        #     s_limit = self._get_overlap(s_limit, s_constr)
                         # --------------------------------------------------------------------------------------------#
                         else:
                             print(
@@ -214,7 +232,10 @@ class RuleConstraints:
         # add general constraints
         self.add()
         # add collision constraints (implicitly)
-        self.ConstrCollisionFree()
+        if self._rule_monitor.scenario_type == "interstate":
+            self.ConstrCollisionFree()
+        else:
+            self.ConstrCollisionFreeIntersection()
         longitudinal_distance_constraints = np.array(self._lon_dis_constraints)
         longitudinal_velocity_constraints = np.array(self._lon_vel_constraints)
         longitudinal_acceleration_constraints = np.array(self._lon_acc_constraints)
@@ -273,6 +294,30 @@ class RuleConstraints:
                     ],
                     d_min,
                 )
+            # if self.s_circle_center_front is not None:
+            #     index = k - self._tc_obj.tc_time_step
+            #     prop_time_index = k - self._start_time_step
+            #     for i in range(len(self._rule_monitor.proposition_nodes)):
+            #         if (
+            #                 self._rule_monitor.proposition_nodes[i].name
+            #                 == "once[0,1](in_intersection_conflict_area__a1_a0)"
+            #         ):
+            #             index_prop_conflict_area_target = i
+            #             break
+            #     prop_conflict_area_target = self._rule_monitor.prop_robust_all[
+            #         0, prop_time_index, index_prop_conflict_area_target
+            #     ]
+            #     if prop_conflict_area_target >= 0:
+            #         s_ego = long_traj.states[index].position[0] + self._ego_vehicle.shape.length / 3 + self._veh_config.wheelbase / 2
+            #         if s_ego >= np.min(self.conflict_line_front[0, :]):
+            #             if s_ego >= self.s_circle_center_front:
+            #                 d_limit = np.interp([self.s_circle_center_front], self.conflict_line_front[0, :], self.conflict_line_front[1, :])[0]
+            #             else:
+            #                 d_limit = np.interp([s_ego], self.conflict_line_front[0, :], self.conflict_line_front[1, :])[0]
+            #             if self.conflict_line_front[1, 0] < self.conflict_line_front[1, -1]:
+            #                 d_min = max(d_limit, d_min)
+            #             else:
+            #                 d_max = min(d_limit, d_max)
             self._lat_dis_constraints.append([d_min, d_max])
         lateral_constraints = np.array(self._lat_dis_constraints)
         d_min = np.array(
@@ -308,6 +353,8 @@ class RuleConstraints:
         vehicle_ids.discard(self._ego_id)
         for id in vehicle_ids:
             other_vehicle = self._world_state.vehicle_by_id(id)
+            if other_vehicle is None:
+                continue
             if time_step == 0:
                 ego_state = self._ego_vehicle.states_cr[0]
             else:
@@ -331,6 +378,45 @@ class RuleConstraints:
                 continue
         return preceding_vehicle, following_vehicle
 
+    def _determine_related_veh_intersection(self, time_step: int):
+        """
+        Determines the related vehicles for collision-free constraints
+        """
+        preceding_vehicle = None
+        following_vehicle = None
+        dist_pre = np.inf
+        dist_post = -np.inf
+        vehicle_ids = set()
+        lane = self._ego_vehicle.ref_path_lane
+        vehicle_ids.update(lane.lanelet.dynamic_obstacle_by_time_step(time_step))
+        vehicle_ids.discard(self._ego_id)
+        for id in vehicle_ids:
+            other_vehicle = self._world_state.vehicle_by_id(id)
+            if other_vehicle is None:
+                continue
+            if time_step == 0:
+                ego_state = self._ego_vehicle.states_cr[0]
+            else:
+                ego_state = self._ini_traj.state_at_time_step(time_step)
+            ego_lon_s = convert_pos_curvilinear(ego_state, self._veh_config)[0]
+            # if time_step in other_vehicle.states_lon:
+            #    dist = other_vehicle.states_lon[time_step].s - ego_lon_s
+            # else:
+            #    continue
+            try:
+                dist = other_vehicle.get_lon_state(time_step, lane).s - ego_lon_s
+            except:
+                continue
+            if 0 < dist < dist_pre:
+                preceding_vehicle = other_vehicle
+                dist_pre = dist
+            elif 0 > dist > dist_post:
+                following_vehicle = other_vehicle
+                dist_post = dist
+            else:
+                continue
+        return preceding_vehicle, following_vehicle
+
     def ConstrSpeedLimit(self, speed_limit):
         return [0, speed_limit]
 
@@ -338,7 +424,7 @@ class RuleConstraints:
         return [a_abrupt, np.inf]
 
     def ConstrCollisionFree(self):
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             if k in self._target_lanes:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(
                     k, self._target_lanes[k]
@@ -359,11 +445,14 @@ class RuleConstraints:
             index = k - self._tc_obj.tc_time_step
             if self._prec_veh is not None:
                 if k <= self._prec_veh.end_time:
+                    test_1 = self._ego_vehicle.front_s(k, self._ego_vehicle.ref_path_lane)
+                    test = self._prec_veh.rear_s(k, self._ego_vehicle.ref_path_lane)
+                    # self.debug(k, self._ego_vehicle.ref_path_lane)
                     self._lon_dis_constraints[index] = self._get_overlap(
                         self._lon_dis_constraints[index],
                         [
                             -np.inf,
-                            self._prec_veh.rear_s(k)
+                            self._prec_veh.rear_s(k, self._ego_vehicle.ref_path_lane)
                             - self._veh_config.wheelbase / 2
                             - self._veh_config.length / 2,
                         ],
@@ -375,6 +464,124 @@ class RuleConstraints:
             #                                                              [self._foll_veh.front_s(k) +
             #                                                            self._veh_config.wheelbase/2,
             #                                                            np.inf])
+
+    def ConstrCollisionFreeIntersection(self):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
+            self._prec_veh, self._foll_veh = self._determine_related_veh_intersection(k)
+            index = k - self._tc_obj.tc_time_step
+            if self._prec_veh is not None:
+                if k <= self._prec_veh.end_time:
+                    conflict_points = self.calculation_circle_approximation(k)
+                    if conflict_points is not None:
+                        s_min = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_points[0])[0]
+                        self._lon_dis_constraints[index] = self._get_overlap(
+                            self._lon_dis_constraints[index],
+                            [
+                                -np.inf,
+                                s_min
+                                - self._ego_vehicle.shape.length / 3
+                                - self._veh_config.wheelbase / 2,
+                            ],
+                        )
+
+    def calculation_circle_approximation(self, time_step):
+        circle_target = self._prec_veh.circle_appr_occupancy_at_time_step(time_step)
+        offset_circle_target = shapely.offset_curve(circle_target, self._ego_vehicle.circle_radius)
+        reference_lane_center = LineString(self._ego_vehicle.ref_path_lane.new_vertice)
+        intersection = reference_lane_center.intersection(offset_circle_target)
+        conflict_line_points = list()
+        if intersection.geom_type == "Point":
+            conflict_line_points.append([intersection.x, intersection.y])
+        elif (
+                intersection.geom_type == "LineString"
+                or intersection.geom_type == "LinearRing"
+        ):
+            for point in intersection.coords:
+                conflict_line_points.append(np.array(point))
+        elif (
+                intersection.geom_type == "MultiPoint"
+                or intersection.geom_type == "MultiLineString"
+        ):
+            for geom in intersection.geoms:
+                for point in geom.coords:
+                    conflict_line_points.append(point)
+        if len(conflict_line_points) == 0:
+            conflict_points = None
+        else:
+            conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
+        return conflict_points
+
+
+    def debug(self, time_step, lane, conflict_center=None, conflict_right=None, conflict_left=None):
+        occ_points_ego = list(
+            rotate_translate(self._ego_vehicle.shape.vertices[:-1], self._ego_vehicle.states_cr[time_step].position,
+                             self._ego_vehicle.states_cr[time_step].orientation)
+        )
+        occ_points_target = list(
+            rotate_translate(self._prec_veh.shape.vertices[:-1], self._prec_veh.states_cr[time_step].position,
+                             self._prec_veh.states_cr[time_step].orientation)
+        )
+        test_list_ego = list()
+        for x, y in occ_points_ego:
+            test_list_ego.append(lane.clcs.convert_to_curvilinear_coords(x, y)[0])
+        test_list_target = list()
+        for x, y in occ_points_target:
+            test_list_target.append(lane.clcs.convert_to_curvilinear_coords(x, y)[0])
+        max_ego = np.max(test_list_ego)
+        ego_projection = lane.clcs.convert_to_cartesian_coords(max_ego, 0)
+        min_target = np.min(test_list_target)
+        target_projection = lane.clcs.convert_to_cartesian_coords(min_target, 0)
+
+        circle_ego = self._ego_vehicle.circle_appr_occupancy_at_time_step(time_step)
+        x_circle_ego, y_circle_ego = circle_ego.exterior.xy
+        circle_target = self._prec_veh.circle_appr_occupancy_at_time_step(time_step)
+        x_circle_target, y_circle_target = circle_target.exterior.xy
+        circle_target_extent = shapely.offset_curve(circle_target, self._ego_vehicle.circle_radius)
+        x_circle_target_extend, y_circle_target_extend = circle_target_extent.xy
+
+        fig1, test_plt = plt.subplots(figsize=(6,6))
+        # test_plt.plot(lane.old_vertice[:, 0], lane.old_vertice[:, 1], 'b-', label="1")
+        test_plt.plot(lane.new_vertice[:, 0], lane.new_vertice[:, 1], 'k-', label="clcs")
+        test_plt.plot(self._prec_veh.ref_path_lane.new_vertice[:, 0], self._prec_veh.ref_path_lane.new_vertice[:, 1], 'b-', label="clcs_target")
+        for x, y in occ_points_ego:
+            test_plt.plot(x, y, "r*")
+        test_plt.plot(x_circle_ego, y_circle_ego, "r")
+        test_plt.plot(x_circle_target, y_circle_target, "g")
+        test_plt.plot(x_circle_target_extend, y_circle_target_extend)
+        ego = plt.Polygon(xy=occ_points_ego, edgecolor="r", fill=False, label="ego")
+        test_plt.add_patch(ego)
+        # test_plt.plot(ego_projection[0], ego_projection[1], "r*")
+        for x, y in occ_points_target:
+            test_plt.plot(x, y, "g*", label="target")
+        target = plt.Polygon(xy=occ_points_target, edgecolor="g", fill=False, label="ego")
+        test_plt.add_patch(target)
+        # test_plt.plot(target_projection[0], target_projection[1], "g*")
+
+        conflict_points = self.calculation_circle_approximation(time_step)
+        if conflict_points is not None:
+            s_min = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_points[0])[0]
+            s_projection = lane.clcs.convert_to_cartesian_coords(s_min, 0)
+            test_plt.plot(s_projection[0], s_projection[1], "g*")
+
+        if conflict_center is not None:
+            s_center = lane.clcs.convert_to_curvilinear_coords(*conflict_center)[0]
+            center_projection = lane.clcs.convert_to_cartesian_coords(s_center, 0)
+            s_right = lane.clcs.convert_to_curvilinear_coords(*conflict_right)[0]
+            right_projection = lane.clcs.convert_to_cartesian_coords(s_right, 0)
+            s_left = lane.clcs.convert_to_curvilinear_coords(*conflict_left)[0]
+            left_projection = lane.clcs.convert_to_cartesian_coords(s_left, 0)
+            test_plt.plot(conflict_center[0], conflict_center[1], "b*")
+            test_plt.plot(center_projection[0], center_projection[1], "k*")
+            test_plt.plot(conflict_left[0], conflict_left[1], "bo")
+            test_plt.plot(left_projection[0], left_projection[1], "ko")
+            test_plt.plot(conflict_right[0], conflict_right[1], "b+")
+            test_plt.plot(right_projection[0], right_projection[1], "k+")
+
+        plt.xlim((45, 70))
+        plt.ylim((-40, -15))
+        plt.legend()
+        plt.show()
+        print("test")
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
         if time_step in self._target_vehicle.lanelet_assignment.keys():
@@ -447,7 +654,7 @@ class RuleConstraints:
     def _get_overlap(interval1: list, interval2: list):
         return [max(interval1[0], interval2[0]), min(interval1[1], interval2[1])]
 
-    def ConstrStopLine(self, time_step: int):
+    def ConstrStopLine(self, time_step: int, prop_assignment: float):
         wold = self._rule_monitor.world
         upper_bound = np.inf
         for lanelet_id in self._ego_vehicle.lanelets_dir:
@@ -484,136 +691,215 @@ class RuleConstraints:
                 upper_bound = min(
                     upper_bound,
                     stop_line_s
-                    - max_distance_to_vehicle
+                    - self._ego_vehicle.circle_radius - self._veh_config.length / 3 - self._veh_config.wheelbase / 2
                 )
         return [-np.inf, upper_bound]
 
-    def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
-        def compute_conflict_start_end_points(
-                ego_vehicle: Vehicle,
-                target_vehicle: Vehicle,
-                road_network: RoadNetwork,
-                time_step,
-        ):
-            all_conflict_points_center = list()
-            all_conflict_points_right = list()
-            all_conflict_points_left = list()
-            for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
-                lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
-                if LaneletType.INTERSECTION in lanelet.lanelet_type:
-                    # find conflict points between center vertices of lanelets_dir of k-th vehicle and reference path
-                    # lanelets of p-th vehicle
-                    conflict_points_center = find_conflict_points(
-                        ego_vehicle.lanelets_dir_center_vertices,
-                        lanelet.polygon.shapely_object,
-                    )
-                    conflict_points_right = find_conflict_points(
-                        ego_vehicle.lanelets_dir_right_vertices,
-                        lanelet.polygon.shapely_object,
-                    )
-                    conflict_points_left = find_conflict_points(
-                        ego_vehicle.lanelets_dir_left_vertices,
-                        lanelet.polygon.shapely_object,
-                    )
-                    if conflict_points_center is not None:
-                        all_conflict_points_center.append(conflict_points_center)
-                    if conflict_points_right is not None:
-                        all_conflict_points_right.append(conflict_points_right)
-                    if conflict_points_left is not None:
-                        all_conflict_points_left.append(conflict_points_left)
-            if len(all_conflict_points_center) == 0:
-                return [np.inf, -np.inf]
-            start_conflict_s_center = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_center[0][0]
-                )[0]
-            )
-            start_conflict_s_right = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_right[0][0]
-                )[0]
-            )
-            start_conflict_s_left = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_left[0][0]
-                )[0]
-            )
-            end_conflict_s_center = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_center[-1][-1]
-                )[0]
-            )
-            end_conflict_s_right = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_right[-1][-1]
-                )[0]
-            )
-            end_conflict_s_left = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_left[-1][-1]
-                )[0]
-            )
-            return [np.min([start_conflict_s_center, start_conflict_s_right, start_conflict_s_left]),
-                    np.max([end_conflict_s_center, end_conflict_s_right, end_conflict_s_left])]
+    def ConstrOnLaneletWithTypeIntersection(self, time_step: int):
+        # TODO: nonconvex
+        incoming = self._ego_vehicle.incoming_intersection
+        turning_lanelets = incoming.successors_left.union(
+            incoming.successors_right,
+            incoming.successors_straight,
+        )
+        lanelet_intersection_id = list(self._ego_vehicle.ref_path_lane.contained_lanelets.intersection(turning_lanelets))
+        lanelet_intersection = self._rule_monitor.world.road_network.lanelet_network.find_lanelet_by_id(lanelet_intersection_id[0])
+        start_s = min(self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet_intersection.right_vertices[0])[0],
+                      self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet_intersection.left_vertices[0])[0])
+        end_s = max(self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet_intersection.right_vertices[-1])[0],
+                      self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*lanelet_intersection.left_vertices[-1])[0])
+        upper_bound = start_s - self._veh_config.length / 2 - self._veh_config.wheelbase / 2
+        return [-np.inf, upper_bound]
 
-        def find_conflict_points(line, conflict_polygon):
-            conflict_line_points = list()
-            # Create curved line
-            curved_line = LineString(line)
-            # Get intersection of line and polygon
-            intersection = curved_line.intersection(conflict_polygon)
-            if intersection.geom_type == "Point":
-                conflict_line_points.append([intersection.x, intersection.y])
-            elif (
-                    intersection.geom_type == "LineString"
-                    or intersection.geom_type == "LinearRing"
-            ):
-                for point in intersection.coords:
-                    conflict_line_points.append(np.array(point))
-            elif (
-                    intersection.geom_type == "MultiPoint"
-                    or intersection.geom_type == "MultiLineString"
-            ):
-                for geom in intersection.geoms:
-                    for point in geom.coords:
-                        conflict_line_points.append(point)
-            if len(conflict_line_points) == 0:
-                conflict_points = None
-            else:
-                conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
-            if conflict_points is None:
-                return [np.inf, -np.inf]
-            return conflict_points
 
-        index_prop_conflict_area_target = 0
-        rule_monitor = self._rule_monitor
-        world = rule_monitor.world
+    def ConstrInIntersectionConflictAreaEgo(self, time_step: int, prop_assignment: float):
+        if prop_assignment == 0:
+            return [-np.inf, np.inf]
+        if prop_assignment < 0:
+            if self._tc_obj.compliant_maneuver == Maneuver.BRAKE:
+                front_constr = self.s_circle_center_front - self._ego_vehicle.shape.length / 3 - self._veh_config.wheelbase / 2
+                return [-np.inf, front_constr]
+            elif self._tc_obj.compliant_maneuver == Maneuver.KICKDOWN:
+                rear_constr = self.s_circle_center_rear + self._ego_vehicle.shape.length / 3 + self._veh_config.wheelbase / 2
+                return [rear_constr, np.inf]
+            return [-np.inf, np.inf]
+        else:
+            return [-np.inf, np.inf]
+        # index_prop_conflict_area_target = 0
+        # rule_monitor = self._rule_monitor
+        # world = rule_monitor.world
+        # ego_vehicle = self._ego_vehicle
+        # target_vehicle = self._target_vehicle
+        # for i in range(len(rule_monitor.proposition_nodes)):
+        #     if (
+        #             rule_monitor.proposition_nodes[i].name
+        #             == "once[0,1](in_intersection_conflict_area__a1_a0)"
+        #     ):
+        #         index_prop_conflict_area_target = i
+        #         break
+        # prop_conflict_area_target = rule_monitor.prop_robust_all[
+        #     0, time_step - self._start_time_step, index_prop_conflict_area_target
+        # ]
+        # if self._tc_obj.compliant_maneuver == Maneuver.BRAKE:
+        #     if prop_conflict_area_target >= 0:
+        #         front_constr = self.s_circle_center_front - self._ego_vehicle.shape.length / 3 - self._veh_config.wheelbase / 2
+        #     else:
+        #         front_constr = np.inf
+        #     return [-np.inf, front_constr]
+        # elif self._tc_obj.compliant_maneuver == Maneuver.KICKDOWN:
+        #     if prop_conflict_area_target >= 0:
+        #         rear_constr = self.s_circle_center_rear + self._ego_vehicle.shape.length / 3 + self._veh_config.wheelbase / 2
+        #     else:
+        #         rear_constr = -np.inf
+        #     return [rear_constr, np.inf]
+        # return [-np.inf, np.inf]
+
+    def create_conflict_area_parameter(self):
         ego_vehicle = self._ego_vehicle
         target_vehicle = self._target_vehicle
-        for i in range(len(rule_monitor.proposition_nodes)):
-            if (
-                    rule_monitor.proposition_nodes[i].name
-                    == "(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)"
-            ):
-                index_prop_conflict_area_target = i
-                break
-        prop_conflict_area_target = rule_monitor.prop_robust_all[
-            0, time_step, index_prop_conflict_area_target
-        ]
-        if prop_conflict_area_target >= 0:
-            conflict_points = compute_conflict_start_end_points(
-                ego_vehicle, target_vehicle, world.road_network, time_step
-            )
-            front_constr = (
-                    conflict_points[0]
-                    - self._ego_vehicle.shape.length / 2
-                    - self._veh_config.wheelbase / 2
-            )
-            rear_constr = (
-                    conflict_points[1]
-                    + self._ego_vehicle.shape.length / 2
-                    + self._veh_config.wheelbase / 2
-            )
+        road_network = self._rule_monitor.world.road_network
+
+        # offset conflict lanelets
+        conflict_lanelets_shape = list()
+        for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
+            lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
+            if LaneletType.INTERSECTION in lanelet.lanelet_type:
+                conflict_lanelets_shape.append(lanelet.polygon.shapely_object)
+        conflict_area_shape = shapely.unary_union(conflict_lanelets_shape)
+        conflict_linestring = shapely.offset_curve(conflict_area_shape, ego_vehicle.circle_radius)
+
+        # find right conflict point
+        line_right = LineString(ego_vehicle.lanelets_dir_right_vertices)
+        line_right_offset = shapely.offset_curve(line_right, ego_vehicle.circle_radius)
+        conflict_circle_center_right = self.find_conflict_points(line_right_offset, conflict_linestring)
+        if conflict_circle_center_right is not None:
+            s_circle_center_right = [ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_circle_center_right[0])[0],
+                                     ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_circle_center_right[1])[0]]
+            s_circle_center_right = np.sort(s_circle_center_right)
         else:
-            front_constr = np.inf
-        return [-np.inf, front_constr]
+            s_circle_center_right = np.array([np.inf, -np.inf])
+
+        # find left conflict point
+        line_left = LineString(ego_vehicle.lanelets_dir_left_vertices)
+        line_left_offset = shapely.offset_curve(line_left, -ego_vehicle.circle_radius)
+        conflict_circle_center_left = self.find_conflict_points(line_left_offset, conflict_linestring)
+        if conflict_circle_center_left is not None:
+            s_circle_center_left = [
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_circle_center_left[0])[0],
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_circle_center_left[1])[0]]
+            s_circle_center_left = np.sort(s_circle_center_left)
+        else:
+            s_circle_center_left = np.array([np.inf, -np.inf])
+
+        # find center conflict point
+        line_center = LineString(ego_vehicle.lanelets_dir_center_vertices)
+        conflict_circle_center_center = self.find_conflict_points(line_center, conflict_linestring)
+        if conflict_circle_center_center is not None:
+            s_circle_center_center = [
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_circle_center_center[0])[0],
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_circle_center_center[1])[0]]
+            s_circle_center_center = np.sort(s_circle_center_center)
+        else:
+            s_circle_center_center = np.array([np.inf, -np.inf])
+
+        line_center_left_offset = shapely.offset_curve(line_center, ego_vehicle.shape.width / 2)
+        conflict_center_left_offset = self.find_conflict_points(line_center_left_offset, conflict_area_shape)
+        if conflict_center_left_offset is not None:
+            s_center_left_offset = [
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_center_left_offset[0])[0],
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_center_left_offset[1])[0]]
+        line_center_right_offset = shapely.offset_curve(line_center, -ego_vehicle.shape.width / 2)
+        conflict_center_right_offset = self.find_conflict_points(line_center_right_offset, conflict_area_shape)
+        if conflict_center_right_offset is not None:
+            s_center_right_offset = [
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_center_right_offset[0])[0],
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(*conflict_center_right_offset[1])[0]]
+        s_center_offset_front = np.min([s_center_left_offset[0], s_center_right_offset[0]]) - s_circle_center_center[0] - ego_vehicle.shape.length / 6
+        s_center_offset_rear = -np.max([s_center_left_offset[1], s_center_right_offset[1]]) + s_circle_center_center[1] - ego_vehicle.shape.length / 6
+
+        # find conflict point for constraints
+        s_circle_center_front = np.min([s_circle_center_right[0], s_circle_center_left[0], s_circle_center_center[0]])
+        s_circle_center_rear = np.max([s_circle_center_right[1], s_circle_center_left[1], s_circle_center_center[1]])
+
+        # find conflict area points in clcs, separate in two parts
+        interpolation_distance = 0.5
+        interpolated_points = []
+        distance_along_line = 0.0
+        while distance_along_line <= conflict_linestring.length:
+            point = conflict_linestring.interpolate(distance_along_line)
+            interpolated_points.append(point.xy)
+            distance_along_line += interpolation_distance
+        interpolated_points.append(conflict_linestring.interpolate(conflict_linestring.length).xy)
+        exterior_arrays = [np.array(coord).reshape(2, 1) for coord in interpolated_points]
+        conflict_linestring_clcs = ego_vehicle.ref_path_lane.clcs.convert_list_of_points_to_curvilinear_coords(exterior_arrays, 1)
+        conflict_line = [[], []]
+        conflict_s_interval = [[np.inf, -np.inf],[np.inf, -np.inf]]
+        for i in range(1, len(conflict_linestring_clcs)):
+            if conflict_linestring_clcs[i - 1][0] < conflict_linestring_clcs[i][0]:
+                conflict_line[0].append(conflict_linestring_clcs[i])
+                if conflict_linestring_clcs[i][0] < conflict_s_interval[0][0]:
+                    conflict_s_interval[0][0] = conflict_linestring_clcs[i][0]
+                if conflict_linestring_clcs[i][0] > conflict_s_interval[0][1]:
+                    conflict_s_interval[0][1] = conflict_linestring_clcs[i][0]
+            else:
+                conflict_line[1].append(conflict_linestring_clcs[i])
+                if conflict_linestring_clcs[i][0] < conflict_s_interval[1][0]:
+                    conflict_s_interval[1][0] = conflict_linestring_clcs[i][0]
+                if conflict_linestring_clcs[i][0] > conflict_s_interval[1][1]:
+                    conflict_s_interval[1][1] = conflict_linestring_clcs[i][0]
+        if conflict_s_interval[0][0] <= s_circle_center_front <= conflict_s_interval[0][1]:
+            conflict_line_front = conflict_line[0]
+            conflict_line_rear = conflict_line[1]
+        else:
+            conflict_line_front = conflict_line[1]
+            conflict_line_rear = conflict_line[0]
+        self.test_plot(conflict_area_shape, conflict_linestring, conflict_line_front, conflict_line_rear, ego_vehicle.ref_path_lane, conflict_circle_center_right, conflict_circle_center_left, conflict_circle_center_center)
+        conflict_line_front = np.array(conflict_line_front).T
+        conflict_line_rear = np.array(conflict_line_rear).T
+        return s_circle_center_front, s_circle_center_rear, conflict_line_front, conflict_line_rear
+
+    def test_plot(self, conflict_area_shape, conflict_linestring, conflict_line_front, conflict_line_rear, ref_lane, conflict_circle_center_right, conflict_circle_center_left, conflict_circle_center_center):
+        fig1, test_plt = plt.subplots(figsize=(6, 6))
+        # x, y = conflict_polygon_test.xy
+        # test_plt.plot(x, y)
+        x, y = conflict_area_shape.exterior.xy
+        test_plt.plot(x, y)
+        x, y = conflict_linestring.xy
+        test_plt.plot(x, y)
+        cartasian_conflict_line_front = ref_lane.clcs.convert_list_of_points_to_cartesian_coords(conflict_line_front, 1)
+        cartasian_conflict_line_rear = ref_lane.clcs.convert_list_of_points_to_cartesian_coords(conflict_line_rear, 1)
+        for point in cartasian_conflict_line_front:
+            test_plt.plot(point[0], point[1], "b*", zorder=100)
+        for point in cartasian_conflict_line_rear:
+            test_plt.plot(point[0], point[1], "r*", zorder=100)
+        test_plt.plot(ref_lane.new_vertice[:, 0], ref_lane.new_vertice[:, 1])
+        test_plt.plot(conflict_circle_center_right[1][0], conflict_circle_center_right[1][1], "ko", zorder=1000)
+        test_plt.plot(conflict_circle_center_left[1][0], conflict_circle_center_left[1][1], "go", zorder=1000)
+        test_plt.plot(conflict_circle_center_center[1][0], conflict_circle_center_center[1][1], "bo", zorder=1000)
+        plt.show()
+
+    @staticmethod
+    def find_conflict_points(curved_line: LineString, conflict_polygon: Union[Polygon, LineString]):
+        conflict_line_points = list()
+        # Get intersection of line and polygon
+        intersection = curved_line.intersection(conflict_polygon)
+        if intersection.geom_type == "Point":
+            conflict_line_points.append([intersection.x, intersection.y])
+        elif (
+                intersection.geom_type == "LineString"
+                or intersection.geom_type == "LinearRing"
+        ):
+            for point in intersection.coords:
+                conflict_line_points.append(np.array(point))
+        elif (
+                intersection.geom_type == "MultiPoint"
+                or intersection.geom_type == "MultiLineString"
+        ):
+            for geom in intersection.geoms:
+                for point in geom.coords:
+                    conflict_line_points.append(point)
+        if len(conflict_line_points) == 0:
+            conflict_points = None
+        else:
+            conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
+        return conflict_points
