@@ -147,13 +147,15 @@ class MIQPLatReference(object):
         ), "<QPLatReference>: Provided reference is not long enough for interpolation! ref = {}, traj = {}".format(
             np.max(ref_pathlength), np.max(s)
         )
+        CLCS = vehicle_configuration.curvilinear_coordinate_system
 
         # interpolate curvature at s positions of trajectory
-        # TODO: why need?
-        curvature_interpolated = np.interp(s, ref_pathlength, ref_curvature)
+        # curvature_interpolated = np.interp(s, ref_pathlength, ref_curvature)
+        curvature_interpolated = np.interp(s, CLCS.ref_pos, CLCS.ref_curv)
 
         # interpolate orientation at s positions of trajectory
-        orientation_interpolated = np.interp(s, ref_pathlength, ref_orientation)
+        # orientation_interpolated = np.interp(s, ref_pathlength, ref_orientation)
+        orientation_interpolated = np.interp(s, CLCS.ref_pos, CLCS.ref_theta)
         assert (
             len(curvature_interpolated) == len(orientation_interpolated) == len(s)
         ), "<QPLatReference>: interpolation failed!"
@@ -337,7 +339,7 @@ class MIQPLatPlanner:
                 )
                 # TODO: initial state t = 0s
                 self._lateral_constraints.init_state = np.array(
-                    [self._x_init_lat.d, self.theta_r[0], ini_kappa, 0.0]
+                    [self._x_init_lat.d, self._x_init_lat.theta, self._x_init_lat.kappa, self._x_init_lat.kappa_dot]
                 ).transpose()
 
             # selection matrix for output
