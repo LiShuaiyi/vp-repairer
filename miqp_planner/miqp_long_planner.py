@@ -77,7 +77,7 @@ class MIQPLongPlanner:
             self.initial_state.j,
         )
         self.long_constraints = long_constraints
-        self.weight = [0.1, 0.4, 1, 2, 0.1, 1000000]
+        self.weight = [0.1, 0.2, 0.5, 1, 0.1, 1000000]
         # self.weight = [0.1, 0.4, 1, 2, 0.1, 10000]
 
         # number of x
@@ -137,8 +137,8 @@ class MIQPLongPlanner:
                     index.append(i)
                     s_limit_front.append(constraint['s_limit_front'][i])
                     s_limit_behind.append(constraint['s_limit_behind'][i])
-        ax.plot(index, s_limit_front, label='s_limit_front')
-        ax.plot(index, s_limit_behind, label='s_limit_behind')
+        ax.plot(index, s_limit_front, "x",  label='s_limit_front')
+        ax.plot(index, s_limit_behind, "x", label='s_limit_behind')
         ax.set_xlabel('time step')
         ax.set_ylabel('s')
         ax.legend()
