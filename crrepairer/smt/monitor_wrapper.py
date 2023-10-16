@@ -351,8 +351,12 @@ class STLRuleMonitor:
                         prop_names.append([prop_name for prop_name in prop.keys()])
                         prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
                     else:
-                        prop_names.append([])
-                        prop_rob.append([])
+                        try:
+                            prop_names.append(prop_names[0])
+                            prop_rob.append([-np.inf] * len(prop_rob[0]))
+                        except:
+                            prop_names.append([])
+                            prop_rob.append([])
                     pred = evaluator.get_predicates()
                     if pred:
                         pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
