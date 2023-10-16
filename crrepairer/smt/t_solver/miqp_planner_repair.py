@@ -1,3 +1,5 @@
+import numpy as np
+
 from miqp_planner.miqp_planner_base import MIQPPlanner
 from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference
 from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
@@ -170,13 +172,22 @@ class MIQPPlannerRepair(MIQPPlanner):
             cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
                 state.position[0], state.position[1]
             )
+            orientation_interpolated = np.interp(
+                state.position[0],
+                self.vehicle_configuration.curvilinear_coordinate_system.ref_pos,
+                self.vehicle_configuration.curvilinear_coordinate_system.ref_theta,
+            )
+            
+            v = state.v / np.cos(
+                state.orientation - orientation_interpolated
+            )
             cartesian_traj_points.append(
                 TrajPoint(
                     t=state.t,
                     x=cart_pos[0],
                     y=cart_pos[1],
                     theta=state.orientation,
-                    v=state.v,
+                    v=v,
                     a=state.a,
                     kappa=state.kappa,
                     kappa_dot=state.kappa_dot,
@@ -192,7 +203,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         cr_traj_repaired = traj.convert_to_cr_trajectory(
             self._vehicle_configuration.wheelbase
         )
-        if self._cut_off_time_step == 0:
+        if self._cut_off_time_step == 1:
             remaining_states = [self._ego_vehicle.initial_state]
         else:
             remaining_states = [
