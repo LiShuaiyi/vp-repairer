@@ -69,6 +69,10 @@ class TC(CutOffBase, ABC):
         config.vehicle.cartesian.a_x_min = -5
         config.vehicle.cartesian.j_x_max = 10
         config.vehicle.cartesian.j_x_min = -10
+        config.vehicle.cartesian.a_y_max = 5
+        config.vehicle.cartesian.a_y_min = -5
+        config.vehicle.cartesian.j_y_max = 10
+        config.vehicle.cartesian.j_y_min = -10
         config.scenario = self.scenario
         config.time.steer_width = 2  # use the lane width mode
         config.vehicle.ego_id = rule_monitor.vehicle_id
@@ -133,6 +137,11 @@ class TC(CutOffBase, ABC):
         self._sim_lon.cartesian.a_x_max = self.config.vehicle.cartesian.a_x_max
         self._sim_lat.cartesian.a_x_min = self.config.vehicle.cartesian.a_x_min
         self._sim_lat.cartesian.a_x_max = self.config.vehicle.cartesian.a_x_max
+        
+        self._sim_lon.cartesian.a_y_min = self.config.vehicle.cartesian.a_x_min
+        self._sim_lon.cartesian.a_y_max = self.config.vehicle.cartesian.a_x_max
+        self._sim_lat.cartesian.a_y_min = self.config.vehicle.cartesian.a_x_min
+        self._sim_lat.cartesian.a_y_max = self.config.vehicle.cartesian.a_x_max
 
         self._tc_dict = defaultdict(float)
 
