@@ -161,15 +161,16 @@ class GurobiSolver:
             # if i == 0:
             #     params_dict = {"vars": [[1, self.delta['conflict_area_1'][i]]]}
             #     self.add_eq_cons(params_dict, "binary_variable_conflict_area_constraint_init")
-            params_dict = {
-                "vars": [
-                    [1, self.delta["{}_1".format(rule_constraint["constraint_name"])][i]],
-                    [-1, self.delta["{}_1".format(rule_constraint["constraint_name"])][i + 1]],
-                ]
-            }
-            self.add_eq_cons(
-                params_dict, "binary_variable_conflict_area_constraint_{}".format(i)
-            )
+            # params_dict = {
+            #     "vars": [
+            #         [1, self.delta["{}_1".format(rule_constraint["constraint_name"])][i]],
+            #         [-1, self.delta["{}_1".format(rule_constraint["constraint_name"])][i + 1]],
+            #     ]
+            # }
+            # self.add_eq_cons(
+            #     params_dict, "binary_variable_conflict_area_constraint_{}".format(i)
+            # )
+            pass
 
     def add_binary_rule_constraint(self, rule_constraint, big_M):
         if rule_constraint["constraint_name"] in ["conflict_area", "intersection"]:
