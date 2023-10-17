@@ -19,16 +19,16 @@ import glob
 import pandas as pd
 import os
 
-scenario_path = "/home/ge23lac/scenarios/ind_rin1/"
+scenario_path = "/home/ge23lac/scenarios/ind_rin5/"
 csv_file_path = "./config"
-csv_name = "data_violation_rin1.csv"
-rule = ["R_IN1"]
+csv_name = "data_violation_rin5.csv"
+rule = ["R_IN5"]
 
 if __name__ == "__main__":
     nr_infeasible = 0
     nr_repairable = 0
     nr_not_repairable = 0
-    f_w = open("result_rin1.csv", "w")
+    f_w = open("result_rin5.csv", "w")
     writer = csv.writer(f_w)
     writer.writerow(
         ["scenario_id", "ego_id", "rule", "TV", "prop"]
