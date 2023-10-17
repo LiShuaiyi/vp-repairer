@@ -43,7 +43,7 @@ if __name__ == "__main__":
         scenario_ids.append(index[0])
         ego_ids.append(index[1])
     print(len(ego_ids))
-    for i in range(0, 10):
+    for i in range(len(ego_ids)):
         scenario_id = scenario_ids[i]
         ego_id = ego_ids[i]
         scenario, planning_problem_set = CommonRoadFileReader(
@@ -61,25 +61,6 @@ if __name__ == "__main__":
         ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:N]
         if ego_initial.obstacle_type != ObstacleType.CAR:
             continue
-
-        traffic_rule_monitor = STLRuleMonitor(
-            scenario,
-            ego_id,
-            rule[0],
-            ScenarioType.INTERSECTION,
-            IntersectionType.DATASET,
-            use_mpr=False,
-            mpr_scenario="intersection",
-        )
-        print(traffic_rule_monitor.tv_time_step, "+", traffic_rule_monitor.other_id)
-        if traffic_rule_monitor.tv_time_step is not math.inf:
-            writer.writerow([scenario.scenario_id, ego_id, rule, "initial feasibility"])
-            nr_infeasible += 1
-            repairer = SMTTrajectoryRepairer(
-                traffic_rule_monitor, planning_problem, ego_initial
-            )
-            repaired_traj = repairer.repair()
-
         try:
             traffic_rule_monitor = STLRuleMonitor(
                     scenario, ego_id, rule[0], ScenarioType.INTERSECTION, IntersectionType.DATASET, use_mpr=False, mpr_scenario="intersection"
