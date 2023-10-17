@@ -1,3 +1,5 @@
+import numpy as np
+
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, ScenarioType, IntersectionType
 from crrepairer.repairer.smt_repairer_miqp import SMTTrajectoryRepairer
 
@@ -68,7 +70,6 @@ if __name__ == "__main__":
             print(traffic_rule_monitor.tv_time_step, "+", traffic_rule_monitor.other_id)
             if traffic_rule_monitor.tv_time_step is not math.inf:
                 writer.writerow([scenario.scenario_id, ego_id, rule, "initial feasibility"])
-                nr_infeasible += 1
                 repairer = SMTTrajectoryRepairer(
                     traffic_rule_monitor, planning_problem, ego_initial
                 )
@@ -83,6 +84,19 @@ if __name__ == "__main__":
                     ego_id,
                     rule,
                     "bingo",
+                    repairer.model,
+                    repairer.tv,
+                    repairer.tc,
+                ]
+            )
+        elif repairer.tc == -np.inf:
+            nr_infeasible += 1
+            writer.writerow(
+                [
+                    scenario.scenario_id,
+                    ego_id,
+                    rule,
+                    "not repairable",
                     repairer.model,
                     repairer.tv,
                     repairer.tc,
