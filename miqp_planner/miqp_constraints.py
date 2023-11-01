@@ -55,13 +55,13 @@ class BasicConstraint:
 
 class LongitudinalConstraint(BasicConstraint):
     def __init__(
-        self,
-        tc_object: TC,
-        rule_monitor: STLRuleMonitor,
-        sel_proposition_full: List[PropositionNode],
-        proposition_full: List[PropositionNode],
-        veh_config: PlanningConfigurationVehicle,
-        initial_trajectory: Trajectory,
+            self,
+            tc_object: TC,
+            rule_monitor: STLRuleMonitor,
+            sel_proposition_full: List[PropositionNode],
+            proposition_full: List[PropositionNode],
+            veh_config: PlanningConfigurationVehicle,
+            initial_trajectory: Trajectory,
     ):
         super().__init__()
         self._foll_veh = None
@@ -102,19 +102,19 @@ class LongitudinalConstraint(BasicConstraint):
                 try:
                     prop_assignment = total_assignment[
                         total_assignment == total_assignment
-                    ][idx]
+                        ][idx]
                 except:
                     # no assignment can be found
                     continue
                 for predicate in proposition.children:
                     if (
-                        proposition in self._prop_full
-                        and k >= self._tc_obj.tv_time_step
+                            proposition in self._prop_full
+                            and k >= self._tc_obj.tv_time_step
                     ):
                         # proposition to be repaired (greater than the time-to-violation)
                         robs_at_tv = self._rule_monitor.prop_robust_all[
-                            :, self._tc_obj.tv_time_step
-                        ]
+                                     :, self._tc_obj.tv_time_step
+                                     ]
                         prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
                         if proposition in self._sel_prop_full:
                             prop_assignment = -prop_assignment
@@ -122,18 +122,18 @@ class LongitudinalConstraint(BasicConstraint):
                         if not hasattr(predicate, "base_name"):
                             continue
                         if (
-                            predicate.base_name
-                            == PredInIntersectionConflictArea.predicate_name
+                                predicate.base_name
+                                == PredInIntersectionConflictArea.predicate_name
                         ):
                             if predicate.base_name in self.rule_constraints.keys():
                                 # avoid multiple updates in one time step for the same predicate constraints
                                 if (
-                                    len(
-                                        self.rule_constraints[predicate.base_name][
-                                            "s_limit_front"
-                                        ]
-                                    )
-                                    == num_time_step
+                                        len(
+                                            self.rule_constraints[predicate.base_name][
+                                                "s_limit_front"
+                                            ]
+                                        )
+                                        == num_time_step
                                 ):
                                     continue
                                 (
@@ -230,36 +230,71 @@ class LongitudinalConstraint(BasicConstraint):
 
     def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
         def compute_conflict_start_end_points(
-            ego_vehicle: Vehicle,
-            target_vehicle: Vehicle,
-            road_network: RoadNetwork,
-            time_step,
+                ego_vehicle: Vehicle,
+                target_vehicle: Vehicle,
+                road_network: RoadNetwork,
+                time_step,
         ):
-            all_conflict_points = list()
+            all_conflict_points_center = list()
+            all_conflict_points_right = list()
+            all_conflict_points_left = list()
             for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
                 lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
                 if LaneletType.INTERSECTION in lanelet.lanelet_type:
                     # find conflict points between center vertices of lanelets_dir of k-th vehicle and reference path
                     # lanelets of p-th vehicle
-                    conflict_points = find_conflict_points(
+                    conflict_points_center = find_conflict_points(
                         ego_vehicle.lanelets_dir_center_vertices,
                         lanelet.polygon.shapely_object,
                     )
-                    if conflict_points is not None:
-                        all_conflict_points.append(conflict_points)
-            if len(all_conflict_points) == 0:
+                    conflict_points_right = find_conflict_points(
+                        ego_vehicle.lanelets_dir_right_vertices,
+                        lanelet.polygon.shapely_object,
+                    )
+                    conflict_points_left = find_conflict_points(
+                        ego_vehicle.lanelets_dir_left_vertices,
+                        lanelet.polygon.shapely_object,
+                    )
+                    if conflict_points_center is not None:
+                        all_conflict_points_center.append(conflict_points_center)
+                    if conflict_points_right is not None:
+                        all_conflict_points_right.append(conflict_points_right)
+                    if conflict_points_left is not None:
+                        all_conflict_points_left.append(conflict_points_left)
+            if len(all_conflict_points_center) == 0:
                 return [np.inf, -np.inf]
-            start_conflict_s = (
+            start_conflict_s_center = (
                 ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points[0][0]
+                    *all_conflict_points_center[0][0]
                 )[0]
             )
-            end_conflict_s = (
+            start_conflict_s_right = (
                 ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points[-1][-1]
+                    *all_conflict_points_right[0][0]
                 )[0]
             )
-            return [start_conflict_s, end_conflict_s]
+            start_conflict_s_left = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_left[0][0]
+                )[0]
+            )
+            end_conflict_s_center = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_center[-1][-1]
+                )[0]
+            )
+            end_conflict_s_right = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_right[-1][-1]
+                )[0]
+            )
+            end_conflict_s_left = (
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *all_conflict_points_left[-1][-1]
+                )[0]
+            )
+            return [np.min([start_conflict_s_center, start_conflict_s_right, start_conflict_s_left]),
+                    np.max([end_conflict_s_center, end_conflict_s_right, end_conflict_s_left])]
 
         def find_conflict_points(line, conflict_polygon):
             conflict_line_points = list()
@@ -268,16 +303,16 @@ class LongitudinalConstraint(BasicConstraint):
             # Get intersection of line and polygon
             intersection = curved_line.intersection(conflict_polygon)
             if intersection.geom_type == "Point":
-                conflict_line_points.append(intersection)
+                conflict_line_points.append([intersection.x, intersection.y])
             elif (
-                intersection.geom_type == "LineString"
-                or intersection.geom_type == "LinearRing"
+                    intersection.geom_type == "LineString"
+                    or intersection.geom_type == "LinearRing"
             ):
                 for point in intersection.coords:
                     conflict_line_points.append(np.array(point))
             elif (
-                intersection.geom_type == "MultiPoint"
-                or intersection.geom_type == "MultiLineString"
+                    intersection.geom_type == "MultiPoint"
+                    or intersection.geom_type == "MultiLineString"
             ):
                 for geom in intersection.geoms:
                     for point in geom.coords:
@@ -297,8 +332,8 @@ class LongitudinalConstraint(BasicConstraint):
         target_vehicle = self._target_vehicle
         for i in range(len(rule_monitor.proposition_nodes)):
             if (
-                rule_monitor.proposition_nodes[i].name
-                == "(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)"
+                    rule_monitor.proposition_nodes[i].name
+                    == "(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)"
             ):
                 index_prop_conflict_area_target = i
                 break
@@ -311,16 +346,14 @@ class LongitudinalConstraint(BasicConstraint):
             )
             # TODO: fix plus or minus a small number
             s_limit_front = (
-                conflict_points[0]
-                - self._ego_vehicle.shape.length / 2
-                - self._veh_config.wheelbase / 2
-                - 2
+                    conflict_points[0]
+                    - self._ego_vehicle.shape.length / 2
+                    - self._veh_config.wheelbase / 2
             )
             s_limit_behind = (
-                conflict_points[1]
-                + self._ego_vehicle.shape.length / 2
-                - self._veh_config.wheelbase / 2
-                + 2
+                    conflict_points[1]
+                    + self._ego_vehicle.shape.length / 2
+                    - self._veh_config.wheelbase / 2
             )
         else:
             s_limit_front = np.inf
@@ -330,13 +363,13 @@ class LongitudinalConstraint(BasicConstraint):
 
 class LateralConstraint(BasicConstraint):
     def __init__(
-        self,
-        tc_object: TC,
-        rule_monitor: STLRuleMonitor,
-        veh_config: PlanningConfigurationVehicle,
-        target_lanes,
-        long_traj: QPTrajectory,
-        sel_proposition_full: List[PropositionNode],
+            self,
+            tc_object: TC,
+            rule_monitor: STLRuleMonitor,
+            veh_config: PlanningConfigurationVehicle,
+            target_lanes,
+            long_traj: QPTrajectory,
+            sel_proposition_full: List[PropositionNode],
     ):
         super().__init__()
 

@@ -10,7 +10,7 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.prediction.prediction import Trajectory
 import math
 
-scenario_id = "DEU_TestRIN1-3_1_T-1"
+scenario_id = "DEU_AAH1-2_76900_T-7049"
 file_path = "../../scenarios/" + scenario_id + ".xml"
 figure_path = "./figures"
 
@@ -22,18 +22,18 @@ if __name__ == "__main__":
         lanelet_assignment=True
     )
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
-    ego_id = 31
+    ego_id = 10065
     rule = ["R_IN1"]
-    N = 40
+    N = 149
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory = Trajectory(
-        1, ego_initial.prediction.trajectory.state_list[:N]
+        ego_initial.prediction.initial_time_step, ego_initial.prediction.trajectory.state_list[:N]
     )
     ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:N]
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(
-        scenario, ego_id, rule[0], ScenarioType.INTERSECTION, IntersectionType.HAND_DRAFT
+        scenario, ego_id, rule[0], ScenarioType.INTERSECTION, IntersectionType.DATASET
     )
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
@@ -47,12 +47,12 @@ if __name__ == "__main__":
             )
 
             # ============= Visualization =============
-            plot_limits = [-5, 50, -4.5, 3]
+            plot_limits = [45, 70, -35, -15]
             target_veh = scenario.obstacle_by_id(traffic_rule_monitor.other_id)
             visualize_v_profile(
                 ego_initial,
                 ego_repaired,
-                time_start=0,
+                time_start=ego_initial.prediction.initial_time_step - 1,
                 time_end=N,
                 tc=repairer.tc,
                 tv=repairer.tv,
@@ -61,7 +61,7 @@ if __name__ == "__main__":
                 scenario.dt,
                 ego_initial,
                 ego_repaired,
-                time_start=0,
+                time_start=ego_initial.prediction.initial_time_step - 1,
                 time_end=N,
                 tc=repairer.tc,
                 tv=repairer.tv,

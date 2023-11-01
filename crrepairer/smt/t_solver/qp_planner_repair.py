@@ -45,17 +45,18 @@ class QPPlannerRepair(QPPlanner):
     """
 
     def __init__(
-        self,
-        rule_monitor: STLRuleMonitor,
-        tc_object: TC,
-        sel_proposition: List[PropositionNode],
-        proposition_full: List[PropositionNode],
-        planning_problem: PlanningProblem,
-        verbose=False,
+            self,
+            rule_monitor: STLRuleMonitor,
+            tc_object: TC,
+            sel_proposition: List[PropositionNode],
+            proposition_full: List[PropositionNode],
+            planning_problem: PlanningProblem,
+            verbose=False,
     ):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world.scenario
         self._ego_vehicle = tc_object.ego_vehicle
+        self._start_time_step = tc_object.ego_vehicle.initial_state.time_step
         self._planning_problem = planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
 
@@ -69,7 +70,7 @@ class QPPlannerRepair(QPPlanner):
                 self._cut_off_time_step
             )
         self._time_horizon = round(
-            (self._N - self._cut_off_time_step) * self._scenario.dt, 1
+            (self._N - self._cut_off_time_step) * self._scenario.dt, tc_object.round_tolerance
         )
         self._planning_problem.initial_state = InitialState(
             position=self._cut_off_state.position,
@@ -92,11 +93,22 @@ class QPPlannerRepair(QPPlanner):
                 self._scenario, self._planning_problem, self._settings
             )
         )
-        self._vehicle_configuration.curvilinear_coordinate_system = (
-            rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
-            .get_lane(0)
-            .clcs
-        )
+
+        # use the coordinate system from the world
+        # TODO: separate intersection and interstate
+        if rule_monitor.scenario_type == "intersection":
+            self._vehicle_configuration.curvilinear_coordinate_system = (
+                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+                .ref_path_lane
+                .clcs
+            )
+        else:
+            test = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).get_lane(0)
+            self._vehicle_configuration.curvilinear_coordinate_system = (
+                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+                .get_lane(0)
+                .clcs
+            )
 
         # update the vehicle shape
         self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
@@ -116,7 +128,7 @@ class QPPlannerRepair(QPPlanner):
             proposition_full,
             self._vehicle_configuration,
             self._initial_trajectory,
-            self._planning_problem
+            self._planning_problem,
         )
 
         # initialize the QP planner
@@ -191,16 +203,11 @@ class QPPlannerRepair(QPPlanner):
         Constructs the longitudinal reference from the initially-planned trajectory.
         """
         x_ref = list()
-        # for state in self._initial_trajectory.states_in_time_interval(self._cut_off_time_step,
-        #                                                               self._ego_vehicle.prediction.final_time_step):
-        #     pos = convert_pos_curvilinear(state, self._vehicle_configuration)
-        #     x_ref.append(QPLongState(pos[0], state.velocity, 0., 0., 0.))
-        for ts in range(0, lon_constr.N):
-            x_ref.append(
-                QPLongState(
-                    lon_constr.s_hard_min[ts], lon_constr.v_min[ts], 0.0, 0.0, 0.0
-                )
-            )
+        for state in self._initial_trajectory.states_in_time_interval(
+                self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
+        ):
+            pos = convert_pos_curvilinear(state, self._vehicle_configuration)
+            x_ref.append(QPLongState(pos[0], state.velocity, 0.0, 0.0, 0.0))
         return QPLongDesired(x_ref)
 
     def construct_d_reference(self):
@@ -209,14 +216,14 @@ class QPPlannerRepair(QPPlanner):
         """
         d_ref = list()
         for state in self._initial_trajectory.states_in_time_interval(
-            self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
+                self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
         ):
             pos = convert_pos_curvilinear(state, self._vehicle_configuration)
             d_ref.append(pos[1])
         return d_ref
 
     def convert_traj_to_ego_vehicle(
-        self, cr_trajectory: Trajectory, vehicle_id: int = 0
+            self, cr_trajectory: Trajectory, vehicle_id: int = 0
     ) -> DynamicObstacle:
         """
         Converts trajectory object to CommonRoad obstacle with specified width and length
@@ -256,9 +263,9 @@ class QPPlannerRepair(QPPlanner):
             remaining_states = [self._ego_vehicle.initial_state]
         else:
             remaining_states = [
-                self._ego_vehicle.initial_state
-            ] + self._initial_trajectory.states_in_time_interval(
-                1, self._cut_off_time_step - 1
+                                   self._ego_vehicle.initial_state
+                               ] + self._initial_trajectory.states_in_time_interval(
+                self._start_time_step + 1, self._cut_off_time_step - 1
             )
         for state in cr_traj_repaired.prediction.trajectory.state_list:
             state.time_step += self._cut_off_time_step
@@ -273,7 +280,7 @@ class QPPlannerRepair(QPPlanner):
             for state in remaining_states
             + cr_traj_repaired.prediction.trajectory.state_list
         ]
-        cr_traj_repaired = Trajectory(0, state_list)
+        cr_traj_repaired = Trajectory(self._start_time_step, state_list)
         return cr_traj_repaired
 
     def config_settings(self):

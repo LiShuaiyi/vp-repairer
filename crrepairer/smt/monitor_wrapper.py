@@ -48,6 +48,11 @@ class ScenarioType(str, Enum):
     INTERSECTION = "intersection"
 
 
+class IntersectionType(str, Enum):
+    HAND_DRAFT = "hand_draft"
+    DATASET = "dataset"
+
+
 class STLRuleMonitor:
     def __init__(
         self,
@@ -55,11 +60,15 @@ class STLRuleMonitor:
         vehicle_id: int,
         rules: Union[str, Iterable[str]],
         scenario_type: ScenarioType = ScenarioType.INTERSTATE,
+        intersection_type: IntersectionType = IntersectionType.DATASET,
         multiproc: bool = True,
     ):
         # update the world configuration for repairing purposes
         world_config = get_world_config()
         world_config["scenario"] = scenario_type
+        self.scenario_type = scenario_type
+        if scenario_type == ScenarioType.INTERSECTION:
+            world_config["intersection_road_network_param"]["map_type"] = intersection_type
         self._world: World = World.create_from_scenario(scenario, config=world_config)
         self._vehicle_id = vehicle_id
         self.multiproc = multiproc
@@ -154,7 +163,6 @@ class STLRuleMonitor:
             # 'eventually' is replaced by 'once' because of the same replacement in rtamt
             sat_formula = (
                 sat_formula.replace("not", "!")
-                .replace(" >= 0", "")
                 .replace("eventually", "once")
             )
             clear_rob_abs = self.rob_abstraction[i][
@@ -165,16 +173,16 @@ class STLRuleMonitor:
             prev_idx += length
             for prop_node in props_of_rule:
                 prop_node_name = prop_node.name
-                # if proposition name starts with "(once[x,x]", it will be considered as predicate
-                if (
-                    prop_node_name[0:5] == "(once"
-                    and prop_node_name[6:7] == prop_node_name[8:9]
-                ):
+                # if proposition name starts with "once[x,x]", it will be considered as predicate
+                if(
+                    prop_node_name[0:4] == "once"
+                    and prop_node_name[5:6] == prop_node_name[7:8]
+                    ):
                     prop_node_name = prop_node_name.replace(
-                        prop_node_name[0:10], ""
-                    ).replace(")>=(0.0)", "")
-                else:
-                    prop_node_name = prop_node_name.replace(">=(0.0)", "")
+                        prop_node_name[0:9], ""
+                    )
+                if prop_node_name.startswith('(') and prop_node_name.endswith(')'):
+                    prop_node_name = prop_node_name[1:-1]
                 matches = SequenceMatcher(
                     None, sat_formula, prop_node_name, autojunk=True
                 ).get_matching_blocks()

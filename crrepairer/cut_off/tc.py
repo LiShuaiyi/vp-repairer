@@ -35,6 +35,11 @@ class TC(CutOffBase, ABC):
         rule_monitor_copy = copy.copy(rule_monitor)
         rule_monitor_copy._world = copy.deepcopy(rule_monitor.world)
         super().__init__(ego_vehicle, rule_monitor_copy.world)
+        # set round tolerance for different time step size
+        if 0.01 <= self.dT < 0.1:
+            self.round_tolerance = 2
+        else:
+            self.round_tolerance = 1
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = self.rule_monitor.tv_time_step
@@ -81,13 +86,13 @@ class TC(CutOffBase, ABC):
 
     @property
     def tv(self):
-        return int_round(self._tv_time_step * self.dT, 1)
+        return int_round(self._tv_time_step * self.dT, self.round_tolerance)
 
     @property
     def tc(self):
         if self._tc == -math.inf:
             return self._tc
-        return int_round(self._tc, 1)
+        return int_round(self._tc, self.round_tolerance)
 
     @property
     def tc_time_step(self) -> Union[int, float]:
@@ -168,7 +173,7 @@ class TC(CutOffBase, ABC):
     def search_ttm_binary(self, maneuver: Maneuver):
         ttm = -math.inf
         low = 0
-        high = int(int_round(self.tv / self.dT))
+        high = int(int_round(self.tv / self.dT, self.round_tolerance))
         while low < high:
             self._mid = int(int_round(low + high) / 2)
             tv = self.singleton_search(maneuver, self._mid)
@@ -184,7 +189,7 @@ class TC(CutOffBase, ABC):
 
     @functools.lru_cache(128)
     def search_ttm_linear(self, maneuver: Maneuver):
-        ts = int(int_round(self.tv / self.dT))
+        ts = int(int_round(self.tv / self.dT, self.round_tolerance))
         while ts > 0:
             tv = self.singleton_search(maneuver, ts)
             if tv == math.inf:
