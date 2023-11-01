@@ -265,7 +265,7 @@ class RuleConstraintsReach:
         #########################################################
         if self.reach_config.traffic_rule.activated_rules:
             semantic_model = SemanticModel(self.reach_config)
-            semantic_model.determine_traffic_priorities(
+            semantic_model._determine_traffic_priorities(
                 priorities.dict_traffic_sign_to_priorities
             )
 
