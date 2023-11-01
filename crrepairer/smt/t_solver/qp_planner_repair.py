@@ -103,7 +103,6 @@ class QPPlannerRepair(QPPlanner):
                 .clcs
             )
         else:
-            test = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).get_lane(0)
             self._vehicle_configuration.curvilinear_coordinate_system = (
                 rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
                 .get_lane(0)
@@ -203,11 +202,17 @@ class QPPlannerRepair(QPPlanner):
         Constructs the longitudinal reference from the initially-planned trajectory.
         """
         x_ref = list()
-        for state in self._initial_trajectory.states_in_time_interval(
-                self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
-        ):
-            pos = convert_pos_curvilinear(state, self._vehicle_configuration)
-            x_ref.append(QPLongState(pos[0], state.velocity, 0.0, 0.0, 0.0))
+        # based on the initially planned trajectory
+        # for state in self._initial_trajectory.states_in_time_interval(
+        #         self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
+        # ):
+        #     pos = convert_pos_curvilinear(state, self._vehicle_configuration)
+        #     x_ref.append(QPLongState(pos[0], state.velocity, 0.0, 0.0, 0.0))
+        # use the constraint as the reference
+        for i in range(len(lon_constr.s_hard_min)):
+            pos = (lon_constr.s_hard_max[i] + lon_constr.s_hard_min[i])/2
+            vel = (lon_constr.v_max[i] + lon_constr.v_min[i])/2
+            x_ref.append(QPLongState(pos, vel, 0.0, 0.0, 0.0))
         return QPLongDesired(x_ref)
 
     def construct_d_reference(self):
