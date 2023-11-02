@@ -43,7 +43,7 @@ class DPLL:
         def robustness_degree(alp):
             rob_min_tv_h = 0
             node = next((x for x in prop_nodes if x.alphabet == alp[-1]), None)
-            # TODO: fix proposition sort
+            # TODO: FIXME: fix proposition sort. currently first consider propositions determined by the ego vehicle
             for predicate in node.children:
                 if predicate.agent_placeholders == (1, 0):
                     rob_min_tv_h += 1
