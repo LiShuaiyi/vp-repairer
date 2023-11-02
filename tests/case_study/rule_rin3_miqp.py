@@ -15,7 +15,7 @@ file_path = "../../scenarios/" + scenario_id + ".xml"
 figure_path = "./figures"
 
 flag_visualization = True
-
+# TODO: fixme infeasible planning problem
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     )
     planning_problem = list(planning_problem_set.planning_problem_dict.values())[0]
     ego_id = 30
-    rule = ["R_IN3"]
+    rule = ["R_IN3_hand_draft"]
     N = 49
     ego_initial = scenario.obstacle_by_id(ego_id)
     ego_initial.prediction.trajectory = Trajectory(
@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(
-        scenario, ego_id, rule[0], ScenarioType.INTERSECTION, IntersectionType.HAND_DRAFT
+        scenario, ego_id, rule[0], ScenarioType.INTERSECTION, IntersectionType.HAND_DRAFT, use_mpr=False, mpr_scenario="intersection"
     )
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
