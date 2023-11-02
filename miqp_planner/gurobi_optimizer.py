@@ -39,11 +39,6 @@ class GurobiSolver:
     def add_slack_var(self, slack, slack_shape, slack_lb, slack_ub):
         self.slack = slack
         self.slack_shape = slack_shape
-        # for i in range(self.slack_shape[0]):
-        #     for j in range(self.slack_shape[1]):
-        #         self.slack[i, j] = self.add_var(
-        #             "continuous", "slack_{}_{}".format(i, j), slack_lb[i, j], slack_ub[i, j]
-        #         )
         for i in range(self.slack_shape[0]):
             self.slack[i] = self.add_var(
                 "continuous", "u_long_{}".format(i), slack_lb[i], slack_ub[i]
@@ -84,7 +79,6 @@ class GurobiSolver:
         for i in range(len(dynamic_matrix_list)):
             dynamic_matrix_dict = dynamic_matrix_list[i]
             if i == 0:
-                # TODO: initial states constraints t = 0 (this should be a time invariant cons)
                 self.add_matrix_eq_cons(
                     np.eye(dynamic_matrix_dict["A"].shape[0]),
                     np.zeros_like(dynamic_matrix_dict["B"]),
@@ -156,20 +150,9 @@ class GurobiSolver:
                 )
             self.delta["{}_{}".format(constraint_name, i + 1)] = np.array(delta_tmp)
 
+    # TODO: add constraints for binary variables
     def add_binary_variables_cons(self, rule_constraint):
         for i in range(self.x_shape[1] - 1):
-            # if i == 0:
-            #     params_dict = {"vars": [[1, self.delta['conflict_area_1'][i]]]}
-            #     self.add_eq_cons(params_dict, "binary_variable_conflict_area_constraint_init")
-            # params_dict = {
-            #     "vars": [
-            #         [1, self.delta["{}_1".format(rule_constraint["constraint_name"])][i]],
-            #         [-1, self.delta["{}_1".format(rule_constraint["constraint_name"])][i + 1]],
-            #     ]
-            # }
-            # self.add_eq_cons(
-            #     params_dict, "binary_variable_conflict_area_constraint_{}".format(i)
-            # )
             pass
 
     def add_binary_rule_constraint(self, rule_constraint, big_M):
@@ -182,16 +165,15 @@ class GurobiSolver:
                         [1, self.x[0, time_step]],
                         [
                             -big_M,
-                            self.delta["{}_1".format(rule_constraint["constraint_name"])][
-                                time_step
-                            ],
+                            self.delta[
+                                "{}_1".format(rule_constraint["constraint_name"])
+                            ][time_step],
                         ],
                     ]
                     params_dict["constants"] = [
                         -rule_constraint["s_limit_front"][time_step]
                     ]
                     if self.slack is not None:
-                        # params_dict["vars"].append([-1, self.slack[1, time_step]])
                         params_dict["vars"].append([-1, self.slack[1]])
                     self.add_ineq_cons(
                         params_dict,
@@ -205,19 +187,18 @@ class GurobiSolver:
                         [-1, self.x[0, time_step]],
                         [
                             big_M,
-                            self.delta["{}_1".format(rule_constraint["constraint_name"])][
-                                time_step
-                            ],
+                            self.delta[
+                                "{}_1".format(rule_constraint["constraint_name"])
+                            ][time_step],
                         ],
                     ]
                     params_dict["constants"] = [
                         rule_constraint["s_limit_behind"][time_step],
                         -big_M,
                     ]
+                    # TODO: currently do not consider slack variable for lower boundaries
                     if self.slack is not None:
                         pass
-                        # params_dict["vars"].append([-1, self.slack[0, time_step]])
-                        # params_dict["vars"].append([-1, self.slack[0]])
                     self.add_ineq_cons(
                         params_dict,
                         "{}_behind_t{}".format(
@@ -236,13 +217,16 @@ class GurobiSolver:
                     params_dict["vars"] = [
                         [1, self.x[0, time_step]],
                     ]
-                    params_dict["constants"] = [-rule_constraint["s_limit_front"][time_step]]
+                    params_dict["constants"] = [
+                        -rule_constraint["s_limit_front"][time_step]
+                    ]
                     if self.slack is not None:
-                        # params_dict["vars"].append([-1, self.slack[1, time_step]])
                         params_dict["vars"].append([-1, self.slack[1]])
                     self.add_ineq_cons(
                         params_dict,
-                        "{}_front_t{}".format(rule_constraint["constraint_name"], time_step),
+                        "{}_front_t{}".format(
+                            rule_constraint["constraint_name"], time_step
+                        ),
                     )
                 if rule_constraint["s_limit_behind"][time_step] != -math.inf:
                     params_dict = {}
@@ -252,13 +236,14 @@ class GurobiSolver:
                     params_dict["constants"] = [
                         rule_constraint["s_limit_behind"][time_step],
                     ]
+                    # TODO: currently do not consider slack variable for lower boundaries
                     if self.slack is not None:
                         pass
-                        # params_dict["vars"].append([-1, self.slack[0, time_step]])
-                        # params_dict["vars"].append([-1, self.slack[0]])
                     self.add_ineq_cons(
                         params_dict,
-                        "{}_behind_t{}".format(rule_constraint["constraint_name"], time_step),
+                        "{}_behind_t{}".format(
+                            rule_constraint["constraint_name"], time_step
+                        ),
                     )
         else:
             print("warning: no constraints added")
@@ -387,9 +372,6 @@ class GurobiSolver:
             long_costs.add(u * u, weight_u)
 
         if self.slack is not None:
-            # for i in range(self.slack_shape[1]):
-            #     long_costs.add(self.slack[0, i] * self.slack[0, i], weight_slack)
-            #     long_costs.add(self.slack[1, i] * self.slack[1, i], weight_slack)
             for slack in self.slack:
                 long_costs.add(slack, weight_slack)
 
@@ -466,10 +448,6 @@ class GurobiSolver:
     def get_slack_var(self):
         if self.slack is not None:
             slack_value = np.empty(self.slack_shape)
-            # for i in range(self.slack_shape[0]):
-            #     for j in range(self.slack_shape[1]):
-            #         slack_value[i, j] = self.get_var(self.slack[i, j])
-            # return slack_value
             for i in range(self.slack_shape[0]):
                 slack_value[i] = self.get_var(self.slack[i])
             return slack_value

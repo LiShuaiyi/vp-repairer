@@ -106,15 +106,17 @@ class TSolver:
                     in [PositionPredicates.InIntersectionConflictArea]
                     and predicate.agent_placeholders == (1, 0)
                 ):
+                    # TODO: FIXME add maneuvers
                     pass
                     # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
-                elif(
+                elif (
                     predicate_category == "Pos"
                     and predicate.evaluator.predicate_name
                     in [PositionPredicates.OnLaneletWithTypeIntersection]
                 ):
                     compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
                 elif predicate_category == "Pos":
+                    # TODO: FIXME add maneuvers
                     pass
                     # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
                 elif predicate_category == "Vel":
@@ -180,12 +182,11 @@ class TSolver:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj
         start_time = time.time()
-        # TODO: tc maneuver config
-        if nr > 1:
-            self._tc_obj.update_config()
         tc = self.search_tc()
         print(
-            "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv - self._tc_obj.furture_time)
+            "* \t<Tsolver>: tc = {}, tv = {}".format(
+                self._tc_obj.tc, self._tc_obj.tv - self._tc_obj.furture_time
+            )
         )
         print(f"* \t<Tsolver>: run time {time.time() - start_time:.3f}s")
         if tc != -math.inf:

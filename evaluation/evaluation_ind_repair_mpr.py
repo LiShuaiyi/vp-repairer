@@ -7,13 +7,6 @@ from commonroad.scenario.obstacle import ObstacleType
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.prediction.prediction import Trajectory
 
-from crrepairer.repairer.visualization import (
-    visualize_repairing_result,
-    visualize_repairing_result_thesis,
-    visualize_a_profile,
-    visualize_v_profile,
-)
-
 # other packages
 import csv
 import math

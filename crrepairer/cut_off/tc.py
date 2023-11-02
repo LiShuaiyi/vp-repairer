@@ -42,7 +42,9 @@ class TC(CutOffBase, ABC):
             self.round_tolerance = 1
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
-        self._tv_time_step = self.rule_monitor.tv_time_step + self.rule_monitor.furture_time_step
+        self._tv_time_step = (
+            self.rule_monitor.tv_time_step + self.rule_monitor.furture_time_step
+        )
         self._other_id = self.rule_monitor.other_id
         self._visualize = False
         self._compliant_maneuver = None
@@ -51,7 +53,7 @@ class TC(CutOffBase, ABC):
         self._mid = None
         self._search_mode = TCSearchMode.BINARY
 
-        # todo fix in params
+        # todo fix in params in crime
         yaml_file = os.path.join(
             os.getcwd(),
             "../../../commonroad-criticality-measures/config_files/"
@@ -65,14 +67,6 @@ class TC(CutOffBase, ABC):
             )
         else:
             config = CriMeConfiguration()
-        config.vehicle.cartesian.a_x_max = 5
-        config.vehicle.cartesian.a_x_min = -5
-        config.vehicle.cartesian.j_x_max = 10
-        config.vehicle.cartesian.j_x_min = -10
-        config.vehicle.cartesian.a_y_max = 5
-        config.vehicle.cartesian.a_y_min = -5
-        config.vehicle.cartesian.j_y_max = 10
-        config.vehicle.cartesian.j_y_min = -10
         config.scenario = self.scenario
         config.time.steer_width = 2  # use the lane width mode
         config.vehicle.ego_id = rule_monitor.vehicle_id
@@ -101,7 +95,9 @@ class TC(CutOffBase, ABC):
 
     @property
     def furture_time(self):
-        return int_round(self.rule_monitor.furture_time_step * self.dT, self.round_tolerance)
+        return int_round(
+            self.rule_monitor.furture_time_step * self.dT, self.round_tolerance
+        )
 
     @property
     def future_time_step(self):
@@ -127,24 +123,6 @@ class TC(CutOffBase, ABC):
     def compliant_maneuver(self) -> Maneuver:
         return self._compliant_maneuver
 
-    def update_config(self):
-        self.config.vehicle.cartesian.a_x_min /= 2
-        self.config.vehicle.cartesian.a_x_max /= 2
-        self.config.vehicle.cartesian.j_x_min /= 2
-        self.config.vehicle.cartesian.j_x_max /= 2
-
-        self._sim_lon.cartesian.a_x_min = self.config.vehicle.cartesian.a_x_min
-        self._sim_lon.cartesian.a_x_max = self.config.vehicle.cartesian.a_x_max
-        self._sim_lat.cartesian.a_x_min = self.config.vehicle.cartesian.a_x_min
-        self._sim_lat.cartesian.a_x_max = self.config.vehicle.cartesian.a_x_max
-        
-        self._sim_lon.cartesian.a_y_min = self.config.vehicle.cartesian.a_x_min
-        self._sim_lon.cartesian.a_y_max = self.config.vehicle.cartesian.a_x_max
-        self._sim_lat.cartesian.a_y_min = self.config.vehicle.cartesian.a_x_min
-        self._sim_lat.cartesian.a_y_max = self.config.vehicle.cartesian.a_x_max
-
-        self._tc_dict = defaultdict(float)
-
     def calc_tv_updated(
         self,
         updated_states: List[Union[CustomState, PMState, KSState]],
@@ -159,15 +137,19 @@ class TC(CutOffBase, ABC):
         # rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
         #     self.world, cut_off_time
         # )
-        # TODO: future operator need be evaluated from start
-        rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(self.world, self.rule_monitor.start_time_step)
+        # TODO: FIXME future operator need be evaluated from start
+        rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
+            self.world, self.rule_monitor.start_time_step
+        )
         if np.any(rule_rob[:, 0] < 0):
             rule_idx = np.where(rule_rob[:, 0] < 0)[0][0]
             if other_ids[rule_idx][0] is ():
                 return -math.inf, None
             return -math.inf, other_ids[rule_idx][0][0]
         tv_per_rule = np.argmax(rule_rob < 0, axis=-1)
-        if np.all(tv_per_rule + self._world_ego.start_time == self._world_ego.start_time):
+        if np.all(
+            tv_per_rule + self._world_ego.start_time == self._world_ego.start_time
+        ):
             return math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
@@ -208,8 +190,7 @@ class TC(CutOffBase, ABC):
             self._compliant_maneuver = max(ttm, key=ttm.get)
         return self._tc
 
-    # TODO: to fix
-    # @functools.lru_cache(128)
+    @functools.lru_cache(128)
     def search_ttm_binary(self, maneuver: Maneuver):
         ttm = -math.inf
         low = self._world_ego.start_time

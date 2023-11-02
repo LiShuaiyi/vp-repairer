@@ -1,11 +1,5 @@
 from typing import Dict, List
 import numpy as np
-import sys, os
-from commonroad_dc.pycrccosy import CurvilinearCoordinateSystem
-from commonroad.scenario.scenario import Scenario
-from commonroad.planning.planning_problem import PlanningProblem
-from commonroad.scenario.obstacle import DynamicObstacle
-from commonroad.common.util import Interval
 
 from commonroad_dc.geometry.util import (
     compute_curvature_from_polyline,
@@ -108,12 +102,12 @@ class MIQPLatReference(object):
         assert (
             isinstance(lon_traj, Trajectory)
             and lon_traj.coord_type is TrajectoryType.CARTESIAN
-        ), "<QPLatReference>: Provided longitudinal trajectory is invalid or not in Frenet. traj = {}".format(
+        ), "<MIQPLatReference>: Provided longitudinal trajectory is invalid or not in Frenet. traj = {}".format(
             lon_traj
         )
         assert np.isclose(
             np.sum(lon_traj.get_positions()[:, 1]), 0.0
-        ), "<QPLatReference>: Provided longitudinal trajectory containts lateral information != 0. d = {}".format(
+        ), "<MIQPLatReference>: Provided longitudinal trajectory containts lateral information != 0. d = {}".format(
             lon_traj.get_positions()[:, 1]
         )
         assert (
@@ -121,7 +115,7 @@ class MIQPLatReference(object):
             and reference.ndim == 2
             and len(reference) > 1
             and len(reference[0, :]) == 2
-        ), "<QPLatReference>: Provided reference is not valid. reference = {}".format(
+        ), "<MIQPLatReference>: Provided reference is not valid. reference = {}".format(
             reference
         )
 
@@ -209,34 +203,34 @@ class MIQPLatPlanner:
         self._x_ref_lat = x_ref_lat
 
         self.vehicle_configuration = vehicle_configuration
-        self.lat_params = miqp_lat_params  # TODO: cost weight
+        self.lat_params = miqp_lat_params
 
         self._init_time_invariant_constraints()
         self._init_dynamic_constraints()
 
         self.solver = GurobiSolver()
 
+        # TODO: cost weight in config file
         self.weight = [0.05, 15.1, 40.0, 20.0, 1.0]
 
         self.d_reference = np.zeros(self.N + 1)
 
     def plan(self):
+        # add state and control variables
         self._init_state_var()
         self._init_control_var()
+        # add lateral dynamic constraints
         self.solver.add_lat_dynamic_cons(
             self._lateral_constraints.dynamic_matrix_list,
             self._lateral_constraints.init_state,
             self._lateral_constraints.theta_r,
         )
-        # self.solver.add_lat_dis_cons(self._lateral_constraints.lat_dis_cons_matrix,
-        #                              self._lateral_constraints.theta_r,
-        #                              self._lateral_constraints.d_min,
-        #                              self._lateral_constraints.d_max)
-        # self.solver.add_kappa_limit(self._lateral_constraints.kappa_lim)
+        # cost function
         self.solver.costfunc_lat(
             self._x_ref_lat, self.weight, d_reference=self.d_reference
         )
         self.solver.solve()
+        # get solution
         self.var_x = self.solver.get_var_x()
         self.control_u = self.solver.get_control_u()
         trajectory = self.create_output_trajectory()
@@ -339,7 +333,12 @@ class MIQPLatPlanner:
                 )
                 # TODO: initial state t = 0s
                 self._lateral_constraints.init_state = np.array(
-                    [self._x_init_lat.d, self._x_init_lat.theta, self._x_init_lat.kappa, self._x_init_lat.kappa_dot]
+                    [
+                        self._x_init_lat.d,
+                        self._x_init_lat.theta,
+                        self._x_init_lat.kappa,
+                        self._x_init_lat.kappa_dot,
+                    ]
                 ).transpose()
 
             # selection matrix for output
