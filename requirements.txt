@@ -16,6 +16,8 @@ commonroad-route-planner
 commonroad-drivability-checker>=2022.2
 commonroad-crime>=0.3.0
 
-# qp planner
--e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_safe_distance#egg=commonroad-qp-planner
+# gurobi optimizer
+gurobipy
 
+# qp planner
+-e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_repairing_intersection#egg=commonroad-qp-planner
