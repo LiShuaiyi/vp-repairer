@@ -270,7 +270,7 @@ class RuleConstraintsReach:
             )
 
             # Plot the regions
-            util_visual_semantic.plot_scenario_with_regions(semantic_model, "CVLN")
+            # util_visual_semantic.plot_scenario_with_regions(semantic_model, "CVLN")
 
             # update the rule interface
             rule_interface = self.repair_rule_interface(semantic_model)
