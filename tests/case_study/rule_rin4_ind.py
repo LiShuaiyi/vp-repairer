@@ -53,7 +53,7 @@ if __name__ == "__main__":
                 ego_initial,
                 ego_repaired,
                 time_start=ego_initial.prediction.initial_time_step - 1,
-                time_end=min(repairer.tv + traffic_rule_monitor.furture_time_step + 25, ego_initial.prediction.final_time_step),
+                time_end=min(repairer.tv + traffic_rule_monitor.future_time_step + 25, ego_initial.prediction.final_time_step),
                 tc=repairer.tc,
                 tv=repairer.tv,
             )
@@ -62,11 +62,11 @@ if __name__ == "__main__":
                 ego_initial,
                 ego_repaired,
                 time_start=ego_initial.prediction.initial_time_step - 1,
-                time_end=min(repairer.tv + traffic_rule_monitor.furture_time_step + 25, ego_initial.prediction.final_time_step),
+                time_end=min(repairer.tv + traffic_rule_monitor.future_time_step + 25, ego_initial.prediction.final_time_step),
                 tc=repairer.tc,
                 tv=repairer.tv,
             )
-            for time_step in range(ego_initial.prediction.initial_time_step, min(repairer.tv + traffic_rule_monitor.furture_time_step + 25, ego_initial.prediction.final_time_step)):
+            for time_step in range(ego_initial.prediction.initial_time_step, min(repairer.tv + traffic_rule_monitor.future_time_step + 25, ego_initial.prediction.final_time_step)):
                 visualize_repairing_result(
                     scenario,
                     ego_initial,
@@ -77,6 +77,6 @@ if __name__ == "__main__":
                     plot_limits=plot_limits,
                     target_veh=target_veh,
                     world=traffic_rule_monitor.world,
-                    end_time=min(repairer.tv + traffic_rule_monitor.furture_time_step + 25, ego_initial.prediction.final_time_step),
+                    end_time=min(repairer.tv + traffic_rule_monitor.future_time_step + 25, ego_initial.prediction.final_time_step),
                     # save_path=figure_path,
                 )

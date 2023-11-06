@@ -53,7 +53,7 @@ if __name__ == "__main__":
                 ego_initial,
                 ego_repaired,
                 time_start=ego_initial.prediction.initial_time_step - 1,
-                time_end=repairer.tv + traffic_rule_monitor.furture_time_step + 50,
+                time_end=repairer.tv + traffic_rule_monitor.future_time_step + 50,
                 tc=repairer.tc,
                 tv=repairer.tv,
             )
@@ -62,11 +62,11 @@ if __name__ == "__main__":
                 ego_initial,
                 ego_repaired,
                 time_start=ego_initial.prediction.initial_time_step - 1,
-                time_end=repairer.tv + traffic_rule_monitor.furture_time_step + 50,
+                time_end=repairer.tv + traffic_rule_monitor.future_time_step + 50,
                 tc=repairer.tc,
                 tv=repairer.tv,
             )
-            for time_step in range(ego_initial.prediction.initial_time_step, repairer.tv + traffic_rule_monitor.furture_time_step + 50):
+            for time_step in range(ego_initial.prediction.initial_time_step, repairer.tv + traffic_rule_monitor.future_time_step + 50):
                 visualize_repairing_result(
                     scenario,
                     ego_initial,
@@ -77,7 +77,7 @@ if __name__ == "__main__":
                     plot_limits=plot_limits,
                     target_veh=None,
                     world=traffic_rule_monitor.world,
-                    end_time=repairer.tv + traffic_rule_monitor.furture_time_step + 50,
+                    end_time=repairer.tv + traffic_rule_monitor.future_time_step + 50,
                     # save_path=figure_path,
                 )
 

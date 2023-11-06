@@ -44,7 +44,7 @@ class SATSolver:
     @staticmethod
     def construct_dnf(stl_formula):
         """
-        Construct Disjunctive Normal Form (CNF) using sympy - first needs to convert the formula to sp's interface.
+        Construct Disjunctive Normal Form (DNF) using sympy - first needs to convert the formula to sp's interface.
         """
         sp_formula = SATSolver.stl2sympy(stl_formula)
         dnf_formula = str(sp.to_dnf(sp_formula))
