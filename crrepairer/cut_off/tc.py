@@ -43,7 +43,7 @@ class TC(CutOffBase, ABC):
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = (
-            self.rule_monitor.tv_time_step + self.rule_monitor.furture_time_step
+            self.rule_monitor.tv_time_step + self.rule_monitor.future_time_step
         )
         self._other_id = self.rule_monitor.other_id
         self._visualize = False
@@ -94,14 +94,14 @@ class TC(CutOffBase, ABC):
         return int_round(self._tv_time_step * self.dT, self.round_tolerance)
 
     @property
-    def furture_time(self):
+    def future_time(self):
         return int_round(
-            self.rule_monitor.furture_time_step * self.dT, self.round_tolerance
+            self.rule_monitor.future_time_step * self.dT, self.round_tolerance
         )
 
     @property
     def future_time_step(self):
-        return self.rule_monitor.furture_time_step
+        return self.rule_monitor.future_time_step
 
     @property
     def tc(self):
