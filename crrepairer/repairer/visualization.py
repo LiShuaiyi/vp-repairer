@@ -86,7 +86,7 @@ def visualize_v_profile(
     plt.xlabel("time step")
     plt.ylabel("velocity")
     matplotlib.rcParams["svg.fonttype"] = "none"
-    plt.savefig("r_in1_v_new.svg", format="svg")
+    # plt.savefig("r_in1_v_new.svg", format="svg")
     plt.show()
 
 
