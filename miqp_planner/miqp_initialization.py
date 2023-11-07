@@ -1,5 +1,6 @@
 from typing import Dict, Tuple, List, Union, Any
 import numpy as np
+import os
 
 # commonroad-io
 from commonroad.planning.planning_problem import PlanningProblem
@@ -9,6 +10,7 @@ from commonroad.scenario.lanelet import LaneletNetwork, Lanelet
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
     ReferencePoint,
+    ConfigurationBuilder
 )
 
 from crmonitor.common.world import DynamicObstacleVehicle
@@ -31,6 +33,8 @@ def create_optimization_configuration_vehicle_test(
     planning_problem: PlanningProblem,
     settings: Dict,
     vehicle: DynamicObstacleVehicle,
+    path_root_configs: str = None,
+    path_to_config: str = "configurations"
 ):
     assert (
         planning_problem.planning_problem_id in settings
@@ -40,7 +44,15 @@ def create_optimization_configuration_vehicle_test(
 
     vehicle_settings = settings[planning_problem.planning_problem_id]
     # TODO: create new function instead of using qp planner
-    configuration = PlanningConfigurationVehicle()
+
+    config_builder = ConfigurationBuilder()
+    if path_root_configs:
+        config_builder.set_root_path(root=path_root_configs, path_to_config=path_to_config)
+    else:
+        config_builder.set_root_path(root=os.path.normpath(os.path.join(os.path.dirname(__file__), "../../commonroad-qp-planner/")),
+                                     path_to_config=path_to_config)
+    configuration = config_builder.build_configuration(name_scenario=str(scenario.scenario_id))
+
 
     reference_path = vehicle.ref_path_lane
     lanelets_leading_to_goal = vehicle.lanelets_dir
