@@ -1,9 +1,11 @@
 # standard imports
 from enum import Enum
 from shapely.geometry.polygon import Polygon
+import matplotlib
 
 # third party
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 
 # commonroad-io
@@ -37,11 +39,12 @@ def visualize_v_profile(
     tv,
     speed_limit: float = 13.88,
 ):
-    # plt.figure(figsize=(20, 8))
+    plt.figure(figsize=(6, 2.4))
     time_list = []
     ego_ini_vel_list = []
     ego_rep_vel_list = []
-    plt.axhline(y=speed_limit)
+    # plt.axhline(y=speed_limit)
+    plt.axhline(y=0, linestyle="--", linewidth=1.0)
     for time_step in range(time_start, time_end):
         time_list.append(time_step - time_start)
         ego_ini_vel_list.append(ego_initial.state_at_time(time_step).velocity)
@@ -51,32 +54,39 @@ def visualize_v_profile(
         ego_ini_vel_list[: tv + 1 - time_start],
         color=TUMcolor.TUMblue.value,
         marker="x",
-        markersize=7.5,
+        markersize=2.5,
         zorder=21,
-        linewidth=1.5,
+        linewidth=1.0,
     )
     plt.plot(
         time_list[tv - time_start :],
         ego_ini_vel_list[tv - time_start :],
         color="red",
         marker="x",
-        markersize=7.5,
+        markersize=2.5,
         zorder=21,
-        linewidth=1.5,
+        linewidth=1.0,
     )
     plt.plot(
         time_list[tc - time_start :],
         ego_rep_vel_list[tc - time_start :],
         color=TUMcolor.TUMgreen.value,
         marker=".",
-        markersize=7.5,
+        markersize=2.5,
         zorder=21,
-        linewidth=1.5,
+        linewidth=1.0,
     )
-    plt.xticks(range(time_start - time_start, time_end - time_start, 5))
-    plt.yticks(range(5, 15, 5))
+    plt.xticks(range(time_start - time_start, time_end - time_start, 10))
+    plt.yticks(range(0, 6, 1))
+    # ax = plt.axes()
+    # ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    # ax.xaxis.set_minor_locator(ticker.MultipleLocator(2))
+    plt.xlim([time_start - time_start, time_end - time_start])
+    plt.ylim([-1, 6])
     plt.xlabel("time step")
     plt.ylabel("velocity")
+    matplotlib.rcParams["svg.fonttype"] = "none"
+    # plt.savefig("r_in1_v_new.svg", format="svg")
     plt.show()
 
 
@@ -169,16 +179,13 @@ def visualize_repairing_result(
     fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(20, 10))
     rnd_0 = MPRenderer(ax=ax0, plot_limits=plot_limits)
     rnd_1 = MPRenderer(ax=ax1, plot_limits=plot_limits)
-    rnd_0_target = MPRenderer(ax=ax0, plot_limits=plot_limits)
-    rnd_1_target = MPRenderer(ax=ax1, plot_limits=plot_limits)
 
     # visualize scenario
-
     for rnd in (rnd_0, rnd_1):
         rnd.draw_params.time_begin = time_step
         if end_time:
             rnd.draw_params.time_end = end_time
-        rnd.draw_params.trajectory.draw_trajectory = True
+        rnd.draw_params.trajectory.draw_trajectory = False
         rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
         rnd.draw_params.occupancy.draw_occupancies = False
         rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = (
@@ -190,8 +197,24 @@ def visualize_repairing_result(
         rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
             TUMcolor.TUMblack.value
         )
+        rnd.draw_params.dynamic_obstacle.draw_shape = False
+        rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = False
+        rnd.draw_params.dynamic_obstacle.draw_signals = False
+
+        # rnd.draw_params.lanelet_network.traffic_sign.draw_traffic_signs = True
+        # rnd.draw_params.traffic_sign.draw_traffic_signs = True
+        rnd.draw_params.lanelet_network.lanelet.stop_line_color = (
+            TUMcolor.TUMblack.value
+        )
+        rnd.draw_params.lanelet_network.lanelet.draw_stop_line = True
         scenario.draw(rnd)
-        rnd.draw_params.dynamic_obstacle.draw_shape = True
+
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = True
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = True
+    rnd_0.draw_params.dynamic_obstacle.draw_shape = True
+    rnd_0.draw_params.dynamic_obstacle.trajectory.draw_trajectory = False
+    rnd_1.draw_params.dynamic_obstacle.draw_shape = True
+    rnd_1.draw_params.dynamic_obstacle.trajectory.draw_trajectory = False
 
     if time_step >= tv:
         ego_color = "red"
@@ -204,15 +227,18 @@ def visualize_repairing_result(
     rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
         ego_color
     )
-    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        TUMcolor.TUMblack.value
-    )
-    rnd_0_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        TUMcolor.TUMblack.value
-    )
+
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
+
     ego_initial.draw(rnd_0)
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMcolor.TUMblack.value
+    )
+    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        TUMcolor.TUMblack.value
+    )
     if target_veh:
-        target_veh.draw(rnd_0_target)
+        target_veh.draw(rnd_0)
 
     # render scenario and ego vehicle
     rnd_0.render()
@@ -225,8 +251,16 @@ def visualize_repairing_result(
 
     if time_step >= tv:
         rnd_0.ax.plot(
-            pos_x_initial[time_step:end_time],
-            pos_y_initial[time_step:end_time],
+            pos_x_initial[
+                time_step
+                - ego_initial.prediction.initial_time_step : end_time
+                - ego_initial.prediction.initial_time_step
+            ],
+            pos_y_initial[
+                time_step
+                - ego_initial.prediction.initial_time_step : end_time
+                - ego_initial.prediction.initial_time_step
+            ],
             color=ego_color,
             marker=ego_mark,
             markersize=7.5,
@@ -236,8 +270,16 @@ def visualize_repairing_result(
         )
     else:
         rnd_0.ax.plot(
-            pos_x_initial[time_step:end_time],
-            pos_y_initial[time_step:end_time],
+            pos_x_initial[
+                time_step
+                - ego_initial.prediction.initial_time_step : end_time
+                - ego_initial.prediction.initial_time_step
+            ],
+            pos_y_initial[
+                time_step
+                - ego_initial.prediction.initial_time_step : end_time
+                - ego_initial.prediction.initial_time_step
+            ],
             color=ego_color,
             marker=ego_mark,
             markersize=7.5,
@@ -259,15 +301,19 @@ def visualize_repairing_result(
     rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
         ego_color
     )
-    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        TUMcolor.TUMblack.value
-    )
-    rnd_1_target.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        TUMcolor.TUMblack.value
-    )
+
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
+
     ego_repaired.draw(rnd_1)
+
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMcolor.TUMblack.value
+    )
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        TUMcolor.TUMblack.value
+    )
     if target_veh:
-        target_veh.draw(rnd_1_target)
+        target_veh.draw(rnd_1)
 
     # render scenario and ego vehicle
     rnd_1.render()
@@ -280,8 +326,16 @@ def visualize_repairing_result(
 
     # visualize optimal trajectory
     rnd_1.ax.plot(
-        pos_x_repaired[time_step:end_time],
-        pos_y_repaired[time_step:end_time],
+        pos_x_repaired[
+            time_step
+            - ego_initial.prediction.initial_time_step : end_time
+            - ego_initial.prediction.initial_time_step
+        ],
+        pos_y_repaired[
+            time_step
+            - ego_initial.prediction.initial_time_step : end_time
+            - ego_initial.prediction.initial_time_step
+        ],
         color=ego_color,
         marker=ego_mark,
         markersize=7.5,
@@ -290,31 +344,31 @@ def visualize_repairing_result(
         label="repaired trajectory",
     )
 
-    if target_veh:
-        ego_veh_state_ini = ego_initial.state_at_time(time_step)
-        ego_veh_state_rep = ego_repaired.state_at_time(time_step)
-        tar_veh_state = target_veh.state_at_time(time_step)
-        tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
-        unsafe_poly_ini = compute_unsafe_polygon(
-            ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane
-        )
-        rnd_0.ax.fill(
-            *unsafe_poly_ini.exterior.xy,
-            zorder=30,
-            alpha=0.2,
-            facecolor=TUMcolor.TUMorange.value,
-            edgecolor=None,
-        )
-        unsafe_poly_rep = compute_unsafe_polygon(
-            ego_veh_state_rep, tar_veh_state, target_veh, tar_veh_lane
-        )
-        rnd_1.ax.fill(
-            *unsafe_poly_rep.exterior.xy,
-            zorder=30,
-            alpha=0.2,
-            facecolor=TUMcolor.TUMorange.value,
-            edgecolor=None,
-        )
+    # if target_veh:
+    #     ego_veh_state_ini = ego_initial.state_at_time(time_step)
+    #     ego_veh_state_rep = ego_repaired.state_at_time(time_step)
+    #     tar_veh_state = target_veh.state_at_time(time_step)
+    #     tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
+    #     unsafe_poly_ini = compute_unsafe_polygon(
+    #         ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane
+    #     )
+    #     rnd_0.ax.fill(
+    #         *unsafe_poly_ini.exterior.xy,
+    #         zorder=30,
+    #         alpha=0.2,
+    #         facecolor=TUMcolor.TUMorange.value,
+    #         edgecolor=None,
+    #     )
+    #     unsafe_poly_rep = compute_unsafe_polygon(
+    #         ego_veh_state_rep, tar_veh_state, target_veh, tar_veh_lane
+    #     )
+    #     rnd_1.ax.fill(
+    #         *unsafe_poly_rep.exterior.xy,
+    #         zorder=30,
+    #         alpha=0.2,
+    #         facecolor=TUMcolor.TUMorange.value,
+    #         edgecolor=None,
+    #     )
 
     ax0.set_title("Initial configuration.")
     ax1.set_title("Repaired configuration.")

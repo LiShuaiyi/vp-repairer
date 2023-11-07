@@ -18,4 +18,8 @@ commonroad-crime>=0.3.0
 
 # qp planner
 -e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature-reach-semantic#egg=commonroad-qp-planner
+# gurobi optimizer
+gurobipy
 
+# qp planner for intersection
+-e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_repairing_intersection#egg=commonroad-qp-planner

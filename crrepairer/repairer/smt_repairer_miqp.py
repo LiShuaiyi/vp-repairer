@@ -72,7 +72,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 return None
             select_proposition, self._model = self.sat_solver.model()
             repairability, repaired_traj = self.t_solver.check(
-                select_proposition, list(self._model)
+                select_proposition, list(self._model), nr
             )
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
@@ -96,8 +96,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     ) -> DynamicObstacle:
         """
         Converts trajectory object to CommonRoad obstacle with specified width and length
-        :param width: The width of the ego vehicle
-        :param length: The length of the ego vehicle
+        :param shape: The shape of the ego vehicle
+        :param initial_state: The initial of the ego vehicle
+        :param cr_trajectory: The trajectory of the ego vehicle
         :param vehicle_id: ID of ego vehicle
         :return: The CommonRoad DynamicObstacle object containing the current trajectory
         """

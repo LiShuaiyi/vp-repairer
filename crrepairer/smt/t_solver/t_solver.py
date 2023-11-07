@@ -5,7 +5,6 @@ from typing import List
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 
-# from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
 from commonroad.scenario.trajectory import Trajectory
@@ -23,10 +22,10 @@ class TSolver:
     """
 
     def __init__(
-            self,
-            ego_vehicle: DynamicObstacle,
-            planning_problem: PlanningProblem,
-            rule_monitor: STLRuleMonitor,
+        self,
+        ego_vehicle: DynamicObstacle,
+        planning_problem: PlanningProblem,
+        rule_monitor: STLRuleMonitor,
     ):
         self._sel_prop = None
         self._prop_full = None
@@ -57,7 +56,7 @@ class TSolver:
         for prop in propositions:
             # if not the same value
             if (prop.ttv_value < 0 and prop.alphabet in model) or (
-                    prop.ttv_value > 0 and "~" + prop.alphabet in model
+                prop.ttv_value > 0 and "~" + prop.alphabet in model
             ):
                 self._sel_prop.append(prop)
         self._compliant_maneuvers = self.set_compliant_maneuver()
@@ -81,38 +80,46 @@ class TSolver:
                     predicate.evaluator.predicate_name.__class__.__name__[:3]
                 )
                 if (
-                        predicate_category == "Pos"
-                        and predicate.evaluator.predicate_name
-                        in [
-                    PositionPredicates.KeepsSafeDistancePrec,
-                    PositionPredicates.InFrontOf,
-                    PositionPredicates.Precedes,
-                ]
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [
+                        PositionPredicates.KeepsSafeDistancePrec,
+                        PositionPredicates.InFrontOf,
+                        PositionPredicates.Precedes,
+                    ]
                 ):
                     compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
                 elif (
-                        predicate_category == "Pos"
-                        and predicate.evaluator.predicate_name
-                        in [PositionPredicates.StopLineInFront]
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.StopLineInFront]
                 ):
                     compliant_maneuver += [Maneuver.BRAKE]
                 elif (
-                        predicate_category == "Pos"
-                        and predicate.evaluator.predicate_name
-                        in [PositionPredicates.InIntersectionConflictArea]
-                        and predicate.agent_placeholders == (0, 1)
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.InIntersectionConflictArea]
+                    and predicate.agent_placeholders == (0, 1)
                 ):
                     compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
                 elif (
-                        predicate_category == "Pos"
-                        and predicate.evaluator.predicate_name
-                        in [PositionPredicates.InIntersectionConflictArea]
-                        and predicate.agent_placeholders == (1, 0)
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.InIntersectionConflictArea]
+                    and predicate.agent_placeholders == (1, 0)
                 ):
-                    compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
-                elif (predicate_category == "Pos"
-                      and predicate.evaluator.predicate_name
-                      in [PositionPredicates.OnIncomingLeftOf]
+                    # TODO: maybe turning?
+                    compliant_maneuver += []
+                elif (
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.OnLaneletWithTypeIntersection]
+                ):
+                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
+                elif (
+                    predicate_category == "Pos"
+                    and predicate.evaluator.predicate_name
+                    in [PositionPredicates.OnIncomingLeftOf]
                 ):
                     compliant_maneuver += []
                 elif predicate_category == "Pos":
@@ -157,11 +164,6 @@ class TSolver:
             self._planning_problem,
             verbose=self.verbose,
         )
-        # self._miqp_planner = MIQPPlannerRepair(self._rule_monitor,
-        #                                        self._tc_obj,
-        #                                        self._sel_prop,
-        #                                        self._prop_full,
-        #                                        self._planning_problem)
         start_time = time.time()
         repaired_trajectory = self._qp_planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
@@ -169,7 +171,7 @@ class TSolver:
         return repaired_trajectory
 
     def check(
-            self, proposition: List[PropositionNode], model: list
+        self, proposition: List[PropositionNode], model: list
     ) -> (bool, Trajectory):
         """
         Checks the T-consistency.

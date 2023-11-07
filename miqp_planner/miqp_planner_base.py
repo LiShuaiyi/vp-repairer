@@ -1,16 +1,11 @@
-import math
-from typing import Dict, Union
-import matplotlib.pyplot as plt
-import numpy as np
 from decimal import Decimal
 
 # commonroad-io
-from commonroad.scenario.trajectory import State, Trajectory as CRTrajectory
+from commonroad.scenario.trajectory import State
 from commonroad.scenario.scenario import Scenario
 from commonroad.planning.planning_problem import PlanningProblem
-from commonroad.common.util import make_valid_orientation
 
-from commonroad_qp_planner.trajectory import Trajectory, TrajPoint, TrajectoryType
+from commonroad_qp_planner.trajectory import Trajectory, TrajPoint
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
     ReferencePoint,
@@ -22,6 +17,7 @@ from miqp_planner.miqp_lat_planner import MIQPLatPlanner, MIQPLatState, MIQPLatR
 from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
 
 
+# TODO create new functions instead of using qp planner
 class MIQPPlanner:
     def __init__(
         self,
@@ -38,7 +34,7 @@ class MIQPPlanner:
         else:
             if Decimal(str(time_horizon)) % Decimal(str(scenario.dt)) != Decimal("0.0"):
                 raise ValueError(
-                    "<QPPlanner>: the given time step {} is inapproparite,"
+                    "<MIQPPlanner>: the given time step {} is inapproparite,"
                     "since time horizon is {}.".format(scenario.dt, time_horizon)
                 )
             self.dt = scenario.dt
@@ -52,13 +48,13 @@ class MIQPPlanner:
             )
         elif not isinstance(planning_problem.initial_state, TrajPoint):
             raise ValueError(
-                "<QPPlanner/__init__>: Initial state must be of type {} or "
+                "<MIQPPlanner/__init__>: Initial state must be of type {} or "
                 "of type {}. Got type {}.".format(
                     type(State), type(TrajPoint), type(planning_problem.initial_state)
                 )
             )
         if vehicle_configuration.reference_point != ReferencePoint.REAR:
-            raise ValueError("<QPPlanner>: Reference point must be rear axis!")
+            raise ValueError("<MIQPPlanner>: Reference point must be rear axis!")
 
         if planning_problem.goal.state_list:
             if self.initial_state.v > planning_problem.goal.state_list[0].velocity.end:
@@ -74,17 +70,17 @@ class MIQPPlanner:
         self.initial_state_lat_orientation = self.initial_state.orientation
 
     def longitudinal_trajectory_planning(
-        self, reference_path, long_constraints: LongitudinalConstraint
+        self, reference_path, long_constraints: LongitudinalConstraint, slack=False
     ):
         long_planner = MIQPLongPlanner(
             horizon=self.t_h,
             N=self.N,
             dT=self.dt,
-            qp_long_params=None,  # TODO: need to add
             scenario=self.scenario,
             vehicle_configuration=self.vehicle_configuration,
             initial_state=self.initial_state,
             long_constraints=long_constraints,
+            slack=slack,
         )
         traj_long = long_planner.plan(reference_path)
         return traj_long
@@ -113,7 +109,7 @@ class MIQPPlanner:
             reference=self.vehicle_configuration.reference_path,
             vehicle_configuration=self.vehicle_configuration,
             ti=None,
-        )  # TODO: fix time invariant constraints
+        )
         lat_planner = MIQPLatPlanner(
             horizon=self.t_h,
             N=self.N,
@@ -124,6 +120,6 @@ class MIQPPlanner:
             x_ref_lat=x_ref_lat,
             vehicle_configuration=self.vehicle_configuration,
             miqp_lat_params=None,
-        )  # TODO: need to add
+        )
         trajectory = lat_planner.plan()
         return trajectory

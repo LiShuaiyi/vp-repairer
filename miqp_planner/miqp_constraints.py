@@ -1,10 +1,14 @@
+import math
+import re
+from fractions import Fraction
 import numpy as np
-from typing import List
+from typing import List, Union
 from collections import defaultdict
 
 from commonroad.scenario.trajectory import Trajectory
 
 from commonroad_crime.utility.simulation import Maneuver
+import shapely
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
@@ -17,20 +21,11 @@ from crmonitor.predicates.position import (
     PredPreceding,
     PredStopLineInFront,
     PredInIntersectionConflictArea,
+    PredOnLaneletWithTypeIntersection,
 )
-
-from crmonitor.predicates.velocity import (
-    PredLaneSpeedLimit,
-    PredFovSpeedLimit,
-    PredBrSpeedLimit,
-    PredTypeSpeedLimit,
-)
-from crmonitor.predicates.general import PredCutIn
-from crmonitor.predicates.acceleration import PredAbruptBreaking, PredRelAbruptBreaking
 
 from crmonitor.common.road_network import Lane
 from crmonitor.common.vehicle import Vehicle
-from crmonitor.common.road_network import RoadNetwork
 from commonroad.scenario.lanelet import LaneletType
 from shapely.geometry import Polygon, LineString
 
@@ -49,25 +44,31 @@ class BasicConstraint:
         self.var_long_x_lb = []
         self.var_long_u_lb = []
         self.var_long_u_ub = []
+
+        self.var_slack_lb = []
+        self.var_slack_ub = []
+
         self.dynamic_matrix_list = []
         self.init_state = []
 
 
 class LongitudinalConstraint(BasicConstraint):
     def __init__(
-            self,
-            tc_object: TC,
-            rule_monitor: STLRuleMonitor,
-            sel_proposition_full: List[PropositionNode],
-            proposition_full: List[PropositionNode],
-            veh_config: PlanningConfigurationVehicle,
-            initial_trajectory: Trajectory,
+        self,
+        tc_object: TC,
+        rule_monitor: STLRuleMonitor,
+        sel_proposition_full: List[PropositionNode],
+        proposition_full: List[PropositionNode],
+        veh_config: PlanningConfigurationVehicle,
+        initial_trajectory: Trajectory,
+        start_time_step: int,
     ):
         super().__init__()
         self._foll_veh = None
         self._prec_veh = None
         self._tc_obj = tc_object
         self._rule_monitor = rule_monitor
+        self._start_time_step = start_time_step
         self._world_state = self._rule_monitor.world
         self._other_id = self._rule_monitor.other_id
         self._ego_id = (
@@ -82,6 +83,13 @@ class LongitudinalConstraint(BasicConstraint):
         self._veh_config = veh_config
         self.rule_constraints = {}
         self.collision_free_constraints = {}
+        for proposition in proposition_full:
+            if "in_intersection_conflict_area__a0_a1" in proposition.name:
+                (
+                    self.s_circle_center_front,
+                    self.s_circle_center_rear,
+                ) = self.create_conflict_area_parameter()
+                break
 
         self._target_lanes = defaultdict(List[Lane])
 
@@ -97,97 +105,260 @@ class LongitudinalConstraint(BasicConstraint):
         num_time_step = 0
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             num_time_step += 1
-            total_assignment = self._rule_monitor.prop_robust_all[:, k]
+            total_assignment = self._rule_monitor.prop_robust_all[
+                :,
+                min(
+                    k - self._start_time_step + self._tc_obj.future_time_step,
+                    self._tc_obj.N - self._start_time_step,
+                ),
+            ]
             for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:
                     prop_assignment = total_assignment[
                         total_assignment == total_assignment
-                        ][idx]
+                    ][idx]
                 except:
                     # no assignment can be found
                     continue
-                for predicate in proposition.children:
+                if (
+                    proposition in self._prop_full
+                    and k >= self._tc_obj.tv_time_step - self._tc_obj.future_time_step
+                ):
+                    # proposition to be repaired (greater than the time-to-violation)
+                    robs_at_tv = self._rule_monitor.prop_robust_all[
+                        :, self._tc_obj.tv_time_step - self._start_time_step
+                    ]
+                    prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
+                    if proposition in self._sel_prop_full:
+                        prop_assignment = -prop_assignment
+                if (
+                    k < self._tc_obj.tv_time_step - self._tc_obj.future_time_step
+                    or proposition in self._prop_full
+                ):
+                    # constraints for future temporal operators
                     if (
-                            proposition in self._prop_full
-                            and k >= self._tc_obj.tv_time_step
+                        proposition.name[0:5] == "once["
+                        and proposition.name[5:6] != proposition.name[7:8]
                     ):
-                        # proposition to be repaired (greater than the time-to-violation)
-                        robs_at_tv = self._rule_monitor.prop_robust_all[
-                                     :, self._tc_obj.tv_time_step
-                                     ]
-                        prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
-                        if proposition in self._sel_prop_full:
-                            prop_assignment = -prop_assignment
-                    if k < self._tc_obj.tv_time_step or proposition in self._prop_full:
-                        if not hasattr(predicate, "base_name"):
-                            continue
-                        if (
-                                predicate.base_name
-                                == PredInIntersectionConflictArea.predicate_name
+                        pattern = r"once\[(.*?)\]"
+                        matches = re.findall(pattern, proposition.name)
+                        further_time = Fraction(matches[0].split(",")[1])
+                        future_time_step = int(
+                            float(further_time) * self._tc_obj.future_time_step
+                        )
+                        for time_step in range(
+                            k, min(k + future_time_step + 1, self._tc_obj.N + 1)
                         ):
-                            if predicate.base_name in self.rule_constraints.keys():
-                                # avoid multiple updates in one time step for the same predicate constraints
-                                if (
-                                        len(
-                                            self.rule_constraints[predicate.base_name][
-                                                "s_limit_front"
-                                            ]
-                                        )
-                                        == num_time_step
-                                ):
-                                    continue
-                                (
-                                    s_limit_front,
-                                    s_limit_behind,
-                                ) = self.ConstrInIntersectionConflictAreaEgo(
-                                    time_step=k
-                                )
-                                self.rule_constraints[predicate.base_name][
-                                    "s_limit_front"
-                                ].append(s_limit_front)
-                                self.rule_constraints[predicate.base_name][
-                                    "s_limit_behind"
-                                ].append(s_limit_behind)
-                            else:
-                                self.rule_constraints[predicate.base_name] = {
-                                    "decision_variable": True,
-                                    "num_decision_variables": 1,
-                                    "constraint_name": "conflict_area",
-                                    "constraint_state": [0],
-                                    "s_limit_front": [],
-                                    "s_limit_behind": [],
-                                }
-                                (
-                                    s_limit_front,
-                                    s_limit_behind,
-                                ) = self.ConstrInIntersectionConflictAreaEgo(
-                                    time_step=k
-                                )
-                                self.rule_constraints[predicate.base_name][
-                                    "s_limit_front"
-                                ].append(s_limit_front)
-                                self.rule_constraints[predicate.base_name][
-                                    "s_limit_behind"
-                                ].append(s_limit_behind)
+                            self.add_rule_constraint_time_step(
+                                proposition, prop_assignment, time_step
+                            )
+                    else:
+                        self.add_rule_constraint_time_step(
+                            proposition, prop_assignment, k
+                        )
+
+    def add_rule_constraint_time_step(
+        self, proposition, prop_assignment, time_step: int
+    ):
+        for predicate in proposition.children:
+            if not hasattr(predicate, "base_name"):
+                continue
+            if (
+                predicate.base_name == PredInIntersectionConflictArea.predicate_name
+                and predicate.agent_placeholders == (0, 1)
+            ):
+                if predicate.base_name in self.rule_constraints.keys():
+                    (
+                        s_limit_front,
+                        s_limit_behind,
+                    ) = self.ConstrInIntersectionConflictAreaEgo(
+                        time_step, prop_assignment
+                    )
+
+                    # avoid multiple updates in one time step for the same predicate constraints
+                    if (
+                        time_step
+                        in self.rule_constraints[predicate.base_name]["time_step"]
+                    ):
+                        index = self.rule_constraints[predicate.base_name][
+                            "time_step"
+                        ].index(time_step)
+                        if (
+                            s_limit_front
+                            < self.rule_constraints[predicate.base_name][
+                                "s_limit_front"
+                            ][index]
+                        ):
+                            self.rule_constraints[predicate.base_name]["s_limit_front"][
+                                index
+                            ] = s_limit_front
+                        if (
+                            s_limit_behind
+                            > self.rule_constraints[predicate.base_name][
+                                "s_limit_behind"
+                            ][index]
+                        ):
+                            self.rule_constraints[predicate.base_name][
+                                "s_limit_behind"
+                            ][index] = s_limit_behind
+                    else:
+                        self.rule_constraints[predicate.base_name][
+                            "s_limit_front"
+                        ].append(s_limit_front)
+                        self.rule_constraints[predicate.base_name][
+                            "s_limit_behind"
+                        ].append(s_limit_behind)
+                        self.rule_constraints[predicate.base_name]["time_step"].append(
+                            time_step
+                        )
+                else:
+                    self.rule_constraints[predicate.base_name] = {
+                        "decision_variable": True,
+                        "num_decision_variables": 1,
+                        "constraint_name": "conflict_area",
+                        "constraint_state": [0],
+                        "s_limit_front": [],
+                        "s_limit_behind": [],
+                        "time_step": [],
+                    }
+                    (
+                        s_limit_front,
+                        s_limit_behind,
+                    ) = self.ConstrInIntersectionConflictAreaEgo(
+                        time_step, prop_assignment
+                    )
+                    self.rule_constraints[predicate.base_name]["s_limit_front"].append(
+                        s_limit_front
+                    )
+                    self.rule_constraints[predicate.base_name]["s_limit_behind"].append(
+                        s_limit_behind
+                    )
+                    self.rule_constraints[predicate.base_name]["time_step"].append(
+                        time_step
+                    )
+            elif predicate.base_name == PredStopLineInFront.predicate_name:
+                if predicate.base_name in self.rule_constraints.keys():
+                    (s_limit_front, s_limit_behind) = self.ConstrStopLineInFront(
+                        time_step, prop_assignment
+                    )
+
+                    # avoid multiple updates in one time step for the same predicate constraints
+                    if (
+                        time_step
+                        in self.rule_constraints[predicate.base_name]["time_step"]
+                    ):
+                        index = self.rule_constraints[predicate.base_name][
+                            "time_step"
+                        ].index(time_step)
+                        if (
+                            s_limit_front
+                            < self.rule_constraints[predicate.base_name][
+                                "s_limit_front"
+                            ][index]
+                        ):
+                            self.rule_constraints[predicate.base_name]["s_limit_front"][
+                                index
+                            ] = s_limit_front
+                        if (
+                            s_limit_behind
+                            > self.rule_constraints[predicate.base_name][
+                                "s_limit_behind"
+                            ][index]
+                        ):
+                            self.rule_constraints[predicate.base_name][
+                                "s_limit_behind"
+                            ][index] = s_limit_behind
+                    else:
+                        self.rule_constraints[predicate.base_name][
+                            "s_limit_front"
+                        ].append(s_limit_front)
+                        self.rule_constraints[predicate.base_name][
+                            "s_limit_behind"
+                        ].append(s_limit_behind)
+                        self.rule_constraints[predicate.base_name]["time_step"].append(
+                            time_step
+                        )
+                else:
+                    self.rule_constraints[predicate.base_name] = {
+                        "decision_variable": False,
+                        "num_decision_variables": 0,
+                        "constraint_name": "stop_line",
+                        "constraint_state": [0],
+                        "s_limit_front": [],
+                        "s_limit_behind": [],
+                        "time_step": [],
+                    }
+                    (s_limit_front, s_limit_behind) = self.ConstrStopLineInFront(
+                        time_step, prop_assignment
+                    )
+                    self.rule_constraints[predicate.base_name]["s_limit_front"].append(
+                        s_limit_front
+                    )
+                    self.rule_constraints[predicate.base_name]["s_limit_behind"].append(
+                        s_limit_behind
+                    )
+                    self.rule_constraints[predicate.base_name]["time_step"].append(
+                        time_step
+                    )
+            # TODO: add more predicate constraints
+            # elif (predicate.base_name == PredOnLaneletWithTypeIntersection.predicate_name and proposition in self._prop_full):
+            #     if predicate.base_name in self.rule_constraints.keys():
+            #         (s_limit_front, s_limit_behind) = self.ConstrOnLaneletWithTypeIntersection(time_step, prop_assignment)
+            #
+            #         # avoid multiple updates in one time step for the same predicate constraints
+            #         if (
+            #                 time_step in self.rule_constraints[predicate.base_name]["time_step"]
+            #         ):
+            #             index = self.rule_constraints[predicate.base_name]["time_step"].index(time_step)
+            #             if s_limit_front < self.rule_constraints[predicate.base_name]["s_limit_front"][index]:
+            #                 self.rule_constraints[predicate.base_name]["s_limit_front"][index] = s_limit_front
+            #             if s_limit_behind > self.rule_constraints[predicate.base_name]["s_limit_behind"][index]:
+            #                 self.rule_constraints[predicate.base_name]["s_limit_behind"][index] = s_limit_behind
+            #         else:
+            #             self.rule_constraints[predicate.base_name]["s_limit_front"].append(
+            #                 s_limit_front
+            #             )
+            #             self.rule_constraints[predicate.base_name]["s_limit_behind"].append(
+            #                 s_limit_behind
+            #             )
+            #             self.rule_constraints[predicate.base_name]["time_step"].append(time_step)
+            #     else:
+            #         self.rule_constraints[predicate.base_name] = {
+            #             "decision_variable": True,
+            #             "num_decision_variables": 1,
+            #             "constraint_name": "intersection",
+            #             "constraint_state": [0],
+            #             "s_limit_front": [],
+            #             "s_limit_behind": [],
+            #             "time_step": [],
+            #         }
+            #         (s_limit_front, s_limit_behind) = self.ConstrOnLaneletWithTypeIntersection(time_step, prop_assignment)
+            #         self.rule_constraints[predicate.base_name]["s_limit_front"].append(s_limit_front)
+            #         self.rule_constraints[predicate.base_name]["s_limit_behind"].append(s_limit_behind)
+            #         self.rule_constraints[predicate.base_name]["time_step"].append(time_step)
 
     def add_collision_free_constraints(self):
+        if self._rule_monitor.scenario_type == "interstate":
+            self.add_collision_free_interstate()
+        else:
+            self.add_collision_free_intersection()
+
+    def add_collision_free_interstate(self):
         self.collision_free_constraints["index_lb"] = list()
         self.collision_free_constraints["index_ub"] = list()
         self.collision_free_constraints["collision_free_ub"] = list()
         self.collision_free_constraints["collision_free_lb"] = list()
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             self._prec_veh, self._foll_veh = self._determine_related_veh(
                 k, self._ego_vehicle.ref_path_lane
             )
             index = k - self._tc_obj.tc_time_step
-            # TODO: fix plus or minus a small number
             if self._prec_veh is not None:
                 self.collision_free_constraints["index_ub"].append(index)
                 self.collision_free_constraints["collision_free_ub"].append(
                     self._prec_veh.rear_s(k, self._ego_vehicle.ref_path_lane)
                     - self._veh_config.wheelbase / 2
                     - self._veh_config.length / 2
-                    - 2
                 )
             if self._foll_veh is not None:
                 self.collision_free_constraints["index_lb"].append(index)
@@ -195,8 +366,64 @@ class LongitudinalConstraint(BasicConstraint):
                     self._prec_veh.front_s(k, self._ego_vehicle.ref_path_lane)
                     + self._veh_config.wheelbase / 2
                     + self._veh_config.length / 2
-                    + 2
                 )
+
+    def add_collision_free_intersection(self):
+        self.collision_free_constraints["index_lb"] = list()
+        self.collision_free_constraints["index_ub"] = list()
+        self.collision_free_constraints["collision_free_ub"] = list()
+        self.collision_free_constraints["collision_free_lb"] = list()
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
+            self._prec_veh, self._foll_veh = self._determine_related_veh(
+                k, self._ego_vehicle.ref_path_lane
+            )
+            index = k - self._tc_obj.tc_time_step
+            if self._prec_veh is not None:
+                if k <= self._prec_veh.end_time:
+                    conflict_points = self.calculation_circle_approximation(k)
+                    if conflict_points is not None:
+                        s_min = self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                            *conflict_points[0]
+                        )[
+                            0
+                        ]
+                        self.collision_free_constraints["index_ub"].append(index)
+                        self.collision_free_constraints["collision_free_ub"].append(
+                            s_min
+                            - self._ego_vehicle.shape.length / 3
+                            - self._veh_config.wheelbase / 2
+                        )
+
+    def calculation_circle_approximation(self, time_step):
+        circle_target = self._prec_veh.circle_appr_occupancy_at_time_step(time_step)
+        offset_circle_target = shapely.offset_curve(
+            circle_target, self._ego_vehicle.circle_radius
+        )
+        reference_lane_center = LineString(
+            self._ego_vehicle.ref_path_lane.smoothed_vertices
+        )
+        intersection = reference_lane_center.intersection(offset_circle_target)
+        conflict_line_points = list()
+        if intersection.geom_type == "Point":
+            conflict_line_points.append([intersection.x, intersection.y])
+        elif (
+            intersection.geom_type == "LineString"
+            or intersection.geom_type == "LinearRing"
+        ):
+            for point in intersection.coords:
+                conflict_line_points.append(np.array(point))
+        elif (
+            intersection.geom_type == "MultiPoint"
+            or intersection.geom_type == "MultiLineString"
+        ):
+            for geom in intersection.geoms:
+                for point in geom.coords:
+                    conflict_line_points.append(point)
+        if len(conflict_line_points) == 0:
+            conflict_points = None
+        else:
+            conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
+        return conflict_points
 
     def _determine_related_veh(self, time_step, lane):
         preceding_vehicle = None
@@ -210,7 +437,12 @@ class LongitudinalConstraint(BasicConstraint):
             time_step, self._ego_vehicle.ref_path_lane
         )
         for id in vehicle_ids:
-            other_vehicle = self._world_state.vehicle_by_id(id)
+            if id in self._world_state.vehicle_ids():
+                other_vehicle = self._world_state.vehicle_by_id(id)
+            else:
+                continue
+            if other_vehicle is None:
+                continue
             try:
                 other_front_s = other_vehicle.front_s(
                     time_step, self._ego_vehicle.ref_path_lane
@@ -228,148 +460,215 @@ class LongitudinalConstraint(BasicConstraint):
                 continue
         return preceding_vehicle, following_vehicle
 
-    def ConstrInIntersectionConflictAreaEgo(self, time_step: int):
-        def compute_conflict_start_end_points(
-                ego_vehicle: Vehicle,
-                target_vehicle: Vehicle,
-                road_network: RoadNetwork,
-                time_step,
-        ):
-            all_conflict_points_center = list()
-            all_conflict_points_right = list()
-            all_conflict_points_left = list()
-            for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
-                lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
-                if LaneletType.INTERSECTION in lanelet.lanelet_type:
-                    # find conflict points between center vertices of lanelets_dir of k-th vehicle and reference path
-                    # lanelets of p-th vehicle
-                    conflict_points_center = find_conflict_points(
-                        ego_vehicle.lanelets_dir_center_vertices,
-                        lanelet.polygon.shapely_object,
-                    )
-                    conflict_points_right = find_conflict_points(
-                        ego_vehicle.lanelets_dir_right_vertices,
-                        lanelet.polygon.shapely_object,
-                    )
-                    conflict_points_left = find_conflict_points(
-                        ego_vehicle.lanelets_dir_left_vertices,
-                        lanelet.polygon.shapely_object,
-                    )
-                    if conflict_points_center is not None:
-                        all_conflict_points_center.append(conflict_points_center)
-                    if conflict_points_right is not None:
-                        all_conflict_points_right.append(conflict_points_right)
-                    if conflict_points_left is not None:
-                        all_conflict_points_left.append(conflict_points_left)
-            if len(all_conflict_points_center) == 0:
-                return [np.inf, -np.inf]
-            start_conflict_s_center = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_center[0][0]
-                )[0]
-            )
-            start_conflict_s_right = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_right[0][0]
-                )[0]
-            )
-            start_conflict_s_left = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_left[0][0]
-                )[0]
-            )
-            end_conflict_s_center = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_center[-1][-1]
-                )[0]
-            )
-            end_conflict_s_right = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_right[-1][-1]
-                )[0]
-            )
-            end_conflict_s_left = (
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *all_conflict_points_left[-1][-1]
-                )[0]
-            )
-            return [np.min([start_conflict_s_center, start_conflict_s_right, start_conflict_s_left]),
-                    np.max([end_conflict_s_center, end_conflict_s_right, end_conflict_s_left])]
+    def ConstrStopLineInFront(self, time_step: int, prop_assignment: float):
+        wold = self._rule_monitor.world
+        upper_bound = np.inf
+        for lanelet_id in self._ego_vehicle.lanelets_dir:
+            lanelet = wold.road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
+            if lanelet.stop_line is not None:
+                stop_line_s = min(
+                    self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *lanelet.stop_line.start
+                    )[0],
+                    self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *lanelet.stop_line.end
+                    )[0],
+                )
+                upper_bound = min(
+                    upper_bound,
+                    stop_line_s
+                    - self._ego_vehicle.circle_radius
+                    - self._veh_config.length / 3
+                    - self._veh_config.wheelbase / 2,
+                )
+        return upper_bound, -math.inf
 
-        def find_conflict_points(line, conflict_polygon):
-            conflict_line_points = list()
-            # Create curved line
-            curved_line = LineString(line)
-            # Get intersection of line and polygon
-            intersection = curved_line.intersection(conflict_polygon)
-            if intersection.geom_type == "Point":
-                conflict_line_points.append([intersection.x, intersection.y])
-            elif (
-                    intersection.geom_type == "LineString"
-                    or intersection.geom_type == "LinearRing"
-            ):
-                for point in intersection.coords:
-                    conflict_line_points.append(np.array(point))
-            elif (
-                    intersection.geom_type == "MultiPoint"
-                    or intersection.geom_type == "MultiLineString"
-            ):
-                for geom in intersection.geoms:
-                    for point in geom.coords:
-                        conflict_line_points.append(point)
-            if len(conflict_line_points) == 0:
-                conflict_points = None
-            else:
-                conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
-            if conflict_points is None:
-                return [np.inf, -np.inf]
-            return conflict_points
+    def ConstrOnLaneletWithTypeIntersection(
+        self, time_step: int, prop_assignment: float
+    ):
+        if prop_assignment > 0:
+            return math.inf, -math.inf
+        else:
+            incoming = self._ego_vehicle.incoming_intersection
+            turning_lanelets = incoming.successors_left.union(
+                incoming.successors_right,
+                incoming.successors_straight,
+            )
+            lanelet_intersection_id = list(
+                self._ego_vehicle.ref_path_lane.contained_lanelets.intersection(
+                    turning_lanelets
+                )
+            )
+            lanelet_intersection = self._rule_monitor.world.road_network.lanelet_network.find_lanelet_by_id(
+                lanelet_intersection_id[0]
+            )
+            start_s = min(
+                self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *lanelet_intersection.right_vertices[0]
+                )[0],
+                self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *lanelet_intersection.left_vertices[0]
+                )[0],
+            )
+            end_s = max(
+                self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *lanelet_intersection.right_vertices[-1]
+                )[0],
+                self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *lanelet_intersection.left_vertices[-1]
+                )[0],
+            )
+            upper_bound = (
+                start_s
+                - self._ego_vehicle.circle_radius
+                - self._veh_config.length / 3
+                - self._veh_config.wheelbase / 2
+            )
+            lower_bound = end_s + self._ego_vehicle.circle_radius
+            return upper_bound, lower_bound
 
-        index_prop_conflict_area_target = 0
-        rule_monitor = self._rule_monitor
-        world = rule_monitor.world
+    def ConstrInIntersectionConflictAreaEgo(
+        self, time_step: int, prop_assignment: float
+    ):
+        if prop_assignment <= 0:
+            front_constr = (
+                self.s_circle_center_front
+                - self._ego_vehicle.shape.length / 3
+                - self._veh_config.wheelbase / 2
+            )
+            rear_constr = self.s_circle_center_rear
+            return front_constr, rear_constr
+        else:
+            return math.inf, -math.inf
+
+    def create_conflict_area_parameter(self):
         ego_vehicle = self._ego_vehicle
         target_vehicle = self._target_vehicle
-        for i in range(len(rule_monitor.proposition_nodes)):
-            if (
-                    rule_monitor.proposition_nodes[i].name
-                    == "(once[1,1](in_intersection_conflict_area__a1_a0))>=(0.0)"
-            ):
-                index_prop_conflict_area_target = i
-                break
-        prop_conflict_area_target = rule_monitor.prop_robust_all[
-            0, time_step, index_prop_conflict_area_target
-        ]
-        if prop_conflict_area_target >= 0:
-            conflict_points = compute_conflict_start_end_points(
-                ego_vehicle, target_vehicle, world.road_network, time_step
-            )
-            # TODO: fix plus or minus a small number
-            s_limit_front = (
-                    conflict_points[0]
-                    - self._ego_vehicle.shape.length / 2
-                    - self._veh_config.wheelbase / 2
-            )
-            s_limit_behind = (
-                    conflict_points[1]
-                    + self._ego_vehicle.shape.length / 2
-                    - self._veh_config.wheelbase / 2
-            )
+        road_network = self._rule_monitor.world.road_network
+
+        # offset conflict lanelets
+        conflict_lanelets_shape = list()
+        for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
+            lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
+            if LaneletType.INTERSECTION in lanelet.lanelet_type:
+                conflict_lanelets_shape.append(lanelet.polygon.shapely_object)
+        conflict_area_shape = shapely.unary_union(conflict_lanelets_shape)
+        conflict_linestring = shapely.offset_curve(
+            conflict_area_shape, ego_vehicle.circle_radius
+        )
+
+        # find right conflict point
+        line_right = LineString(ego_vehicle.lanelets_dir_right_vertices)
+        line_right_offset = shapely.offset_curve(line_right, ego_vehicle.circle_radius)
+        conflict_circle_center_right = self.find_conflict_points(
+            line_right_offset, conflict_linestring
+        )
+        if conflict_circle_center_right is not None:
+            s_circle_center_right = [
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *conflict_circle_center_right[0]
+                )[0],
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *conflict_circle_center_right[1]
+                )[0],
+            ]
+            s_circle_center_right = np.sort(s_circle_center_right)
         else:
-            s_limit_front = np.inf
-            s_limit_behind = -np.inf
-        return s_limit_front, s_limit_behind
+            s_circle_center_right = np.array([np.inf, -np.inf])
+
+        # find left conflict point
+        line_left = LineString(ego_vehicle.lanelets_dir_left_vertices)
+        line_left_offset = shapely.offset_curve(line_left, -ego_vehicle.circle_radius)
+        conflict_circle_center_left = self.find_conflict_points(
+            line_left_offset, conflict_linestring
+        )
+        if conflict_circle_center_left is not None:
+            s_circle_center_left = [
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *conflict_circle_center_left[0]
+                )[0],
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *conflict_circle_center_left[1]
+                )[0],
+            ]
+            s_circle_center_left = np.sort(s_circle_center_left)
+        else:
+            s_circle_center_left = np.array([np.inf, -np.inf])
+
+        # find center conflict point
+        line_center = LineString(ego_vehicle.lanelets_dir_center_vertices)
+        conflict_circle_center_center = self.find_conflict_points(
+            line_center, conflict_linestring
+        )
+        if conflict_circle_center_center is not None:
+            s_circle_center_center = [
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *conflict_circle_center_center[0]
+                )[0],
+                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                    *conflict_circle_center_center[1]
+                )[0],
+            ]
+            s_circle_center_center = np.sort(s_circle_center_center)
+        else:
+            s_circle_center_center = np.array([np.inf, -np.inf])
+
+        # find conflict point for constraints
+        s_circle_center_front = np.min(
+            [
+                s_circle_center_right[0],
+                s_circle_center_left[0],
+                s_circle_center_center[0],
+            ]
+        )
+        s_circle_center_rear = np.max(
+            [
+                s_circle_center_right[1],
+                s_circle_center_left[1],
+                s_circle_center_center[1],
+            ]
+        )
+
+        return s_circle_center_front, s_circle_center_rear
+
+    @staticmethod
+    def find_conflict_points(
+        curved_line: LineString, conflict_polygon: Union[Polygon, LineString]
+    ):
+        conflict_line_points = list()
+        # Get intersection of line and polygon
+        intersection = curved_line.intersection(conflict_polygon)
+        if intersection.geom_type == "Point":
+            conflict_line_points.append([intersection.x, intersection.y])
+        elif (
+            intersection.geom_type == "LineString"
+            or intersection.geom_type == "LinearRing"
+        ):
+            for point in intersection.coords:
+                conflict_line_points.append(np.array(point))
+        elif (
+            intersection.geom_type == "MultiPoint"
+            or intersection.geom_type == "MultiLineString"
+        ):
+            for geom in intersection.geoms:
+                for point in geom.coords:
+                    conflict_line_points.append(point)
+        if len(conflict_line_points) == 0:
+            conflict_points = None
+        else:
+            conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
+        return conflict_points
 
 
 class LateralConstraint(BasicConstraint):
     def __init__(
-            self,
-            tc_object: TC,
-            rule_monitor: STLRuleMonitor,
-            veh_config: PlanningConfigurationVehicle,
-            target_lanes,
-            long_traj: QPTrajectory,
-            sel_proposition_full: List[PropositionNode],
+        self,
+        tc_object: TC,
+        rule_monitor: STLRuleMonitor,
+        veh_config: PlanningConfigurationVehicle,
+        target_lanes,
+        long_traj: QPTrajectory,
+        sel_proposition_full: List[PropositionNode],
     ):
         super().__init__()
 
