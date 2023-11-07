@@ -48,6 +48,8 @@ from commonroad_reach_semantic.data_structure.config.semantic_configuration_buil
 from commonroad_reach_semantic.data_structure.driving_corridor_extractor import (
     DrivingCorridorExtractor as DrivingCorridorExtractorSemantic,
 )
+from commonroad_reach_semantic.data_structure.reach.semantic_reach_interface import SemanticReachableSetInterface
+
 from commonroad_reach.data_structure.reach.driving_corridor_extractor import DrivingCorridorExtractor
 from commonroad_reach.data_structure.reach.reach_interface import ReachableSetInterface
 from commonroad_reach_semantic.data_structure.environment_model.semantic_model import (
@@ -238,6 +240,7 @@ class RuleConstraintsReach:
         #########################################################
         ##     update the velocity and acceleration rules      ##
         #########################################################
+        self.reach_config.vehicle.ego.v_lon_min = 0  ## not driving backward
         v_max = self.reach_config.vehicle.ego.v_max
         a_min = self.reach_config.vehicle.ego.a_lon_min
         for prop in self._sel_prop_full:
@@ -264,8 +267,8 @@ class RuleConstraintsReach:
         self.reach_config.vehicle.ego.a_lon_min = a_min
         #########################################################
         if self.reach_config.traffic_rule.activated_rules:
-            semantic_model = SemanticModel(self.reach_config)
-            semantic_model._determine_traffic_priorities(
+            self.semantic_model = SemanticModel(self.reach_config)
+            self.semantic_model._determine_traffic_priorities(
                 priorities.dict_traffic_sign_to_priorities
             )
 
@@ -273,15 +276,26 @@ class RuleConstraintsReach:
             # util_visual_semantic.plot_scenario_with_regions(semantic_model, "CVLN")
 
             # update the rule interface
-            rule_interface = self.repair_rule_interface(semantic_model)
+            rule_interface = self.repair_rule_interface(self.semantic_model)
 
             # update the rule interface
             # initialize the reach interface
-            self.reach_interface = ReachableSetInterface(self.reach_config)
+            # self.reach_interface = ReachableSetInterface(self.reach_config)
 
-            self.reach_interface._reach = PySemanticLabelingReachableSet(
-                self.reach_config, semantic_model, rule_interface
-            )
+            # self.reach_interface._reach = PySemanticLabelingReachableSet(
+            #     self.reach_config, semantic_model, rule_interface
+            # )
+            if self.reach_config.reachable_set.mode_computation == 8:
+                self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model, rule_interface)
+            else:
+                # update the rule interface
+                # initialize the reach interface
+                self.reach_interface = ReachableSetInterface(self.reach_config)
+
+                self.reach_interface._reach = PySemanticLabelingReachableSet(
+                    self.reach_config, self.semantic_model, rule_interface
+                )
+
         else:
             self.reach_interface = ReachableSetInterface(self.reach_config)
             self.reach_interface._reach = ReachableSet.instantiate(self.reach_config)
@@ -290,7 +304,7 @@ class RuleConstraintsReach:
             step_start=0, step_end=self._nr_ts, verbose=True
         )
 
-        if self.reach_config.traffic_rule.activated_rules:
+        if self.reach_config.traffic_rule.activated_rules and self.reach_config.reachable_set.mode_computation in [5, 6]:
             self.spot_interface = SpotInterface(self.reach_interface, rule_interface)
             self.spot_interface.translate_ltl_formulas()
             self.spot_interface.translate_reachability_graph()
@@ -336,7 +350,8 @@ class RuleConstraintsReach:
 
     def compute_semantic_reachable_set(self, vehicle_configuration, verbose=True):
         self.update_reach_interface(vehicle_configuration)
-        if self.reach_config.traffic_rule.activated_rules:
+        if self.reach_config.traffic_rule.activated_rules and \
+            self.reach_config.reachable_set.mode_computation in [5, 6]:
             dc_extractor = DrivingCorridorExtractorSemantic(self.spot_interface)
             dc_extractor.extract_corridors(search=True)
             self.corridor = dc_extractor.determine_optimal_corridor()
@@ -346,6 +361,10 @@ class RuleConstraintsReach:
             self.corridor = driving_corridors[0]
 
         # * for debugging the reach semantic
+        # if self.reach_config.reachable_set.mode_computation in [7, 8]:
+        #     node_to_group = util_visual_semantic.groups_from_states(self.reach_interface._reach.reachable_set_to_label)
+        # util_visual_semantic.plot_reach_graph(self.reach_interface, node_to_group=node_to_group)
+        # util_visual_semantic.plot_scenario_with_regions(self.semantic_model, "CVLN")
         #node_to_group = util_visual_semantic.groups_from_propositions(self.reach_interface._reach.labeler.reachable_set_to_propositions)
         #util_visual_semantic.show_interactive_reach_graph(self.reach_interface, use_images=True, node_to_group=node_to_group)
         #util_visual_semantic.plot_scenario_with_kripke_nodes(self.spot_interface, plot_accepting=True, save_gif=False)
@@ -366,14 +385,15 @@ class RuleConstraintsReach:
                 # velocity limit
                 # fixme: adding stopping distance!!
                 for predicate in prop.children:
-                    if predicate.base_name in [PredStopLineInFront.predicate_name]:
-                        for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step,
+                    # if predicate.base_name in [PredStopLineInFront.predicate_name]:
+                    #     for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step,
+                    #                     self._tc_obj.N - self._tc_obj.tc_time_step):
+                    #         s_max[ts] -= (predicate.evaluator.config["d_sl"])
+
+                    #if predicate.base_name in [PredInIntersectionConflictArea.predicate_name]:
+                    for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step - 1,
                                         self._tc_obj.N - self._tc_obj.tc_time_step):
-                            s_max[ts] -= (predicate.evaluator.config["d_sl"])
-                    if predicate.base_name in [PredInIntersectionConflictArea.predicate_name]:
-                        for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step - 1,
-                                        self._tc_obj.N - self._tc_obj.tc_time_step):
-                            s_max[ts] -= (self._veh_config.length/2)
+                        s_max[ts] -= (self._veh_config.length/2)
         c_tv_lon = LonConstraints.construct_constraints(
             s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
         )

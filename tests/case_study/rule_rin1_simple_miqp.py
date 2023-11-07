@@ -1,5 +1,5 @@
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, ScenarioType, IntersectionType
-from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
+from crrepairer.repairer.smt_repairer_miqp import SMTTrajectoryRepairer
 from crrepairer.repairer.visualization import (
     visualize_repairing_result,
     visualize_a_profile,
