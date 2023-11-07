@@ -185,7 +185,7 @@ class TSolver:
         tc = self.search_tc()
         print(
             "* \t<Tsolver>: tc = {}, tv = {}".format(
-                self._tc_obj.tc, self._tc_obj.tv - self._tc_obj.furture_time
+                self._tc_obj.tc, self._tc_obj.tv - self._tc_obj.future_time
             )
         )
         print(f"* \t<Tsolver>: run time {time.time() - start_time:.3f}s")
