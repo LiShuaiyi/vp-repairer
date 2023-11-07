@@ -1,7 +1,7 @@
 import os
 import math
 import unittest
-from sympy.logic.boolalg import is_cnf, is_dnf
+from sympy.logic.boolalg import is_cnf, is_dnf, is_nnf
 
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.smt.sat_solver.sat_solver import SATSolver
@@ -73,7 +73,7 @@ class TestSMTSolver(unittest.TestCase):
             (
                 prop
                 for prop in list(self.rule_monitor.proposition_nodes)
-                if prop.name == "keeps_safe_distance_prec__a0_a1"
+                if prop.name == "keeps_safe_distance_prec__0_1"
             ),
             None,
         )
@@ -88,7 +88,7 @@ class TestSMTSolver(unittest.TestCase):
             (
                 prop
                 for prop in list(self.rule_monitor.proposition_nodes)
-                if prop.name == "in_same_lane__a0_a1_i"
+                if prop.name == "in_same_lane__0_1"
             ),
             None,
         )
@@ -104,13 +104,15 @@ class TestSMTSolver(unittest.TestCase):
         self.assertEqual(dpll_solver.solve(), unsat)
         self.assertEqual(dpll_solver.model, set())
 
-    def test_cnf_dnf_converter(self):
+    def test_cnf_dnf_nnf_converter(self):
         original_formula = "(a and b and !c) implies d"
         sat_solver = SATSolver(self.rule_monitor)
         cnf_formula = sat_solver.construct_cnf(original_formula)
         self.assertTrue(is_cnf(cnf_formula))
         dnf_formula = sat_solver.construct_dnf(original_formula)
         self.assertTrue(is_dnf(dnf_formula))
+        nnf_formula = sat_solver.construct_nnf(original_formula)
+        self.assertTrue(is_nnf(nnf_formula))
 
     def test_construct_qp_repair(self):
         t_solver = TSolver(self._ego_obs, self.planning_problem, self.rule_monitor)
@@ -118,7 +120,7 @@ class TestSMTSolver(unittest.TestCase):
             (
                 prop
                 for prop in list(self.rule_monitor.proposition_nodes)
-                if prop.name == "keeps_safe_distance_prec__a0_a1"
+                if prop.name == "keeps_safe_distance_prec__0_1"
             ),
             None,
         )
@@ -152,7 +154,7 @@ class TestSMTSolver(unittest.TestCase):
             (
                 prop
                 for prop in list(self.rule_monitor.proposition_nodes)
-                if prop.name == "in_same_lane__a0_a1_i"
+                if prop.name == "in_same_lane__0_1"
             ),
             None,
         )
