@@ -39,6 +39,14 @@ class TSolver:
 
         self.verbose = False
 
+        self._miqp_planner = MIQPPlannerRepair(
+            self._rule_monitor,
+            self._tc_obj,
+            self._sel_prop,
+            self._prop_full,
+            self._planning_problem,
+        )
+
     @property
     def tc_object(self):
         return self._tc_obj
@@ -157,14 +165,10 @@ class TSolver:
         #                                    self._prop_full,
         #                                    self._planning_problem,
         #                                    verbose=self.verbose)
-        self._miqp_planner = MIQPPlannerRepair(
-            self._rule_monitor,
-            self._tc_obj,
-            self._sel_prop,
-            self._prop_full,
-            self._planning_problem,
-        )
         start_time = time.time()
+        self._miqp_planner.update(
+            self._tc_obj, self._sel_prop, self._prop_full
+        )
         # repaired_trajectory = self._qp_planner.plan()
         repaired_trajectory = self._miqp_planner.plan()
         print(f"* \t<TSolver>: solving time {time.time()-start_time:.3f}s")

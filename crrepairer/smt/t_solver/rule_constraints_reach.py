@@ -1,6 +1,6 @@
 import math
 import os
-
+import time
 
 from typing import List
 import copy
@@ -153,6 +153,39 @@ class RuleConstraintsReach:
 
         self.corridor = None
 
+        route_planner = RoutePlanner(lanelet_network=self.reach_config.scenario.lanelet_network,
+                                     planning_problem=self.reach_config.planning_problem,
+                                     state_initial=initial_trajectory.state_list[0],
+                                     goal_region=self.reach_config.planning_problem.goal)
+        candidate_holder = route_planner.plan_routes()
+        route = candidate_holder.retrieve_first_route()
+        self.reach_config.planning.route = route
+
+        self.reach_config.update(
+            planning_problem=self.reach_config.planning_problem,
+            scenario=self.reach_config.scenario,
+        )
+
+        self.semantic_model = SemanticModel(self.reach_config)
+        self.semantic_model._determine_traffic_priorities(
+            priorities.dict_traffic_sign_to_priorities
+        )
+
+        # update the rule interface
+        self.rule_interface = self.repair_rule_interface(self.semantic_model)
+
+        if self.reach_config.reachable_set.mode_computation == 8:
+            self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model,
+                                                                 self.rule_interface)
+        else:
+            # update the rule interface
+            # initialize the reach interface
+            self.reach_interface = ReachableSetInterface(self.reach_config)
+
+            self.reach_interface._reach = PySemanticLabelingReachableSet(
+                self.reach_config, self.semantic_model, self.rule_interface
+            )
+
     def update_reach_interface(
         self, vehicle_configuration: PlanningConfigurationVehicle
     ):
@@ -222,19 +255,11 @@ class RuleConstraintsReach:
                 obs.prediction.trajectory = new_traj
             else:
                 self.reach_config.scenario.remove_obstacle(obs)
-        route_planner = RoutePlanner(lanelet_network=self.reach_config.scenario.lanelet_network,
-                                     planning_problem=self.reach_config.planning_problem,
-                                     state_initial=self.reach_config.planning_problem.initial_state,
-                                     goal_region=self.reach_config.planning_problem.goal)
-        candidate_holder = route_planner.plan_routes()
-        route = candidate_holder.retrieve_first_route()
-        self.reach_config.planning.route = route
 
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
             scenario=self.reach_config.scenario,
             CLCS=vehicle_configuration.CLCS,
-
         )
 
         #########################################################
@@ -266,46 +291,14 @@ class RuleConstraintsReach:
         self.reach_config.vehicle.ego.v_max = v_max
         self.reach_config.vehicle.ego.a_lon_min = a_min
         #########################################################
-        if self.reach_config.traffic_rule.activated_rules:
-            self.semantic_model = SemanticModel(self.reach_config)
-            self.semantic_model._determine_traffic_priorities(
-                priorities.dict_traffic_sign_to_priorities
-            )
 
-            # Plot the regions
-            # util_visual_semantic.plot_scenario_with_regions(semantic_model, "CVLN")
-
-            # update the rule interface
-            rule_interface = self.repair_rule_interface(self.semantic_model)
-
-            # update the rule interface
-            # initialize the reach interface
-            # self.reach_interface = ReachableSetInterface(self.reach_config)
-
-            # self.reach_interface._reach = PySemanticLabelingReachableSet(
-            #     self.reach_config, semantic_model, rule_interface
-            # )
-            if self.reach_config.reachable_set.mode_computation == 8:
-                self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model, rule_interface)
-            else:
-                # update the rule interface
-                # initialize the reach interface
-                self.reach_interface = ReachableSetInterface(self.reach_config)
-
-                self.reach_interface._reach = PySemanticLabelingReachableSet(
-                    self.reach_config, self.semantic_model, rule_interface
-                )
-
-        else:
-            self.reach_interface = ReachableSetInterface(self.reach_config)
-            self.reach_interface._reach = ReachableSet.instantiate(self.reach_config)
-
+        self.reach_interface.reset(self.reach_config)
         self.reach_interface.compute_reachable_sets(
-            step_start=0, step_end=self._nr_ts, verbose=True
+            step_start=0, step_end=self._nr_ts, verbose=False
         )
 
         if self.reach_config.traffic_rule.activated_rules and self.reach_config.reachable_set.mode_computation in [5, 6]:
-            self.spot_interface = SpotInterface(self.reach_interface, rule_interface)
+            self.spot_interface = SpotInterface(self.reach_interface, self.rule_interface)
             self.spot_interface.translate_ltl_formulas()
             self.spot_interface.translate_reachability_graph()
             self.spot_interface.check()
@@ -373,8 +366,9 @@ class RuleConstraintsReach:
 
     def longitudinal_constraints(self, vehicle_configuration):
         # compute the driving corridor
+        time_start = time.time()
         self.compute_semantic_reachable_set(vehicle_configuration)
-
+        print(f"* \t<TSolver>: time for computing the reachable set {time.time()-time_start:.2f}")
         if self.corridor is None:
             raise Exception("the driving corridor is either not computed or empty")
         else:
@@ -384,16 +378,16 @@ class RuleConstraintsReach:
             for prop in self._sel_prop_full:
                 # velocity limit
                 # fixme: adding stopping distance!!
-                for predicate in prop.children:
+                # for predicate in prop.children:
                     # if predicate.base_name in [PredStopLineInFront.predicate_name]:
                     #     for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step,
                     #                     self._tc_obj.N - self._tc_obj.tc_time_step):
                     #         s_max[ts] -= (predicate.evaluator.config["d_sl"])
 
                     #if predicate.base_name in [PredInIntersectionConflictArea.predicate_name]:
-                    for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step - 1,
+                for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step - 1,
                                         self._tc_obj.N - self._tc_obj.tc_time_step):
-                        s_max[ts] -= (self._veh_config.length/2)
+                    s_max[ts] -= (self._veh_config.length/2)
         c_tv_lon = LonConstraints.construct_constraints(
             s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
         )
