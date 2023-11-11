@@ -387,7 +387,8 @@ class RuleConstraintsReach:
                     #if predicate.base_name in [PredInIntersectionConflictArea.predicate_name]:
                 for ts in range(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step - 1,
                                         self._tc_obj.N - self._tc_obj.tc_time_step):
-                    s_max[ts] -= (self._veh_config.length/2)
+                    s_max[ts] -= 0.1  #(self._veh_config.length/2)
+                    s_min[ts] -= 0.1
         c_tv_lon = LonConstraints.construct_constraints(
             s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
         )
