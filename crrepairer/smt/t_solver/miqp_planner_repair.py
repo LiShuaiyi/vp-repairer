@@ -70,6 +70,18 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._planning_problem,
             self.ego_vehicle_roadnetwork,
         )
+        if rule_monitor.scenario_type == "intersection":
+            self._vehicle_configuration.CLCS = (
+                rule_monitor.world.vehicle_by_id(
+                    self._ego_vehicle.obstacle_id
+                ).ref_path_lane.clcs
+            )
+        else:
+            self._vehicle_configuration.CLCS = (
+                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+                .get_lane(0)
+                .clcs
+            )
 
         # update the vehicle shape
         self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
@@ -195,13 +207,13 @@ class MIQPPlannerRepair(MIQPPlanner):
         """
         cartesian_traj_points = list()
         for state in trajectory.states:
-            cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
+            cart_pos = self.vehicle_configuration.CLCS.convert_to_cartesian_coords(
                 state.position[0], state.position[1]
             )
             orientation_interpolated = np.interp(
                 state.position[0],
-                self.vehicle_configuration.curvilinear_coordinate_system.ref_pos,
-                self.vehicle_configuration.curvilinear_coordinate_system.ref_theta,
+                self.vehicle_configuration.ref_pos,
+                self.vehicle_configuration.ref_theta,
             )
 
             v = state.v / np.cos(state.orientation - orientation_interpolated)
