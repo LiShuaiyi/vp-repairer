@@ -134,10 +134,11 @@ class TC(CutOffBase, ABC):
         update_ego_vehicle(
             self.world.road_network, self._world_ego, updated_states, 0, self.dT
         )
-        # rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
-        #     self.world, cut_off_time
-        # )
         # TODO: FIXME future operator need be evaluated from start
+        # cut_off_time_test = min(cut_off_time, self.tv_time_step - self.future_time_step)
+        # rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
+        #     self.world, cut_off_time_test
+        # )
         rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
             self.world, self.rule_monitor.start_time_step
         )
