@@ -3,7 +3,7 @@ import time
 from typing import List
 
 from crrepairer.cut_off.tc import TC
-from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
+# from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
