@@ -16,6 +16,8 @@ from commonroad_qp_planner.configuration import (
 )
 from commonroad_qp_planner.trajectory import Trajectory, TrajPoint, TrajectoryType
 
+from crrepairer.utils.configuration import RepairerConfiguration
+
 
 class MIQPLatState(object):
     """
@@ -70,7 +72,7 @@ class MIQPLatReference(object):
     Class representing a QPLatReference made up of a list of QPLatRefStates
     """
 
-    def __init__(self, reference: list()):
+    def __init__(self, reference: List):
         self.reference = reference
 
     @property
@@ -78,7 +80,7 @@ class MIQPLatReference(object):
         return self._reference
 
     @reference.setter
-    def reference(self, reference: list()):
+    def reference(self, reference: List):
         # check if reference is list of reference states
         assert isinstance(reference, list) and (
             isinstance(s, MIQPLatRefState) for s in reference
@@ -176,54 +178,43 @@ class MIQPLatReference(object):
 class MIQPLatPlanner:
     def __init__(
         self,
-        horizon: float,
-        N: int,
-        dT: float,
-        length: float,
-        lateral_constraints: LateralConstraint,
+        config: RepairerConfiguration,
         x_init_lat: MIQPLatState,
         x_ref_lat: MIQPLatReference,
-        vehicle_configuration: PlanningConfigurationVehicle,
-        miqp_lat_params,
     ):
-        self.time_horizon = horizon
-        self.N = N
-        self.dt = dT
+        self.time_horizon = config.miqp_planner.horizon
+        self.N = config.miqp_planner.N
+        self.dt = config.scenario.dt
 
         # number of x <d, theta, kappa, kappa dot>
         self._n = 4
         # number of u <kappa dot dot>
         self._m = 1
-
         # wheelbase length
-        self._length = length
-
-        self._lateral_constraints = lateral_constraints
+        self._length = config.vehicle.wheelbase
         self._x_init_lat = x_init_lat
         self._x_ref_lat = x_ref_lat
 
-        self.vehicle_configuration = vehicle_configuration
-        self.lat_params = miqp_lat_params
-
-        self._init_time_invariant_constraints()
-        self._init_dynamic_constraints()
+        self.config = config
+        self.weight = config.miqp_planner.weight_long
+        self.d_reference = np.zeros(self.N + 1)
 
         self.solver = GurobiSolver()
 
-        # TODO: cost weight in config file
-        self.weight = [0.05, 15.1, 40.0, 20.0, 1.0]
+    def plan(self, lateral_constraints: LateralConstraint):
+        """Plan the lateral movement based on the constraints and longitudinal one."""
+        # initialize the lateral constraints
+        self._init_time_invariant_constraints(lateral_constraints)
+        self._init_dynamic_constraints(lateral_constraints)
 
-        self.d_reference = np.zeros(self.N + 1)
-
-    def plan(self):
         # add state and control variables
-        self._init_state_var()
-        self._init_control_var()
+        self._init_state_var(lateral_constraints)
+        self._init_control_var(lateral_constraints)
         # add lateral dynamic constraints
         self.solver.add_lat_dynamic_cons(
-            self._lateral_constraints.dynamic_matrix_list,
-            self._lateral_constraints.init_state,
-            self._lateral_constraints.theta_r,
+            lateral_constraints.dynamic_matrix_list,
+            lateral_constraints.init_state,
+            lateral_constraints.theta_r,
         )
         # cost function
         self.solver.costfunc_lat(
@@ -233,61 +224,58 @@ class MIQPLatPlanner:
         # get solution
         self.var_x = self.solver.get_var_x()
         self.control_u = self.solver.get_control_u()
-        trajectory = self.create_output_trajectory()
+        trajectory = self.create_output_trajectory(lateral_constraints.long_traj)
         return trajectory
 
-    def _init_state_var(self):
-        x_shape = self._lateral_constraints.var_lat_x_lb.shape
+    def _init_state_var(self, lateral_constraints: LateralConstraint):
+        """Initialize state variables."""
+        x_shape = lateral_constraints.var_lat_x_lb.shape
         x = np.empty(x_shape, dtype=object)
         self.solver.add_lat_state_var(
             x,
             x_shape,
-            self._lateral_constraints.var_lat_x_lb,
-            self._lateral_constraints.var_lat_x_ub,
+            lateral_constraints.var_lat_x_lb,
+            lateral_constraints.var_lat_x_ub,
         )
 
-    def _init_control_var(self):
-        u_shape = self._lateral_constraints.var_lat_u_lb.shape
+    def _init_control_var(self, lateral_constraints: LateralConstraint):
+        """Initialize control variables."""
+        u_shape = lateral_constraints.var_lat_u_lb.shape
         u = np.empty(u_shape, dtype=object)
         self.solver.add_lat_control_var(
             u,
             u_shape,
-            self._lateral_constraints.var_lat_u_lb,
-            self._lateral_constraints.var_lat_u_ub,
+            lateral_constraints.var_lat_u_lb,
+            lateral_constraints.var_lat_u_ub,
         )
 
-    def _init_time_invariant_constraints(self):
-        # TODO: need to add in parameters
-        self.kappa_dot_dot_min = -100
-        self.kappa_dot_dot_max = 100
-        self.kappa_dot_min = -0.4
-        self.kappa_dot_max = 0.4
-        self.kappa_min = -0.5
-        self.kappa_max = 0.5
+    def _init_time_invariant_constraints(self, lateral_constraints: LateralConstraint):
+        """Initialize time invariant constraints"""
+        # todo: can this be added to the constraints directly instead of via the lat_constraints?
         # lower and upper bound for control u
-        self._lateral_constraints.var_lat_u_lb = self.kappa_dot_dot_min * np.ones(
+        lateral_constraints.var_lat_u_lb = self.config.vehicle.kappa_dot_dot_min * np.ones(
             self.N
         )
-        self._lateral_constraints.var_lat_u_ub = self.kappa_dot_dot_max * np.ones(
+        lateral_constraints.var_lat_u_ub = self.config.vehicle.kappa_dot_dot_max * np.ones(
             self.N
         )
         # lower and upper bound for states x
-        self._lateral_constraints.var_lat_x_lb = -1000 * np.ones((self._n, self.N + 1))
-        self._lateral_constraints.var_lat_x_ub = 1000 * np.ones((self._n, self.N + 1))
+        lateral_constraints.var_lat_x_lb = -1000 * np.ones((self._n, self.N + 1))
+        lateral_constraints.var_lat_x_ub = 1000 * np.ones((self._n, self.N + 1))
         # TODO: why from t = 2
         # lower and upper bound for kappa
-        self._lateral_constraints.var_lat_x_lb[2, 2:] = self.kappa_min
-        self._lateral_constraints.var_lat_x_ub[2, 2:] = self.kappa_max
+        lateral_constraints.var_lat_x_lb[2, 2:] = self.config.vehicle.kappa_min
+        lateral_constraints.var_lat_x_ub[2, 2:] = self.config.vehicle.kappa_max
         # lower and upper bound for kappa_dot
-        self._lateral_constraints.var_lat_x_lb[3, 2:] = self.kappa_dot_min
-        self._lateral_constraints.var_lat_x_ub[3, 2:] = self.kappa_dot_max
+        lateral_constraints.var_lat_x_lb[3, 2:] = self.config.vehicle.kappa_dot_min
+        lateral_constraints.var_lat_x_ub[3, 2:] = self.config.vehicle.kappa_dot_max
 
-    def _init_dynamic_constraints(self):
+    def _init_dynamic_constraints(self, lateral_constraints: LateralConstraint):
         # TODO: what is theta_r
         self.theta_r = list()
         for i in range(self.N):
             self.theta_r.append(self._x_ref_lat.reference[i].theta)
-        self._lateral_constraints.theta_r = self.theta_r
+        lateral_constraints.theta_r = self.theta_r
 
         kappa_lim = list()
 
@@ -322,7 +310,7 @@ class MIQPLatPlanner:
             D = np.array([-self.dt * v, 0, 0, 0]).reshape([-1, 1])
             # TODO: do we need S C E in qp_lat_planner?
             #  (maybe Using the three-circle-approximation to enforce positional constraints) (d1, d2, d3)
-            self._lateral_constraints.dynamic_matrix_list.append(
+            lateral_constraints.dynamic_matrix_list.append(
                 {"A": A, "B": B, "D": D}
             )
 
@@ -332,7 +320,7 @@ class MIQPLatPlanner:
                     self._x_ref_lat.reference[1].s - self._x_ref_lat.reference[0].s
                 )
                 # TODO: initial state t = 0s
-                self._lateral_constraints.init_state = np.array(
+                lateral_constraints.init_state = np.array(
                     [
                         self._x_init_lat.d,
                         self._x_init_lat.theta,
@@ -354,20 +342,20 @@ class MIQPLatPlanner:
             )
             # disturbances on output
             E = np.transpose(np.array([0, -0.5 * self._length, -self._length, 0, 0]))
-            self._lateral_constraints.lat_dis_cons_matrix.append(
+            lateral_constraints.lat_dis_cons_matrix.append(
                 {"S": S, "C": C, "E": E}
             )
 
             kappa_lim_k = min(
-                np.sqrt(self.vehicle_configuration.a_max**2 - a**2)
+                np.sqrt(self.config.vehicle.a_max**2 - a**2)
                 / (np.max([v, 0.5]) ** 2),
-                self.kappa_max,
+                self.config.vehicle.kappa_max,
             )
             kappa_lim.append(kappa_lim_k)
-        self._lateral_constraints.kappa_lim = np.array(kappa_lim)
+        lateral_constraints.kappa_lim = np.array(kappa_lim)
 
-    def create_output_trajectory(self):
-        long_traj_states = self._lateral_constraints.long_traj.states
+    def create_output_trajectory(self, long_traj: Trajectory):
+        long_traj_states = long_traj.states
         traj = list()
         # add initial state
         traj.append(
@@ -397,6 +385,6 @@ class MIQPLatPlanner:
                 )
             )
         traj = Trajectory(traj, TrajectoryType.CARTESIAN)
-        traj._u_lon = self._lateral_constraints.long_traj.u_lon
+        traj._u_lon = long_traj.u_lon
         traj._u_lat = self.control_u
         return traj

@@ -62,7 +62,6 @@ class MIQPLongPlanner:
             self.initial_state.j,
         )
 
-        # TODO: add parameter in config file
         self.weight = config.miqp_planner.weight_long
 
         # number of x
@@ -75,7 +74,6 @@ class MIQPLongPlanner:
         self._n_s = 2 if self._slack_pos else 0
 
         # Dynamic matrix and initial state
-
         A = np.array(
             [
                 [1, self.dt, (self.dt ** 2.0) / 2.0, (self.dt ** 3.0) / 6.0],
@@ -102,7 +100,7 @@ class MIQPLongPlanner:
             self.dynamic_matrix_list, self.init_state
         )
 
-    def plan(self, reference_path, long_constraints: LongitudinalConstraint):
+    def plan(self, long_ref: MIQPLongReference, long_constraints: LongitudinalConstraint):
         # initialize constraints
         self._init_time_invariant_constraints(long_constraints)
 
@@ -126,7 +124,7 @@ class MIQPLongPlanner:
         # add rule constraints in solver
         self.solver.add_rule_cons(long_constraints.rule_constraints)
         # cost function
-        self.solver.costfunc_long(reference_path, self.weight)
+        self.solver.costfunc_long(long_ref, self.weight)
         self.solver.solve()
 
         try:

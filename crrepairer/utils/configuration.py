@@ -153,6 +153,9 @@ class MIQPPlannerConfiguration(BaseConfiguration):
     # s, v, a, j, u, slack
     weight_long: List[float] =\
         field(default_factory=lambda: [0.1, 0.2, 0.5, 1, 0.1, 1000000])
+    # d, theta, kappa, kappa_dot, u
+    weight_lat: List[float] =\
+        field(default_factory=lambda: [0.05, 15.1, 40.0, 20.0, 1.0])
 
 
 @dataclass
@@ -223,6 +226,14 @@ class VehicleConfiguration(BaseConfiguration):
     desired_speed: float = 0.0
     radius: float = 1.0
     react_time: float = 0.0
+
+    kappa_dot_dot_min: float = -100
+    kappa_dot_dot_max: float = 100
+    kappa_dot_min: float = -0.4
+    kappa_dot_max: float = 0.4
+    kappa_min: float = -0.5
+    kappa_max: float = 0.5
+
     CLCS: Optional[CurvilinearCoordinateSystem] = None
     reference_path: Optional[np.ndarray] = None
     reference_point: ReferencePoint = ReferencePoint.REAR
