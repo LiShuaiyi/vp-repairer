@@ -81,7 +81,8 @@ class GurobiSolver:
         for i in range(len(dynamic_matrix_list)):
             dynamic_matrix_dict = dynamic_matrix_list[i]
             if i == 0:
-                # todo: add explanation
+                # add additional constraints for initial state
+                # x_0 - initial_state = 0
                 self.add_matrix_eq_cons(
                     np.eye(dynamic_matrix_dict["A"].shape[0]),
                     np.zeros_like(dynamic_matrix_dict["B"]),
@@ -92,18 +93,7 @@ class GurobiSolver:
                     -1,
                     0,
                 )
-                self.add_matrix_eq_cons(
-                    dynamic_matrix_dict["A"],
-                    dynamic_matrix_dict["B"],
-                    dynamic_matrix_dict["D"],
-                    self.x[:, i + 1],
-                    self.x[:, i],
-                    self.u[i],
-                    i,
-                    theta_r[i],
-                )
-            else:
-                self.add_matrix_eq_cons(
+            self.add_matrix_eq_cons(
                     dynamic_matrix_dict["A"],
                     dynamic_matrix_dict["B"],
                     dynamic_matrix_dict["D"],
