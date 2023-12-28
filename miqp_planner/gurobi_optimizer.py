@@ -68,6 +68,7 @@ class GurobiSolver:
             return self.model.addVar(vtype=GRB.BINARY, name=name)
 
     def add_long_dynamic_cons(self, dynamic_matrix_list, init_state):
+        """Add the longitudinal dynamic constraints"""
         z = np.zeros(self.x_shape[1])
         self.add_dynamic_cons(dynamic_matrix_list, init_state, z)
 
@@ -76,9 +77,11 @@ class GurobiSolver:
         self.add_dynamic_cons(dynamic_matrix_list, init_state, z)
 
     def add_dynamic_cons(self, dynamic_matrix_list, init_state, theta_r):
+        """todo: add docstring"""
         for i in range(len(dynamic_matrix_list)):
             dynamic_matrix_dict = dynamic_matrix_list[i]
             if i == 0:
+                # todo: add explanation
                 self.add_matrix_eq_cons(
                     np.eye(dynamic_matrix_dict["A"].shape[0]),
                     np.zeros_like(dynamic_matrix_dict["B"]),
@@ -112,6 +115,7 @@ class GurobiSolver:
                 )
 
     def add_rule_cons(self, rule_constraints):
+        """Add rule constraints"""
         for rule_constraint_name in rule_constraints:
             rule_constraint = rule_constraints[rule_constraint_name]
             if rule_constraint["decision_variable"]:
