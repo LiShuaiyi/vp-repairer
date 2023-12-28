@@ -8,15 +8,11 @@ from commonroad_dc.geometry.util import (
 )
 
 from miqp_planner.gurobi_optimizer import GurobiSolver
-from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
+from miqp_planner.miqp_constraints import LateralConstraint
 
-from commonroad_qp_planner.configuration import (
-    PlanningConfigurationVehicle,
-    ReferencePoint,
-)
 from commonroad_qp_planner.trajectory import Trajectory, TrajPoint, TrajectoryType
 
-from crrepairer.utils.configuration import RepairerConfiguration
+from crrepairer.utils.configuration import RepairerConfiguration, VehicleConfiguration
 
 
 class MIQPLatState(object):
@@ -98,7 +94,7 @@ class MIQPLatReference(object):
         cls,
         lon_traj: Trajectory,
         reference: np.ndarray,
-        vehicle_configuration: PlanningConfigurationVehicle,  # TODO: fix time invariate constraint
+        vehicle_configuration: VehicleConfiguration,  # TODO: fix time invariate constraint
         ti=None,
     ) -> "MIQPLatReference":
         assert (
@@ -143,7 +139,7 @@ class MIQPLatReference(object):
         ), "<QPLatReference>: Provided reference is not long enough for interpolation! ref = {}, traj = {}".format(
             np.max(ref_pathlength), np.max(s)
         )
-        CLCS = vehicle_configuration.curvilinear_coordinate_system
+        CLCS = vehicle_configuration.CLCS
 
         # interpolate curvature at s positions of trajectory
         # curvature_interpolated = np.interp(s, ref_pathlength, ref_curvature)

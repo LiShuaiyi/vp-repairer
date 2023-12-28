@@ -2,12 +2,9 @@ from decimal import Decimal
 
 # commonroad-io
 from commonroad.scenario.trajectory import State
-from commonroad.scenario.scenario import Scenario
-from commonroad.planning.planning_problem import PlanningProblem
 
 from commonroad_qp_planner.trajectory import Trajectory, TrajPoint
 from commonroad_qp_planner.configuration import (
-    PlanningConfigurationVehicle,
     ReferencePoint,
 )
 from commonroad_qp_planner.initialization import compute_initial_state
@@ -16,50 +13,49 @@ from miqp_planner.miqp_long_planner import MIQPLongPlanner
 from miqp_planner.miqp_lat_planner import MIQPLatPlanner, MIQPLatState, MIQPLatReference
 from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
 
+from crrepairer.utils.configuration import RepairerConfiguration
+
 
 # TODO create new functions instead of using qp planner
 class MIQPPlanner:
     def __init__(
         self,
-        scenario: Scenario,
-        planning_problem: PlanningProblem,
-        time_horizon: float,
-        vehicle_configuration: PlanningConfigurationVehicle,
+        config: RepairerConfiguration
     ):
-        self.scenario = scenario
-        self.planning_problem = planning_problem
-        self.vehicle_configuration = vehicle_configuration
-        if not hasattr(scenario, "dt"):
+        self.scenario = config.scenario
+        self.planning_problem = config.planning_problem
+        self.vehicle_configuration = config.vehicle
+        if not hasattr(self.scenario, "dt"):
             self.dt = 0.1  # default time step
         else:
-            if Decimal(str(time_horizon)) % Decimal(str(scenario.dt)) != Decimal("0.0"):
+            if Decimal(str(config.miqp_planner.horizon)) % Decimal(str(self.scenario.dt)) != Decimal("0.0"):
                 raise ValueError(
-                    "<MIQPPlanner>: the given time step {} is inapproparite,"
-                    "since time horizon is {}.".format(scenario.dt, time_horizon)
+                    "<MIQPPlanner>: the given time step {} is inappropriate,"
+                    "since time horizon is {}.".format(self.scenario.dt, config.miqp_planner.horizon)
                 )
-            self.dt = scenario.dt
-        self.t_h = time_horizon
+            self.dt = self.scenario.dt
+        self.t_h = config.miqp_planner.horizon
 
-        self.N = round(time_horizon / self.dt)
-        if isinstance(planning_problem.initial_state, State):
+        config.miqp_planner.N = round(config.miqp_planner.horizon / self.dt)
+        if isinstance(self.planning_problem.initial_state, State):
             # this state is in curvilinear coordinate system
             self.initial_state = compute_initial_state(
-                planning_problem.initial_state, vehicle_configuration
+                self.planning_problem.initial_state, self.vehicle_configuration
             )
-        elif not isinstance(planning_problem.initial_state, TrajPoint):
+        elif not isinstance(self.planning_problem.initial_state, TrajPoint):
             raise ValueError(
                 "<MIQPPlanner/__init__>: Initial state must be of type {} or "
                 "of type {}. Got type {}.".format(
-                    type(State), type(TrajPoint), type(planning_problem.initial_state)
+                    type(State), type(TrajPoint), type(self.planning_problem.initial_state)
                 )
             )
-        if vehicle_configuration.reference_point != ReferencePoint.REAR:
+        if self.vehicle_configuration.reference_point != ReferencePoint.REAR:
             raise ValueError("<MIQPPlanner>: Reference point must be rear axis!")
 
-        if planning_problem.goal.state_list:
-            if self.initial_state.v > planning_problem.goal.state_list[0].velocity.end:
+        if self.planning_problem.goal.state_list:
+            if self.initial_state.v > self.planning_problem.goal.state_list[0].velocity.end:
                 self.vehicle_configuration.desired_speed = (
-                    planning_problem.goal.state_list[0].velocity.end
+                    self.planning_problem.goal.state_list[0].velocity.end
                 )
             else:
                 self.vehicle_configuration.desired_speed = self.initial_state.v
@@ -69,20 +65,16 @@ class MIQPPlanner:
         # TODO: for bug at lateral planner initial state
         self.initial_state_lat_orientation = self.initial_state.orientation
 
+        self.config = config
+
     def longitudinal_trajectory_planning(
-        self, reference_lon, long_constraints: LongitudinalConstraint, slack=False
+        self, reference_lon, long_constraints: LongitudinalConstraint
     ):
         long_planner = MIQPLongPlanner(
-            horizon=self.t_h,
-            N=self.N,
-            dT=self.dt,
-            scenario=self.scenario,
-            vehicle_configuration=self.vehicle_configuration,
+            config=self.config,
             initial_state=self.initial_state,
-            long_constraints=long_constraints,
-            slack=slack,
         )
-        traj_long = long_planner.plan(reference_lon)
+        traj_long = long_planner.plan(reference_lon, long_constraints)
         return traj_long
 
     def lateral_trajectory_planning(
@@ -111,15 +103,11 @@ class MIQPPlanner:
             ti=None,
         )
         lat_planner = MIQPLatPlanner(
-            horizon=self.t_h,
-            N=self.N,
-            dT=self.dt,
-            length=self.vehicle_configuration.wheelbase,
-            lateral_constraints=lat_con,
+            config=self.config,
             x_init_lat=x_init_lat,
             x_ref_lat=x_ref_lat,
-            vehicle_configuration=self.vehicle_configuration,
-            miqp_lat_params=None,
         )
-        trajectory = lat_planner.plan()
+        trajectory = lat_planner.plan(
+            lateral_constraints=lat_con
+        )
         return trajectory

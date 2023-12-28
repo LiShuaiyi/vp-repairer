@@ -113,29 +113,11 @@ class BaseConfiguration:
 
 
 @dataclass
-class PlanningConfiguration(BaseConfiguration):
+class RepairingConfiguration(BaseConfiguration):
     """Planning parameters for reactive planner."""
 
     # planner time step (in s)
     dt: float = 0.1
-    # time_steps_computation * dt = horizon. e.g. 20 * 0.1 = 2s
-    time_steps_computation: int = 60
-    planning_horizon: float = dt * time_steps_computation
-    # replanning frequency (in time steps)
-    replanning_frequency: int = 3
-    # continuous collision checking
-    continuous_collision_check: bool = False
-    # time scaling factor for collision checking if planner time step and scenario time step deviate
-    factor: int = 1
-    # velocity threshold (in m/s) for switching to low velocity mode
-    low_vel_mode_threshold: float = 4.0
-    # kinematic constraints to check.
-    # The list can contain these constraints: velocity, acceleration, kappa, kappa_dot,
-    # yaw_rate (Exact naming important!!)
-    constraints_to_check: List[str] = \
-        field(default_factory=lambda: ["velocity", "acceleration", "kappa", "kappa_dot", "yaw_rate"])
-    # lookahead in dt*standstill_lookahead seconds if current velocity <= 0.1 and after specified time too
-    standstill_lookahead: int = 10
 
     def __post_init__(self):
         # global route and reference path is stored in planning config
