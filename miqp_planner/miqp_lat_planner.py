@@ -129,17 +129,17 @@ class MIQPLatReference(object):
         j = lon_traj.get_jerk()
         # check if numerical errors have happened in lon trajectory
         for i in range(0, len(a)):
-            if np.greater(a[i], vehicle_configuration.a_max_x):
-                a[i] = vehicle_configuration.a_max_x
-            if np.greater(vehicle_configuration.a_min_x, a[i]):
-                a[i] = vehicle_configuration.a_min_x
+            if np.greater(a[i], vehicle_configuration.qp_veh_config.a_max_x):
+                a[i] = vehicle_configuration.qp_veh_config.a_max_x
+            if np.greater(vehicle_configuration.qp_veh_config.a_min_x, a[i]):
+                a[i] = vehicle_configuration.qp_veh_config.a_min_x
 
         assert np.greater_equal(
             np.max(ref_pathlength), np.max(s)
         ), "<QPLatReference>: Provided reference is not long enough for interpolation! ref = {}, traj = {}".format(
             np.max(ref_pathlength), np.max(s)
         )
-        CLCS = vehicle_configuration.CLCS
+        CLCS = vehicle_configuration.qp_veh_config.curvilinear_coordinate_system
 
         # interpolate curvature at s positions of trajectory
         # curvature_interpolated = np.interp(s, ref_pathlength, ref_curvature)
@@ -187,7 +187,7 @@ class MIQPLatPlanner:
         # number of u <kappa dot dot>
         self._m = 1
         # wheelbase length
-        self._length = config.vehicle.wheelbase
+        self._length = config.vehicle.qp_veh_config.wheelbase
         self._x_init_lat = x_init_lat
         self._x_ref_lat = x_ref_lat
 
@@ -343,7 +343,7 @@ class MIQPLatPlanner:
             )
 
             kappa_lim_k = min(
-                np.sqrt(self.config.vehicle.a_max**2 - a**2)
+                np.sqrt(self.config.vehicle.qp_veh_config.a_max**2 - a**2)
                 / (np.max([v, 0.5]) ** 2),
                 self.config.vehicle.kappa_max,
             )

@@ -19,6 +19,8 @@ from vehiclemodels.vehicle_parameters import VehicleParameters
 
 from commonroad_rp.utility.general import load_scenario_and_planning_problem
 
+from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
+
 
 class ReferencePoint(enum.Enum):
     """
@@ -170,44 +172,7 @@ class DebugConfiguration(BaseConfiguration):
 class VehicleConfiguration(BaseConfiguration):
     """Class to store vehicle configurations"""
 
-    id_type_vehicle: int = 2
-    # get vehicle parameters from CommonRoad vehicle models given cr_vehicle_id
-    vehicle_parameters: VehicleParameters = VehicleParameterMapping.from_vehicle_type(VehicleType(id_type_vehicle))
-
-    # get dimensions from given vehicle ID
-    length: float = vehicle_parameters.l
-    width: float = vehicle_parameters.w
-
-    # distances front/rear axle to vehicle center
-    wb_front_axle: float = vehicle_parameters.a
-    wb_rear_axle: float = vehicle_parameters.b
-
-    # get constraints from given vehicle ID
-    a_max: float = vehicle_parameters.longitudinal.a_max
-    v_switch: float = vehicle_parameters.longitudinal.v_switch
-    delta_min: float = vehicle_parameters.steering.min
-    delta_max: float = vehicle_parameters.steering.max
-    v_delta_min: float = vehicle_parameters.steering.v_min
-    v_delta_max: float = vehicle_parameters.steering.v_max
-
-    # wheelbase
-    wheelbase: float = vehicle_parameters.a + vehicle_parameters.b
-
-    min_speed_x: float = -np.inf
-    max_speed_x: float = +np.inf
-    min_speed_y: float = -np.inf
-    max_speed_y: float = +np.inf
-    a_max_x: float = 12.0
-    a_min_x: float = -10.0
-    a_max_y: float = 6.0
-    a_min_y: float = -6.0
-    j_min_x: float = -15.0
-    j_max_x: float = 15.0
-    j_min_y: float = -10.0
-    j_max_y: float = 10.0
-    desired_speed: float = 0.0
-    radius: float = 1.0
-    react_time: float = 0.0
+    qp_veh_config: Optional[PlanningConfigurationVehicle] = None
 
     kappa_dot_dot_min: float = -100
     kappa_dot_dot_max: float = 100
@@ -215,10 +180,6 @@ class VehicleConfiguration(BaseConfiguration):
     kappa_dot_max: float = 0.4
     kappa_min: float = -0.5
     kappa_max: float = 0.5
-
-    CLCS: Optional[CurvilinearCoordinateSystem] = None
-    reference_path: Optional[np.ndarray] = None
-    reference_point: ReferencePoint = ReferencePoint.REAR
 
 
 @dataclass
@@ -248,7 +209,6 @@ class RepairerConfiguration(BaseConfiguration):
     """Configuration parameters for trajectory repairer."""
 
     vehicle: VehicleConfiguration = field(default_factory=VehicleConfiguration)
-    planning: PlanningConfiguration = field(default_factory=PlanningConfiguration)
     debug: DebugConfiguration = field(default_factory=DebugConfiguration)
     general: GeneralConfiguration = field(default_factory=GeneralConfiguration)
     miqp_planner: MIQPPlannerConfiguration = field(default_factory=MIQPPlannerConfiguration)

@@ -16,7 +16,6 @@ from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstra
 from crrepairer.utils.configuration import RepairerConfiguration
 
 
-# TODO create new functions instead of using qp planner
 class MIQPPlanner:
     def __init__(
         self,
@@ -40,7 +39,7 @@ class MIQPPlanner:
         if isinstance(self.planning_problem.initial_state, State):
             # this state is in curvilinear coordinate system
             self.initial_state = compute_initial_state(
-                self.planning_problem.initial_state, self.vehicle_configuration
+                self.planning_problem.initial_state, config.vehicle.qp_veh_config
             )
         elif not isinstance(self.planning_problem.initial_state, TrajPoint):
             raise ValueError(
@@ -49,7 +48,7 @@ class MIQPPlanner:
                     type(State), type(TrajPoint), type(self.planning_problem.initial_state)
                 )
             )
-        if self.vehicle_configuration.reference_point != ReferencePoint.REAR:
+        if self.vehicle_configuration.qp_veh_config.reference_point != ReferencePoint.REAR:
             raise ValueError("<MIQPPlanner>: Reference point must be rear axis!")
 
         if self.planning_problem.goal.state_list:
@@ -98,7 +97,7 @@ class MIQPPlanner:
         # TODO: check the length of reference
         x_ref_lat = MIQPLatReference.construct_from_lon_traj_and_reference(
             lon_traj=longitudinal_trajectory,
-            reference=self.vehicle_configuration.reference_path,
+            reference=self.vehicle_configuration.qp_veh_config.reference_path,
             vehicle_configuration=self.vehicle_configuration,
             ti=None,
         )

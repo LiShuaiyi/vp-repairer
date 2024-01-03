@@ -150,14 +150,14 @@ class MIQPLongPlanner:
         long_constraints.var_long_x_lb = -1000 * np.ones((self._n, self.N + 1))
         long_constraints.var_long_x_ub = 1000 * np.ones((self._n, self.N + 1))
         # lower and upper bound for velocity
-        long_constraints.var_long_x_lb[1, :] = self.vehicle_configuration.min_speed_x
-        long_constraints.var_long_x_ub[1, :] = self.vehicle_configuration.max_speed_x
+        long_constraints.var_long_x_lb[1, :] = self.vehicle_configuration.qp_veh_config.min_speed_x
+        long_constraints.var_long_x_ub[1, :] = self.vehicle_configuration.qp_veh_config.max_speed_x
         # lower and upper bound for acceleration
-        long_constraints.var_long_x_lb[2, :] = self.vehicle_configuration.a_min_x
-        long_constraints.var_long_x_ub[2, :] = self.vehicle_configuration.a_max_x
+        long_constraints.var_long_x_lb[2, :] = self.vehicle_configuration.qp_veh_config.a_min_x
+        long_constraints.var_long_x_ub[2, :] = self.vehicle_configuration.qp_veh_config.a_max_x
         # lower and upper bound for jerk
-        long_constraints.var_long_x_lb[3, :] = self.vehicle_configuration.j_min_x
-        long_constraints.var_long_x_ub[3, :] = self.vehicle_configuration.j_max_x
+        long_constraints.var_long_x_lb[3, :] = self.vehicle_configuration.qp_veh_config.j_min_x
+        long_constraints.var_long_x_ub[3, :] = self.vehicle_configuration.qp_veh_config.j_max_x
 
     def _init_state_var(self, long_constraints: LongitudinalConstraint):
         """Initializes the state variables"""
