@@ -1,0 +1,4 @@
+experiment:
+  planner: 2  # miqp
+debug:
+  show_plots: true

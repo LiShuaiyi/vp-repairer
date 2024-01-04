@@ -124,7 +124,7 @@ class MIQPPlannerConfiguration(BaseConfiguration):
     horizon: float = 3.0
     N: int = 30
 
-    slack_long: bool = False
+    slack_long: bool = True
     # s, v, a, j, u, slack
     weight_long: List[float] =\
         field(default_factory=lambda: [0.1, 0.2, 0.5, 1, 0.1, 1000000])

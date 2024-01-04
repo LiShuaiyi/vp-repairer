@@ -51,14 +51,14 @@ class MIQPPlannerRepair(MIQPPlanner):
 
         # set the cut-off state as the initial state
         self._cut_off_time_step = tc_object.tc_time_step
-        self._N = tc_object.N
         if self._cut_off_time_step == self._start_time_step:
             self._cut_off_state = self._ego_vehicle.initial_state
         else:
             self._cut_off_state = self._initial_trajectory.state_at_time_step(
                 self._cut_off_time_step
             )
-        self._time_horizon = round(
+        self._N = config.miqp_planner.N = tc_object.N
+        self._time_horizon = config.miqp_planner.horizon = round(
             (self._N - self._cut_off_time_step) * self._scenario.dt,
             tc_object.round_tolerance,
         )
@@ -85,6 +85,9 @@ class MIQPPlannerRepair(MIQPPlanner):
         # update the vehicle shape
         self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
         self._vehicle_configuration.length = self._ego_vehicle.obstacle_shape.length
+
+        # update the config from the qp planner
+        config.vehicle.qp_veh_config = self._vehicle_configuration
 
         # initialize the MIQP planner
         super().__init__(config)
@@ -115,7 +118,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         print("* \t\t MIQP Longitudinal optimization")
         reference_lon = self.construct_s_reference()
         traj_lon = self.longitudinal_trajectory_planning(
-            reference_lon, self._long_constraints, slack=True
+            reference_lon, self._long_constraints
         )
         if traj_lon is None:
             return None
@@ -159,13 +162,13 @@ class MIQPPlannerRepair(MIQPPlanner):
         """
         cartesian_traj_points = list()
         for state in trajectory.states:
-            cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
+            cart_pos = self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.convert_to_cartesian_coords(
                 state.position[0], state.position[1]
             )
             orientation_interpolated = np.interp(
                 state.position[0],
-                self.vehicle_configuration.curvilinear_coordinate_system.ref_pos,
-                self.vehicle_configuration.curvilinear_coordinate_system.ref_theta,
+                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_pos,
+                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_theta,
             )
 
             v = state.v / np.cos(state.orientation - orientation_interpolated)

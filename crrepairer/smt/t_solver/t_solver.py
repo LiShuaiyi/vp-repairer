@@ -165,7 +165,7 @@ class TSolver:
             )
             print("* \t<TSolver>: QP planner is invoked")
         elif self.config.experiment.planner == 2:
-            self._miqp_planner = MIQPPlannerRepair(
+            self._planner = MIQPPlannerRepair(
                 self._rule_monitor,
                 self._tc_obj,
                 self._sel_prop,

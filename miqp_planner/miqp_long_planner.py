@@ -95,10 +95,6 @@ class MIQPLongPlanner:
         # initialize solver
         self.solver = GurobiSolver()
 
-        # add longitudinal dynamic constraints
-        self.solver.add_long_dynamic_cons(
-            self.dynamic_matrix_list, self.init_state
-        )
 
     def plan(self, long_ref: MIQPLongReference, long_constraints: LongitudinalConstraint):
         # initialize constraints
@@ -107,6 +103,11 @@ class MIQPLongPlanner:
         # initial state and control variables in solver
         self._init_state_var(long_constraints)
         self._init_control_var(long_constraints)
+
+        # add longitudinal dynamic constraints
+        self.solver.add_long_dynamic_cons(
+            self.dynamic_matrix_list, self.init_state
+        )
 
         if self._slack_pos:
             self._init_slack_var(long_constraints)
