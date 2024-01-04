@@ -72,4 +72,5 @@ if __name__ == "__main__":
                     plot_limits=plot_limits,
                     target_veh=target_veh,
                     world=traffic_rule_monitor.world,
+                    end_time=N,
                 )  # , save_path=figure_path)
