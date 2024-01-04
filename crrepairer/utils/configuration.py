@@ -115,16 +115,14 @@ class BaseConfiguration:
 
 
 @dataclass
-class RepairingConfiguration(BaseConfiguration):
-    """Planning parameters for reactive planner."""
+class ExperimentConfiguration(BaseConfiguration):
+    """Experimental parameters for repairer."""
 
-    # planner time step (in s)
-    dt: float = 0.1
+    # choice of planner
+    planner: int = 1  # 1: QP, 2: MIQP
 
     def __post_init__(self):
-        # global route and reference path is stored in planning config
-        self.route: Optional[Route] = None
-        self.reference_path: Optional[np.ndarray] = None
+        pass
 
 
 @dataclass
@@ -212,6 +210,7 @@ class RepairerConfiguration(BaseConfiguration):
     debug: DebugConfiguration = field(default_factory=DebugConfiguration)
     general: GeneralConfiguration = field(default_factory=GeneralConfiguration)
     miqp_planner: MIQPPlannerConfiguration = field(default_factory=MIQPPlannerConfiguration)
+    experiment: ExperimentConfiguration = field(default_factory=ExperimentConfiguration)
 
     def __post_init__(self):
         self.scenario: Optional[Scenario] = None
@@ -255,5 +254,3 @@ class RepairerConfiguration(BaseConfiguration):
         assert self.scenario is not None, "<Configuration.update()>: no scenario has been specified"
         assert self.planning_problem is not None, "<Configuration.update()>: no planning problem has been specified"
 
-        # update initial state for planning if explicitly given
-        self.planning.state_initial = state_initial if state_initial else self.planning_problem.initial_state

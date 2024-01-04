@@ -4,8 +4,9 @@ from typing import List
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
-
+from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
+from crrepairer.utils.configuration import RepairerConfiguration
 
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import DynamicObstacle
@@ -26,6 +27,7 @@ class TSolver:
         ego_vehicle: DynamicObstacle,
         planning_problem: PlanningProblem,
         rule_monitor: STLRuleMonitor,
+        config: RepairerConfiguration
     ):
         self._sel_prop = None
         self._prop_full = None
@@ -33,11 +35,12 @@ class TSolver:
         self._tc_obj = TC(ego_vehicle, rule_monitor)
         self._compliant_maneuvers = list()
         self._repairability = False
-        self._qp_planner = None
+        self._planner = None
         self._miqp_planner = None
         self._planning_problem = planning_problem
 
         self.verbose = True
+        self.config = config
 
     @property
     def tc_object(self):
@@ -106,22 +109,19 @@ class TSolver:
                     in [PositionPredicates.InIntersectionConflictArea]
                     and predicate.agent_placeholders == (1, 0)
                 ):
-                    # TODO: maybe turning?
-                    compliant_maneuver += []
+                    # TODO: FIXME add maneuvers
+                    pass
+                    # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
                 elif (
                     predicate_category == "Pos"
                     and predicate.evaluator.predicate_name
                     in [PositionPredicates.OnLaneletWithTypeIntersection]
                 ):
                     compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
-                elif (
-                    predicate_category == "Pos"
-                    and predicate.evaluator.predicate_name
-                    in [PositionPredicates.OnIncomingLeftOf]
-                ):
-                    compliant_maneuver += []
                 elif predicate_category == "Pos":
-                    compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
+                    # TODO: FIXME add maneuvers
+                    pass
+                    # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
                 elif predicate_category == "Vel":
                     compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
                 elif predicate_category == "Acc":
@@ -154,16 +154,29 @@ class TSolver:
         """
         Initializes the qp planner and uses it for trajectory repairing.
         """
-        self._qp_planner = QPPlannerRepair(
-            self._rule_monitor,
-            self._tc_obj,
-            self._sel_prop,
-            self._prop_full,
-            self._planning_problem,
-            verbose=self.verbose,
-        )
+        if self.config.experiment.planner == 1:
+            self._planner = QPPlannerRepair(
+                self._rule_monitor,
+                self._tc_obj,
+                self._sel_prop,
+                self._prop_full,
+                self._planning_problem,
+                verbose=self.verbose,
+            )
+            print("* \t<TSolver>: QP planner is invoked")
+        elif self.config.experiment.planner == 2:
+            self._miqp_planner = MIQPPlannerRepair(
+                self._rule_monitor,
+                self._tc_obj,
+                self._sel_prop,
+                self._prop_full,
+                self._planning_problem,
+            )
+            print(f"* \t<TSolver>: MIQP planner is invoked")
+        else:
+            raise Exception("Invalid option for the planner provided")
         start_time = time.time()
-        repaired_trajectory = self._qp_planner.plan()
+        repaired_trajectory = self._planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
         print(f"* \t<TSolver>: solving time {time.time() - start_time:.3f}s")
         return repaired_trajectory
