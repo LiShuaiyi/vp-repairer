@@ -28,7 +28,6 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     def __init__(
         self,
         rule_monitor: STLRuleMonitor,
-        planning_problem: PlanningProblem,
         ego_vehicle: DynamicObstacle,
         config: RepairerConfiguration,
     ):
@@ -44,7 +43,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self._tv = -math.inf
         # initialize Solvers for SMT paradigm
         self.sat_solver = SATSolver(self.rule_monitor, config)
-        self.t_solver = TSolver(ego_vehicle, planning_problem, self.rule_monitor, config)
+        self.t_solver = TSolver(ego_vehicle, self.rule_monitor, config)
 
     @property
     def tv(self):

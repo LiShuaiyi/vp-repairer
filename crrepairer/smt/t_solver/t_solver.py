@@ -25,7 +25,6 @@ class TSolver:
     def __init__(
         self,
         ego_vehicle: DynamicObstacle,
-        planning_problem: PlanningProblem,
         rule_monitor: STLRuleMonitor,
         config: RepairerConfiguration
     ):
@@ -37,7 +36,7 @@ class TSolver:
         self._repairability = False
         self._planner = None
         self._miqp_planner = None
-        self._planning_problem = planning_problem
+        self._planning_problem = config.planning_problem
 
         self.verbose = True
         self.config = config

@@ -95,7 +95,7 @@ class BaseConfiguration:
 
     @classmethod
     def load(cls, file_path: Union[pathlib.Path, str], scenario_name: str, validate_types: bool = True) \
-            -> 'MIQPPlannerConfiguration':
+            -> 'RepairerConfiguration':
         """
         Loads config file and creates parameter class.
 
@@ -108,9 +108,9 @@ class BaseConfiguration:
         assert file_path.suffix == ".yaml", f"File type {file_path.suffix} is unsupported! Please use .yaml!"
         loaded_yaml = OmegaConf.load(file_path)
         if validate_types:
-            OmegaConf.merge(OmegaConf.structured(MIQPPlannerConfiguration), loaded_yaml)
+            OmegaConf.merge(OmegaConf.structured(RepairerConfiguration), loaded_yaml)
         params = _dict_to_params(OmegaConf.to_object(loaded_yaml), cls)
-        params.general.set_path_scenario(scenario_name)
+        params.general.set_path_scenario(scenario_name + ".xml")
         return params
 
 
@@ -139,6 +139,9 @@ class MIQPPlannerConfiguration(BaseConfiguration):
     weight_lat: List[float] =\
         field(default_factory=lambda: [0.05, 15.1, 40.0, 20.0, 1.0])
 
+    def __post_init__(self):
+        pass
+
 
 @dataclass
 class DebugConfiguration(BaseConfiguration):
@@ -156,8 +159,6 @@ class DebugConfiguration(BaseConfiguration):
     draw_planning_problem: bool = True
     # draw obstacles with vehicle icons
     draw_icons: bool = False
-    # draw sampled trajectory set
-    draw_traj_set: bool = False
     # logging settings - Options: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
     logging_level: str = "INFO"
     # use multiprocessing True/False
@@ -170,7 +171,7 @@ class DebugConfiguration(BaseConfiguration):
 class VehicleConfiguration(BaseConfiguration):
     """Class to store vehicle configurations"""
 
-    qp_veh_config: Optional[PlanningConfigurationVehicle] = None
+    qp_veh_config = PlanningConfigurationVehicle()
 
     kappa_dot_dot_min: float = -100
     kappa_dot_dot_max: float = 100
@@ -185,11 +186,12 @@ class GeneralConfiguration(BaseConfiguration):
     """General parameters for evaluations."""
 
     # paths are relative to the root directory
-    path_scenarios: str = "example_scenarios/"
-    path_output: str = "output/"
-    path_logs: str = "output/logs/"
-    path_pickles: str = "output/pickles/"
-    path_offline_data: str = "output/offline_data/"
+    path_root_abs = os.path.normpath(os.path.join(os.path.dirname(__file__), "../.."))
+    path_scenarios: str = path_root_abs + "/scenarios/"
+    path_output: str = path_root_abs + "/output/"
+    path_logs: str = path_root_abs + "/output/logs/"
+    path_pickles: str = path_root_abs + "/output/pickles/"
+    path_figures: str = path_root_abs + "/output/figures/"
     path_scenario: Optional[str] = None
     name_scenario: Optional[str] = None
 
@@ -221,8 +223,7 @@ class RepairerConfiguration(BaseConfiguration):
     def name_scenario(self) -> str:
         return self.general.name_scenario
 
-    def update(self, scenario: Scenario = None, planning_problem: PlanningProblem = None,
-               state_initial: InitialState = None):
+    def update(self, scenario: Scenario = None, planning_problem: PlanningProblem = None):
         """
         Updates configuration based on the given attributes.
         Function used to construct initial configuration before planner initialization and update configuration during
@@ -230,7 +231,6 @@ class RepairerConfiguration(BaseConfiguration):
 
         :param scenario: (initial or updated) Scenario object
         :param planning_problem: (initial or updated) planning problem
-        :param state_initial: initial state (can be different from planning problem initial state during re-planning)
         """
         # update scenario and planning problem with explicitly given ones
         if scenario:
