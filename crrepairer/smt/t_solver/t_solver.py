@@ -161,6 +161,7 @@ class TSolver:
                 self._sel_prop,
                 self._prop_full,
                 self._planning_problem,
+                self.config,
                 verbose=self.verbose,
             )
             print("* \t<TSolver>: QP planner is invoked")
@@ -171,6 +172,7 @@ class TSolver:
                 self._sel_prop,
                 self._prop_full,
                 self._planning_problem,
+                self.config
             )
             print(f"* \t<TSolver>: MIQP planner is invoked")
         else:

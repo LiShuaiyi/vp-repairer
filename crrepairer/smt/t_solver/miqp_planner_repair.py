@@ -1,26 +1,22 @@
 import numpy as np
 
+from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
 from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference
 from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
 
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
-from miqp_planner.miqp_initialization import set_up_miqp
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 from crrepairer.smt.monitor_wrapper import PropositionNode
-
-from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.cut_off.tc import TC
+from crrepairer.utils.configuration import RepairerConfiguration
 
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.state import CustomState, InitialState
-from commonroad.scenario.scenario import (
-    DynamicObstacle,
-    TrajectoryPrediction,
-    ObstacleType,
-)
+
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
 from commonroad.planning.planning_problem import PlanningProblem
@@ -29,7 +25,6 @@ from commonroad.geometry.shape import Rectangle
 from typing import List
 import yaml
 import os
-import time
 
 
 class MIQPPlannerRepair(MIQPPlanner):
@@ -40,6 +35,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         sel_proposition: List[PropositionNode],
         proposition_full: List[PropositionNode],
         planning_problem: PlanningProblem,
+        config: RepairerConfiguration,
     ):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world.scenario
@@ -91,12 +87,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         self._vehicle_configuration.length = self._ego_vehicle.obstacle_shape.length
 
         # initialize the MIQP planner
-        super().__init__(
-            self._scenario,
-            self._planning_problem,
-            self._time_horizon,
-            self._vehicle_configuration,
-        )
+        super().__init__(config)
 
         # construct constraints
         self._long_constraints = LongitudinalConstraint(
