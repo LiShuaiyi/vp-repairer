@@ -1,2 +1,4 @@
 experiment:
-    planner: 1  # qp
+  planner: 1  # qp
+debug:
+  show_plots: true
