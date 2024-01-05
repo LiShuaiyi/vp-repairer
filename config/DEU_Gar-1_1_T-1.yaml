@@ -1,4 +1,8 @@
-experiment:
-  planner: 1  # qp
 debug:
   show_plots: true
+repair:
+  ego_id: 201
+  rules: ["R_G1"]
+  planner: 1         # qp
+  t_0: 0             # initial time step
+  N_r: 21            # number of time steps

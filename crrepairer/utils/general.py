@@ -5,8 +5,9 @@ from commonroad.planning.planning_problem import PlanningProblem, PlanningProble
 from commonroad.scenario.scenario import Scenario
 
 
-def load_scenario_and_planning_problem(path_scenario, idx_planning_problem: int = 0)\
-        -> Tuple[Scenario, PlanningProblem, PlanningProblemSet]:
+def load_scenario_and_planning_problem(
+    path_scenario, idx_planning_problem: int = 0
+) -> Tuple[Scenario, PlanningProblem, PlanningProblemSet]:
     """
     Loads a scenario and planning problem from the configuration.
     :param path_scenario: full path to scenario XML file
@@ -14,6 +15,8 @@ def load_scenario_and_planning_problem(path_scenario, idx_planning_problem: int 
     :return: scenario and planning problem and planning problem set
     """
     scenario, planning_problem_set = CommonRoadFileReader(path_scenario).open(True)
-    planning_problem = list(planning_problem_set.planning_problem_dict.values())[idx_planning_problem]
+    planning_problem = list(planning_problem_set.planning_problem_dict.values())[
+        idx_planning_problem
+    ]
 
     return scenario, planning_problem, planning_problem_set
