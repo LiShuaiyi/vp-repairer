@@ -153,7 +153,7 @@ class TSolver:
         """
         Initializes the qp planner and uses it for trajectory repairing.
         """
-        if self.config.experiment.planner == 1:
+        if self.config.repair.planner == 1:
             self._planner = QPPlannerRepair(
                 self._rule_monitor,
                 self._tc_obj,
@@ -164,7 +164,7 @@ class TSolver:
                 verbose=self.verbose,
             )
             print("* \t<TSolver>: QP planner is invoked")
-        elif self.config.experiment.planner == 2:
+        elif self.config.repair.planner == 2:
             self._planner = MIQPPlannerRepair(
                 self._rule_monitor,
                 self._tc_obj,

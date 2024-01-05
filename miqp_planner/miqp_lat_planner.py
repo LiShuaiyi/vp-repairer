@@ -179,7 +179,7 @@ class MIQPLatPlanner:
         x_ref_lat: MIQPLatReference,
     ):
         self.time_horizon = config.miqp_planner.horizon
-        self.N = config.miqp_planner.N
+        self.N = config.miqp_planner.N_p
         self.dt = config.scenario.dt
 
         # number of x <d, theta, kappa, kappa dot>

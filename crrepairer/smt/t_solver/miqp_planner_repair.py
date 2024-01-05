@@ -57,7 +57,7 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._cut_off_state = self._initial_trajectory.state_at_time_step(
                 self._cut_off_time_step
             )
-        self._N = config.miqp_planner.N = tc_object.N
+        self._N = config.miqp_planner.N_p = tc_object.N
         self._time_horizon = config.miqp_planner.horizon = round(
             (self._N - self._cut_off_time_step) * self._scenario.dt,
             tc_object.round_tolerance,

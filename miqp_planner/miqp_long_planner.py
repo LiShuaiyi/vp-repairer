@@ -48,7 +48,7 @@ class MIQPLongPlanner:
     ):
         # basic configuration
         self.time_horizon = config.miqp_planner.horizon
-        self.N = config.miqp_planner.N
+        self.N = config.miqp_planner.N_p
         self.dt = config.scenario.dt
         self.scenario = config.scenario
         self.vehicle_configuration = config.vehicle

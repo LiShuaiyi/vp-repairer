@@ -6,8 +6,8 @@ from crrepairer.repairer.visualization import (
     visualize_v_profile,
 )
 from crrepairer.utils.configuration import RepairerConfiguration
+from crrepairer.utils.repair import retrieve_ego_vehicle
 
-from commonroad.prediction.prediction import Trajectory
 import math
 
 
@@ -22,11 +22,7 @@ if __name__ == "__main__":
     ego_id = 200
     rule = ["R_G1"]
     N = 21
-    ego_initial = config.scenario.obstacle_by_id(ego_id)
-    ego_initial.prediction.trajectory = Trajectory(
-        1, ego_initial.prediction.trajectory.state_list[:N]
-    )
-    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:N]
+    ego_initial = retrieve_ego_vehicle(config)
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(config.scenario, ego_id, rule[0])

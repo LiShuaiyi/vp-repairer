@@ -35,7 +35,7 @@ class MIQPPlanner:
             self.dt = self.scenario.dt
         self.t_h = config.miqp_planner.horizon
 
-        config.miqp_planner.N = round(config.miqp_planner.horizon / self.dt)
+        config.miqp_planner.N_p = round(config.miqp_planner.horizon / self.dt)
         if isinstance(self.planning_problem.initial_state, State):
             # this state is in curvilinear coordinate system
             self.initial_state = compute_initial_state(

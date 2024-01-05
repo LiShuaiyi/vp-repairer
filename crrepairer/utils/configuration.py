@@ -24,6 +24,7 @@ class ReferencePoint(enum.Enum):
     CENTER = "center"
     REAR = "rear"
 
+
 def _dict_to_params(dict_params: Dict[str, Any], cls: Any) -> Any:
     """
     Converts dictionary to parameter class.
@@ -108,21 +109,38 @@ class BaseConfiguration:
 
 
 @dataclass
-class ExperimentConfiguration(BaseConfiguration):
-    """Experimental parameters for repairer."""
+class RepairConfiguration(BaseConfiguration):
+    """Detailed parameters for repairer."""
 
     # choice of planner
     planner: int = 1  # 1: QP, 2: MIQP
 
+    # the id of the vehicle, whose trajectory needs to be repaired
+    ego_id: int = 201
+
+    rules: List[str] =\
+        field(default_factory=lambda: ["R_G1"])
+
+    # initial time step
+    t_0: int = 0
+    # number of time steps
+    N_r: int = 21
+
     def __post_init__(self):
         pass
+
+    @property
+    def t_f(self) -> int:
+        return self.t_0 + self.N_r
 
 
 @dataclass
 class MIQPPlannerConfiguration(BaseConfiguration):
     """Parameters for MIQP planner."""
-    horizon: float = 3.0
-    N: int = 30
+    # time horizon for the MIQP planning
+    horizon: Optional[float] = None
+    # nr of time steps
+    N_p: Optional[int] = None
 
     slack_long: bool = True
     # s, v, a, j, u, slack
@@ -205,7 +223,7 @@ class RepairerConfiguration(BaseConfiguration):
     debug: DebugConfiguration = field(default_factory=DebugConfiguration)
     general: GeneralConfiguration = field(default_factory=GeneralConfiguration)
     miqp_planner: MIQPPlannerConfiguration = field(default_factory=MIQPPlannerConfiguration)
-    experiment: ExperimentConfiguration = field(default_factory=ExperimentConfiguration)
+    repair: RepairConfiguration = field(default_factory=RepairConfiguration)
 
     def __post_init__(self):
         self.scenario: Optional[Scenario] = None
