@@ -1,7 +1,7 @@
 debug:
   show_plots: true
 repair:
-  ego_id: 201
+  ego_id: 200
   rules: ["R_G1"]
   planner: 1         # qp
   t_0: 0             # initial time step
