@@ -208,6 +208,9 @@ class DebugConfiguration(BaseConfiguration):
     # number of workers for multiprocessing
     num_workers: int = 6
 
+    # plotting limits
+    plot_limits: Optional[List] = None
+
 
 @dataclass
 class VehicleConfiguration(BaseConfiguration):
