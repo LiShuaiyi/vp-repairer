@@ -19,8 +19,7 @@ from crmonitor.common.world import World, get_world_config
 from crmonitor.common.config import get_traffic_rule_config
 from crmonitor.rule.rule_node import PredicateNode
 
-# CommonRoad Toolbox
-from commonroad.scenario.scenario import Scenario
+from crrepairer.utils.configuration import RepairerConfiguration, ScenarioType, IntersectionType
 
 
 @dataclass
@@ -31,54 +30,25 @@ class PropositionNode:
     children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
 
-class MonitorType(Enum):
-    """
-    Type of temporal logic used in the traffic rule monitor
-    """
-
-    MTL = "metric temporal logic"
-    STL = "signal temporal logic"
-
-
-class ScenarioType(str, Enum):
-    """
-    Type of scenario used for repairing.
-    """
-
-    INTERSTATE = "interstate"
-    INTERSECTION = "intersection"
-
-
-class IntersectionType(str, Enum):
-    HAND_DRAFT = "hand_draft"
-    DATASET = "dataset"
-
-
 class STLRuleMonitor:
     def __init__(
         self,
-        scenario: Scenario,
-        vehicle_id: int,
-        rules: Union[str, Iterable[str]],
-        scenario_type: ScenarioType = ScenarioType.INTERSTATE,
-        intersection_type: IntersectionType = IntersectionType.DATASET,
-        multiproc: bool = True,
-        use_mpr: bool = False,
-        mpr_scenario: str = "interstate",
+        config: RepairerConfiguration,
     ):
         # update the world configuration for repairing purposes
         world_config = get_world_config()
-        world_config["scenario"] = scenario_type
-        self.scenario_type = scenario_type
-        if scenario_type == ScenarioType.INTERSECTION:
-            world_config["intersection_road_network_param"]["map_type"] = intersection_type
         traffic_rules_config = get_traffic_rule_config()
-        traffic_rules_config["traffic_rules_param"]["use_mpr"] = use_mpr
-        traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = mpr_scenario
-        self._world: World = World.create_from_scenario(scenario, config=world_config)
-        self._vehicle_id = vehicle_id
-        self.multiproc = multiproc
-        self._rules = [rules] if isinstance(rules, str) else rules
+
+        world_config["scenario"] = self.scenario_type =\
+            traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = config.repair.scenario_type
+        if self.scenario_type == ScenarioType.INTERSECTION:
+            world_config["intersection_road_network_param"]["map_type"] = config.repair.intersection_type
+        traffic_rules_config["traffic_rules_param"]["use_mpr"] = config.repair.use_mpr
+
+        self._world: World = World.create_from_scenario(config.scenario, config=world_config)
+        self._vehicle_id = config.repair.ego_id
+        self.multiproc = config.repair.multiproc
+        self._rules = config.repair.rules
         self._rule_eval = []
         self._start_time_step = self._world.vehicle_by_id(self._vehicle_id).start_time
         self._world.vehicle_by_id(

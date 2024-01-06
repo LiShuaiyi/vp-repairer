@@ -25,6 +25,29 @@ class ReferencePoint(enum.Enum):
     REAR = "rear"
 
 
+class ScenarioType(str, enum.Enum):
+    """
+    Type of scenario used for repairing.
+    """
+
+    INTERSTATE = "interstate"
+    INTERSECTION = "intersection"
+
+
+class MonitorType(enum.Enum):
+    """
+    Type of temporal logic used in the traffic rule monitor
+    """
+
+    MTL = "metric temporal logic"
+    STL = "signal temporal logic"
+
+
+class IntersectionType(str, enum.Enum):
+    HAND_DRAFT = "hand_draft"
+    DATASET = "dataset"
+
+
 def _dict_to_params(dict_params: Dict[str, Any], cls: Any) -> Any:
     """
     Converts dictionary to parameter class.
@@ -125,6 +148,14 @@ class RepairConfiguration(BaseConfiguration):
     t_0: int = 0
     # number of time steps
     N_r: int = 21
+
+    # type of scenario, affecting the map and rule monitoring
+    scenario_type: ScenarioType = ScenarioType.INTERSTATE
+    # type of intersection: hand-crafted or from dataset
+    intersection_type: Optional[IntersectionType] = IntersectionType.HAND_DRAFT
+
+    multiproc: bool = True
+    use_mpr: bool = False
 
     def __post_init__(self):
         pass

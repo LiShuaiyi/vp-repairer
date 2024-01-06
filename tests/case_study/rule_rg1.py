@@ -19,13 +19,11 @@ if __name__ == "__main__":
     config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
     config.update()
 
-    ego_id = 200
-    rule = ["R_G1"]
-    N = 21
+    # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)
 
     # ========== Traffic Rule Monitor =========
-    traffic_rule_monitor = STLRuleMonitor(config.scenario, ego_id, rule[0])
+    traffic_rule_monitor = STLRuleMonitor(config)
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(
