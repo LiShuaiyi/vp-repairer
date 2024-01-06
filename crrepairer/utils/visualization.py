@@ -61,18 +61,21 @@ def visualize_repaired_result(
             repairer.tv
         )
     for time_step in range(config.repair.t_0, config.repair.t_f):
+        if config.debug.save_plots:
+            path_fig = config.general.path_figures
+        else:
+            path_fig = None
         visualize_scenario(
             config.scenario,
             ego_initial,
             ego_repaired,
             time_step,  # Assuming time_end is the current time_step for visualization
-            config.general.path_figures,
+            path_fig,
             config.debug.plot_limits,
             config.repair.t_f,
             repairer.tc,
             repairer.tv,
             repairer.target_vehicle,
-            repairer.rule_monitor.world
         )
 
 def plot_velocity_acceleration_profile(
@@ -161,7 +164,6 @@ def visualize_scenario(
     tc=None,
     tv=None,
     target_veh=None,
-    world: World = None,
 ):
     """
     Function to visualize the repairing result given time step
@@ -374,20 +376,22 @@ def visualize_scenario(
     if save_path is not None:
         if time_step < 10:
             plt.savefig(
-                f"{save_path}/{0}{time_step}.svg",
+                f"{save_path}/{str(scenario.scenario_id)}_{0}{time_step}.svg",
                 format="svg",
                 dpi=300,
                 bbox_inches="tight",
             )
         else:
             plt.savefig(
-                f"{save_path}/{time_step}.svg",
+                f"{save_path}/{str(scenario.scenario_id)}_{time_step}.svg",
                 format="svg",
                 dpi=300,
                 bbox_inches="tight",
             )
     else:
         plt.show(block=True)
+    # After you're done with a figure
+    plt.close(fig)
 
 
 def compute_unsafe_polygon(ego_veh_state, tar_veh_state, target_veh, tar_veh_lane):

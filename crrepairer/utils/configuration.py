@@ -235,10 +235,16 @@ class GeneralConfiguration(BaseConfiguration):
     path_scenarios: str = path_root_abs + "/scenarios/"
     path_output: str = path_root_abs + "/output/"
     path_logs: str = path_root_abs + "/output/logs/"
-    path_pickles: str = path_root_abs + "/output/pickles/"
     path_figures: str = path_root_abs + "/output/figures/"
+
     path_scenario: Optional[str] = None
     name_scenario: Optional[str] = None
+
+    def __post_init__(self):
+        # it will not throw an error if the directory already exists
+        os.makedirs(self.path_output, exist_ok=True)
+        os.makedirs(self.path_logs, exist_ok=True)
+        os.makedirs(self.path_figures, exist_ok=True)
 
     def set_path_scenario(self, scenario_name: str):
         """
@@ -247,6 +253,8 @@ class GeneralConfiguration(BaseConfiguration):
         :param scenario_name: Name of CommonRoad scenario.
         """
         self.path_scenario = os.path.join(self.path_scenarios, scenario_name)
+        self.path_figures = os.path.join(self.path_figures, scenario_name)
+        os.makedirs(self.path_figures, exist_ok=True)
 
 
 @dataclass
@@ -299,3 +307,5 @@ class RepairerConfiguration(BaseConfiguration):
         assert self.scenario is not None, "<Configuration.update()>: no scenario has been specified"
         assert self.planning_problem is not None, "<Configuration.update()>: no planning problem has been specified"
 
+        # Complete the scenario name
+        #self.general.name_scenario = str(self.scenario.scenario_id)

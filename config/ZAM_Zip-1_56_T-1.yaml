@@ -1,5 +1,6 @@
 debug:
   show_plots: true
+  save_plots: true
   plot_limits: [-50, 10, 3.5, 11.2]
 repair:
   ego_id: 2

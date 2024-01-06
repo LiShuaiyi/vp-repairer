@@ -23,7 +23,6 @@ if __name__ == "__main__":
     config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
     config.update()
 
-
     initial_time_step = 50
     final_time_step = initial_time_step + 21
 
