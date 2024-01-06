@@ -1,3 +1,4 @@
+import warnings
 from typing import Union, List, Any, Tuple
 from collections import defaultdict
 import math
@@ -43,7 +44,7 @@ class TC(CutOffBase, ABC):
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = (
-            self.rule_monitor.tv_time_step + self.rule_monitor.future_time_step
+                self.rule_monitor.tv_time_step + self.rule_monitor.future_time_step
         )
         self._other_id = self.rule_monitor.other_id
         self._visualize = False
@@ -124,9 +125,9 @@ class TC(CutOffBase, ABC):
         return self._compliant_maneuver
 
     def calc_tv_updated(
-        self,
-        updated_states: List[Union[CustomState, PMState, KSState]],
-        cut_off_time: int,
+            self,
+            updated_states: List[Union[CustomState, PMState, KSState]],
+            cut_off_time: int,
     ) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
@@ -149,7 +150,7 @@ class TC(CutOffBase, ABC):
             return -math.inf, other_ids[rule_idx][0][0]
         tv_per_rule = np.argmax(rule_rob < 0, axis=-1)
         if np.all(
-            tv_per_rule + self._world_ego.start_time == self._world_ego.start_time
+                tv_per_rule + self._world_ego.start_time == self._world_ego.start_time
         ):
             return math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
@@ -250,6 +251,8 @@ class TC(CutOffBase, ABC):
                 tv, _ = self.calc_tv_updated(
                     state_list, self._mid
                 )  # which should be tv instead of ttm
-            except:
+            except AttributeError as e:
+                # Warn the user about the attribute error
+                warnings.warn(f"* \t<Tsolver>: AttributeError encountered: {e}")
                 tv = -math.inf
         return tv
