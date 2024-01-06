@@ -1,0 +1,10 @@
+debug:
+  show_plots: true
+  # save_plots: true
+  plot_limits: [-5, 50, -4.5, 3]
+repair:
+  ego_id: 202
+  rules: ["R_G3"]
+  planner: 1         # qp
+  t_0: 0             # initial time step
+  N_r: 21            # number of time steps

@@ -9,11 +9,6 @@ from commonroad.scenario.state import InitialState
 
 import math
 
-scenario_id = "ZAM_Zip-1_56_T-1"
-file_path = "../../scenarios/" + scenario_id + ".xml"
-figure_path = "./figures"
-
-flag_visualization = True
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
