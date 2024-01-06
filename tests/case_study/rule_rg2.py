@@ -24,7 +24,7 @@ if __name__ == "__main__":
     config.update()
 
     initial_time_step = 50
-    final_time_step = initial_time_step + 21
+    final_time_step = initial_time_step + 20
 
     # # change the time horizon
     for veh in config.scenario.obstacles:
@@ -43,6 +43,9 @@ if __name__ == "__main__":
         veh.prediction.occupancy_set = veh.prediction.occupancy_set[
             initial_time_step:final_time_step
         ]
+        for occupancy in veh.prediction.occupancy_set:
+            occupancy.time_step -= initial_time_step
+
         veh.prediction.final_time_step = 20
         veh.prediction.initial_time_step = 0
 
