@@ -15,4 +15,6 @@ def retrieve_ego_vehicle(config: RepairerConfiguration):
     ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[
         config.repair.t_0: config.repair.t_f
     ]
+    ego_initial.prediction.final_time_step = config.repair.t_f - 1
+    ego_initial.prediction.initial_time_step = config.repair.t_0
     return ego_initial

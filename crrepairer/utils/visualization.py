@@ -1,12 +1,10 @@
 # standard imports
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Optional
 from shapely.geometry.polygon import Polygon
-import matplotlib
 
 # third party
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 
 # commonroad-io
@@ -17,6 +15,9 @@ from commonroad.visualization.mp_renderer import MPRenderer
 from commonroad_qp_planner.utils import calculate_safe_distance
 
 from crmonitor.common.world import World
+
+from crrepairer.utils.configuration import RepairerConfiguration
+from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 
 
 class TUMColor(List, Enum):
@@ -30,6 +31,49 @@ class TUMColor(List, Enum):
     TUMblack = [0, 0, 0]
     TUMlightgray = [217 / 255, 218 / 255, 219 / 255]
 
+
+def visualize_repaired_result(
+        config: RepairerConfiguration,
+        ego_initial: DynamicObstacle,
+        ego_repaired: DynamicObstacle,
+        repairer: SMTTrajectoryRepairer,
+        plot_velocity: bool = True,
+        plot_acceleration: bool = True,
+):
+    if plot_velocity:
+        visualize_v_profile(
+            ego_initial,
+            ego_repaired,
+            config.repair.t_0,
+            config.repair.t_f,
+            repairer.tc,
+            repairer.tv
+        )
+
+    if plot_acceleration:
+        visualize_a_profile(
+            config.scenario.dt,
+            ego_initial,
+            ego_repaired,
+            config.repair.t_0,
+            config.repair.t_f,
+            repairer.tc,
+            repairer.tv
+        )
+    for time_step in range(config.repair.t_0, config.repair.t_f):
+        visualize_scenario(
+            config.scenario,
+            ego_initial,
+            ego_repaired,
+            time_step,  # Assuming time_end is the current time_step for visualization
+            config.general.path_figures,
+            config.debug.plot_limits,
+            config.repair.t_f,
+            repairer.tc,
+            repairer.tv,
+            repairer.target_vehicle,
+            repairer.rule_monitor.world
+        )
 
 def plot_velocity_acceleration_profile(
     time_list: List[int],
@@ -106,7 +150,7 @@ def visualize_a_profile(
     plt.show()
 
 
-def visualize_repairing_result(
+def visualize_scenario(
     scenario: Scenario,
     ego_initial: DynamicObstacle,
     ego_repaired: DynamicObstacle,

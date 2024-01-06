@@ -1,10 +1,6 @@
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-from crrepairer.utils.visualization import (
-    visualize_repairing_result,
-    visualize_a_profile,
-    visualize_v_profile,
-)
+from crrepairer.utils.visualization import visualize_repaired_result
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
@@ -27,44 +23,12 @@ if __name__ == "__main__":
 
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
-        repairer = SMTTrajectoryRepairer(
-            traffic_rule_monitor, ego_initial, config
-        )
+        repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
         repaired_traj = repairer.repair()
         if repaired_traj is not None and config.debug.show_plots:
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
                 ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
             )
-
-            # ============= Visualization =============
-            target_veh = config.scenario.obstacle_by_id(traffic_rule_monitor.other_id)
-            visualize_v_profile(
-                ego_initial,
-                ego_repaired,
-                time_start=config.repair.t_0,
-                time_end=config.repair.t_f,
-                tc=repairer.tc,
-                tv=repairer.tv,
-            )
-            visualize_a_profile(
-                config.scenario.dt,
-                ego_initial,
-                ego_repaired,
-                time_start=config.repair.t_0,
-                time_end=config.repair.t_f,
-                tc=repairer.tc,
-                tv=repairer.tv,
-            )
-            for time_step in range(config.repair.t_0, config.repair.t_f):
-                visualize_repairing_result(
-                    config.scenario,
-                    ego_initial,
-                    ego_repaired,
-                    time_step,
-                    tc=repairer.tc,
-                    tv=repairer.tv,
-                    plot_limits=config.debug.plot_limits,
-                    target_veh=target_veh,
-                    world=traffic_rule_monitor.world,
-                    end_time=config.repair.t_f,
-                )  # , save_path=figure_path)
+            if config.debug.show_plots:
+                # ============= Visualization =============
+                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)

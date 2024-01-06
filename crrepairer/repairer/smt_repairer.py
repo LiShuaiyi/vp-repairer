@@ -44,6 +44,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         # initialize Solvers for SMT paradigm
         self.sat_solver = SATSolver(self.rule_monitor, config)
         self.t_solver = TSolver(ego_vehicle, self.rule_monitor, config)
+        self.config = config
 
     @property
     def tv(self):
@@ -52,6 +53,10 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     @property
     def tc(self):
         return self._tc
+
+    @property
+    def target_vehicle(self):
+        return self.config.scenario.obstacle_by_id(self.rule_monitor.other_id)
 
     @property
     def model(self):
