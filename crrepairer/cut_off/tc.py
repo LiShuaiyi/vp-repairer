@@ -145,7 +145,7 @@ class TC(CutOffBase, ABC):
         )
         if np.any(rule_rob[:, 0] < 0):
             rule_idx = np.where(rule_rob[:, 0] < 0)[0][0]
-            if other_ids[rule_idx][0] is ():
+            if other_ids[rule_idx][0] == ():
                 return -math.inf, None
             return -math.inf, other_ids[rule_idx][0][0]
         tv_per_rule = np.argmax(rule_rob < 0, axis=-1)
@@ -156,7 +156,7 @@ class TC(CutOffBase, ABC):
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if rule_idx == self.rule_monitor._violated_rule_idx:
-            if other_ids[rule_idx][min_tv] is ():
+            if other_ids[rule_idx][min_tv] == ():
                 return min_tv * self.dT, self.ego_vehicle.obstacle_id
             return min_tv * self.dT, other_ids[rule_idx][min_tv][0]
         else:
@@ -239,6 +239,7 @@ class TC(CutOffBase, ABC):
         if state_list is None:
             tv = -math.inf
         else:
+            self._visualize = True
             if self._visualize:
                 visualize_state_list(
                     self._collision_checker,
