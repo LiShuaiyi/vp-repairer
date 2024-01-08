@@ -1,11 +1,10 @@
 repair:
   planner: 2                      # miqp
   scenario_type: "intersection"
-  intersection_type: "hand_craft"
-  ego_id: 31
-  rules: [ "R_IN1" ]
+  ego_id: 30
+  rules: [ "R_IN3_hand_draft" ]
   t_0: 0             # initial time step
-  N_r: 41            # number of time steps
+  N_r: 50            # number of time steps
 debug:
   show_plots: true
-  plot_limits: [-5, 50, -4.5, 3]
+  plot_limits: [40, 80, -20, 20]
