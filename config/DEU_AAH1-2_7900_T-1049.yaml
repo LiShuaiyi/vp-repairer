@@ -1,0 +1,11 @@
+repair:
+  planner: 2                      # miqp
+  scenario_type: "intersection"
+  intersection_type: "dataset"
+  ego_id: 10020
+  rules: [ "R_IN5" ]
+  t_0: 0              # initial time step
+  N_r: 149            # number of time steps, t_f: 149
+debug:
+  show_plots: true
+  plot_limits: [40, 70, -45, -15]
