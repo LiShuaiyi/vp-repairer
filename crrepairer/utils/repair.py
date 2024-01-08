@@ -11,6 +11,7 @@ def retrieve_ego_vehicle(config: RepairerConfiguration):
     for time_step in range(config.repair.t_0, config.repair.t_f):
         if ego_initial.state_at_time(time_step):
             if time_step != 0:
+                # skip the initial state with different type
                 new_state_list.append(ego_initial.state_at_time(time_step))
             new_occupancy_list.append(ego_initial.occupancy_at_time(time_step))
         else:
