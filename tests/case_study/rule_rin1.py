@@ -10,13 +10,13 @@ from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.prediction.prediction import Trajectory
 import math
 
-scenario_id = "DEU_AAH1-2_818150_T-18299"
 file_path = "../../scenarios/" + scenario_id + ".xml"
 figure_path = "./figures"
 
 flag_visualization = True
 
 if __name__ == "__main__":
+
     # ========== Scenario and Configuration =========
     scenario, planning_problem_set = CommonRoadFileReader(file_path).open(
         lanelet_assignment=True

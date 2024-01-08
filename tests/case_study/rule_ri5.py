@@ -1,11 +1,3 @@
-
-
-scenario_id = "DEU_test_consider_entering_vehicles_for_lane_change"
-file_path = "../../scenarios/test_interstate/" + scenario_id + ".xml"
-figure_path = "./figures"
-
-flag_visualization = True
-
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 from crrepairer.utils.visualization import visualize_repaired_result

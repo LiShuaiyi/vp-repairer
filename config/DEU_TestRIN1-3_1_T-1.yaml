@@ -1,4 +1,9 @@
-experiment:
-  planner: 2  # miqp
+repair:
+  planner: 2                      # miqp
+  scenario_type: "intersection"
+  ego_id: 31
+  rules: [ "R_IN1" ]
+  t_0: 0             # initial time step
+  N_r: 41            # number of time steps
 debug:
   show_plots: true

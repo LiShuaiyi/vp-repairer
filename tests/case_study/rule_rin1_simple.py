@@ -1,13 +1,9 @@
-from crrepairer.smt.monitor_wrapper import STLRuleMonitor, ScenarioType, IntersectionType
+from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-from crrepairer.repairer.visualization import (
-    visualize_repairing_result,
-    visualize_a_profile,
-    visualize_v_profile,
-)
+from crrepairer.utils.visualization import visualize_repaired_result
 from crrepairer.utils.configuration import RepairerConfiguration
+from crrepairer.utils.repair import retrieve_ego_vehicle
 
-from commonroad.prediction.prediction import Trajectory
 import math
 
 if __name__ == "__main__":
@@ -18,61 +14,20 @@ if __name__ == "__main__":
     config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
     config.update()
 
-    ego_id = 31
-    rule = ["R_IN1"]
-    N = 40
-    ego_initial = config.scenario.obstacle_by_id(ego_id)
-    ego_initial.prediction.trajectory = Trajectory(
-        1, ego_initial.prediction.trajectory.state_list[:N]
-    )
-    ego_initial.prediction.occupancy_set = ego_initial.prediction.occupancy_set[:N]
+    # Retrieve the ego vehicle
+    ego_initial = retrieve_ego_vehicle(config)
 
     # ========== Traffic Rule Monitor =========
-    traffic_rule_monitor = STLRuleMonitor(
-        config.scenario, ego_id, rule[0], ScenarioType.INTERSECTION, IntersectionType.HAND_DRAFT, use_mpr=False, mpr_scenario="intersection"
-    )
+    traffic_rule_monitor = STLRuleMonitor(config)
+
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
-        repairer = SMTTrajectoryRepairer(
-            traffic_rule_monitor, ego_initial, config
-        )
+        repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
         repaired_traj = repairer.repair()
         if repaired_traj is not None and config.debug.show_plots:
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
                 ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
             )
-
-            # ============= Visualization =============
-            plot_limits = [-5, 50, -4.5, 3]
-            target_veh = config.scenario.obstacle_by_id(traffic_rule_monitor.other_id)
-            visualize_v_profile(
-                ego_initial,
-                ego_repaired,
-                time_start=ego_initial.prediction.initial_time_step - 1,
-                time_end=N,
-                tc=repairer.tc,
-                tv=repairer.tv,
-            )
-            visualize_a_profile(
-                config.scenario.dt,
-                ego_initial,
-                ego_repaired,
-                time_start=ego_initial.prediction.initial_time_step - 1,
-                time_end=N,
-                tc=repairer.tc,
-                tv=repairer.tv,
-            )
-            for time_step in range(ego_initial.prediction.initial_time_step, repairer.tv + traffic_rule_monitor.future_time_step + 50):
-                visualize_repairing_result(
-                    config.scenario,
-                    ego_initial,
-                    ego_repaired,
-                    time_step=time_step,
-                    tc=repairer.tc,
-                    tv=repairer.tv,
-                    plot_limits=plot_limits,
-                    target_veh=None,
-                    world=traffic_rule_monitor.world,
-                    end_time=N,
-                    # save_path=figure_path,
-                )
+            if config.debug.show_plots:
+                # ============= Visualization =============
+                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
