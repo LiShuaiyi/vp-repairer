@@ -239,7 +239,6 @@ class TC(CutOffBase, ABC):
         if state_list is None:
             tv = -math.inf
         else:
-            self._visualize = True
             if self._visualize:
                 visualize_state_list(
                     self._collision_checker,
