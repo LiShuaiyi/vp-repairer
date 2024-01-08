@@ -275,33 +275,34 @@ class RuleConstraints:
             d_max = np.inf
             if k in self._target_lanes:
                 target_lanes = self._target_lanes[k]
-                index = k - self._tc_obj.tc_time_step
-                lane_boundary_left = target_lanes[
-                    -1
-                ].clcs_left.convert_to_cartesian_coords(
-                    long_traj.states[index].position[0], 0.0
-                )
-                lane_boundary_right = target_lanes[
-                    0
-                ].clcs_right.convert_to_cartesian_coords(
-                    long_traj.states[index].position[0], 0.0
-                )
-                d_max = min(
-                    self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
-                        lane_boundary_left[0], lane_boundary_left[1]
-                    )[
-                        1
-                    ],
-                    d_max,
-                )
-                d_min = max(
-                    self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
-                        lane_boundary_right[0], lane_boundary_right[1]
-                    )[
-                        1
-                    ],
-                    d_min,
-                )
+                if None not in target_lanes:
+                    index = k - self._tc_obj.tc_time_step
+                    lane_boundary_left = target_lanes[
+                        -1
+                    ].clcs_left.convert_to_cartesian_coords(
+                        long_traj.states[index].position[0], 0.0
+                    )
+                    lane_boundary_right = target_lanes[
+                        0
+                    ].clcs_right.convert_to_cartesian_coords(
+                        long_traj.states[index].position[0], 0.0
+                    )
+                    d_max = min(
+                        self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
+                            lane_boundary_left[0], lane_boundary_left[1]
+                        )[
+                            1
+                        ],
+                        d_max,
+                    )
+                    d_min = max(
+                        self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
+                            lane_boundary_right[0], lane_boundary_right[1]
+                        )[
+                            1
+                        ],
+                        d_min,
+                    )
             self._lat_dis_constraints.append([d_min, d_max])
         lateral_constraints = np.array(self._lat_dis_constraints)
         d_min = np.array(
