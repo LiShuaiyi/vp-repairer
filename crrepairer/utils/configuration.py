@@ -152,7 +152,7 @@ class RepairConfiguration(BaseConfiguration):
     # type of scenario, affecting the map and rule monitoring
     scenario_type: str = ScenarioType.INTERSTATE
     # type of intersection: hand-crafted or from dataset
-    intersection_type: Optional[IntersectionType] = IntersectionType.HAND_DRAFT
+    intersection_type: str = IntersectionType.HAND_DRAFT
 
     multiproc: bool = True
     use_mpr: bool = False

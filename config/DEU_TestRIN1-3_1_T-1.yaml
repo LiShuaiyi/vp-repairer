@@ -7,3 +7,4 @@ repair:
   N_r: 41            # number of time steps
 debug:
   show_plots: true
+  plot_limits: [-5, 50, -4.5, 3]
