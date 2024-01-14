@@ -12,7 +12,7 @@ from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from crrepairer.smt.monitor_wrapper import PropositionNode
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.cut_off.tc import TC
-from crrepairer.utils.configuration import RepairerConfiguration
+from crrepairer.utils.configuration import RepairerConfiguration, IntersectionType
 
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.state import CustomState, InitialState
@@ -74,7 +74,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         )
         self._planning_problem.goal = update_goal_state(self._initial_trajectory)
         # load and set up the configuration
-        self._settings = self.config_settings()
+        self._settings = self.config_settings(config)
         self._vehicle_configuration = set_up_miqp(
             self._settings,
             self._scenario,
@@ -220,11 +220,18 @@ class MIQPPlannerRepair(MIQPPlanner):
         cr_traj_repaired = Trajectory(self._start_time_step, state_list)
         return cr_traj_repaired
 
-    def config_settings(self):
+    def config_settings(self, config: RepairerConfiguration):
         """
         Configuration settings.
         """
-        config_file = "config_" + str(self._scenario.scenario_id) + ".yaml"
+        # different vehicle setting for inD scenarios
+        if (
+            config.repair.scenario_type == "intersection"
+            and config.repair.intersection_type == IntersectionType.DATASET
+        ):
+            config_file = "config_intersection.yaml"
+        else:
+            config_file = "config_" + str(self._scenario.scenario_id) + ".yaml"
         config_dir = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "../../../config")
         )
@@ -235,7 +242,10 @@ class MIQPPlannerRepair(MIQPPlanner):
                 settings = yaml.load(stream, Loader=yaml.Loader)
             except yaml.YAMLError as exc:
                 print(exc)
-        if config_file == "config_default.yaml":
+        if (
+            config_file == "config_default.yaml"
+            or config_file == "config_intersection.yaml"
+        ):
             settings["vehicle_settings"][
                 self._planning_problem.planning_problem_id
             ] = settings["vehicle_settings"].pop(1)

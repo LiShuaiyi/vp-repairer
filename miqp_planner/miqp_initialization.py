@@ -57,8 +57,7 @@ def create_optimization_configuration_vehicle_test(
 
     configuration.vehicle_id = planning_problem.planning_problem_id
     configuration.min_speed_x = vehicle_settings["min_speed_x"]
-    # TODO: max speed in intersection scenarios
-    configuration.max_speed_x = 12.0
+    configuration.max_speed_x = vehicle_settings["max_speed_x"]
     configuration.min_speed_y = vehicle_settings["min_speed_y"]
     configuration.max_speed_y = vehicle_settings["max_speed_y"]
 
