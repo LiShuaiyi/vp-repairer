@@ -1,11 +1,17 @@
 import math
+from typing import List, Union, Dict, Tuple
 
 from gurobipy import Model as Gmodel
 from gurobipy import QuadExpr, LinExpr, GRB
 
 import numpy as np
 
-from miqp_planner.miqp_constraints import LongitudinalConstraint
+from miqp_planner.miqp_constraints import (
+    LongitudinalConstraint,
+    PredicateConstraint,
+    CollisionFreeConstraint,
+)
+from crmonitor.predicates.base import BasePredicateEvaluator
 
 
 class GurobiSolver:
@@ -19,56 +25,67 @@ class GurobiSolver:
         self.delta = {}
         self.model = Gmodel()
 
-    def add_long_state_var(self, x, x_shape, x_lb, x_ub):
+    def add_long_state_var(self, x: np.ndarray, x_shape: Tuple, x_lb: List, x_ub: List):
+        """Add longitudinal states and time-invariant constraints (lower and upper bounds)"""
+        # TODO: lower and upper bounds for the initial state
         self.x = x
         self.x_shape = x_shape
         for i in range(self.x_shape[0]):
             for j in range(self.x_shape[1]):
                 self.x[i, j] = self.add_var(
-                    "continuous", "x_long_{}_{}".format(i, j), x_lb[i, j], x_ub[i, j]
+                    "continuous", "x_long_{}_{}".format(i, j), x_lb[i], x_ub[i]
                 )
 
-    def add_long_control_var(self, u, u_shape, u_lb, u_ub):
+    def add_long_control_var(
+        self, u: np.ndarray, u_shape: Tuple, u_lb: float, u_ub: float
+    ):
+        """Add longitudinal control and time-invariant constraints (lower and upper bounds)"""
         self.u = u
         self.u_shape = u_shape
         for i in range(self.u_shape[0]):
-            self.u[i] = self.add_var(
-                "continuous", "u_long_{}".format(i), u_lb[i], u_ub[i]
-            )
+            self.u[i] = self.add_var("continuous", "u_long_{}".format(i), u_lb, u_ub)
 
-    def add_slack_var(self, slack, slack_shape, slack_lb, slack_ub):
+    def add_slack_var(
+        self, slack: np.ndarray, slack_shape: Tuple, slack_lb: float, slack_ub: float
+    ):
+        """Add slack variables and boundaries"""
         self.slack = slack
         self.slack_shape = slack_shape
         for i in range(self.slack_shape[0]):
             self.slack[i] = self.add_var(
-                "continuous", "u_long_{}".format(i), slack_lb[i], slack_ub[i]
+                "continuous", "slack_{}".format(i), slack_lb, slack_ub
             )
 
-    def add_lat_state_var(self, x, x_shape, x_lb, x_ub):
+    def add_lat_state_var(self, x: np.ndarray, x_shape: Tuple, x_lb: List, x_ub: List):
         self.x = x
         self.x_shape = x_shape
         for i in range(self.x_shape[0]):
             for j in range(self.x_shape[1]):
                 self.x[i, j] = self.add_var(
-                    "continuous", "x_lat_{}_{}".format(i, j), x_lb[i, j], x_ub[i, j]
+                    "continuous", "x_lat_{}_{}".format(i, j), x_lb[i], x_ub[i]
                 )
 
-    def add_lat_control_var(self, u, u_shape, u_lb, u_ub):
+    def add_lat_control_var(
+        self, u: np.ndarray, u_shape: Tuple, u_lb: float, u_ub: float
+    ):
         self.u = u
         self.u_shape = u_shape
         for i in range(self.u_shape[0]):
-            self.u[i] = self.add_var(
-                "continuous", "u_lat_{}".format(i), u_lb[i], u_ub[i]
-            )
+            self.u[i] = self.add_var("continuous", "u_lat_{}".format(i), u_lb, u_ub)
 
-    def add_var(self, typeofvar, name, lb=0, ub=0):
+    def add_var(self, typeofvar, name, lb=0.0, ub=0.0):
+        """Add continuous or binary variable in gurobi model"""
         if typeofvar == "continuous":
             return self.model.addVar(lb=lb, ub=ub, vtype=GRB.CONTINUOUS, name=name)
         if typeofvar == "binary":
             return self.model.addVar(vtype=GRB.BINARY, name=name)
 
     def add_long_dynamic_cons(self, dynamic_matrix_list, init_state):
-        """Add the longitudinal dynamic constraints"""
+        """
+        Add the longitudinal dynamic constraints
+        x_(k+1) = A * x_k + B * u_k
+        disturbance term z = 0
+        """
         z = np.zeros(self.x_shape[1])
         self.add_dynamic_cons(dynamic_matrix_list, init_state, z)
 
@@ -77,7 +94,10 @@ class GurobiSolver:
         self.add_dynamic_cons(dynamic_matrix_list, init_state, z)
 
     def add_dynamic_cons(self, dynamic_matrix_list, init_state, theta_r):
-        """todo: add docstring"""
+        """
+        Constraints for dynamic model
+        x_(k+1) = A * x_k + B * u_k + D * z_k
+        """
         for i in range(len(dynamic_matrix_list)):
             dynamic_matrix_dict = dynamic_matrix_list[i]
             if i == 0:
@@ -94,34 +114,45 @@ class GurobiSolver:
                     0,
                 )
             self.add_matrix_eq_cons(
-                    dynamic_matrix_dict["A"],
-                    dynamic_matrix_dict["B"],
-                    dynamic_matrix_dict["D"],
-                    self.x[:, i + 1],
-                    self.x[:, i],
-                    self.u[i],
-                    i,
-                    theta_r[i],
-                )
+                dynamic_matrix_dict["A"],
+                dynamic_matrix_dict["B"],
+                dynamic_matrix_dict["D"],
+                self.x[:, i + 1],
+                self.x[:, i],
+                self.u[i],
+                i,
+                theta_r[i],
+            )
 
-    def add_rule_cons(self, rule_constraints):
+    def add_rule_cons(
+        self,
+        rule_constraints: Dict[
+            BasePredicateEvaluator.predicate_name, PredicateConstraint
+        ],
+    ):
         """Add rule constraints"""
-        for rule_constraint_name in rule_constraints:
-            rule_constraint = rule_constraints[rule_constraint_name]
-            if rule_constraint["decision_variable"]:
+        for rule_con in rule_constraints.values():
+            if rule_con.decision_variable:
+                # rule constraints with binary variables
+                # add binary variables
                 self.create_binary_variable_in_cons(
-                    rule_constraint["num_decision_variables"],
-                    rule_constraint["constraint_name"],
+                    rule_con.num_decision_variables,
+                    rule_con.constraint_name,
                 )
-                self.add_binary_variables_cons(rule_constraint)
-                # TODO: fix constraint name
-                self.add_binary_rule_constraint(rule_constraint, big_M=3000)
+                self.add_binary_variables_cons(rule_con)
+                self.add_binary_rule_constraint(rule_con, big_M=3000)
             else:
-                self.add_rule_constraint(rule_constraint)
+                # rule constraints without binary variables
+                self.add_rule_constraint(rule_con)
 
     def add_matrix_eq_cons(self, A, B, D, x_left, x_right, u, t, z):
         """
         Add an equality constraint in form:
+        x_left: x_(k+1)
+        x_right: x_k
+        u: u_k
+        t: time step
+        z: disturbance term (for lateral dynamic model)
         x = Ax+Bu+Dz
         """
         x_right = x_right.reshape([-1, 1])
@@ -133,6 +164,10 @@ class GurobiSolver:
             )
 
     def create_binary_variable_in_cons(self, num_variables, constraint_name):
+        """
+        create binary variables based on rule constraints
+        name of variable: delta_(constraint_name)_(index of variables)_(time step)
+        """
         for i in range(num_variables):
             delta_tmp = list()
             for k in range(self.x_shape[1]):
@@ -149,138 +184,158 @@ class GurobiSolver:
         for i in range(self.x_shape[1] - 1):
             pass
 
-    def add_binary_rule_constraint(self, rule_constraint, big_M):
-        if rule_constraint["constraint_name"] in ["conflict_area", "intersection"]:
-            for i in rule_constraint["time_step"]:
-                time_step = rule_constraint["time_step"].index(i)
-                if rule_constraint["s_limit_front"][time_step] != math.inf:
+    def add_binary_rule_constraint(self, rule_constraint: PredicateConstraint, big_M):
+        """
+        add rule constraints using big-M method
+        bounds for one of variables in state (longtudinal: x, v, a, j; lateral: d, theta, kappa, kappa_dot)
+        constraint for predicates in_intersection_conflict_area and on_lanelet_with_type_intersection
+        upper bound: x - big_M * delta - slack - ub <= 0
+        lower bound: -x + big_M * delta - big_M + lb <= 0
+        """
+        # TODO: currently only consider predicates in_intersection_conflict_area and on_lanelet_with_type_intersection
+        if rule_constraint.constraint_name in ["conflict_area", "intersection"]:
+            for i in rule_constraint.time_step:
+                time_step = rule_constraint.time_step.index(i)
+                if rule_constraint.state_ub[time_step] != math.inf:
                     params_dict = {}
                     params_dict["vars"] = [
-                        [1, self.x[0, time_step]],
+                        [1, self.x[rule_constraint.constraint_state, time_step]],
                         [
                             -big_M,
-                            self.delta[
-                                "{}_1".format(rule_constraint["constraint_name"])
-                            ][time_step],
+                            self.delta["{}_1".format(rule_constraint.constraint_name)][
+                                time_step
+                            ],
                         ],
                     ]
-                    params_dict["constants"] = [
-                        -rule_constraint["s_limit_front"][time_step]
-                    ]
+                    params_dict["constants"] = [-rule_constraint.state_ub[time_step]]
                     if self.slack is not None:
                         params_dict["vars"].append([-1, self.slack[1]])
                     self.add_ineq_cons(
                         params_dict,
-                        "{}_front_t{}".format(
-                            rule_constraint["constraint_name"], time_step
-                        ),
+                        "{}_ub_t{}".format(rule_constraint.constraint_name, time_step),
                     )
-                if rule_constraint["s_limit_behind"][time_step] != -math.inf:
+                if rule_constraint.state_lb[time_step] != -math.inf:
                     params_dict = {}
                     params_dict["vars"] = [
-                        [-1, self.x[0, time_step]],
+                        [-1, self.x[rule_constraint.constraint_state, time_step]],
                         [
                             big_M,
-                            self.delta[
-                                "{}_1".format(rule_constraint["constraint_name"])
-                            ][time_step],
+                            self.delta["{}_1".format(rule_constraint.constraint_name)][
+                                time_step
+                            ],
                         ],
                     ]
                     params_dict["constants"] = [
-                        rule_constraint["s_limit_behind"][time_step],
+                        rule_constraint.state_lb[time_step],
                         -big_M,
                     ]
                     # TODO: currently do not consider slack variable for lower boundaries
+                    #  because more unfixable situations occur when using slack variable for lower boundaries
                     if self.slack is not None:
                         pass
                     self.add_ineq_cons(
                         params_dict,
-                        "{}_behind_t{}".format(
-                            rule_constraint["constraint_name"], time_step
-                        ),
+                        "{}_lb_t{}".format(rule_constraint.constraint_name, time_step),
                     )
         else:
             print("warning: no constraints added")
 
-    def add_rule_constraint(self, rule_constraint):
-        if rule_constraint["constraint_name"] in ["stop_line"]:
-            for i in rule_constraint["time_step"]:
-                time_step = rule_constraint["time_step"].index(i)
-                if rule_constraint["s_limit_front"][time_step] != math.inf:
+    def add_rule_constraint(self, rule_constraint: PredicateConstraint):
+        """
+        add rule constraints without binary variables
+        bounds for one of variables in state (longtudinal: x, v, a, j; lateral: d, theta, kappa, kappa_dot)
+        constraint for predicate in_intersection_conflict_area and on_lanelet_with_type_intersection
+        upper bound: x - slack - ub <= 0
+        lower bound: -x + lb <= 0
+        """
+        # TODO: currently only consider predicates stop_line_in_front
+        if rule_constraint.constraint_name in ["stop_line"]:
+            for i in rule_constraint.time_step:
+                time_step = rule_constraint.time_step.index(i)
+                if rule_constraint.state_ub[time_step] != math.inf:
                     params_dict = {}
                     params_dict["vars"] = [
-                        [1, self.x[0, time_step]],
+                        [1, self.x[rule_constraint.constraint_state, time_step]],
                     ]
-                    params_dict["constants"] = [
-                        -rule_constraint["s_limit_front"][time_step]
-                    ]
+                    params_dict["constants"] = [-rule_constraint.state_ub[time_step]]
                     if self.slack is not None:
                         params_dict["vars"].append([-1, self.slack[1]])
                     self.add_ineq_cons(
                         params_dict,
-                        "{}_front_t{}".format(
-                            rule_constraint["constraint_name"], time_step
-                        ),
+                        "{}_ub_t{}".format(rule_constraint.constraint_name, time_step),
                     )
-                if rule_constraint["s_limit_behind"][time_step] != -math.inf:
+                if rule_constraint.state_lb[time_step] != -math.inf:
                     params_dict = {}
                     params_dict["vars"] = [
-                        [-1, self.x[0, time_step]],
+                        [-1, self.x[rule_constraint.constraint_state, time_step]],
                     ]
                     params_dict["constants"] = [
-                        rule_constraint["s_limit_behind"][time_step],
+                        rule_constraint.state_lb[time_step],
                     ]
                     # TODO: currently do not consider slack variable for lower boundaries
                     if self.slack is not None:
                         pass
                     self.add_ineq_cons(
                         params_dict,
-                        "{}_behind_t{}".format(
-                            rule_constraint["constraint_name"], time_step
-                        ),
+                        "{}_lb_t{}".format(rule_constraint.constraint_name, time_step),
                     )
         else:
             print("warning: no constraints added")
 
-    def add_collision_free_cons(self, collision_free_constraint):
-        for index in range(len(collision_free_constraint["index_lb"])):
+    def add_collision_free_cons(
+        self, collision_free_constraint: CollisionFreeConstraint
+    ):
+        """
+        add collision free constraints
+        upper bound: x - ub <= 0
+        lower bound: -x + lb <= 0
+        """
+        for index in range(len(collision_free_constraint.time_step_lb)):
             params_dict = {}
             params_dict["vars"] = [
-                [-1, self.x[0, collision_free_constraint["index_lb"][index]]]
+                [-1, self.x[0, collision_free_constraint.time_step_lb[index]]]
             ]
-            params_dict["constants"] = [
-                collision_free_constraint["collision_free_lb"][index]
-            ]
+            params_dict["constants"] = [collision_free_constraint.lb[index]]
             self.add_ineq_cons(
                 params_dict,
                 "collision_free_cons_lb_at_time_{}".format(
-                    collision_free_constraint["index_lb"][index]
+                    collision_free_constraint.time_step_lb[index]
                 ),
             )
 
-        for index in range(len(collision_free_constraint["index_ub"])):
+        for index in range(len(collision_free_constraint.time_step_ub)):
             params_dict = {}
             params_dict["vars"] = [
-                [1, self.x[0, collision_free_constraint["index_ub"][index]]]
+                [1, self.x[0, collision_free_constraint.time_step_ub[index]]]
             ]
-            params_dict["constants"] = [
-                -collision_free_constraint["collision_free_ub"][index]
-            ]
+            params_dict["constants"] = [-collision_free_constraint.ub[index]]
             self.add_ineq_cons(
                 params_dict,
                 "collision_free_cons_ub_at_time_{}".format(
-                    collision_free_constraint["index_ub"][index]
+                    collision_free_constraint.time_step_ub[index]
                 ),
             )
 
-    def add_lat_dis_cons(self, lat_dis_cons_matrix, theta, d_min, d_max):
-        # TODO: need to be tested
+    def add_lat_dis_cons(
+        self,
+        lat_dis_cons_matrix: List[Dict],
+        x_ref_lat,
+        d_min: np.ndarray,
+        d_max: np.ndarray,
+    ):
+        """
+        add constraints for lateral position
+        """
         for i in range(self.x_shape[1] - 1):
-            if list(d_min[i]) != [-np.inf, -np.inf, -np.inf]:
+            test = d_min[i, :]
+            d_min[i, :] = [-2, -2, -2]
+            d_max[i, :] = [2, 2, 2]
+            theta = x_ref_lat.reference[i].theta
+            if list(d_min[i, :]) != [-np.inf, -np.inf, -np.inf]:
                 S = lat_dis_cons_matrix[i]["S"]
                 C = lat_dis_cons_matrix[i]["C"]
                 E = lat_dis_cons_matrix[i]["E"]
-                distance = S.dot(C.dot(self.x[:, i + 1]) + E.dot(theta[i]))
+                distance = S.dot(C.dot(self.x[:, i + 1]) + E.dot(theta))
                 for k in range(distance.size):
                     params_dict = {}
                     params_dict["vars"] = [[-1, distance[k]]]
@@ -289,11 +344,11 @@ class GurobiSolver:
                         params_dict, "lat_dist_cons_min_{}_{}".format(i + 1, k + 1)
                     )
 
-            if list(d_max[i]) != [np.inf, np.inf, np.inf]:
+            if list(d_max[i, :]) != [np.inf, np.inf, np.inf]:
                 S = lat_dis_cons_matrix[i]["S"]
                 C = lat_dis_cons_matrix[i]["C"]
                 E = lat_dis_cons_matrix[i]["E"]
-                distance = S.dot(C.dot(self.x[:, i + 1]) + E.dot(theta[i]))
+                distance = S.dot(C.dot(self.x[:, i + 1]) + E.dot(theta))
                 for k in range(distance.size):
                     params_dict = {}
                     params_dict["vars"] = [[1, distance[k]]]
@@ -303,6 +358,7 @@ class GurobiSolver:
                     )
 
     def add_kappa_limit(self, kappa_lim):
+        """add curvature constraint based on Kamm's circle"""
         for i in range(self.x_shape[1] - 1):
             params_dict = {}
             params_dict["vars"] = [[-1, self.x[2, i + 1]]]
@@ -315,6 +371,12 @@ class GurobiSolver:
             self.add_ineq_cons(params_dict, "lat_kappa_lim_max_{}".format(i + 1))
 
     def add_ineq_cons(self, params_dict: dict, name):
+        """
+        add inequality constraint
+        vars[1] * var[0] + constants <= 0
+        vars[1]: variable
+        vars[0]: multiplier
+        """
         equation = LinExpr()
         for params in params_dict["vars"]:
             equation.add(params[1], params[0])
@@ -324,6 +386,12 @@ class GurobiSolver:
         self.model.addConstr(equation <= 0, name=name)
 
     def add_eq_cons(self, params_dict: dict, name):
+        """
+        add equality constraint
+        vars[1] * var[0] + constants == 0
+        vars[1]: multiplier
+        vars[0]: variable
+        """
         equation = LinExpr()
         for params in params_dict["vars"]:
             equation.add(params[1], params[0])
@@ -333,7 +401,7 @@ class GurobiSolver:
         self.model.addConstr(equation == 0, name=name)
 
     def costfunc_long(self, x_ref, weight):
-        # TODO: cost function definition
+        """cost function for the longitudinal planner"""
         long_costs = QuadExpr()
         weight_s = weight[0]
         weight_v = weight[1]
@@ -372,8 +440,7 @@ class GurobiSolver:
         self.model.setObjective(long_costs, GRB.MINIMIZE)
 
     def costfunc_lat(self, x_ref, weight, d_reference):
-        # TODO: cost function definition
-        # TODO: check the length of reference
+        """cost function for the lateral planner"""
         lat_costs = QuadExpr()
         weight_d = weight[0]
         weight_theta = weight[1]
@@ -422,7 +489,7 @@ class GurobiSolver:
 
     def get_delta(self):
         """
-        Get deta_1 and delta_2 from solution
+        Get binary variables from solution
         """
         all_delta = list()
         for delta_name in self.delta:

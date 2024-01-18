@@ -20,13 +20,16 @@ def set_up_miqp(
     planning_problem: PlanningProblem,
     vehicle: DynamicObstacleVehicle,
 ):
-    vehicle_configuration = create_optimization_configuration_vehicle_test(
+    """
+    create vehicle configuration for the optimization problem
+    """
+    vehicle_configuration = create_optimization_configuration_vehicle(
         scenario, planning_problem, settings["vehicle_settings"], vehicle
     )
     return vehicle_configuration
 
 
-def create_optimization_configuration_vehicle_test(
+def create_optimization_configuration_vehicle(
     scenario: Scenario,
     planning_problem: PlanningProblem,
     settings: Dict,
@@ -41,7 +44,7 @@ def create_optimization_configuration_vehicle_test(
     vehicle_settings = settings[planning_problem.planning_problem_id]
     # TODO: create new function instead of using qp planner
     configuration = PlanningConfigurationVehicle()
-
+    # use reference path and lanelets_dir from rule monitor
     reference_path = vehicle.ref_path_lane
     lanelets_leading_to_goal = vehicle.lanelets_dir
 

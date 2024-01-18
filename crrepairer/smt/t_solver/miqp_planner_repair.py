@@ -3,7 +3,11 @@ import numpy as np
 from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
 from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference
-from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
+from miqp_planner.miqp_constraints import (
+    LongitudinalConstraint,
+    LateralConstraint,
+    RuleConstraint,
+)
 
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
@@ -42,7 +46,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         self._ego_vehicle = tc_object.ego_vehicle
         self._planning_problem = planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
-
+        # road network and ego vehicle in the rule monitor
         self.road_network = rule_monitor.world.road_network
         self.ego_vehicle_roadnetwork = rule_monitor.world.vehicle_by_id(
             rule_monitor.vehicle_id
@@ -93,7 +97,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         super().__init__(config)
 
         # construct constraints
-        self._long_constraints = LongitudinalConstraint(
+        self._constraints = RuleConstraint(
             tc_object,
             rule_monitor,
             sel_proposition,
@@ -103,9 +107,7 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._start_time_step,
         )
 
-    def long_constraints(self):
-        return self._long_constraints
-
+    @property
     def total_time_steps(self):
         return self._N - self._cut_off_time_step
 
@@ -117,24 +119,17 @@ class MIQPPlannerRepair(MIQPPlanner):
         """
         print("* \t\t MIQP Longitudinal optimization")
         reference_lon = self.construct_s_reference()
+        self._constraints.construct_longitudinal_constraints()
         traj_lon = self.longitudinal_trajectory_planning(
-            reference_lon, self._long_constraints
+            reference_lon, self._constraints.longitudinal_constraints
         )
         if traj_lon is None:
             return None
         print("* \t\t MIQP Lateral optimization")
         # TODO: fix inputs
-        lateral_constraints = LateralConstraint(
-            self._long_constraints._tc_obj,
-            self._long_constraints._rule_monitor,
-            self._long_constraints._veh_config,
-            self._long_constraints.target_lanes,
-            traj_lon,
-            self._long_constraints.sel_prop_full,
-        )
-        lateral_constraints.create_d_constraints(traj_lon)
+        self._constraints.create_d_constraints(traj_lon)
         trajectory = self.lateral_trajectory_planning(
-            traj_lon, lateral_constraints, d_reference=None
+            traj_lon, self._constraints.lateral_constraints, d_reference=None
         )
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
