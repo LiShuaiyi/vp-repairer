@@ -1,7 +1,7 @@
 repair:
   planner: 2                      # miqp
   scenario_type: "intersection"
-  intersection_type: "hand_craft"
+  intersection_type: "hand_draft"
   ego_id: 31
   rules: [ "R_IN1" ]
   t_0: 0             # initial time step

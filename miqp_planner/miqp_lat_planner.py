@@ -117,8 +117,8 @@ class MIQPLatReference(object):
         )
 
         # compute orientation, curvature and pathlength of reference
-        ref_orientation = compute_orientation_from_polyline(reference)
-        ref_curvature = compute_curvature_from_polyline(reference)
+        # ref_orientation = compute_orientation_from_polyline(reference)
+        # ref_curvature = compute_curvature_from_polyline(reference)
         ref_pathlength = compute_pathlength_from_polyline(reference)
 
         # get s coordinates of longitudinal motion for interpolation of theta and kappa of reference
