@@ -21,6 +21,8 @@ from crmonitor.rule.rule_node import PredicateNode
 
 from crrepairer.utils.configuration import RepairerConfiguration, ScenarioType, MonitorType
 
+from commonroad_mpr.utils.configuration_builder import ConfigurationBuilder as Cfg
+
 
 @dataclass
 class PropositionNode:
@@ -41,6 +43,7 @@ class STLRuleMonitor:
 
         world_config["scenario"] = self.scenario_type =\
             traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = config.repair.scenario_type
+        Cfg["common"]["scenario"] = self.scenario_type
         if self.scenario_type == ScenarioType.INTERSECTION:
             world_config["intersection_road_network_param"]["map_type"] = config.repair.intersection_type
         traffic_rules_config["traffic_rules_param"]["use_mpr"] = config.repair.use_mpr
