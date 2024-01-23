@@ -19,7 +19,7 @@ from crmonitor.common.world import World, get_world_config
 from crmonitor.common.config import get_traffic_rule_config
 from crmonitor.rule.rule_node import PredicateNode
 
-from crrepairer.utils.configuration import RepairerConfiguration, ScenarioType, IntersectionType
+from crrepairer.utils.configuration import RepairerConfiguration, ScenarioType, MonitorType
 
 
 @dataclass
