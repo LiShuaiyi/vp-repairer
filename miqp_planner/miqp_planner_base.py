@@ -1,3 +1,4 @@
+from typing import List
 from decimal import Decimal
 
 # commonroad-io
@@ -16,7 +17,7 @@ from miqp_planner.miqp_constraints import (
     LateralConstraint,
     TIConstraint,
 )
-
+from crmonitor.common.vehicle import Vehicle
 from crrepairer.utils.configuration import RepairerConfiguration
 
 
@@ -94,14 +95,25 @@ class MIQPPlanner:
         ti_constraint.kappa_dot_min = self.config.vehicle.kappa_dot_min
         ti_constraint.kappa_dot_dot_max = self.config.vehicle.kappa_dot_dot_max
         ti_constraint.kappa_dot_dot_min = self.config.vehicle.kappa_dot_dot_min
+        # todo: react time, length, wb, width
+        ti_constraint.react_time = self.config.vehicle.qp_veh_config.react_time
+        ti_constraint.length = self.config.vehicle.qp_veh_config.length
+        ti_constraint.width = self.config.vehicle.qp_veh_config.width
+        ti_constraint.wheelbase = self.config.vehicle.qp_veh_config.wheelbase
         return ti_constraint
 
     def longitudinal_trajectory_planning(
-        self, reference_lon, long_constraints: LongitudinalConstraint
+        self,
+        reference_lon,
+        long_constraints: LongitudinalConstraint,
+        safe_distance_modes: List[bool],
+        pred_veh: Vehicle,
     ):
         long_planner = MIQPLongPlanner(
             config=self.config,
             initial_state=self.initial_state,
+            safe_distance_modes=safe_distance_modes,
+            pred_veh=pred_veh,
         )
         traj_long = long_planner.plan(
             reference_lon, self.time_invariant_constraints, long_constraints

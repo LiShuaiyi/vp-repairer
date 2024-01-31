@@ -190,7 +190,7 @@ class MIQPLatPlanner:
         self._x_ref_lat = x_ref_lat
 
         self.config = config
-        self.weight = config.miqp_planner.weight_long
+        self.weight = config.miqp_planner.weight_lat
         if d_reference is not None:
             self.d_reference = d_reference
         else:
@@ -234,7 +234,10 @@ class MIQPLatPlanner:
         self.solver.add_kappa_limit(self.kappa_lim)
         # cost function
         self.solver.costfunc_lat(
-            self._x_ref_lat, self.weight, d_reference=self.d_reference
+            self._x_ref_lat,
+            self.weight,
+            d_reference=self.d_reference,
+            lat_cons=lateral_constraints,
         )
         self.solver.solve()
         # get solution

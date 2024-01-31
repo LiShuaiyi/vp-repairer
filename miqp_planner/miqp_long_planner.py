@@ -1,10 +1,11 @@
+from typing import List
 import numpy as np
 
 from miqp_planner.gurobi_optimizer import GurobiSolver
 from miqp_planner.miqp_constraints import LongitudinalConstraint, TIConstraint
 
 from crrepairer.utils.configuration import RepairerConfiguration
-
+from crmonitor.common.vehicle import Vehicle
 from commonroad_qp_planner.trajectory import Trajectory, TrajPoint, TrajectoryType
 
 
@@ -45,6 +46,8 @@ class MIQPLongPlanner:
         self,
         config: RepairerConfiguration,
         initial_state: TrajPoint,
+        safe_distance_modes: List[bool],
+        pred_veh: Vehicle,
     ):
         # basic configuration
         self.time_horizon = config.miqp_planner.horizon
@@ -97,6 +100,10 @@ class MIQPLongPlanner:
             [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
         ).transpose()
 
+        self.safe_distance_modes = safe_distance_modes
+        self.pred_veh = pred_veh
+        self._velocity_samples = None
+
         # initialize solver
         self.solver = GurobiSolver()
 
@@ -118,6 +125,16 @@ class MIQPLongPlanner:
         self.solver.add_rule_cons(long_constraints.rule_constraints)
         # add collision free constraints in solver
         self.solver.add_collision_free_cons(long_constraints.collision_free_constraints)
+        # set velocity sample for approximate safe distances
+        self._velocity_samples = np.linspace(0, ti_constraints.v_x_max, 10)
+        # add safe distance constraints
+        self.solver.add_safe_distance_cons(
+            self.safe_distance_modes,
+            self.pred_veh,
+            self._velocity_samples,
+            ti_constraints,
+            long_constraints.tc,
+        )
         # cost function
         self.solver.costfunc_long(long_ref, self.weight)
         self.solver.solve()
