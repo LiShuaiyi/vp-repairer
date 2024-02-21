@@ -4,7 +4,7 @@ debug:
 repair:
   ego_id: 200
   rules: ["R_G1"]
-  planner: 1         # qp
+  planner: 2         # 1: qp, 2: miqp
   t_0: 0             # initial time step
   N_r: 21            # number of time steps
   use_mpr: false

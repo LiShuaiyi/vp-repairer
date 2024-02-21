@@ -10,8 +10,15 @@ from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
     ReferencePoint,
 )
+from commonroad_qp_planner.initialization import (
+    find_reference_path_and_lanelets_leading_to_goal,
+    create_curvilinear_coordinate_system,
+)
 
 from crmonitor.common.world import DynamicObstacleVehicle
+from commonroad_route_planner.route_planner import RoutePlanner
+
+from crrepairer.smt.monitor_wrapper import ScenarioType
 
 
 def set_up_miqp(
@@ -24,7 +31,11 @@ def set_up_miqp(
     create vehicle configuration for the optimization problem
     """
     vehicle_configuration = create_optimization_configuration_vehicle(
-        scenario, planning_problem, settings["vehicle_settings"], vehicle
+        scenario,
+        planning_problem,
+        settings["vehicle_settings"],
+        settings["scenario_type"],
+        vehicle,
     )
     return vehicle_configuration
 
@@ -33,6 +44,7 @@ def create_optimization_configuration_vehicle(
     scenario: Scenario,
     planning_problem: PlanningProblem,
     settings: Dict,
+    scenario_type: ScenarioType,
     vehicle: DynamicObstacleVehicle,
 ):
     assert (
@@ -44,14 +56,29 @@ def create_optimization_configuration_vehicle(
     vehicle_settings = settings[planning_problem.planning_problem_id]
     # TODO: create new function instead of using qp planner
     configuration = PlanningConfigurationVehicle()
-    # use reference path and lanelets_dir from rule monitor
-    reference_path = vehicle.ref_path_lane
-    lanelets_leading_to_goal = vehicle.lanelets_dir
-
+    if scenario_type == "intersection":
+        # use reference path and lanelets_dir from rule monitor
+        reference_path = vehicle.ref_path_lane
+        lanelets_leading_to_goal = vehicle.lanelets_dir
+        configuration.reference_path = reference_path.smoothed_vertices
+        configuration.curvilinear_coordinate_system = reference_path.clcs
+    else:
+        route_planner = RoutePlanner(
+            scenario, planning_problem, backend=RoutePlanner.Backend.NETWORKX_REVERSED
+        )
+        (
+            reference_path,
+            lanelets_leading_to_goal,
+        ) = find_reference_path_and_lanelets_leading_to_goal(
+            route_planner, planning_problem, settings
+        )
+        configuration.reference_path = np.array(reference_path)
+        configuration.curvilinear_coordinate_system = (
+            create_curvilinear_coordinate_system(configuration.reference_path)
+        )
     configuration.lanelet_network = create_lanelet_network(
         scenario.lanelet_network, lanelets_leading_to_goal
     )
-    configuration.reference_path = reference_path.smoothed_vertices
 
     if "reference_point" in vehicle_settings:
         configuration.reference_point = set_reference_point(
@@ -82,7 +109,6 @@ def create_optimization_configuration_vehicle(
     configuration.radius, _ = compute_approximating_circle_radius(
         configuration.length, configuration.width
     )
-    configuration.curvilinear_coordinate_system = reference_path.clcs
     return configuration
 
 

@@ -10,8 +10,16 @@ from miqp_planner.miqp_constraints import (
     LongitudinalConstraint,
     PredicateConstraint,
     CollisionFreeConstraint,
+    TIConstraint,
+    LateralConstraint,
+)
+from commonroad_qp_planner.utils import (
+    calculate_safe_distance,
+    derivative_safe_distance,
 )
 from crmonitor.predicates.base import BasePredicateEvaluator
+from crmonitor.predicates.position import PredInSameLane
+from crmonitor.common.vehicle import Vehicle
 
 
 class GurobiSolver:
@@ -248,39 +256,35 @@ class GurobiSolver:
         upper bound: x - slack - ub <= 0
         lower bound: -x + lb <= 0
         """
-        # TODO: currently only consider predicates stop_line_in_front
-        if rule_constraint.constraint_name in ["stop_line"]:
-            for i in rule_constraint.time_step:
-                time_step = rule_constraint.time_step.index(i)
-                if rule_constraint.state_ub[time_step] != math.inf:
-                    params_dict = {}
-                    params_dict["vars"] = [
-                        [1, self.x[rule_constraint.constraint_state, time_step]],
-                    ]
-                    params_dict["constants"] = [-rule_constraint.state_ub[time_step]]
-                    if self.slack is not None:
-                        params_dict["vars"].append([-1, self.slack[1]])
-                    self.add_ineq_cons(
-                        params_dict,
-                        "{}_ub_t{}".format(rule_constraint.constraint_name, time_step),
-                    )
-                if rule_constraint.state_lb[time_step] != -math.inf:
-                    params_dict = {}
-                    params_dict["vars"] = [
-                        [-1, self.x[rule_constraint.constraint_state, time_step]],
-                    ]
-                    params_dict["constants"] = [
-                        rule_constraint.state_lb[time_step],
-                    ]
-                    # TODO: currently do not consider slack variable for lower boundaries
-                    if self.slack is not None:
-                        pass
-                    self.add_ineq_cons(
-                        params_dict,
-                        "{}_lb_t{}".format(rule_constraint.constraint_name, time_step),
-                    )
-        else:
-            print("warning: no constraints added")
+        for i in rule_constraint.time_step:
+            time_step = rule_constraint.time_step.index(i)
+            if rule_constraint.state_ub[time_step] != math.inf:
+                params_dict = {}
+                params_dict["vars"] = [
+                    [1, self.x[rule_constraint.constraint_state, time_step]],
+                ]
+                params_dict["constants"] = [-rule_constraint.state_ub[time_step]]
+                if self.slack is not None:
+                    params_dict["vars"].append([-1, self.slack[1]])
+                self.add_ineq_cons(
+                    params_dict,
+                    "{}_ub_t{}".format(rule_constraint.constraint_name, time_step),
+                )
+            if rule_constraint.state_lb[time_step] != -math.inf:
+                params_dict = {}
+                params_dict["vars"] = [
+                    [-1, self.x[rule_constraint.constraint_state, time_step]],
+                ]
+                params_dict["constants"] = [
+                    rule_constraint.state_lb[time_step],
+                ]
+                # TODO: currently do not consider slack variable for lower boundaries
+                if self.slack is not None:
+                    pass
+                self.add_ineq_cons(
+                    params_dict,
+                    "{}_lb_t{}".format(rule_constraint.constraint_name, time_step),
+                )
 
     def add_collision_free_cons(
         self, collision_free_constraint: CollisionFreeConstraint
@@ -316,6 +320,50 @@ class GurobiSolver:
                 ),
             )
 
+    def add_safe_distance_cons(
+        self,
+        safe_distance_modes: List[bool],
+        pred_veh: Vehicle,
+        velocity_samples,
+        ti_cons: TIConstraint,
+        tc,
+    ):
+        """
+        constraint for safe distance
+        safe_distance = safe_dis_0 + safe_dis_der_0 * (x[1] - v_sample)
+        x[0] <= rear_s_pred_veh  - l/2 - wb/2 - safe_distance - 0.01
+        """
+        for k in range(len(safe_distance_modes) - 1):
+            if safe_distance_modes[k]:
+                param_dict = {}
+                pred_veh_state = pred_veh.get_lon_state(k + tc)
+                for i in range(len(velocity_samples)):
+                    safe_dis_0 = calculate_safe_distance(
+                        velocity_samples[i],
+                        pred_veh_state.v,
+                        -10.5,
+                        -10,
+                        ti_cons.react_time,
+                    )
+                    safe_dis_der_0 = derivative_safe_distance(
+                        velocity_samples[i], -10.0, ti_cons.react_time
+                    )
+                    param_dict["vars"] = [
+                        [1, self.x[0, k + 1]],
+                        [safe_dis_der_0, self.x[1, k + 1]],
+                    ]
+                    param_dict["constants"] = [
+                        -(
+                            pred_veh.rear_s(k + tc)
+                            - ti_cons.length / 2
+                            - ti_cons.wheelbase / 2
+                            - safe_dis_0
+                            + safe_dis_der_0 * velocity_samples[i]
+                            - 1e-2
+                        )
+                    ]
+                    self.add_ineq_cons(param_dict, "safe_dis_v_{}_t_{}".format(i, k))
+
     def add_lat_dis_cons(
         self,
         lat_dis_cons_matrix: List[Dict],
@@ -327,9 +375,6 @@ class GurobiSolver:
         add constraints for lateral position
         """
         for i in range(self.x_shape[1] - 1):
-            test = d_min[i, :]
-            d_min[i, :] = [-2, -2, -2]
-            d_max[i, :] = [2, 2, 2]
             theta = x_ref_lat.reference[i].theta
             if list(d_min[i, :]) != [-np.inf, -np.inf, -np.inf]:
                 S = lat_dis_cons_matrix[i]["S"]
@@ -439,14 +484,22 @@ class GurobiSolver:
 
         self.model.setObjective(long_costs, GRB.MINIMIZE)
 
-    def costfunc_lat(self, x_ref, weight, d_reference):
+    def costfunc_lat(self, x_ref, weight, d_reference, lat_cons: LateralConstraint):
         """cost function for the lateral planner"""
+
+        cost_same_lane = False
+        for proposition in lat_cons.select_proposition:
+            for predicate in proposition.children:
+                if predicate.base_name == PredInSameLane.predicate_name:
+                    cost_same_lane = True
+
         lat_costs = QuadExpr()
         weight_d = weight[0]
         weight_theta = weight[1]
         weight_kappa = weight[2]
         weight_kappa_dot = weight[3]
         weight_u = weight[4]
+        weight_robust = weight[5]
         for i in range(1, self.x_shape[1]):
             diff_ref = LinExpr()
             diff_ref.add(self.x[0, i])
@@ -467,6 +520,17 @@ class GurobiSolver:
             diff_ref.add(self.x[3, i])
             diff_ref.addConstant(0)
             lat_costs.add(diff_ref * diff_ref, weight_kappa_dot)
+
+            if cost_same_lane:
+                diff_ref.clear()
+                if (
+                    lat_cons.d_min[i - 1, 0] != -np.inf
+                    and lat_cons.d_max[i - 1, 0] != np.inf
+                ):
+                    d_rob = 0.5 * (lat_cons.d_min[i - 1, 0] + lat_cons.d_max[i - 1, 0])
+                    diff_ref.add(self.x[0, i])
+                    diff_ref.addConstant(-d_rob)
+                    lat_costs.add(diff_ref * diff_ref, weight_robust)
 
         for u in self.u:
             lat_costs.add(u * u, weight_u)

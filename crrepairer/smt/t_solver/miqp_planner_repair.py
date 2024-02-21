@@ -86,6 +86,14 @@ class MIQPPlannerRepair(MIQPPlanner):
             self.ego_vehicle_roadnetwork,
         )
 
+        # use the coordinate system from the world
+        if config.repair.scenario_type == "interstate":
+            self._vehicle_configuration.curvilinear_coordinate_system = (
+                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+                .get_lane(0)
+                .clcs
+            )
+
         # update the vehicle shape
         self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
         self._vehicle_configuration.length = self._ego_vehicle.obstacle_shape.length
@@ -119,15 +127,19 @@ class MIQPPlannerRepair(MIQPPlanner):
         """
         print("* \t\t MIQP Longitudinal optimization")
         reference_lon = self.construct_s_reference()
-        self._constraints.construct_longitudinal_constraints()
+        self._constraints.construct_longitudinal_constraints(self._cut_off_time_step)
         traj_lon = self.longitudinal_trajectory_planning(
-            reference_lon, self._constraints.longitudinal_constraints
+            reference_lon,
+            self._constraints.longitudinal_constraints,
+            self._constraints.safe_distance_modes,
+            self._constraints.target_vehicle,
         )
         if traj_lon is None:
             return None
         print("* \t\t MIQP Lateral optimization")
         # TODO: fix inputs
         self._constraints.create_d_constraints(traj_lon)
+        select_proposition = self._constraints.sel_prop_full
         trajectory = self.lateral_trajectory_planning(
             traj_lon, self._constraints.lateral_constraints, d_reference=None
         )
@@ -244,6 +256,7 @@ class MIQPPlannerRepair(MIQPPlanner):
             settings["vehicle_settings"][
                 self._planning_problem.planning_problem_id
             ] = settings["vehicle_settings"].pop(1)
+        settings["scenario_type"] = config.repair.scenario_type
         return settings
 
 
