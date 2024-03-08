@@ -655,7 +655,6 @@ class RuleConstraint:
                         target_lane += [tar_veh_lane]
                     target_lane = sorted(target_lane, key=lambda lane: lane.lane_id)
             except:
-                tar_veh_lane = [None]
                 target_lane = [None]
 
         else:

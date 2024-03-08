@@ -88,7 +88,7 @@ class TSolver:
                         PositionPredicates.Precedes,
                     ]
                 ):
-                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
+                    compliant_maneuver += [Maneuver.BRAKE] #, Maneuver.KICKDOWN]
                 elif (
                     predicate_category == "Pos"
                     and predicate.evaluator.predicate_name
