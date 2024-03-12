@@ -2,6 +2,7 @@ import numpy as np
 
 from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
+from miqp_planner.miqp_lat_planner import MIQPLatPlanner
 from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference, MIQPLongPlanner
 from miqp_planner.miqp_constraints import (
     LongitudinalConstraint,
@@ -120,6 +121,10 @@ class MIQPPlannerRepair(MIQPPlanner):
             initial_state=self.initial_state
         )
 
+        self.lat_planner = MIQPLatPlanner(
+            config=self.config,
+        )
+
     @property
     def total_time_steps(self):
         return self._N - self._cut_off_time_step
@@ -144,9 +149,9 @@ class MIQPPlannerRepair(MIQPPlanner):
         print("* \t\t MIQP Lateral optimization")
         # TODO: fix inputs
         self._constraints.create_d_constraints(traj_lon)
-        select_proposition = self._constraints.sel_prop_full
+        # select_proposition = self._constraints.sel_prop_full
         trajectory = self.lateral_trajectory_planning(
-            traj_lon, self._constraints.lateral_constraints, d_reference=None
+            traj_lon, self._constraints.lateral_constraints
         )
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory

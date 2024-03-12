@@ -87,6 +87,7 @@ class MIQPPlanner:
 
         # initialize the planner for saving time later on:
         self.long_planner = None
+        self.lat_planner = None
 
     def _set_time_invariant_constraints(self):
         """Sets the time invariant constraints from the configuration file."""
@@ -133,8 +134,8 @@ class MIQPPlanner:
         self,
         longitudinal_trajectory: Trajectory,
         lat_con: LateralConstraint,
-        d_reference=None,
     ):
+        """Plans the lateral trajectory"""
         x_init_lat = MIQPLatState(
             d=self.initial_state.position[1],
             theta=self.initial_state_lat_orientation,
@@ -152,13 +153,8 @@ class MIQPPlanner:
             reference=self.vehicle_configuration.qp_veh_config.reference_path,
             vehicle_configuration=self.vehicle_configuration,
         )
-        lat_planner = MIQPLatPlanner(
-            config=self.config,
-            x_init_lat=x_init_lat,
-            x_ref_lat=x_ref_lat,
-            d_reference=d_reference,
-        )
-        trajectory = lat_planner.plan(
+        self.lat_planner.reset(x_init_lat, x_ref_lat)
+        trajectory = self.lat_planner.plan(
             lateral_constraints=lat_con,
             ti_constraints=self.time_invariant_constraints,
         )
