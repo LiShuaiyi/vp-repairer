@@ -17,12 +17,15 @@ from miqp_planner.miqp_constraints import (
     LateralConstraint,
     TIConstraint,
 )
+from miqp_planner.miqp_long_planner import MIQPLongReference
+
 from crmonitor.common.vehicle import Vehicle
 from crrepairer.utils.configuration import RepairerConfiguration
 
 
 class MIQPPlanner:
     def __init__(self, config: RepairerConfiguration):
+        """Base class for MIQP Planner"""
         self.scenario = config.scenario
         self.planning_problem = config.planning_problem
         self.vehicle_configuration = config.vehicle
@@ -78,9 +81,15 @@ class MIQPPlanner:
         # initial orientation for the lateral planner
         self.initial_state_lat_orientation = self.initial_state.orientation
         self.config = config
+
+        # set up the time invariant constraints
         self.time_invariant_constraints = self._set_time_invariant_constraints()
 
+        # initialize the planner for saving time later on:
+        self.long_planner = None
+
     def _set_time_invariant_constraints(self):
+        """Sets the time invariant constraints from the configuration file."""
         ti_constraint = TIConstraint()
         ti_constraint.v_x_max = self.config.vehicle.qp_veh_config.max_speed_x
         ti_constraint.v_x_min = self.config.vehicle.qp_veh_config.min_speed_x
@@ -95,7 +104,7 @@ class MIQPPlanner:
         ti_constraint.kappa_dot_min = self.config.vehicle.kappa_dot_min
         ti_constraint.kappa_dot_dot_max = self.config.vehicle.kappa_dot_dot_max
         ti_constraint.kappa_dot_dot_min = self.config.vehicle.kappa_dot_dot_min
-        # todo: react time, length, wb, width
+
         ti_constraint.react_time = self.config.vehicle.qp_veh_config.react_time
         ti_constraint.length = self.config.vehicle.qp_veh_config.length
         ti_constraint.width = self.config.vehicle.qp_veh_config.width
@@ -104,19 +113,19 @@ class MIQPPlanner:
 
     def longitudinal_trajectory_planning(
         self,
-        reference_lon,
+        reference_lon: MIQPLongReference,
         long_constraints: LongitudinalConstraint,
         safe_distance_modes: List[bool],
         pred_veh: Vehicle,
     ):
-        long_planner = MIQPLongPlanner(
-            config=self.config,
-            initial_state=self.initial_state,
-            safe_distance_modes=safe_distance_modes,
-            pred_veh=pred_veh,
-        )
-        traj_long = long_planner.plan(
-            reference_lon, self.time_invariant_constraints, long_constraints
+        """Plans the longitudinal trajectory"""
+        self.long_planner.reset(self.initial_state)
+        traj_long = self.long_planner.plan(
+            reference_lon,
+            self.time_invariant_constraints,
+            long_constraints,
+            safe_distance_modes,
+            pred_veh
         )
         return traj_long
 

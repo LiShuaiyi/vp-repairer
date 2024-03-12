@@ -102,8 +102,9 @@ def create_optimization_configuration_vehicle(
     configuration.j_min_y = vehicle_settings["j_min_y"]
     configuration.j_max_y = vehicle_settings["j_max_y"]
 
-    configuration.length = vehicle_settings["length"]
-    configuration.width = vehicle_settings["width"]
+    # use the vehicle real sizes
+    configuration.length = vehicle.shape.length  # vehicle_settings["length"]
+    configuration.width = vehicle.shape.width  # vehicle_settings["width"]
     configuration.wheelbase = vehicle_settings["wheelbase"]
     configuration.react_time = vehicle_settings["react_time"]
     configuration.radius, _ = compute_approximating_circle_radius(

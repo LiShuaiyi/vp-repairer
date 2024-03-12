@@ -72,10 +72,9 @@ class TIConstraint:
     slack_max = 5000.0
     # react time
     react_time = 0.4
-    # length
-    length = 4.508
-    width = 1.610
-    wheelbase = 2.578
+    # length = 4.508
+    # width = 1.610
+    # wheelbase = 2.578
 
 
 class LongitudinalConstraint:

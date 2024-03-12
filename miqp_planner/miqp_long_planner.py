@@ -45,9 +45,7 @@ class MIQPLongPlanner:
     def __init__(
         self,
         config: RepairerConfiguration,
-        initial_state: TrajPoint,
-        safe_distance_modes: List[bool],
-        pred_veh: Vehicle,
+        initial_state: TrajPoint
     ):
         # basic configuration
         self.time_horizon = config.miqp_planner.horizon
@@ -96,29 +94,43 @@ class MIQPLongPlanner:
         D = np.array([0, 0, 0, 0]).reshape([-1, 1])
 
         self.dynamic_matrix_list = [{"A": A, "B": B, "D": D}] * self.N
-        self.init_state = np.array(
+        self.init_state_long = np.array(
             [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
         ).transpose()
 
-        self.safe_distance_modes = safe_distance_modes
-        self.pred_veh = pred_veh
         self._velocity_samples = None
 
         # initialize solver
         self.solver = GurobiSolver()
+
+    def reset(self,
+              initial_state: TrajPoint):
+        """resets the planner"""
+        self.initial_state = initial_state
+        self.s0 = MIQPLongState(
+            self.initial_state.position[0],
+            self.initial_state.v,
+            self.initial_state.a,
+            self.initial_state.j,
+        )
+        self.init_state_long = np.array(
+            [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
+        ).transpose()
 
     def plan(
         self,
         long_ref: MIQPLongReference,
         ti_constraints: TIConstraint,
         long_constraints: LongitudinalConstraint,
+        safe_distance_modes: List[bool],
+        pre_vehicle: Vehicle
     ):
         # initial state and control variables in solver and add time-invariant constraints
         self._init_state_var(ti_constraints)
         self._init_control_var(ti_constraints)
 
         # add longitudinal dynamic constraints and constraints for initial state
-        self.solver.add_long_dynamic_cons(self.dynamic_matrix_list, self.init_state)
+        self.solver.add_long_dynamic_cons(self.dynamic_matrix_list, self.init_state_long)
         if self._slack_pos:
             self._init_slack_var(ti_constraints)
         # add rule constraints in solver
@@ -128,13 +140,15 @@ class MIQPLongPlanner:
         # set velocity sample for approximate safe distances
         self._velocity_samples = np.linspace(0, ti_constraints.v_x_max, 10)
         # add safe distance constraints
-        self.solver.add_safe_distance_cons(
-            self.safe_distance_modes,
-            self.pred_veh,
-            self._velocity_samples,
-            ti_constraints,
-            long_constraints.tc,
-        )
+        if any(safe_distance_modes):
+            # only adding the distance when the safe distance mode is activated for some time steps
+            self.solver.add_safe_distance_cons(
+                safe_distance_modes,
+                pre_vehicle,
+                self._velocity_samples,
+                ti_constraints,
+                long_constraints.tc,
+            )
         # cost function
         self.solver.costfunc_long(long_ref, self.weight)
         self.solver.solve()

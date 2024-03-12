@@ -2,7 +2,7 @@ import numpy as np
 
 from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
-from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference
+from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference, MIQPLongPlanner
 from miqp_planner.miqp_constraints import (
     LongitudinalConstraint,
     LateralConstraint,
@@ -113,6 +113,11 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._vehicle_configuration,
             self._initial_trajectory,
             self._start_time_step,
+        )
+
+        self.long_planner = MIQPLongPlanner(
+            config=self.config,
+            initial_state=self.initial_state
         )
 
     @property
