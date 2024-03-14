@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, List, Union, Any
+from typing import Dict, Tuple, List, Union, Any, Optional
 import numpy as np
 
 # commonroad-io
@@ -15,7 +15,7 @@ from commonroad_qp_planner.initialization import (
     create_curvilinear_coordinate_system,
 )
 
-from crmonitor.common.world import DynamicObstacleVehicle
+from crmonitor.common.world import DynamicObstacleVehicle, Vehicle
 from commonroad_route_planner.route_planner import RoutePlanner
 
 from crrepairer.smt.monitor_wrapper import ScenarioType
@@ -25,7 +25,7 @@ def set_up_miqp(
     settings: Dict,
     scenario: Scenario,
     planning_problem: PlanningProblem,
-    vehicle: DynamicObstacleVehicle,
+    vehicle: Optional[DynamicObstacleVehicle, Vehicle],
 ):
     """
     create vehicle configuration for the optimization problem
@@ -102,9 +102,8 @@ def create_optimization_configuration_vehicle(
     configuration.j_min_y = vehicle_settings["j_min_y"]
     configuration.j_max_y = vehicle_settings["j_max_y"]
 
-    # use the vehicle real sizes
-    configuration.length = vehicle.shape.length  # vehicle_settings["length"]
-    configuration.width = vehicle.shape.width  # vehicle_settings["width"]
+    configuration.length = vehicle_settings["length"]
+    configuration.width = vehicle_settings["width"]
     configuration.wheelbase = vehicle_settings["wheelbase"]
     configuration.react_time = vehicle_settings["react_time"]
     configuration.radius, _ = compute_approximating_circle_radius(

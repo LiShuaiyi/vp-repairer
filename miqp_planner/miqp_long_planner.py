@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import numpy as np
 
 from miqp_planner.gurobi_optimizer import GurobiSolver
@@ -45,7 +45,6 @@ class MIQPLongPlanner:
     def __init__(
         self,
         config: RepairerConfiguration,
-        initial_state: TrajPoint
     ):
         # basic configuration
         self.time_horizon = config.miqp_planner.horizon
@@ -55,13 +54,12 @@ class MIQPLongPlanner:
         self.vehicle_configuration = config.vehicle
 
         # construct the initial state
-        self.initial_state = initial_state
-        self.s0 = MIQPLongState(
-            self.initial_state.position[0],
-            self.initial_state.v,
-            self.initial_state.a,
-            self.initial_state.j,
-        )
+        self.initial_state: Optional[TrajPoint] = None
+        self.s0: Optional[MIQPLongState] = None
+        self.init_state_long: Optional[np.array] = None
+
+        self.config: Optional[RepairerConfiguration] = None
+        self.reset(config)
 
         self.weight = config.miqp_planner.weight_long
 
@@ -94,9 +92,6 @@ class MIQPLongPlanner:
         D = np.array([0, 0, 0, 0]).reshape([-1, 1])
 
         self.dynamic_matrix_list = [{"A": A, "B": B, "D": D}] * self.N
-        self.init_state_long = np.array(
-            [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
-        ).transpose()
 
         self._velocity_samples = None
 
@@ -104,18 +99,25 @@ class MIQPLongPlanner:
         self.solver = GurobiSolver()
 
     def reset(self,
-              initial_state: TrajPoint):
+              config: RepairerConfiguration = None,
+              initial_state: TrajPoint = None):
         """resets the planner"""
-        self.initial_state = initial_state
-        self.s0 = MIQPLongState(
-            self.initial_state.position[0],
-            self.initial_state.v,
-            self.initial_state.a,
-            self.initial_state.j,
-        )
-        self.init_state_long = np.array(
-            [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
-        ).transpose()
+        # set updated config
+        if config is not None:
+            self.config = config
+        else:
+            assert self.config is not None, "<MIQP LONG PLANNER.reset(). No Configuration object provided>"
+        if initial_state is not None:
+            self.initial_state = initial_state
+            self.s0 = MIQPLongState(
+                self.initial_state.position[0],
+                self.initial_state.v,
+                self.initial_state.a,
+                self.initial_state.j,
+            )
+            self.init_state_long = np.array(
+                [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
+            ).transpose()
 
     def plan(
         self,
