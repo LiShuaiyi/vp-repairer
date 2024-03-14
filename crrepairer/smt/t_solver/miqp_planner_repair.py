@@ -56,17 +56,27 @@ class MIQPPlannerRepair(MIQPPlanner):
         self.reset(config)
         self._settings = self.config_settings(config)
 
+        # update the configuration
+        self._monitor_ego_vehicle = rule_monitor.world.vehicle_by_id(
+            rule_monitor.vehicle_id
+        )
+
+        # update and initialize the vehicle configuration
+        # >>> side note: the initial state is not updated to keep the reference path possibly long
+        self.config.planning_problem.goal = update_goal_state(self._initial_trajectory)
+        self._vehicle_configuration = set_up_miqp(
+            self._settings,
+            self.config.scenario,
+            self.config.planning_problem,
+            self._monitor_ego_vehicle,
+        )
+
         # empty objects
         self._N: Optional[int] = None
         self._cut_off_time_step: Optional[float, int] = None
         self._cut_off_state: Optional[CustomState, InitialState] = None
         self._time_horizon: Optional[float] = None
-        self._vehicle_configuration: Optional[PlanningConfigurationVehicle] = None
         self._constraints: Optional[RuleConstraint] = None
-
-        self._monitor_ego_vehicle = rule_monitor.world.vehicle_by_id(
-            rule_monitor.vehicle_id
-        )
 
         # initialize the MIQP planner
         super().__init__(config)
@@ -143,13 +153,6 @@ class MIQPPlannerRepair(MIQPPlanner):
                 slip_angle=0,
             )
 
-            # update the configuration
-            self._vehicle_configuration = set_up_miqp(
-                self._settings,
-                self.config.scenario,
-                self.config.planning_problem,
-                self._monitor_ego_vehicle,
-            )
             # use the coordinate system from the world
             if self.config.repair.scenario_type == "interstate":
                 self._vehicle_configuration.curvilinear_coordinate_system = (
@@ -179,7 +182,6 @@ class MIQPPlannerRepair(MIQPPlanner):
         if initial_trajectory is not None:
             self._initial_trajectory = initial_trajectory
             # update the goal state for better planning/updating the high-level route
-            self.config.planning_problem.goal = update_goal_state(self._initial_trajectory)
 
     @property
     def total_time_steps(self):
