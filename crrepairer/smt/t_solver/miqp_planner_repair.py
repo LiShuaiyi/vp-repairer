@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
@@ -191,6 +192,7 @@ class MIQPPlannerRepair(MIQPPlanner):
             Then: generates the trajectory in both longitudinal and lateral directions
         """
         print("* \t\t MIQP Longitudinal optimization")
+        start_time_lon = time.time()
         reference_lon = self.construct_s_reference()
         self._constraints.construct_longitudinal_constraints(self._cut_off_time_step)
         traj_lon = self.longitudinal_trajectory_planning(
@@ -199,14 +201,22 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._constraints.safe_distance_modes,
             self._constraints.target_vehicle,
         )
+        print(
+            "* \t\t -- run time {} s --".format(round(time.time() - start_time_lon, 3))
+        )
         if traj_lon is None:
             return None
         print("* \t\t MIQP Lateral optimization")
         # TODO: fix inputs
+        start_time_lat = time.time()
+
         self._constraints.create_d_constraints(traj_lon)
         # select_proposition = self._constraints.sel_prop_full
         trajectory = self.lateral_trajectory_planning(
             traj_lon, self._constraints.lateral_constraints
+        )
+        print(
+            "* \t\t -- run time {} s --".format(round(time.time() - start_time_lat, 3))
         )
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
