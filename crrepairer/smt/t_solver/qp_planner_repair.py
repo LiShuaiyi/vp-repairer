@@ -126,6 +126,19 @@ class QPPlannerRepair(QPPlanner):
             self._start_time_step,
         )
 
+    def construct_constraints(self,
+                              sel_proposition: List[PropositionNode],
+                              proposition_full: List[PropositionNode],):
+        # todo
+        pass
+
+    def reset(self, config: RepairerConfiguration = None,
+              initial_trajectory = None,
+              tc_object: TC = None,
+              rule_monitor: STLRuleMonitor = None):
+        # todo
+        pass
+
     @property
     def rule_constraints(self):
         return self._rule_constraints

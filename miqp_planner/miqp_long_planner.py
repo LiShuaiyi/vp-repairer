@@ -1,5 +1,6 @@
 from typing import List, Optional
 import numpy as np
+from decimal import Decimal
 
 from miqp_planner.gurobi_optimizer import GurobiSolver
 from miqp_planner.miqp_constraints import LongitudinalConstraint, TIConstraint
@@ -91,7 +92,7 @@ class MIQPLongPlanner:
         )
         D = np.array([0, 0, 0, 0]).reshape([-1, 1])
 
-        self.dynamic_matrix_list = [{"A": A, "B": B, "D": D}] * self.N
+        self.dynamic_matrix_list = [{"A": A, "B": B, "D": D}]
 
         self._velocity_samples = None
 
@@ -100,13 +101,16 @@ class MIQPLongPlanner:
 
     def reset(self,
               config: RepairerConfiguration = None,
-              initial_state: TrajPoint = None):
+              initial_state: TrajPoint = None,
+              nr_steps: int = None,
+              horizon: float = None):
         """resets the planner"""
         # set updated config
         if config is not None:
             self.config = config
         else:
             assert self.config is not None, "<MIQP LONG PLANNER.reset(). No Configuration object provided>"
+
         if initial_state is not None:
             self.initial_state = initial_state
             self.s0 = MIQPLongState(
@@ -118,6 +122,22 @@ class MIQPLongPlanner:
             self.init_state_long = np.array(
                 [self.s0.s, self.s0.v, self.s0.a, self.s0.j]
             ).transpose()
+
+        if horizon is not None:
+            if Decimal(str(horizon)) % Decimal(
+                str(self.scenario.dt)
+            ) != Decimal("0.0"):
+                raise ValueError(
+                    "<MIQPPlanner>: the given time step {} is inappropriate,"
+                    "since time horizon is {}.".format(
+                        self.scenario.dt, config.miqp_planner.horizon
+                    )
+                )
+            self.time_horizon = horizon
+
+        if nr_steps is not None:
+            self.N = nr_steps
+            self.dynamic_matrix_list = self.dynamic_matrix_list * self.N
 
     def plan(
         self,

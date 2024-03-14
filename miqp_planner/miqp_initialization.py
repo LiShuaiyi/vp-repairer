@@ -25,7 +25,7 @@ def set_up_miqp(
     settings: Dict,
     scenario: Scenario,
     planning_problem: PlanningProblem,
-    vehicle: Optional[DynamicObstacleVehicle, Vehicle],
+    vehicle: Optional[DynamicObstacleVehicle],
 ):
     """
     create vehicle configuration for the optimization problem
