@@ -160,6 +160,7 @@ class TSolver:
         """
         Initializes the qp planner and uses it for trajectory repairing.
         """
+        start_time = time.time()
         if self.config.repair.planner == 1:
             self._planner = QPPlannerRepair(
                 self._rule_monitor,
@@ -178,7 +179,6 @@ class TSolver:
             print(f"* \t<TSolver>: MIQP planner is invoked")
         else:
             raise Exception("Invalid option for the planner provided")
-        start_time = time.time()
         repaired_trajectory = self._planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
         print(f"* \t<TSolver>: solving time {time.time() - start_time:.3f}s")
