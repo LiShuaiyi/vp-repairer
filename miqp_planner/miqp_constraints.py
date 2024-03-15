@@ -226,7 +226,7 @@ class RuleConstraint:
                 min(
                     k - self._start_time_step + self._tc_obj.future_time_step,
                     self._tc_obj.N - self._start_time_step,
-                ),
+                ),  # to avoid the index + future time step exceeds the range of `prop_robust_all`
             ]
             for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
                 try:

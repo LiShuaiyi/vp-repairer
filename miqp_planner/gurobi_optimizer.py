@@ -195,7 +195,7 @@ class GurobiSolver:
     def add_binary_rule_constraint(self, rule_constraint: PredicateConstraint, big_M):
         """
         add rule constraints using big-M method
-        bounds for one of variables in state (longtudinal: x, v, a, j; lateral: d, theta, kappa, kappa_dot)
+        bounds for one of variables in state (longitudinal: x, v, a, j; lateral: d, theta, kappa, kappa_dot)
         constraint for predicates in_intersection_conflict_area and on_lanelet_with_type_intersection
         upper bound: x - big_M * delta - slack - ub <= 0
         lower bound: -x + big_M * delta - big_M + lb <= 0
