@@ -153,8 +153,10 @@ class MIQPLongPlanner:
 
         # add longitudinal dynamic constraints and constraints for initial state
         self.solver.add_long_dynamic_cons(self.dynamic_matrix_list, self.init_state_long)
+
         if self._slack_pos:
             self._init_slack_var(ti_constraints)
+
         # add rule constraints in solver
         self.solver.add_rule_cons(long_constraints.rule_constraints)
         # add collision free constraints in solver
@@ -200,6 +202,7 @@ class MIQPLongPlanner:
             ti_constraints.a_x_max,
             ti_constraints.j_x_max,
         ]
+        # add longitudinal state variables
         self.solver.add_long_state_var(
             x,
             x_shape,

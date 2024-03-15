@@ -44,8 +44,8 @@ from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 class TIConstraint:
     # longitudinal states x
-    x_min = -1000.0
-    x_max = 1000.0
+    x_min = -np.inf
+    x_max = np.inf
     v_x_min = 0.0
     v_x_max = 60.0
     a_x_min = -10.0
@@ -238,7 +238,7 @@ class RuleConstraint:
                     continue
                 if (
                     proposition in self._prop_full
-                    and k >= self._tc_obj.tv_time_step - self._tc_obj.future_time_step
+                    and k >= self._tc_obj.tv_time_step - self._tc_obj.future_time_step  # add constraints only for k>=TV
                 ):
                     # proposition to be repaired (greater than the time-to-violation)
                     robs_at_tv = self._rule_monitor.prop_robust_all[
@@ -325,6 +325,7 @@ class RuleConstraint:
                     self._get_overlap(predicate.base_name, s_ub, s_lb, time_step)
             elif predicate.base_name == PredSafeDistPrec.predicate_name:
                 self.ConstrSafeDist(time_step, prop_assignment)
+                # no overlapping is calculated here as it is a nonlinear constraint
             elif predicate.base_name == PredCutIn.predicate_name:
                 self.ConstrCutIn(time_step, prop_assignment)
             elif predicate.base_name in (

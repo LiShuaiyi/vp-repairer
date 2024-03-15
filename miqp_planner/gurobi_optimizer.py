@@ -38,8 +38,8 @@ class GurobiSolver:
         # TODO: lower and upper bounds for the initial state
         self.x = x
         self.x_shape = x_shape
-        for i in range(self.x_shape[0]):
-            for j in range(self.x_shape[1]):
+        for i in range(self.x_shape[0]):  # for each state variable
+            for j in range(self.x_shape[1]):  # for each time step
                 self.x[i, j] = self.add_var(
                     "continuous", "x_long_{}_{}".format(i, j), x_lb[i], x_ub[i]
                 )
@@ -50,7 +50,7 @@ class GurobiSolver:
         """Add longitudinal control and time-invariant constraints (lower and upper bounds)"""
         self.u = u
         self.u_shape = u_shape
-        for i in range(self.u_shape[0]):
+        for i in range(self.u_shape[0]):  # for each time step
             self.u[i] = self.add_var("continuous", "u_long_{}".format(i), u_lb, u_ub)
 
     def add_slack_var(
