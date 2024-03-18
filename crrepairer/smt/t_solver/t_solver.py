@@ -1,6 +1,6 @@
 import math
 import time
-from typing import List
+from typing import List, Optional
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
@@ -40,6 +40,13 @@ class TSolver:
 
         self.verbose = True
         self.config = config
+
+        # todo: same for QP
+        self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
+            self._rule_monitor,
+            self._tc_obj,
+            self.config
+        )
 
     @property
     def tc_object(self):
@@ -153,6 +160,7 @@ class TSolver:
         """
         Initializes the qp planner and uses it for trajectory repairing.
         """
+        start_time = time.time()
         if self.config.repair.planner == 1:
             self._planner = QPPlannerRepair(
                 self._rule_monitor,
@@ -165,18 +173,16 @@ class TSolver:
             )
             print("* \t<TSolver>: QP planner is invoked")
         elif self.config.repair.planner == 2:
-            self._planner = MIQPPlannerRepair(
-                self._rule_monitor,
-                self._tc_obj,
-                self._sel_prop,
-                self._prop_full,
-                self._planning_problem,
-                self.config
-            )
+            self._planner.reset(tc_object=self.tc_object,
+                                rule_monitor=self._rule_monitor)
+            self._planner.construct_constraints(self._sel_prop, self._prop_full)
             print(f"* \t<TSolver>: MIQP planner is invoked")
         else:
             raise Exception("Invalid option for the planner provided")
+
+        print(f"* \t<TSolver>: initialization time {time.time() - start_time:.3f}s")
         start_time = time.time()
+
         repaired_trajectory = self._planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
         print(f"* \t<TSolver>: solving time {time.time() - start_time:.3f}s")

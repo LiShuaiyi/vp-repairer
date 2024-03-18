@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 import numpy as np
 
 from commonroad_dc.geometry.util import (
@@ -172,36 +172,74 @@ class MIQPLatPlanner:
     def __init__(
         self,
         config: RepairerConfiguration,
-        x_init_lat: MIQPLatState,
-        x_ref_lat: MIQPLatReference,
-        d_reference: None,
     ):
         self.time_horizon = config.miqp_planner.horizon
         self.N = config.miqp_planner.N_p
         self.dt = config.scenario.dt
+
+        # initialize from the configuration
+        self.config: Optional[RepairerConfiguration] = None
+        self.reset(config)
 
         # number of x <d, theta, kappa, kappa dot>
         self._n = 4
         # number of u <kappa dot dot>
         self._m = 1
         # wheelbase length
-        self._length = config.vehicle.qp_veh_config.wheelbase
-        self._x_init_lat = x_init_lat
-        self._x_ref_lat = x_ref_lat
+        self._wb_length = self.config.vehicle.qp_veh_config.wheelbase
+        self._x_init_lat = None
+        self._x_ref_lat = None
 
         self.config = config
         self.weight = config.miqp_planner.weight_lat
-        if d_reference is not None:
-            self.d_reference = d_reference
-        else:
-            self.d_reference = np.zeros(self.N + 1)
-        (
-            self.dynamic_matrix_list,
-            self.lat_dis_cons_matrix,
-            self.kappa_lim,
-        ) = self._init_dynamic_matrices()
+
+        self.d_reference = None
 
         self.solver = GurobiSolver()
+
+        self.theta_r = list()
+
+        self.dynamic_matrix_list = None
+        self.lat_dis_cons_matrix = None
+        self.kappa_lim = None
+
+    def reset(self,
+              config: RepairerConfiguration = None,
+              x_init_lat: MIQPLatState = None,
+              x_ref_lat: MIQPLatReference = None,
+              nr_steps: int = None,
+              horizon: float = None,
+              d_reference=None):
+        # set updated config
+        if config is not None:
+            self.config = config
+        else:
+            assert self.config is not None, "<MIQP LONG PLANNER.reset(). No Configuration object provided>"
+        if x_init_lat is not None:
+            self._x_init_lat = x_init_lat
+        if x_ref_lat is not None:
+            self._x_ref_lat = x_ref_lat
+            self.theta_r = list()
+            for i in range(self.N):
+                self.theta_r.append(self._x_ref_lat.reference[i].theta)
+
+            (
+                self.dynamic_matrix_list,
+                self.lat_dis_cons_matrix,
+                self.kappa_lim,
+            ) = self._init_dynamic_matrices()
+
+        if d_reference is not None:
+            self.d_reference = d_reference
+
+        if nr_steps is not None:
+            self.N = nr_steps
+
+            if self.d_reference is None:
+                self.d_reference = np.zeros(self.N + 1)
+
+        if horizon is not None:
+            self.time_horizon = horizon
 
     def plan(
         self, lateral_constraints: LateralConstraint, ti_constraints: TIConstraint
@@ -281,9 +319,6 @@ class MIQPLatPlanner:
     def _init_dynamic_matrices(self):
         dynamic_matrix_list = list()
         lat_dis_cons_matrix = list()
-        self.theta_r = list()
-        for i in range(self.N):
-            self.theta_r.append(self._x_ref_lat.reference[i].theta)
 
         kappa_lim = list()
 
@@ -323,14 +358,14 @@ class MIQPLatPlanner:
             C = np.array(
                 [
                     [1, 0, 0, 0],
-                    [1, 0.5 * self._length, 0, 0],
-                    [1, self._length, 0, 0],
+                    [1, 0.5 * self._wb_length, 0, 0],
+                    [1, self._wb_length, 0, 0],
                     [0, 0, 1, 0],
                     [0, 0, 0, 1],
                 ]
             )
             # disturbances on output
-            E = np.transpose(np.array([0, -0.5 * self._length, -self._length, 0, 0]))
+            E = np.transpose(np.array([0, -0.5 * self._wb_length, -self._wb_length, 0, 0]))
             lat_dis_cons_matrix.append({"S": S, "C": C, "E": E})
 
             kappa_lim_k = min(
