@@ -9,11 +9,13 @@ import math
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_Muc-4_2_T-1"
+    scenario_id = "DEU_Gar-1_1_T-1"
 
     # Build configuration object
     config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
     config.update()
+
+    config.repair.rules = ["R_G1", "R_G3", "R_G3"]
 
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)

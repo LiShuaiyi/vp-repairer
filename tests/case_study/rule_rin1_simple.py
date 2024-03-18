@@ -6,14 +6,14 @@ from crrepairer.utils.repair import retrieve_ego_vehicle
 
 import math
 
-
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_Muc-4_2_T-1"
+    scenario_id = "DEU_TestRIN1-3_1_T-1"
 
     # Build configuration object
     config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
     config.update()
+    config.repair.planner = 2
 
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)

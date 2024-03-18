@@ -6,20 +6,22 @@ import numpy as np
 import dataclasses
 from dataclasses import dataclass
 import copy
-from difflib import SequenceMatcher, get_close_matches
+from difflib import SequenceMatcher
 from multiprocessing import Process, Queue
-import concurrent.futures
 
+import re
 from crmonitor.evaluation.proposition_evaluation import PropositionRuleEvaluator
 from crmonitor.evaluation.evaluation import (
     get_evaluation_config,
     create_ego_vehicle_param,
 )
-from crmonitor.common.world import World
+from crmonitor.common.world import World, get_world_config
+from crmonitor.common.config import get_traffic_rule_config
 from crmonitor.rule.rule_node import PredicateNode
 
-# CommonRoad Toolbox
-from commonroad.scenario.scenario import Scenario
+from crrepairer.utils.configuration import RepairerConfiguration, ScenarioType, MonitorType
+
+from commonroad_mpr.utils.configuration_builder import ConfigurationBuilder as Cfg
 
 
 @dataclass
@@ -30,28 +32,28 @@ class PropositionNode:
     children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
 
-class MonitorType(Enum):
-    """
-    Type of temporal logic used in the traffic rule monitor
-    """
-
-    MTL = "metric temporal logic"
-    STL = "signal temporal logic"
-
-
 class STLRuleMonitor:
     def __init__(
         self,
-        scenario: Scenario,
-        vehicle_id: int,
-        rules: Union[str, Iterable[str]],
-        multiproc=True,
+        config: RepairerConfiguration,
     ):
-        self._world: World = World.create_from_scenario(scenario)
-        self._vehicle_id = vehicle_id
-        self.multiproc = multiproc
-        self._rules = [rules] if isinstance(rules, str) else rules
+        # update the world configuration for repairing purposes
+        world_config = get_world_config()
+        traffic_rules_config = get_traffic_rule_config()
+
+        world_config["scenario"] = self.scenario_type =\
+            traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = config.repair.scenario_type
+        Cfg["common"]["scenario"] = self.scenario_type
+        if self.scenario_type == ScenarioType.INTERSECTION:
+            world_config["intersection_road_network_param"]["map_type"] = config.repair.intersection_type
+        traffic_rules_config["traffic_rules_param"]["use_mpr"] = config.repair.use_mpr
+
+        self._world: World = World.create_from_scenario(config.scenario, config=world_config)
+        self._vehicle_id = config.repair.ego_id
+        self.multiproc = config.repair.multiproc
+        self._rules = config.repair.rules
         self._rule_eval = []
+        self._start_time_step = self._world.vehicle_by_id(self._vehicle_id).start_time
         self._world.vehicle_by_id(
             self._vehicle_id
         ).vehicle_param = create_ego_vehicle_param(
@@ -59,7 +61,7 @@ class STLRuleMonitor:
         )
         for rule in self._rules:
             prop_rule_eval = PropositionRuleEvaluator.create_from_config(
-                self._world, self._vehicle_id, rule
+                self._world, self._vehicle_id, rule, traffic_rules_config=traffic_rules_config
             )
             self._rule_eval.append(prop_rule_eval)
         if len(self._rule_eval) == 1:
@@ -74,6 +76,7 @@ class STLRuleMonitor:
         # obtain the time-to-violation
         self._violated_rule_idx, self._tv, self._other_id = self._cal_tv_initial()
         self._prop_nodes = self._initialize_prop_rob()
+        self._future_time_step = self.search_future_time_step()[self._violated_rule_idx]
         print("# =========== Traffic Rule Monitor ========== #")
         print(
             "\tthe ego vehicle (id: {})'s initial\n\ttrajectory violates traffic rule {}".format(
@@ -89,7 +92,15 @@ class STLRuleMonitor:
 
     @property
     def tv_time_step(self) -> Union[int, float]:
-        return self._tv
+        return self._tv - self._future_time_step
+
+    @property
+    def future_time_step(self) -> Union[int, float]:
+        return self._future_time_step
+
+    @property
+    def start_time_step(self):
+        return self._start_time_step
 
     @property
     def other_id(self) -> int:
@@ -137,8 +148,11 @@ class STLRuleMonitor:
                 #        sat_formula = sat_formula.replace(child.name,
                 #                                          child.children[0].rule_str)
                 #        print(sat_formula)
+            # do not delete brackets in the rule
+            # 'eventually' is replaced by 'once' because of the same replacement in rtamt
             sat_formula = (
-                sat_formula.replace("(", "").replace(")", "").replace("not", "!")
+                sat_formula.replace("not", "!")
+                .replace("eventually", "once")
             )
             clear_rob_abs = self.rob_abstraction[i][
                 self.rob_abstraction[i] == self.rob_abstraction[i]
@@ -147,17 +161,36 @@ class STLRuleMonitor:
             props_of_rule = self._prop_nodes[prev_idx : prev_idx + length]
             prev_idx += length
             for prop_node in props_of_rule:
+                prop_node_name = prop_node.name
+                # if proposition name starts with "once[x,x]", it will be considered as predicate
+                if(
+                    prop_node_name[0:4] == "once"
+                    and prop_node_name[5:6] == prop_node_name[7:8]
+                    ):
+                    prop_node_name = prop_node_name.replace(
+                        prop_node_name[0:9], ""
+                    )
+                else:
+                    pattern = r"once\[(.*?)\]"
+                    matches = re.findall(pattern, prop_node_name)
+                    if len(matches) == 2:
+                        delete_once_str = "once[" + matches[1] + "]("
+                        prop_node_name = prop_node_name.replace(delete_once_str, "")
+                        prop_node_name = prop_node_name[:-1]
+                if prop_node_name.startswith('(') and prop_node_name.endswith(')'):
+                    prop_node_name = prop_node_name[1:-1]
                 matches = SequenceMatcher(
-                    None, sat_formula, prop_node.name, autojunk=True
+                    None, sat_formula, prop_node_name, autojunk=True
                 ).get_matching_blocks()
+                # TODO: match.size>1, further check necessary
                 clean_matches = [match for match in matches if match.size > 1]
                 first_index = clean_matches[0].a
                 last_index = clean_matches[-1].a + clean_matches[-1].size
                 to_repl = sat_formula[first_index:last_index]
-                sat_formula = sat_formula.replace(to_repl, prop_node.alphabet)
-            if "implies" in sat_formula:
-                impl_at = sat_formula.find("implies")
-                sat_formula = "(" + sat_formula[:impl_at] + ") " + sat_formula[impl_at:]
+                to_repl = re.escape(to_repl)
+                # avoid issue of replacing wrong proposition
+                pattern = rf"(?<!\]\(){to_repl}"
+                sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
             subformula_list.append("(" + sat_formula + ")")
         for i, substr in enumerate(subformula_list[:-1]):
             subformula_list[i] = substr + " and "
@@ -171,7 +204,7 @@ class STLRuleMonitor:
     @property
     @functools.lru_cache(128)
     def prop_robust_ttv(self):
-        return self.rob_abstraction[self._violated_rule_idx][self._tv]
+        return self.rob_abstraction[self._violated_rule_idx][self._tv - self._start_time_step]
 
     def _initialize_prop_rob(self):
         """
@@ -194,8 +227,8 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        all_prop_robs = self.rob_abstraction[:, self._tv]
-        all_prop_names = self.abstraction_names[:, self._tv]
+        all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
+        all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
         prop_nodes = []
         for idx in np.transpose(np.isfinite(all_prop_robs).nonzero()):
             proposition = PropositionNode(
@@ -220,6 +253,18 @@ class STLRuleMonitor:
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
+
+    def search_future_time_step(self):
+        future_time_step = np.zeros(len(self.rule_eval), dtype=int)
+        for i in range(len(future_time_step)):
+            prop_robust_rule = self.prop_robust_all[i, :, :]
+            for j in range(prop_robust_rule.shape[0]):
+                if np.any(np.isinf(prop_robust_rule[j, :])):
+                    future_time_step[i] += 1
+                else:
+                    break
+        return future_time_step
+
 
     def evaluate_initially(self):
         """
@@ -279,8 +324,12 @@ class STLRuleMonitor:
                         prop_names.append([prop_name for prop_name in prop.keys()])
                         prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
                     else:
-                        prop_names.append([])
-                        prop_rob.append([])
+                        try:
+                            prop_names.append(prop_names[0])
+                            prop_rob.append([-np.inf] * len(prop_rob[0]))
+                        except:
+                            prop_names.append([])
+                            prop_rob.append([])
                     pred = evaluator.get_predicates()
                     if pred:
                         pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
@@ -389,21 +438,25 @@ class STLRuleMonitor:
             if self.other_ids[rule_idx][0] is ():
                 return None, -math.inf, None
             return None, -math.inf, self.other_ids[rule_idx][0][0]  # all violated
-        tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1)
-        if np.all(tv_per_rule == 0):
+        tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1) + self._start_time_step
+        if np.all(tv_per_rule == self._start_time_step):
             return None, math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if (
-            self.other_ids[rule_idx][min_tv] is ()
+            self.other_ids[rule_idx][min_tv - self._start_time_step] is ()
         ):  # or self._rules[rule_idx] == 'R_G2':
             # R_G2: we focus on the ego vehicle
             return rule_idx, int(min_tv), self._vehicle_id
-        return rule_idx, int(min_tv), self.other_ids[rule_idx][min_tv][0]
+        return rule_idx, int(min_tv), self.other_ids[rule_idx][min_tv - self._start_time_step][0]
 
     def switch_to_boolean(self, evaluator):
         if not evaluator._eval_visitor.use_boolean:
             evaluator._eval_visitor.use_boolean = True
+
+    def switch_to_robustness(self, evaluator):
+        if evaluator._eval_visitor.use_boolean:
+            evaluator._eval_visitor.use_boolean = False
 
 
 # Currently, MTL monitor is not supported

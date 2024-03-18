@@ -8,6 +8,7 @@ from commonroad.scenario.obstacle import TrajectoryPrediction, ObstacleType
 from commonroad.planning.planning_problem import PlanningProblem
 
 from crrepairer.repairer.base import TrajectoryRepair
+from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.smt.sat_solver.sat_solver import SATSolver
 from crrepairer.smt.t_solver.t_solver import TSolver
@@ -27,8 +28,8 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     def __init__(
         self,
         rule_monitor: STLRuleMonitor,
-        planning_problem: PlanningProblem,
         ego_vehicle: DynamicObstacle,
+        config: RepairerConfiguration,
     ):
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_monitor = rule_monitor
@@ -41,8 +42,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self._tc = -math.inf
         self._tv = -math.inf
         # initialize Solvers for SMT paradigm
-        self.sat_solver = SATSolver(self.rule_monitor)
-        self.t_solver = TSolver(ego_vehicle, planning_problem, self.rule_monitor)
+        self.sat_solver = SATSolver(self.rule_monitor, config)
+        self.t_solver = TSolver(ego_vehicle, self.rule_monitor, config)
+        self.config = config
 
     @property
     def tv(self):
@@ -51,6 +53,10 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     @property
     def tc(self):
         return self._tc
+
+    @property
+    def target_vehicle(self):
+        return self.config.scenario.obstacle_by_id(self.rule_monitor.other_id)
 
     @property
     def model(self):

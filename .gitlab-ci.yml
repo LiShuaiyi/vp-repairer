@@ -19,11 +19,13 @@ before_script:
     - conda info
     # - pip uninstall git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@new-interface
     - conda install -c conda-forge cvxpy
-    - pip install git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@development
+    - pip install git+ssh://git@gitlab.lrz.de/cps/commonroad-stl-monitor.git@update-from-develop
     - pip install -r requirements.txt
     
 test:
   stage: test
+  only:
+    - master
   script:
     - pip install -e .
     - cd $CI_PROJECT_DIR/tests && python -m unittest

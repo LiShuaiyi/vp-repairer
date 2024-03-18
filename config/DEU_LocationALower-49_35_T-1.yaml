@@ -1,0 +1,9 @@
+debug:
+  show_plots: true
+  plot_limits: [280, 450, -35, -20]
+repair:
+  ego_id: 13
+  rules: ["R_G1"]
+  planner: 1         # qp
+  t_0: 1             # initial time step
+  N_r: 12            # number of time steps

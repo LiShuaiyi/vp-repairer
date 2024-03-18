@@ -41,8 +41,13 @@ class DPLL:
     @staticmethod
     def get_literal(cnf, prop_nodes, tv_time_step: int):
         def robustness_degree(alp):
+            rob_min_tv_h = 0
             node = next((x for x in prop_nodes if x.alphabet == alp[-1]), None)
-            rob_min_tv_h = abs(node.ttv_value)
+            # TODO: FIXME: fix proposition sort. currently first consider propositions determined by the ego vehicle
+            for predicate in node.children:
+                if predicate.agent_placeholders == (1, 0):
+                    rob_min_tv_h += 1
+            rob_min_tv_h += abs(node.ttv_value)
             # print("<DPLL>: the robustness of instances in TV of alphabet {} is {}"
             #       .format(alp, prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step]))
             return rob_min_tv_h
@@ -52,6 +57,7 @@ class DPLL:
             split_cnf = sub.split()
             for lit in split_cnf:
                 if lit[-1] not in literals and "~" + lit[-1] not in literals:
+                    test = lit[-1]
                     literals.append(lit)
         # use robustness as heuristics to rank the literals
         if prop_nodes is not None and tv_time_step is not math.inf:
