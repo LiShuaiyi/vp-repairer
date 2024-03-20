@@ -9,7 +9,8 @@ def retrieve_ego_vehicle(config: RepairerConfiguration):
     ego_initial = config.scenario.obstacle_by_id(config.repair.ego_id)
     new_state_list = []
     new_occupancy_list = []
-    for time_step in range(config.repair.t_0, config.repair.t_f):
+    # todo: final time step? +1 ?
+    for time_step in range(config.repair.t_0, config.repair.t_f + 1):
         if ego_initial.state_at_time(time_step):
             if isinstance(ego_initial.state_at_time(time_step), ExtendedPMState):
                 new_state = CustomState(time_step=ego_initial.state_at_time(time_step).time_step,
