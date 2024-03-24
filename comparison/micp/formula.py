@@ -9,7 +9,8 @@ def in_same_lane_formula(bounds, y1_index, y2_index, d, name=None):
     return inside_rectangle_formula(bounds, y1_index, y2_index, d, name)
 
 
-def in_front_of_formula(interval, index, d):
+def in_front_of_formula(interval, index, d, length, wheelbase):
+    interval[1] -= (1/2 * length + wheelbase)
     return inside_rectangle_formula(interval, index, d, "in_front_of")
 
 

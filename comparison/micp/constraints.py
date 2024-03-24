@@ -1,3 +1,4 @@
+import numpy as np
 
 from crmonitor.common.vehicle import Vehicle, Lane
 
@@ -6,17 +7,17 @@ from functools import lru_cache
 
 
 @lru_cache(maxsize=None)
-def compute_lane_bounds(lane: Lane):
-    top_left_s, top_left_d = lane.clcs.convert_to_curvilinear_coords(
+def compute_lane_bounds(lane: Lane, ref_lane: Lane):
+    top_left_s, top_left_d = ref_lane.clcs.convert_to_curvilinear_coords(
         *lane.lanelet.left_vertices[0]
     )
-    top_right_s, top_right_d = lane.clcs.convert_to_curvilinear_coords(
+    top_right_s, top_right_d = ref_lane.clcs.convert_to_curvilinear_coords(
         *lane.lanelet.left_vertices[-1]
     )
-    bottom_left_s, bottom_left_d = lane.clcs.convert_to_curvilinear_coords(
+    bottom_left_s, bottom_left_d = ref_lane.clcs.convert_to_curvilinear_coords(
         *lane.lanelet.right_vertices[0]
     )
-    bottom_right_s, bottom_right_d = lane.clcs.convert_to_curvilinear_coords(
+    bottom_right_s, bottom_right_d = ref_lane.clcs.convert_to_curvilinear_coords(
         *lane.lanelet.right_vertices[-1]
     )
     s_left = max(top_left_s, bottom_left_s)
@@ -30,8 +31,32 @@ class InSameLaneConstraint:
     def __init__(self):
         self.constraint_dict = defaultdict(tuple)
 
-    def compute(self, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
+    def compute(self, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
         for time_step in range(initial_time_step, final_time_step + 1):
             lane = target_vehicle.get_lane(time_step)
-            self.constraint_dict[time_step] = compute_lane_bounds(lane)
+            self.constraint_dict[time_step] = compute_lane_bounds(lane, ego_vehicle.get_lane(time_step))
         return self.constraint_dict
+
+
+class InFrontOfConstraint:
+    def __init__(self):
+        self.constraint_dict = defaultdict(tuple)
+
+    def compute(self, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
+        for time_step in range(initial_time_step, final_time_step + 1):
+            s_max = target_vehicle.rear_s(time_step, ego_vehicle.get_lane(time_step))
+            self.constraint_dict[time_step] = (np.inf, s_max)
+        return self.constraint_dict
+
+
+class KeepsSafeDistanceConstraint:
+    def __init__(self):
+        self.constraint_dict = defaultdict(tuple)
+
+    def compute(self, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
+        for time_step in range(initial_time_step, final_time_step + 1):
+            real_s_l = target_vehicle.rear_s(time_step, ego_vehicle.get_lane(time_step))
+            velocity_l = target_vehicle.get_lon_state(time_step, ego_vehicle.get_lane(time_step)).v
+            self.constraint_dict[time_step] = (real_s_l, velocity_l)
+        return self.constraint_dict
+
