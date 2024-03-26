@@ -10,11 +10,25 @@ from commonroad_qp_planner.utils import (
 )
 
 
+def keeps_speed_limit(speed_limit, v_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, v_index] = 1
+
+    # create predicate a*y >= b for the speed limit
+    below_speed_limit = LinearPredicate(-a, -speed_limit)
+
+    if name is not None:
+        below_speed_limit.name = name
+    return below_speed_limit
+
+
 def in_same_lane_formula(bounds, y1_index, y2_index, d, name=None):
     return inside_rectangle_formula(bounds, y1_index, y2_index, d, name)
 
+
 def not_in_same_lane_formula(bounds, y1_index, y2_index, d, name=None):
     return outside_rectangle_formula(bounds, y1_index, y2_index, d, name)
+
 
 def in_front_of_formula(interval, index, d, length, wheelbase):
     # Convert tuple to list
@@ -27,6 +41,7 @@ def in_front_of_formula(interval, index, d, length, wheelbase):
     interval = tuple(interval_list)
     return inside_interval_formula(interval, index, d, "in_front_of")
 
+
 def not_in_front_of_formula(interval, index, d, length, wheelbase):
     # Convert tuple to list
     interval_list = list(interval)
@@ -37,6 +52,7 @@ def not_in_front_of_formula(interval, index, d, length, wheelbase):
     # Convert back to tuple if necessary
     interval = tuple(interval_list)
     return outside_interval_formula(interval, index, d, "not_in_front_of")
+
 
 def keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_index,
                                 d, length, wheelbase, name=None):
@@ -50,6 +66,7 @@ def keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_ind
         # return rear_l - (y[position_index]) - d_safe
         return rear_l - (y[position_index] + 1/2 * length + wheelbase/2) - d_safe
     return NonlinearPredicate(g, d, name)
+
 
 def linearized_keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_index, d,
                                            length, wheelbase, name=None):
@@ -125,6 +142,7 @@ def inside_interval_formula(interval, index, d, name=None):
         inside_interval.name = name
 
     return inside_interval
+
 
 def outside_interval_formula(interval, index, d, name=None):
     """

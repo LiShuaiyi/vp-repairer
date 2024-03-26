@@ -5,10 +5,13 @@ from stlpy.benchmarks.common import make_rectangle_patch
 
 from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, keeps_safe_distance_formula,
                                      not_in_front_of_formula, not_in_same_lane_formula,
-                                     linearized_keeps_safe_distance_formula)
+                                     linearized_keeps_safe_distance_formula, keeps_speed_limit)
 from comparison.micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
 
 from crmonitor.common.vehicle import Vehicle, Lane
+
+from commonroad.scenario.traffic_sign import SupportedTrafficSignCountry
+from commonroad.scenario.traffic_sign_interpreter import TrafficSigInterpreter
 
 
 class RG1(BenchmarkScenario):
@@ -84,3 +87,49 @@ class RG1(BenchmarkScenario):
         ax.set_ylim((0, 10))
         ax.set_aspect('equal')
 
+
+class RG3(BenchmarkScenario):
+    """Rule RG3"""
+    def __init__(self, T: int, ego_vehicle: Vehicle, lanelet_network):
+        self.T: int = T
+        self.ego_vehicle = ego_vehicle
+        self.lanelet_network = lanelet_network
+
+    def GetSpecification(self):
+
+        # lane speed limit
+        country = SupportedTrafficSignCountry.GERMANY
+        lanelet_ids = self.ego_vehicle.lanelet_assignment[0]
+        ts_interpreter = TrafficSigInterpreter(
+            country, self.lanelet_network
+        )
+        lane_speed_limit = ts_interpreter.speed_limit(frozenset(lanelet_ids))
+        if lane_speed_limit is None:
+            lane_speed_limit = 60
+        keeps_lane_speed_limit = keeps_speed_limit(lane_speed_limit, 2, 6)
+
+        # type speed_limit
+        type_speed_limit = 60
+        keeps_type_speed_limit = keeps_speed_limit(type_speed_limit, 2, 6)
+
+        # FOV speed limit
+        fov_speed_limit = 50
+        keeps_foc_speed_limit = keeps_speed_limit(fov_speed_limit, 2, 6)
+
+        # braking speed limit
+        br_speed_limit = 43
+        keeps_foc_speed_limit = keeps_speed_limit(br_speed_limit, 2, 6)
+
+        keeps_speed_limit_one_step = (keeps_lane_speed_limit & keeps_type_speed_limit &
+                                      keeps_foc_speed_limit & keeps_foc_speed_limit)
+
+        spec = keeps_speed_limit_one_step.always(0, self.T)
+
+        return spec
+
+    def GetSystem(self):
+        sys = DoubleIntegrator(2)
+        return sys
+
+    def add_to_plot(self, ax):
+        pass
