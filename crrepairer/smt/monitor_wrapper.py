@@ -254,7 +254,7 @@ class STLRuleMonitor:
                             for p_name in other_props[other_props == other_props]
                         ]
                     ):
-                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[pred.name]
+                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[tuple(idx)[0]][pred.name]
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
@@ -290,7 +290,6 @@ class STLRuleMonitor:
         pred_rob_all = []
         other_ids_all = []
 
-        # todo: fix multi processing
         if self.multiproc:
             rule_ids = []
             queue = Queue()
