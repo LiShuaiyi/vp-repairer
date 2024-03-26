@@ -48,8 +48,8 @@ scenario = RG1(T=T,
 
 spec = scenario.GetSpecification()
 sys = scenario.GetSystem()
-Q = 1e-1 * np.diag([0,0,1,0])   # just penalize high velocities
-R = 10 * np.eye(2)
+Q = 1e-1 * np.diag([0,1,1,1])   # just penalize high velocities
+R = 1 * np.eye(2)
 
 initial_state_lon = ego_vehicle.get_lon_state(0, ego_vehicle.get_lane(0))
 initial_state_lat = ego_vehicle.get_lat_state(0, ego_vehicle.get_lane(0))
@@ -62,8 +62,8 @@ x0 = np.array(
     ]
 )
 
-# solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
-solver = ScipyGradientSolver(spec, sys, x0, T, verbose=True)
+solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
+# solver = ScipyGradientSolver(spec, sys, x0, T, verbose=True)
 
 u_min = np.array([-10, -10])
 u_max = np.array([12, 12])

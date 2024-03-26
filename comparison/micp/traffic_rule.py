@@ -3,7 +3,8 @@ from stlpy.STL.formula import STLTree
 from stlpy.systems.linear import DoubleIntegrator
 
 from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, keeps_safe_distance_formula,
-                                     not_in_front_of_formula, not_in_same_lane_formula)
+                                     not_in_front_of_formula, not_in_same_lane_formula,
+                                     linearized_keeps_safe_distance_formula)
 from comparison.micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
 
 from crmonitor.common.vehicle import Vehicle, Lane
@@ -42,10 +43,15 @@ class RG1(BenchmarkScenario):
             not_in_same_lane = not_in_same_lane_formula(
                 self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 6
             )
-            in_same_lane = in_same_lane_formula(
-                self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 6
-            )
-            keeps_safe_distance = keeps_safe_distance_formula(
+            # in_same_lane = in_same_lane_formula(
+            #     self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 6
+            # )
+            # keeps_safe_distance = keeps_safe_distance_formula(
+            #     self.keeps_safe_distance_constr.constraint_dict[time_step][0],
+            #     self.keeps_safe_distance_constr.constraint_dict[time_step][1],
+            #     0, 2, 6,  self.ego_vehicle.shape.length, 2.578
+            # )
+            keeps_safe_distance = linearized_keeps_safe_distance_formula(
                 self.keeps_safe_distance_constr.constraint_dict[time_step][0],
                 self.keeps_safe_distance_constr.constraint_dict[time_step][1],
                 0, 2, 6,  self.ego_vehicle.shape.length, 2.578

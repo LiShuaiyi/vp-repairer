@@ -3,6 +3,11 @@ import numpy as np
 from stlpy.STL import LinearPredicate, NonlinearPredicate
 from stlpy.benchmarks.common import inside_rectangle_formula, outside_rectangle_formula
 from matplotlib.patches import Rectangle, Circle
+from functools import reduce
+from commonroad_qp_planner.utils import (
+    calculate_safe_distance,
+    derivative_safe_distance,
+)
 
 
 def in_same_lane_formula(bounds, y1_index, y2_index, d, name=None):
@@ -16,7 +21,7 @@ def in_front_of_formula(interval, index, d, length, wheelbase):
     interval_list = list(interval)
 
     # Perform the operation
-    # interval_list[1] -= (1 / 2 * length + wheelbase)
+    interval_list[1] -= (1 / 2 * length + wheelbase/2)
 
     # Convert back to tuple if necessary
     interval = tuple(interval_list)
@@ -27,7 +32,7 @@ def not_in_front_of_formula(interval, index, d, length, wheelbase):
     interval_list = list(interval)
 
     # Perform the operation
-    # interval_list[1] -= (1 / 2 * length + wheelbase)
+    interval_list[1] -= (1 / 2 * length + wheelbase)
 
     # Convert back to tuple if necessary
     interval = tuple(interval_list)
@@ -42,10 +47,32 @@ def keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_ind
                 - (y[velocity_index] ** 2) / (-2 * 10)
                 + y[velocity_index] * 0.4
         )
-        return rear_l - (y[position_index]) - d_safe
-
-        # return rear_l - (y[position_index] + 1/2 * length + wheelbase) - d_safe
+        # return rear_l - (y[position_index]) - d_safe
+        return rear_l - (y[position_index] + 1/2 * length + wheelbase/2) - d_safe
     return NonlinearPredicate(g, d, name)
+
+def linearized_keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_index, d,
+                                           length, wheelbase, name=None):
+    velocity_samples = np.linspace(0, 25, 5)
+    safe_formula = []
+    for i in range(len(velocity_samples)):
+        safe_distance_0 = calculate_safe_distance(
+            velocity_samples[i],
+            velocity_l,
+            -10.5,
+            -10,
+            0.4
+        )
+        safe_distance_der_0 = derivative_safe_distance(
+            velocity_samples[i], -10, 0.4
+        )
+        right_hand = - rear_l + length/2 + wheelbase/2 + safe_distance_0 - safe_distance_der_0 * velocity_samples[i]
+        a = np.zeros((1, d))
+        a[:, position_index] = -1
+        a[:, velocity_index] = -safe_distance_der_0
+        safe_distance_sub = LinearPredicate(a, right_hand)
+        safe_formula.append(safe_distance_sub)
+    return reduce(lambda x, y: x & y, safe_formula)
 
 
 def inside_interval_formula(interval, index, d, name=None):
