@@ -21,7 +21,7 @@ def in_front_of_formula(interval, index, d, length, wheelbase):
     interval_list = list(interval)
 
     # Perform the operation
-    interval_list[1] -= (1 / 2 * length + wheelbase/2)
+    interval_list[1] -= (1 / 2 * length/2 + wheelbase/2)
 
     # Convert back to tuple if necessary
     interval = tuple(interval_list)
@@ -32,7 +32,7 @@ def not_in_front_of_formula(interval, index, d, length, wheelbase):
     interval_list = list(interval)
 
     # Perform the operation
-    interval_list[1] -= (1 / 2 * length + wheelbase)
+    interval_list[1] -= (1 / 2 * length/2 + wheelbase/2)
 
     # Convert back to tuple if necessary
     interval = tuple(interval_list)
@@ -99,16 +99,29 @@ def inside_interval_formula(interval, index, d, name=None):
     # create predicate a*y >= b for each side
     a = np.zeros((1, d))
     a[:, index] = 1
-    int_min = LinearPredicate(a, y_min)
-    int_max = LinearPredicate(-a, -y_max)
 
-    # Take the conjunction across the interval
-    inside_interval = int_min & int_max
+    if y_max != np.inf:
+        right = LinearPredicate(-a, -y_max)
+    else:
+        right = None
+    if y_min != -np.inf:
+        left = LinearPredicate(a, y_min)
+    else:
+        left = None
+    if left is not None and right is not None:
+        # Take the conjunction across the interval
+        inside_interval = right & left
+    elif left is None:
+        inside_interval = right
+    elif right is None:
+        inside_interval = left
+    else:
+        inside_interval = None
 
     # set the names
     if name is not None:
-        int_min.name = "greater than " + name
-        int_max.name = "smaller than " + name
+        left.name = "greater than " + name
+        right.name = "smaller than " + name
         inside_interval.name = name
 
     return inside_interval
@@ -137,16 +150,22 @@ def outside_interval_formula(interval, index, d, name=None):
     # create predicate a*y >= b for each side
     a = np.zeros((1, d))
     a[:, index] = 1
-    right = LinearPredicate(a, y_max)
-    left = LinearPredicate(-a, -y_min)
-
-    # Take the conjunction across the interval
-    outside_interval = right | left
-
-    # set the names
-    if name is not None:
-        right.name = "greater than " + name
-        right.name = "smaller than " + name
-        outside_interval.name = name
+    if y_max != np.inf:
+        right = LinearPredicate(a, y_max)
+    else:
+        right = None
+    if y_min != -np.inf:
+        left = LinearPredicate(-a, -y_min)
+    else:
+        left = None
+    if left is not None and right is not None:
+        # Take the conjunction across the interval
+        outside_interval = right | left
+    elif left is None:
+        outside_interval = right
+    elif right is None:
+        outside_interval = left
+    else:
+        outside_interval = None
 
     return outside_interval

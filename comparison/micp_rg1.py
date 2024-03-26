@@ -62,6 +62,8 @@ x0 = np.array(
     ]
 )
 
+import time
+time_start = time.time()
 solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
 # solver = ScipyGradientSolver(spec, sys, x0, T, verbose=True)
 
@@ -71,6 +73,8 @@ u_max = np.array([12, 12])
 solver.AddQuadraticCost(Q, R)
 
 x, u, _, _ = solver.Solve()
+
+print("", time.time() - time_start)
 if x is not None:
     # Plot the solution
     ax = plt.gca()
