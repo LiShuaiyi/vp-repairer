@@ -1,6 +1,7 @@
 from stlpy.benchmarks.base import BenchmarkScenario
 from stlpy.STL.formula import STLTree
 from stlpy.systems.linear import DoubleIntegrator
+from stlpy.benchmarks.common import make_rectangle_patch
 
 from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, keeps_safe_distance_formula,
                                      not_in_front_of_formula, not_in_same_lane_formula,
@@ -68,5 +69,18 @@ class RG1(BenchmarkScenario):
         return sys
 
     def add_to_plot(self, ax):
-        pass
+        boundary = make_rectangle_patch(
+            * self.in_same_lane_constr.constraint_dict[0], facecolor="white", edgecolor='black'
+        )
+        time_interval = [t for t in range(0, self.T + 1)]
+        ax.add_patch(boundary)
+
+        for i in time_interval:
+            s_other = self.other_vehicle.get_lon_state(i, self.ego_vehicle.get_lane(0)).s
+            obstacle = make_rectangle_patch(
+            *(s_other, s_other+2, -1, 1), color="blue", alpha=0.1
+        )
+            ax.add_patch(obstacle)
+        ax.set_ylim((0, 10))
+        ax.set_aspect('equal')
 

@@ -48,7 +48,7 @@ scenario = RG1(T=T,
 
 spec = scenario.GetSpecification()
 sys = scenario.GetSystem()
-Q = 1e-1 * np.diag([0,1,1,1])   # just penalize high velocities
+Q = 1e-1 * np.diag([0,1,5,1])   # just penalize high velocities
 R = 1 * np.eye(2)
 
 initial_state_lon = ego_vehicle.get_lon_state(0, ego_vehicle.get_lane(0))
@@ -71,12 +71,16 @@ u_min = np.array([-10, -10])
 u_max = np.array([12, 12])
 
 solver.AddQuadraticCost(Q, R)
+solver.AddControlBounds(u_min, u_max)
 
 x, u, _, _ = solver.Solve()
-
+print(u)
 print("", time.time() - time_start)
 if x is not None:
     # Plot the solution
+
     ax = plt.gca()
+    scenario.add_to_plot(ax)
+
     plt.scatter(*x[:2,:])
     plt.show()
