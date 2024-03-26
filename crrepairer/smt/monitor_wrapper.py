@@ -1,7 +1,7 @@
 import functools
 import math
 from typing import Iterable, Union, Tuple, Any, List
-from enum import Enum
+from collections import defaultdict
 import numpy as np
 import dataclasses
 from dataclasses import dataclass
@@ -229,6 +229,8 @@ class STLRuleMonitor:
             return None
         all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
         all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
+        all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
+
         prop_nodes = []
         for idx in np.transpose(np.isfinite(all_prop_robs).nonzero()):
             proposition = PropositionNode(
@@ -241,6 +243,8 @@ class STLRuleMonitor:
             for pred in pred_nodes:
                 if "g0" not in all_prop_names[tuple(idx)]:
                     if pred.name in all_prop_names[tuple(idx)]:
+                        # add missing values
+                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[tuple(idx)[0]][pred.name]
                         proposition.children.append(pred)
                 else:
                     other_props = np.delete(all_prop_names[idx[0]], idx[-1], 0)
@@ -250,6 +254,7 @@ class STLRuleMonitor:
                             for p_name in other_props[other_props == other_props]
                         ]
                     ):
+                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[pred.name]
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
@@ -264,7 +269,6 @@ class STLRuleMonitor:
                 else:
                     break
         return future_time_step
-
 
     def evaluate_initially(self):
         """
@@ -286,6 +290,7 @@ class STLRuleMonitor:
         pred_rob_all = []
         other_ids_all = []
 
+        # todo: fix multi processing
         if self.multiproc:
             rule_ids = []
             queue = Queue()
@@ -332,13 +337,15 @@ class STLRuleMonitor:
                             prop_rob.append([])
                     pred = evaluator.get_predicates()
                     if pred:
-                        pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
+                        mpr_grad = evaluator.get_mpr_gradient()
+                        pred_rob.append({key: [pred[key], mpr_grad[key]] for key in pred})
                     else:
                         pred_rob.append([])
+
                 rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
                 prop_rob_all.append(np.array(prop_rob, dtype=np.float64))
                 prop_names_all.append(np.array(prop_names, dtype=object))
-                pred_rob_all.append(np.array(pred_rob, dtype=np.float64))
+                pred_rob_all.append(pred_rob)
                 other_ids_all.append(other_ids)
 
         assert len(rule_rob_all) == len(self._rule_eval)
@@ -435,7 +442,7 @@ class STLRuleMonitor:
         # evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
         if np.any(self.rob_rule[:, 0] < 0):
             rule_idx = np.where(self.rob_rule[:, 0] < 0)[0][0]
-            if self.other_ids[rule_idx][0] is ():
+            if self.other_ids[rule_idx][0] == ():
                 return None, -math.inf, None
             return None, -math.inf, self.other_ids[rule_idx][0][0]  # all violated
         tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1) + self._start_time_step
@@ -444,7 +451,7 @@ class STLRuleMonitor:
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if (
-            self.other_ids[rule_idx][min_tv - self._start_time_step] is ()
+            self.other_ids[rule_idx][min_tv - self._start_time_step] == ()
         ):  # or self._rules[rule_idx] == 'R_G2':
             # R_G2: we focus on the ego vehicle
             return rule_idx, int(min_tv), self._vehicle_id
