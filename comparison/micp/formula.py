@@ -22,6 +22,67 @@ def keeps_speed_limit(speed_limit, v_index, d, name=None):
     return below_speed_limit
 
 
+def braking_formula(a_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, a_index] = 1
+
+    # create predicate a*y >= b for the speed limit
+    v_braking = LinearPredicate(-a, 0)
+
+    if name is not None:
+        v_braking.name = name
+    return v_braking
+
+
+def not_braking_formula(a_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, a_index] = 1
+
+    # create predicate a*y >= b for the speed limit
+    v_braking = LinearPredicate(a, 0)
+
+    if name is not None:
+        v_braking.name = name
+    return v_braking
+
+
+def braking_abruptly_formula(a_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, a_index] = 1
+
+    # create predicate a*y >= b for the speed limit
+    braking_abruptly = LinearPredicate(-a, 2)
+
+    if name is not None:
+        braking_abruptly.name = name
+    return braking_abruptly
+
+
+def relative_braking_abruptly_formula(a_target, a_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, a_index] = 1
+
+    a_abrupt = -2
+
+    braking_abruptly_relative = LinearPredicate(-a, -(a_abrupt + a_target))
+
+    if name is not None:
+        braking_abruptly_relative.name = name
+    return braking_abruptly_relative
+
+
+def not_braking_abruptly_formula(a_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, a_index] = 1
+
+    # create predicate a*y >= b for the speed limit
+    braking_abruptly = LinearPredicate(a, -2)
+
+    if name is not None:
+        braking_abruptly.name = name
+    return braking_abruptly
+
+
 def in_same_lane_formula(bounds, y1_index, y2_index, d, name=None):
     return inside_rectangle_formula(bounds, y1_index, y2_index, d, name)
 
@@ -134,12 +195,6 @@ def inside_interval_formula(interval, index, d, name=None):
         inside_interval = left
     else:
         inside_interval = None
-
-    # set the names
-    if name is not None:
-        left.name = "greater than " + name
-        right.name = "smaller than " + name
-        inside_interval.name = name
 
     return inside_interval
 
