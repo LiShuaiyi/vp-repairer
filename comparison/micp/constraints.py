@@ -33,8 +33,8 @@ class InSameLaneConstraint:
 
     def compute(self, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
         for time_step in range(initial_time_step, final_time_step + 1):
-            lane = target_vehicle.get_lane(time_step)
-            self.constraint_dict[time_step] = compute_lane_bounds(lane, ego_vehicle.get_lane(time_step))
+            lane = target_vehicle.get_lane(initial_time_step)
+            self.constraint_dict[time_step] = compute_lane_bounds(lane, ego_vehicle.get_lane(initial_time_step))
         return self.constraint_dict
 
 
@@ -44,7 +44,7 @@ class InFrontOfConstraint:
 
     def compute(self, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
         for time_step in range(initial_time_step, final_time_step + 1):
-            s_max = target_vehicle.rear_s(time_step, ego_vehicle.get_lane(time_step))
+            s_max = target_vehicle.rear_s(time_step, ego_vehicle.get_lane(initial_time_step))
             self.constraint_dict[time_step] = (np.inf, s_max)
         return self.constraint_dict
 
@@ -55,8 +55,8 @@ class KeepsSafeDistanceConstraint:
 
     def compute(self, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
         for time_step in range(initial_time_step, final_time_step + 1):
-            real_s_l = target_vehicle.rear_s(time_step, ego_vehicle.get_lane(time_step))
-            velocity_l = target_vehicle.get_lon_state(time_step, ego_vehicle.get_lane(time_step)).v
+            real_s_l = target_vehicle.rear_s(time_step, ego_vehicle.get_lane(initial_time_step))
+            velocity_l = target_vehicle.get_lon_state(time_step, ego_vehicle.get_lane(initial_time_step)).v
             self.constraint_dict[time_step] = (real_s_l, velocity_l)
         return self.constraint_dict
 
