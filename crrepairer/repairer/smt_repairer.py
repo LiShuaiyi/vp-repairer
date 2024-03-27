@@ -33,11 +33,6 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
     ):
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_monitor = rule_monitor
-        self._inital_rob = (
-            self.rule_monitor.rob_rule,
-            rule_monitor.rob_predicate,
-            rule_monitor.rob_abstraction,
-        )
         self._model = None
         self._tc = -math.inf
         self._tv = -math.inf
@@ -78,7 +73,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 return None
             select_proposition, self._model = self.sat_solver.model()
             repairability, repaired_traj = self.t_solver.check(
-                select_proposition, list(self._model)
+                select_proposition, list(self._model), use_mpr_derivative=self.config.repair.use_mpr_derivative
             )
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:

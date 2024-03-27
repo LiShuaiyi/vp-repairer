@@ -157,6 +157,8 @@ class RepairConfiguration(BaseConfiguration):
     multiproc: bool = True
     use_mpr: bool = False
 
+    use_mpr_derivative: bool = False
+
     def __post_init__(self):
         pass
 
