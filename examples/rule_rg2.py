@@ -15,7 +15,7 @@ if __name__ == "__main__":
     scenario_id = "ZAM_Zip-1_56_T-1"
 
     # Build configuration object
-    config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
+    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
     config.update()
 
     initial_time_step = 50

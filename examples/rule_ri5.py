@@ -6,12 +6,15 @@ from crrepairer.utils.repair import retrieve_ego_vehicle
 
 import math
 
+
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_TestIntersectionInteract-3_1_T-1"
+    scenario_id = "DEU_test_consider_entering_vehicles_for_lane_change"
 
     # Build configuration object
-    config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
+    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
+    config.general.path_scenarios = "../scenarios/test_interstate/"
+    config.general.set_path_scenario(scenario_id + ".xml")
     config.update()
 
     # Retrieve the ego vehicle

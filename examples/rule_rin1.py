@@ -11,7 +11,7 @@ if __name__ == "__main__":
     scenario_id = "DEU_AAH1-2_818150_T-18299"
 
     # Build configuration object
-    config = RepairerConfiguration.load(f"../../config/{scenario_id}.yaml", scenario_id)
+    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
     config.update()
     config.repair.use_mpr = False
 

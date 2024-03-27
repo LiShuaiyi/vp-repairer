@@ -57,7 +57,7 @@ class TC(CutOffBase, ABC):
         # todo fix in params in crime
         yaml_file = os.path.join(
             os.getcwd(),
-            "../../../commonroad-criticality-measures/config_files/"
+            "../../commonroad-criticality-measures/config_files/"
             + str(self.scenario.scenario_id)
             + ".yaml",
         )

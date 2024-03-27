@@ -30,18 +30,22 @@ $ conda activate repairverse
 or
 $ source activate repairverse
 ```
-Install `Jupyter Notebook` and supplementary modules:
-```sh
-$ conda install jupyter ipykernel ipywidgets sphinx scipy -y
-$ jupyter nbextension install --py widgetsnbextension --user
-$ jupyter nbextension enable widgetsnbextension --user --py
-```
+
 Then, install the dependencies with:
 
 ```sh
 $ pip install -r requirements.txt
 ```
 This will install related dependencies specified in `requirements.txt`. Or simply install the dependencies listed in `requirements.txt` and add this repository to your python path.
+
+> ### Optimization license
+>
+> For using the optimization solvers, e.g., Gurobi, Mosek, it is required to apply for academic license:
+> - Mosek: https://www.mosek.com/products/academic-licenses/
+> - Gurobi: https://www.gurobi.com/academia/academic-program-and-licenses/
+>    - `conda install -c gurobi gurobi`
+>    - `connect to the campus network/use` [eduVPN](https://docs.eduvpn.org/client/linux/installation.html)
+>    - `grbgetkey xxx` (your obtained from the gurobi website)
 
 ## Folder structure
 ```
