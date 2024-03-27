@@ -18,6 +18,8 @@ commonroad-crime>=0.3.0
 
 # gurobi optimizer
 gurobipy
+stlpy>=0.3.0
 
 # qp planner for intersection
--e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_repairing_intersection#egg=commonroad-qp-planner
+# -e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_repairing_intersection#egg=commonroad-qp-planner
+
