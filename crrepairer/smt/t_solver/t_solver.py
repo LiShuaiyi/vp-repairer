@@ -57,7 +57,7 @@ class TSolver:
     def compliant_maneuvers(self):
         return self._compliant_maneuvers
 
-    def assign_proposition(self, propositions: List[PropositionNode], model: list, use_mpr: bool):
+    def assign_proposition(self, propositions: List[PropositionNode], model: list, use_mpr_derivative: bool):
         """
         Assigns propositions to the T-solver.
         """
@@ -69,9 +69,9 @@ class TSolver:
                 prop.ttv_value > 0 and "~" + prop.alphabet in model
             ):
                 self._sel_prop.append(prop)
-        self._compliant_maneuvers = self.set_compliant_maneuver(use_mpr)
+        self._compliant_maneuvers = self.set_compliant_maneuver(use_mpr_derivative)
 
-    def set_compliant_maneuver(self, use_mpr: bool):
+    def set_compliant_maneuver(self, use_mpr_derivative: bool):
         """
         Set rule-compliant maneuvers based on the selected propositions.
         """
@@ -88,7 +88,7 @@ class TSolver:
                 predicate_category = (
                     predicate.evaluator.predicate_name.__class__.__name__[:3]
                 )
-                if use_mpr:
+                if use_mpr_derivative:
                     if prop_node.name == predicate.name:
                         # value at TV
                         if torch.cuda.is_available():
@@ -232,13 +232,13 @@ class TSolver:
         return repaired_trajectory
 
     def check(
-        self, proposition: List[PropositionNode], model: list, use_mpr=False
+        self, proposition: List[PropositionNode], model: list, use_mpr_derivative=False
     ) -> (bool, Trajectory):
         """
         Checks the T-consistency.
         """
         repaired_traj = None
-        self.assign_proposition(proposition, model, use_mpr)
+        self.assign_proposition(proposition, model, use_mpr_derivative)
         if self.compliant_maneuvers is None:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj
