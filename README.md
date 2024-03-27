@@ -20,15 +20,15 @@ We recommend using [Anaconda](https://www.anaconda.com/) to manage your environm
 
 After installing Anaconda, create a new environment with:
 ``` sh
-$ conda create -n commonroad-py38 python=3.8 -y
+$ conda create -n repairverse python=3.10 -y
 ```
 
-Here the name of the environment is called **commonroad-py38**. You may also change this name as you wish. In such case, don't forget to change it in the following commands as well. **Always activate** this environment before you do anything related:
+Here the name of the environment is called **repairverse**. You may also change this name as you wish. In such case, don't forget to change it in the following commands as well. **Always activate** this environment before you do anything related:
 
 ```sh
-$ conda activate commonroad-py38
+$ conda activate repairverse
 or
-$ source activate commonroad-py38
+$ source activate repairverse
 ```
 Install `Jupyter Notebook` and supplementary modules:
 ```sh
