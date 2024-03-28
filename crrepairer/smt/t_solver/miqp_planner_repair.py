@@ -289,7 +289,6 @@ class MIQPPlannerRepair(MIQPPlanner):
         traj._u_lat = trajectory.u_lat
         cr_traj_repaired = traj.convert_to_cr_trajectory(
             self._vehicle_configuration.wheelbase,
-            self._vehicle_configuration.wb_ra
         )
         # TODO: fix time step
         if self._cut_off_time_step == 1:
