@@ -10,7 +10,6 @@ from commonroad.scenario.lanelet import LaneletNetwork, Lanelet
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
     ReferencePoint,
-    ConfigurationBuilder
 )
 from commonroad_qp_planner.initialization import (
     find_reference_path_and_lanelets_leading_to_goal,

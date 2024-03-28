@@ -8,7 +8,7 @@ import copy
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
 )
-from commonroad_qp_planner.utility.compute_constraints import (
+from crrepairer.utils.constraints import (
     longitudinal_position_constraints,
     lateral_position_constraints,
     longitudinal_velocity_constraints,

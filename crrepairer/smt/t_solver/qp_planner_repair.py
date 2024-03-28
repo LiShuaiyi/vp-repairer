@@ -1,7 +1,6 @@
 from commonroad_qp_planner.qp_planner import (
     QPPlanner,
     QPLongState,
-    QPLongDesired,
     LonConstraints,
 )
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
@@ -12,13 +11,12 @@ from commonroad_qp_planner.initialization import (
 )
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
-from commonroad_qp_planner.utils import plot_result, plot_position_constraints
 
 from crrepairer.smt.monitor_wrapper import PropositionNode
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.rule_constraints_manual import RuleConstraintsManual
-from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
+# from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.utils.configuration import RepairerConfiguration
 
@@ -127,7 +125,7 @@ class QPPlannerRepair(QPPlanner):
         )
 
         # construct the rule constraints based on the traffic rules and proposition to be repaired
-        self._rule_constraints = RuleConstraintsReach(
+        self._rule_constraints = RuleConstraintsManual(
             tc_object,
             rule_monitor,
             sel_proposition,
