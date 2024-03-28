@@ -2,10 +2,11 @@ import sympy as sp
 
 from crrepairer.smt.sat_solver.dpll import DPLL
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.utils.configuration import RepairerConfiguration
 
 
 class SATSolver:
-    def __init__(self, rule_monitor: STLRuleMonitor):
+    def __init__(self, rule_monitor: STLRuleMonitor, config: RepairerConfiguration):
         self._formula = self.construct_nnf(rule_monitor.sat_formula)
         self._formula = self.construct_cnf(self._formula)
         self._prop_nodes = rule_monitor.proposition_nodes
@@ -15,6 +16,8 @@ class SATSolver:
             self._formula, self._prop_nodes, rule_monitor.tv_time_step
         )
         self._dpll_model = None
+
+        self._config = config
 
     @property
     def formula(self):

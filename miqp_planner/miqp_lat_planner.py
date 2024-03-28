@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 import numpy as np
 
 from commonroad_dc.geometry.util import (
@@ -8,13 +8,11 @@ from commonroad_dc.geometry.util import (
 )
 
 from miqp_planner.gurobi_optimizer import GurobiSolver
-from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
+from miqp_planner.miqp_constraints import LateralConstraint, TIConstraint
 
-from commonroad_qp_planner.configuration import (
-    PlanningConfigurationVehicle,
-    ReferencePoint,
-)
 from commonroad_qp_planner.trajectory import Trajectory, TrajPoint, TrajectoryType
+
+from crrepairer.utils.configuration import RepairerConfiguration, VehicleConfiguration
 
 
 class MIQPLatState(object):
@@ -70,7 +68,7 @@ class MIQPLatReference(object):
     Class representing a QPLatReference made up of a list of QPLatRefStates
     """
 
-    def __init__(self, reference: list()):
+    def __init__(self, reference: List):
         self.reference = reference
 
     @property
@@ -78,7 +76,7 @@ class MIQPLatReference(object):
         return self._reference
 
     @reference.setter
-    def reference(self, reference: list()):
+    def reference(self, reference: List):
         # check if reference is list of reference states
         assert isinstance(reference, list) and (
             isinstance(s, MIQPLatRefState) for s in reference
@@ -96,8 +94,7 @@ class MIQPLatReference(object):
         cls,
         lon_traj: Trajectory,
         reference: np.ndarray,
-        vehicle_configuration: PlanningConfigurationVehicle,  # TODO: fix time invariate constraint
-        ti=None,
+        vehicle_configuration: VehicleConfiguration,
     ) -> "MIQPLatReference":
         assert (
             isinstance(lon_traj, Trajectory)
@@ -120,8 +117,8 @@ class MIQPLatReference(object):
         )
 
         # compute orientation, curvature and pathlength of reference
-        ref_orientation = compute_orientation_from_polyline(reference)
-        ref_curvature = compute_curvature_from_polyline(reference)
+        # ref_orientation = compute_orientation_from_polyline(reference)
+        # ref_curvature = compute_curvature_from_polyline(reference)
         ref_pathlength = compute_pathlength_from_polyline(reference)
 
         # get s coordinates of longitudinal motion for interpolation of theta and kappa of reference
@@ -131,17 +128,17 @@ class MIQPLatReference(object):
         j = lon_traj.get_jerk()
         # check if numerical errors have happened in lon trajectory
         for i in range(0, len(a)):
-            if np.greater(a[i], vehicle_configuration.a_max_x):
-                a[i] = vehicle_configuration.a_max_x
-            if np.greater(vehicle_configuration.a_min_x, a[i]):
-                a[i] = vehicle_configuration.a_min_x
+            if np.greater(a[i], vehicle_configuration.qp_veh_config.a_max_x):
+                a[i] = vehicle_configuration.qp_veh_config.a_max_x
+            if np.greater(vehicle_configuration.qp_veh_config.a_min_x, a[i]):
+                a[i] = vehicle_configuration.qp_veh_config.a_min_x
 
         assert np.greater_equal(
             np.max(ref_pathlength), np.max(s)
         ), "<QPLatReference>: Provided reference is not long enough for interpolation! ref = {}, traj = {}".format(
             np.max(ref_pathlength), np.max(s)
         )
-        CLCS = vehicle_configuration.curvilinear_coordinate_system
+        CLCS = vehicle_configuration.qp_veh_config.curvilinear_coordinate_system
 
         # interpolate curvature at s positions of trajectory
         # curvature_interpolated = np.interp(s, ref_pathlength, ref_curvature)
@@ -156,9 +153,7 @@ class MIQPLatReference(object):
 
         # create QPLat reference
         states = list()
-        # TODO: state starts from 1 or 0?
-        # for i in range(1, len(s)):
-        for i in range(0, len(s)):
+        for i in range(len(s)):
             states.append(
                 MIQPLatRefState(
                     s[i],
@@ -176,118 +171,154 @@ class MIQPLatReference(object):
 class MIQPLatPlanner:
     def __init__(
         self,
-        horizon: float,
-        N: int,
-        dT: float,
-        length: float,
-        lateral_constraints: LateralConstraint,
-        x_init_lat: MIQPLatState,
-        x_ref_lat: MIQPLatReference,
-        vehicle_configuration: PlanningConfigurationVehicle,
-        miqp_lat_params,
+        config: RepairerConfiguration,
     ):
-        self.time_horizon = horizon
-        self.N = N
-        self.dt = dT
+        self.time_horizon = config.miqp_planner.horizon
+        self.N = config.miqp_planner.N_p
+        self.dt = config.scenario.dt
+
+        # initialize from the configuration
+        self.config: Optional[RepairerConfiguration] = None
+        self.reset(config)
 
         # number of x <d, theta, kappa, kappa dot>
         self._n = 4
         # number of u <kappa dot dot>
         self._m = 1
-
         # wheelbase length
-        self._length = length
+        self._wb_length = self.config.vehicle.qp_veh_config.wheelbase
+        self._x_init_lat = None
+        self._x_ref_lat = None
 
-        self._lateral_constraints = lateral_constraints
-        self._x_init_lat = x_init_lat
-        self._x_ref_lat = x_ref_lat
+        self.config = config
+        self.weight = config.miqp_planner.weight_lat
 
-        self.vehicle_configuration = vehicle_configuration
-        self.lat_params = miqp_lat_params
-
-        self._init_time_invariant_constraints()
-        self._init_dynamic_constraints()
+        self.d_reference = None
 
         self.solver = GurobiSolver()
 
-        # TODO: cost weight in config file
-        self.weight = [0.05, 15.1, 40.0, 20.0, 1.0]
+        self.theta_r = list()
 
-        self.d_reference = np.zeros(self.N + 1)
+        self.dynamic_matrix_list = None
+        self.lat_dis_cons_matrix = None
+        self.kappa_lim = None
 
-    def plan(self):
-        # add state and control variables
-        self._init_state_var()
-        self._init_control_var()
+    def reset(self,
+              config: RepairerConfiguration = None,
+              x_init_lat: MIQPLatState = None,
+              x_ref_lat: MIQPLatReference = None,
+              nr_steps: int = None,
+              horizon: float = None,
+              d_reference=None):
+        # set updated config
+        if config is not None:
+            self.config = config
+        else:
+            assert self.config is not None, "<MIQP LONG PLANNER.reset(). No Configuration object provided>"
+        if x_init_lat is not None:
+            self._x_init_lat = x_init_lat
+        if x_ref_lat is not None:
+            self._x_ref_lat = x_ref_lat
+            self.theta_r = list()
+            for i in range(self.N):
+                self.theta_r.append(self._x_ref_lat.reference[i].theta)
+
+            (
+                self.dynamic_matrix_list,
+                self.lat_dis_cons_matrix,
+                self.kappa_lim,
+            ) = self._init_dynamic_matrices()
+
+        if d_reference is not None:
+            self.d_reference = d_reference
+
+        if nr_steps is not None:
+            self.N = nr_steps
+
+            if self.d_reference is None:
+                self.d_reference = np.zeros(self.N + 1)
+
+        if horizon is not None:
+            self.time_horizon = horizon
+
+    def plan(
+        self, lateral_constraints: LateralConstraint, ti_constraints: TIConstraint
+    ):
+        """Plan the lateral movement based on the constraints and longitudinal one."""
+        # initialize state and control variables and add time-invariant constraints
+        self._init_state_var(ti_constraints)
+        self._init_control_var(ti_constraints)
         # add lateral dynamic constraints
+        init_state = np.array(
+            [
+                self._x_init_lat.d,
+                self._x_init_lat.theta,
+                self._x_init_lat.kappa,
+                self._x_init_lat.kappa_dot,
+            ]
+        ).transpose()
         self.solver.add_lat_dynamic_cons(
-            self._lateral_constraints.dynamic_matrix_list,
-            self._lateral_constraints.init_state,
-            self._lateral_constraints.theta_r,
+            self.dynamic_matrix_list,
+            init_state,
+            self.theta_r,
         )
+        # add time-variant constraint
+        self.solver.add_lat_dis_cons(
+            self.lat_dis_cons_matrix,
+            self._x_ref_lat,
+            lateral_constraints.d_min,
+            lateral_constraints.d_max,
+        )
+        self.solver.add_kappa_limit(self.kappa_lim)
         # cost function
         self.solver.costfunc_lat(
-            self._x_ref_lat, self.weight, d_reference=self.d_reference
+            self._x_ref_lat,
+            self.weight,
+            d_reference=self.d_reference,
+            lat_cons=lateral_constraints,
         )
         self.solver.solve()
         # get solution
-        self.var_x = self.solver.get_var_x()
-        self.control_u = self.solver.get_control_u()
-        trajectory = self.create_output_trajectory()
+        trajectory = self.create_output_trajectory(lateral_constraints.long_traj)
         return trajectory
 
-    def _init_state_var(self):
-        x_shape = self._lateral_constraints.var_lat_x_lb.shape
+    def _init_state_var(self, ti_constraints: TIConstraint):
+        """Initializes the state variables and adds time-invariant constraints"""
+        x_shape = (self._n, self.N + 1)
         x = np.empty(x_shape, dtype=object)
+        c_ti_lb = [
+            ti_constraints.d_min,
+            ti_constraints.theta_min,
+            ti_constraints.kappa_min,
+            ti_constraints.kappa_dot_min,
+        ]
+        c_ti_ub = [
+            ti_constraints.d_max,
+            ti_constraints.theta_max,
+            ti_constraints.kappa_max,
+            ti_constraints.kappa_dot_max,
+        ]
         self.solver.add_lat_state_var(
             x,
             x_shape,
-            self._lateral_constraints.var_lat_x_lb,
-            self._lateral_constraints.var_lat_x_ub,
+            c_ti_lb,
+            c_ti_ub,
         )
 
-    def _init_control_var(self):
-        u_shape = self._lateral_constraints.var_lat_u_lb.shape
+    def _init_control_var(self, ti_constraints: TIConstraint):
+        """Initialize control variables."""
+        u_shape = (self.N,)
         u = np.empty(u_shape, dtype=object)
         self.solver.add_lat_control_var(
             u,
             u_shape,
-            self._lateral_constraints.var_lat_u_lb,
-            self._lateral_constraints.var_lat_u_ub,
+            ti_constraints.kappa_dot_dot_min,
+            ti_constraints.kappa_dot_dot_max,
         )
 
-    def _init_time_invariant_constraints(self):
-        # TODO: need to add in parameters
-        self.kappa_dot_dot_min = -100
-        self.kappa_dot_dot_max = 100
-        self.kappa_dot_min = -0.4
-        self.kappa_dot_max = 0.4
-        self.kappa_min = -0.5
-        self.kappa_max = 0.5
-        # lower and upper bound for control u
-        self._lateral_constraints.var_lat_u_lb = self.kappa_dot_dot_min * np.ones(
-            self.N
-        )
-        self._lateral_constraints.var_lat_u_ub = self.kappa_dot_dot_max * np.ones(
-            self.N
-        )
-        # lower and upper bound for states x
-        self._lateral_constraints.var_lat_x_lb = -1000 * np.ones((self._n, self.N + 1))
-        self._lateral_constraints.var_lat_x_ub = 1000 * np.ones((self._n, self.N + 1))
-        # TODO: why from t = 2
-        # lower and upper bound for kappa
-        self._lateral_constraints.var_lat_x_lb[2, 2:] = self.kappa_min
-        self._lateral_constraints.var_lat_x_ub[2, 2:] = self.kappa_max
-        # lower and upper bound for kappa_dot
-        self._lateral_constraints.var_lat_x_lb[3, 2:] = self.kappa_dot_min
-        self._lateral_constraints.var_lat_x_ub[3, 2:] = self.kappa_dot_max
-
-    def _init_dynamic_constraints(self):
-        # TODO: what is theta_r
-        self.theta_r = list()
-        for i in range(self.N):
-            self.theta_r.append(self._x_ref_lat.reference[i].theta)
-        self._lateral_constraints.theta_r = self.theta_r
+    def _init_dynamic_matrices(self):
+        dynamic_matrix_list = list()
+        lat_dis_cons_matrix = list()
 
         kappa_lim = list()
 
@@ -320,54 +351,36 @@ class MIQPLatPlanner:
             )
             # disturbances on input
             D = np.array([-self.dt * v, 0, 0, 0]).reshape([-1, 1])
-            # TODO: do we need S C E in qp_lat_planner?
-            #  (maybe Using the three-circle-approximation to enforce positional constraints) (d1, d2, d3)
-            self._lateral_constraints.dynamic_matrix_list.append(
-                {"A": A, "B": B, "D": D}
-            )
-
-            if i == 0:
-                # initial condition
-                ini_kappa = (self.theta_r[1] - self.theta_r[0]) / (
-                    self._x_ref_lat.reference[1].s - self._x_ref_lat.reference[0].s
-                )
-                # TODO: initial state t = 0s
-                self._lateral_constraints.init_state = np.array(
-                    [
-                        self._x_init_lat.d,
-                        self._x_init_lat.theta,
-                        self._x_init_lat.kappa,
-                        self._x_init_lat.kappa_dot,
-                    ]
-                ).transpose()
+            dynamic_matrix_list.append({"A": A, "B": B, "D": D})
 
             # selection matrix for output
             S = np.array([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0]])
             C = np.array(
                 [
                     [1, 0, 0, 0],
-                    [1, 0.5 * self._length, 0, 0],
-                    [1, self._length, 0, 0],
+                    [1, 0.5 * self._wb_length, 0, 0],
+                    [1, self._wb_length, 0, 0],
                     [0, 0, 1, 0],
                     [0, 0, 0, 1],
                 ]
             )
             # disturbances on output
-            E = np.transpose(np.array([0, -0.5 * self._length, -self._length, 0, 0]))
-            self._lateral_constraints.lat_dis_cons_matrix.append(
-                {"S": S, "C": C, "E": E}
-            )
+            E = np.transpose(np.array([0, -0.5 * self._wb_length, -self._wb_length, 0, 0]))
+            lat_dis_cons_matrix.append({"S": S, "C": C, "E": E})
 
             kappa_lim_k = min(
-                np.sqrt(self.vehicle_configuration.a_max**2 - a**2)
+                np.sqrt(self.config.vehicle.qp_veh_config.a_max**2 - a**2)
                 / (np.max([v, 0.5]) ** 2),
-                self.kappa_max,
+                self.config.vehicle.kappa_max,
             )
             kappa_lim.append(kappa_lim_k)
-        self._lateral_constraints.kappa_lim = np.array(kappa_lim)
+        # lateral_constraints.kappa_lim = np.array(kappa_lim)
+        return dynamic_matrix_list, lat_dis_cons_matrix, np.array(kappa_lim)
 
-    def create_output_trajectory(self):
-        long_traj_states = self._lateral_constraints.long_traj.states
+    def create_output_trajectory(self, long_traj: Trajectory):
+        var_x = self.solver.get_var_x()
+        control_u = self.solver.get_control_u()
+        long_traj_states = long_traj.states
         traj = list()
         # add initial state
         traj.append(
@@ -386,17 +399,17 @@ class MIQPLatPlanner:
                 TrajPoint(
                     t=self._x_init_lat.t + self.dt * (k + 1),
                     x=long_traj_states[k + 1].position[0],
-                    y=self.var_x[0, k + 1],
-                    theta=self.var_x[1, k + 1],
+                    y=var_x[0, k + 1],
+                    theta=var_x[1, k + 1],
                     v=long_traj_states[k + 1].v,
                     a=long_traj_states[k + 1].a,
-                    kappa=self.var_x[2, k + 1],
+                    kappa=var_x[2, k + 1],
                     j=long_traj_states[k + 1].j,
-                    kappa_dot=self.var_x[3, k + 1],
+                    kappa_dot=var_x[3, k + 1],
                     lane=-1,
                 )
             )
         traj = Trajectory(traj, TrajectoryType.CARTESIAN)
-        traj._u_lon = self._lateral_constraints.long_traj.u_lon
-        traj._u_lat = self.control_u
+        traj._u_lon = long_traj.u_lon
+        traj._u_lat = control_u
         return traj

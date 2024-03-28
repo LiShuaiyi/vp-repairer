@@ -10,37 +10,42 @@ We want our cars to always plan a safe path. But environments change every time.
 ## The required Python dependencies
 The code is written in Python 3.8 and has been tested on Ubuntu 20.04. 
 
-You have to mannually install the following packages:
-* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature_safe_distance
-* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /develop
+You have to manually install the following packages:
+* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature_repairing_intersection
+* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /intersection_mpr
+* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch /fix_intersection_feature
 
 ## Installation Guide
 We recommend using [Anaconda](https://www.anaconda.com/) to manage your environment so that even if you mess something up, you can always have a safe and clean restart. A guide for managing python environments with Anaconda can be found [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
 
 After installing Anaconda, create a new environment with:
 ``` sh
-$ conda create -n commonroad-py38 python=3.8 -y
+$ conda create -n repairverse python=3.10 -y
 ```
 
-Here the name of the environment is called **commonroad-py38**. You may also change this name as you wish. In such case, don't forget to change it in the following commands as well. **Always activate** this environment before you do anything related:
+Here the name of the environment is called **repairverse**. You may also change this name as you wish. In such case, don't forget to change it in the following commands as well. **Always activate** this environment before you do anything related:
 
 ```sh
-$ conda activate commonroad-py38
+$ conda activate repairverse
 or
-$ source activate commonroad-py38
+$ source activate repairverse
 ```
-Install `Jupyter Notebook` and supplementary modules:
-```sh
-$ conda install jupyter ipykernel ipywidgets sphinx scipy -y
-$ jupyter nbextension install --py widgetsnbextension --user
-$ jupyter nbextension enable widgetsnbextension --user --py
-```
+
 Then, install the dependencies with:
 
 ```sh
 $ pip install -r requirements.txt
 ```
 This will install related dependencies specified in `requirements.txt`. Or simply install the dependencies listed in `requirements.txt` and add this repository to your python path.
+
+> ### Optimization license
+>
+> For using the optimization solvers, e.g., Gurobi, Mosek, it is required to apply for academic license:
+> - Mosek: https://www.mosek.com/products/academic-licenses/
+> - Gurobi: https://www.gurobi.com/academia/academic-program-and-licenses/
+>    - `conda install -c gurobi gurobi`
+>    - `connect to the campus network/use` [eduVPN](https://docs.eduvpn.org/client/linux/installation.html)
+>    - `grbgetkey xxx` (your obtained from the gurobi website)
 
 ## Folder structure
 ```

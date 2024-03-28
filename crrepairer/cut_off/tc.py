@@ -1,3 +1,4 @@
+import warnings
 from typing import Union, List, Any, Tuple
 from collections import defaultdict
 import math
@@ -43,7 +44,7 @@ class TC(CutOffBase, ABC):
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = (
-            self.rule_monitor.tv_time_step + self.rule_monitor.future_time_step
+                self.rule_monitor.tv_time_step + self.rule_monitor.future_time_step
         )
         self._other_id = self.rule_monitor.other_id
         self._visualize = False
@@ -56,7 +57,7 @@ class TC(CutOffBase, ABC):
         # todo fix in params in crime
         yaml_file = os.path.join(
             os.getcwd(),
-            "../../../commonroad-criticality-measures/config_files/"
+            "../../commonroad-criticality-measures/config_files/"
             + str(self.scenario.scenario_id)
             + ".yaml",
         )
@@ -124,9 +125,9 @@ class TC(CutOffBase, ABC):
         return self._compliant_maneuver
 
     def calc_tv_updated(
-        self,
-        updated_states: List[Union[CustomState, PMState, KSState]],
-        cut_off_time: int,
+            self,
+            updated_states: List[Union[CustomState, PMState, KSState]],
+            cut_off_time: int,
     ) -> Tuple[float, Any]:
         # detect violation time using STL monitor
         # self.rule_monitor.evaluate_initially()
@@ -134,27 +135,31 @@ class TC(CutOffBase, ABC):
         update_ego_vehicle(
             self.world.road_network, self._world_ego, updated_states, 0, self.dT
         )
-        # rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
-        #     self.world, cut_off_time
-        # )
         # TODO: FIXME future operator need be evaluated from start
+        # cut_off_time_test = min(cut_off_time, self.tv_time_step - self.future_time_step)
+        # rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
+        #     self.world, cut_off_time_test
+        # )
         rule_rob, other_ids = self.rule_monitor.evaluate_consecutively(
             self.world, self.rule_monitor.start_time_step
         )
+        # check whether the rule_rob are of equal length, if not, should be a violation
+        if not all(len(arr) == len(rule_rob[0]) for arr in rule_rob):
+            return -math.inf, None
         if np.any(rule_rob[:, 0] < 0):
             rule_idx = np.where(rule_rob[:, 0] < 0)[0][0]
-            if other_ids[rule_idx][0] is ():
+            if other_ids[rule_idx][0] == ():
                 return -math.inf, None
             return -math.inf, other_ids[rule_idx][0][0]
         tv_per_rule = np.argmax(rule_rob < 0, axis=-1)
         if np.all(
-            tv_per_rule + self._world_ego.start_time == self._world_ego.start_time
+                tv_per_rule + self._world_ego.start_time == self._world_ego.start_time
         ):
             return math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if rule_idx == self.rule_monitor._violated_rule_idx:
-            if other_ids[rule_idx][min_tv] is ():
+            if other_ids[rule_idx][min_tv] == ():
                 return min_tv * self.dT, self.ego_vehicle.obstacle_id
             return min_tv * self.dT, other_ids[rule_idx][min_tv][0]
         else:
@@ -249,6 +254,8 @@ class TC(CutOffBase, ABC):
                 tv, _ = self.calc_tv_updated(
                     state_list, self._mid
                 )  # which should be tv instead of ttm
-            except:
+            except AttributeError as e:
+                # Warn the user about the attribute error
+                warnings.warn(f"* \t<Tsolver>: AttributeError encountered: {e}")
                 tv = -math.inf
         return tv

@@ -1,7 +1,7 @@
 import functools
 import math
 from typing import Iterable, Union, Tuple, Any, List
-from enum import Enum
+from collections import defaultdict
 import numpy as np
 import dataclasses
 from dataclasses import dataclass
@@ -19,8 +19,9 @@ from crmonitor.common.world import World, get_world_config
 from crmonitor.common.config import get_traffic_rule_config
 from crmonitor.rule.rule_node import PredicateNode
 
-# CommonRoad Toolbox
-from commonroad.scenario.scenario import Scenario
+from crrepairer.utils.configuration import RepairerConfiguration, ScenarioType, MonitorType
+
+from commonroad_mpr.utils.configuration_builder import ConfigurationBuilder as Cfg
 
 
 @dataclass
@@ -31,54 +32,26 @@ class PropositionNode:
     children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
 
-class MonitorType(Enum):
-    """
-    Type of temporal logic used in the traffic rule monitor
-    """
-
-    MTL = "metric temporal logic"
-    STL = "signal temporal logic"
-
-
-class ScenarioType(str, Enum):
-    """
-    Type of scenario used for repairing.
-    """
-
-    INTERSTATE = "interstate"
-    INTERSECTION = "intersection"
-
-
-class IntersectionType(str, Enum):
-    HAND_DRAFT = "hand_draft"
-    DATASET = "dataset"
-
-
 class STLRuleMonitor:
     def __init__(
         self,
-        scenario: Scenario,
-        vehicle_id: int,
-        rules: Union[str, Iterable[str]],
-        scenario_type: ScenarioType = ScenarioType.INTERSTATE,
-        intersection_type: IntersectionType = IntersectionType.DATASET,
-        multiproc: bool = True,
-        use_mpr: bool = False,
-        mpr_scenario: str = "interstate",
+        config: RepairerConfiguration,
     ):
         # update the world configuration for repairing purposes
         world_config = get_world_config()
-        world_config["scenario"] = scenario_type
-        self.scenario_type = scenario_type
-        if scenario_type == ScenarioType.INTERSECTION:
-            world_config["intersection_road_network_param"]["map_type"] = intersection_type
         traffic_rules_config = get_traffic_rule_config()
-        traffic_rules_config["traffic_rules_param"]["use_mpr"] = use_mpr
-        traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = mpr_scenario
-        self._world: World = World.create_from_scenario(scenario, config=world_config)
-        self._vehicle_id = vehicle_id
-        self.multiproc = multiproc
-        self._rules = [rules] if isinstance(rules, str) else rules
+
+        world_config["scenario"] = self.scenario_type =\
+            traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = config.repair.scenario_type
+        Cfg["common"]["scenario"] = self.scenario_type
+        if self.scenario_type == ScenarioType.INTERSECTION:
+            world_config["intersection_road_network_param"]["map_type"] = config.repair.intersection_type
+        traffic_rules_config["traffic_rules_param"]["use_mpr"] = config.repair.use_mpr
+
+        self._world: World = World.create_from_scenario(config.scenario, config=world_config)
+        self._vehicle_id = config.repair.ego_id
+        self.multiproc = config.repair.multiproc
+        self._rules = config.repair.rules
         self._rule_eval = []
         self._start_time_step = self._world.vehicle_by_id(self._vehicle_id).start_time
         self._world.vehicle_by_id(
@@ -256,6 +229,8 @@ class STLRuleMonitor:
             return None
         all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
         all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
+        all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
+
         prop_nodes = []
         for idx in np.transpose(np.isfinite(all_prop_robs).nonzero()):
             proposition = PropositionNode(
@@ -268,6 +243,8 @@ class STLRuleMonitor:
             for pred in pred_nodes:
                 if "g0" not in all_prop_names[tuple(idx)]:
                     if pred.name in all_prop_names[tuple(idx)]:
+                        # add missing values
+                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[tuple(idx)[0]][pred.name]
                         proposition.children.append(pred)
                 else:
                     other_props = np.delete(all_prop_names[idx[0]], idx[-1], 0)
@@ -277,6 +254,7 @@ class STLRuleMonitor:
                             for p_name in other_props[other_props == other_props]
                         ]
                     ):
+                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[tuple(idx)[0]][pred.name]
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
@@ -291,7 +269,6 @@ class STLRuleMonitor:
                 else:
                     break
         return future_time_step
-
 
     def evaluate_initially(self):
         """
@@ -360,13 +337,15 @@ class STLRuleMonitor:
                     pred = evaluator.get_predicates()
                     # mpr_grad = evaluator.get_mpr_gradient()
                     if pred:
-                        pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
+                        mpr_grad = evaluator.get_mpr_gradient()
+                        pred_rob.append({key: [pred[key], mpr_grad[key]] for key in pred})
                     else:
                         pred_rob.append([])
+
                 rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
                 prop_rob_all.append(np.array(prop_rob, dtype=np.float64))
                 prop_names_all.append(np.array(prop_names, dtype=object))
-                pred_rob_all.append(np.array(pred_rob, dtype=np.float64))
+                pred_rob_all.append(pred_rob)
                 other_ids_all.append(other_ids)
 
         assert len(rule_rob_all) == len(self._rule_eval)
@@ -463,7 +442,7 @@ class STLRuleMonitor:
         # evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
         if np.any(self.rob_rule[:, 0] < 0):
             rule_idx = np.where(self.rob_rule[:, 0] < 0)[0][0]
-            if self.other_ids[rule_idx][0] is ():
+            if self.other_ids[rule_idx][0] == ():
                 return None, -math.inf, None
             return None, -math.inf, self.other_ids[rule_idx][0][0]  # all violated
         tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1) + self._start_time_step
@@ -472,7 +451,7 @@ class STLRuleMonitor:
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if (
-            self.other_ids[rule_idx][min_tv - self._start_time_step] is ()
+            self.other_ids[rule_idx][min_tv - self._start_time_step] == ()
         ):  # or self._rules[rule_idx] == 'R_G2':
             # R_G2: we focus on the ego vehicle
             return rule_idx, int(min_tv), self._vehicle_id

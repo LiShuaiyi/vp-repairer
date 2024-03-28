@@ -1,36 +1,38 @@
 import numpy as np
+import time
 
+from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
-from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference
-from miqp_planner.miqp_constraints import LongitudinalConstraint, LateralConstraint
+from miqp_planner.miqp_lat_planner import MIQPLatPlanner
+from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference, MIQPLongPlanner
+from miqp_planner.miqp_constraints import (
+    LongitudinalConstraint,
+    LateralConstraint,
+    RuleConstraint,
+)
 
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
-from commonroad_qp_planner.initialization import compute_initial_state
-from miqp_planner.miqp_initialization import set_up_miqp
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
+from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
+from commonroad_qp_planner.initialization import compute_initial_state
 
 from crrepairer.smt.monitor_wrapper import PropositionNode
-
-from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
+from crrepairer.cut_off.tc import TC
+from crrepairer.utils.configuration import RepairerConfiguration, IntersectionType
 
 from commonroad.scenario.trajectory import Trajectory
-from commonroad.scenario.state import CustomState, InitialState, State
-from commonroad.scenario.scenario import (
-    DynamicObstacle,
-    TrajectoryPrediction,
-    ObstacleType,
-)
+from commonroad.scenario.state import CustomState, InitialState
+
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
 from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.geometry.shape import Rectangle
 
-from typing import List, Union
+from typing import List, Optional
 import yaml
 import os
-import time
 
 
 class MIQPPlannerRepair(MIQPPlanner):
@@ -38,37 +40,35 @@ class MIQPPlannerRepair(MIQPPlanner):
         self,
         rule_monitor: STLRuleMonitor,
         tc_object: TC,
-        sel_proposition: Union[List[PropositionNode], None],
-        proposition_full: Union[List[PropositionNode], None],
-        planning_problem: PlanningProblem,
+        config: RepairerConfiguration,
     ):
-        # initialize the scenario and planning problem
-        self._time_horizon = None
-        self._cut_off_state = None
-        self._N = None
-        self._cut_off_time_step = None
-        self._scenario = rule_monitor.world.scenario
-        self._ego_vehicle = tc_object.ego_vehicle
-        self._planning_problem = planning_problem
-        self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
-
         self.rule_monitor = rule_monitor
-        self.road_network = rule_monitor.world.road_network
-        self.ego_vehicle_roadnetwork = rule_monitor.world.vehicle_by_id(
+        self.tc_object = tc_object
+
+        # initialize from the TC object
+        self._ego_vehicle = tc_object.ego_vehicle
+        self._initial_trajectory: Optional[Trajectory] = self._ego_vehicle.prediction.trajectory
+        self._start_time_step = tc_object.ego_vehicle.initial_state.time_step
+        self._round_tolerance = tc_object.round_tolerance
+
+        # initialize from the configuration
+        self.config: Optional[RepairerConfiguration] = None
+        self.reset(config)
+        self._settings = self.config_settings(config)
+
+        # update the configuration
+        self._monitor_ego_vehicle = rule_monitor.world.vehicle_by_id(
             rule_monitor.vehicle_id
         )
-        self._start_time_step = tc_object.ego_vehicle.initial_state.time_step
 
-        # set the cut-off state as the initial state
-
-        self._planning_problem.goal = update_goal_state(self._initial_trajectory)
-        # load and set up the configuration
-        self._settings = self.config_settings()
+        # update and initialize the vehicle configuration
+        # >>> side note: the initial state is not updated to keep the reference path possibly long
+        self.config.planning_problem.goal = update_goal_state(self._initial_trajectory)
         self._vehicle_configuration = set_up_miqp(
             self._settings,
-            self._scenario,
-            self._planning_problem,
-            self.ego_vehicle_roadnetwork,
+            self.config.scenario,
+            self.config.planning_problem,
+            self._monitor_ego_vehicle,
         )
         if rule_monitor.scenario_type == "intersection":
             self._vehicle_configuration.CLCS = (
@@ -83,74 +83,119 @@ class MIQPPlannerRepair(MIQPPlanner):
                 .clcs
             )
 
-        # update the vehicle shape
-        self._vehicle_configuration.width = self._ego_vehicle.obstacle_shape.width
-        self._vehicle_configuration.length = self._ego_vehicle.obstacle_shape.length
+        # empty objects
+        self._N: Optional[int] = None
+        self._cut_off_time_step: Optional[float, int] = None
+        self._cut_off_state: Optional[CustomState, InitialState] = None
+        self._time_horizon: Optional[float] = None
+        self._constraints: Optional[RuleConstraint] = None
 
         # initialize the MIQP planner
-        super().__init__(
-            self._scenario,
-            self._planning_problem,
-            self._time_horizon,
-            self._vehicle_configuration,
+        super().__init__(config)
+
+        # initialize the Longitudinal Planner
+        self.long_planner = MIQPLongPlanner(
+            config=self.config,
         )
 
-        # construct constraints
-        self._long_constraints = None
+        # initialize the Lateral Planner
+        self.lat_planner = MIQPLatPlanner(
+            config=self.config,
+        )
 
-    def update(self, tc_object: TC,
-               sel_proposition: List[PropositionNode],
-               proposition_full: List[PropositionNode]):
-        self._cut_off_time_step = tc_object.tc_time_step
-        self._N = tc_object.N
-        if self._cut_off_time_step == self._start_time_step:
-            self._cut_off_state = self._ego_vehicle.initial_state
+    def construct_constraints(self,
+                              sel_proposition: List[PropositionNode],
+                              proposition_full: List[PropositionNode],):
+        if self._vehicle_configuration is not None:
+            self._constraints = RuleConstraint(
+                self.tc_object,
+                self.rule_monitor,
+                sel_proposition,
+                proposition_full,
+                self._vehicle_configuration,
+                self._initial_trajectory,
+                self._start_time_step,
+            )
         else:
-            self._cut_off_state = self._initial_trajectory.state_at_time_step(
-                self._cut_off_time_step
-            )
-        self._time_horizon = round(
-            (self._N - self._cut_off_time_step) * self._scenario.dt,
-            tc_object.round_tolerance,
-        )
-        self._planning_problem.initial_state = InitialState(
-            position=self._cut_off_state.position,
-            velocity=self._cut_off_state.velocity,
-            orientation=self._cut_off_state.orientation,
-            time_step=self._cut_off_state.time_step,
-            acceleration=self._cut_off_state.acceleration,
-            # not needed but mandatory field
-            yaw_rate=0,
-            slip_angle=0,
-        )
-        if isinstance(self._planning_problem.initial_state, State):
-            # this state is in curvilinear coordinate system
-            self.initial_state = compute_initial_state(
-                self._planning_problem.initial_state, self._vehicle_configuration
-            )
-        elif not isinstance(self._planning_problem.initial_state, TrajPoint):
-            raise ValueError(
-                "<MIQPPlanner/__init__>: Initial state must be of type {} or "
-                "of type {}. Got type {}.".format(
-                    type(State), type(TrajPoint), type(self._planning_problem.initial_state)
+            assert self.config is not None, "<Repairer.construct_constraints(). No Configuration object initialized>"
+
+    def reset(self, config: RepairerConfiguration = None,
+              initial_trajectory: Optional[Trajectory] = None,
+              tc_object: TC = None,
+              rule_monitor: STLRuleMonitor = None):
+        """
+        Initializes/resets configuration of the repairer for re-planning purposes
+        """
+
+        # set updated config
+        if config is not None:
+            self.config = config
+        else:
+            assert self.config is not None, "<Repairer.reset(). No Configuration object provided>"
+
+        if rule_monitor is not None:
+            self.rule_monitor = rule_monitor
+
+        if tc_object is not None:
+            self.tc_object = tc_object
+            self._N = tc_object.N
+
+            self._cut_off_time_step = tc_object.tc_time_step
+            # initialize the cut-off state
+            if self._cut_off_time_step == self._start_time_step:
+                self._cut_off_state = self._ego_vehicle.initial_state
+            else:
+                self._cut_off_state = self._initial_trajectory.state_at_time_step(
+                    self._cut_off_time_step
                 )
+
+            self._time_horizon = self.config.miqp_planner.horizon = round(
+                (self._N - self._cut_off_time_step) * self.config.scenario.dt,
+                self._round_tolerance,
             )
-        self.initial_state_lat_orientation = self.initial_state.orientation
-        self.update_time_horizon(self._time_horizon)
-        self._long_constraints = LongitudinalConstraint(
-            tc_object,
-            self.rule_monitor,
-            sel_proposition,
-            proposition_full,
-            self._vehicle_configuration,
-            self._initial_trajectory,
-            self._start_time_step,
-        )
 
+            self.config.planning_problem.initial_state = InitialState(
+                position=self._cut_off_state.position,
+                velocity=self._cut_off_state.velocity,
+                orientation=self._cut_off_state.orientation,
+                time_step=self._cut_off_state.time_step,
+                acceleration=self._cut_off_state.acceleration,
+                # not needed but mandatory field
+                yaw_rate=0,
+                slip_angle=0,
+            )
 
-    def long_constraints(self):
-        return self._long_constraints
+            # use the coordinate system from the world
+            if self.config.repair.scenario_type == "interstate":
+                self._vehicle_configuration.curvilinear_coordinate_system = (
+                    self._monitor_ego_vehicle
+                    .get_lane(0)
+                    .clcs
+                )
+            # update the config from the qp planner
+            self.config.vehicle.qp_veh_config = self._vehicle_configuration
+            # update the vehicle shape
+            self._vehicle_configuration.width = self.time_invariant_constraints.width = (
+                self._ego_vehicle.obstacle_shape.width)
+            self._vehicle_configuration.length = self.time_invariant_constraints.length = (
+                self._ego_vehicle.obstacle_shape.length)
 
+            # update the initial state accordingly
+            self.initial_state = compute_initial_state(
+                self.config.planning_problem.initial_state,
+                self.config.vehicle.qp_veh_config
+            )
+
+            # reset the N and horizon
+            self.lat_planner.reset(nr_steps=self._N - self._cut_off_time_step, horizon=self._time_horizon)
+            self.long_planner.reset(nr_steps=self._N - self._cut_off_time_step,
+                                    horizon=self._time_horizon, initial_state=self.initial_state)
+
+        if initial_trajectory is not None:
+            self._initial_trajectory = initial_trajectory
+            # update the goal state for better planning/updating the high-level route
+
+    @property
     def total_time_steps(self):
         return self._N - self._cut_off_time_step
 
@@ -161,25 +206,31 @@ class MIQPPlannerRepair(MIQPPlanner):
             Then: generates the trajectory in both longitudinal and lateral directions
         """
         print("* \t\t MIQP Longitudinal optimization")
+        start_time_lon = time.time()
         reference_lon = self.construct_s_reference()
+        self._constraints.construct_longitudinal_constraints(self._cut_off_time_step)
         traj_lon = self.longitudinal_trajectory_planning(
-            reference_lon, self._long_constraints, slack=True
+            reference_lon,
+            self._constraints.longitudinal_constraints,
+            self._constraints.safe_distance_modes,
+            self._constraints.target_vehicle,
+        )
+        print(
+            "* \t\t -- run time {} s --".format(round(time.time() - start_time_lon, 3))
         )
         if traj_lon is None:
             return None
         print("* \t\t MIQP Lateral optimization")
         # TODO: fix inputs
-        lateral_constraints = LateralConstraint(
-            self._long_constraints._tc_obj,
-            self._long_constraints._rule_monitor,
-            self._long_constraints._veh_config,
-            self._long_constraints.target_lanes,
-            traj_lon,
-            self._long_constraints.sel_prop_full,
-        )
-        lateral_constraints.create_d_constraints(traj_lon)
+        start_time_lat = time.time()
+
+        self._constraints.create_d_constraints(traj_lon)
+        # select_proposition = self._constraints.sel_prop_full
         trajectory = self.lateral_trajectory_planning(
-            traj_lon, lateral_constraints, d_reference=None
+            traj_lon, self._constraints.lateral_constraints
+        )
+        print(
+            "* \t\t -- run time {} s --".format(round(time.time() - start_time_lat, 3))
         )
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
@@ -207,13 +258,13 @@ class MIQPPlannerRepair(MIQPPlanner):
         """
         cartesian_traj_points = list()
         for state in trajectory.states:
-            cart_pos = self.vehicle_configuration.CLCS.convert_to_cartesian_coords(
+            cart_pos = self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.convert_to_cartesian_coords(
                 state.position[0], state.position[1]
             )
             orientation_interpolated = np.interp(
                 state.position[0],
-                self.vehicle_configuration.ref_pos,
-                self.vehicle_configuration.ref_theta,
+                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_pos,
+                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_theta,
             )
 
             v = state.v / np.cos(state.orientation - orientation_interpolated)
@@ -266,11 +317,18 @@ class MIQPPlannerRepair(MIQPPlanner):
         cr_traj_repaired = Trajectory(self._start_time_step, state_list)
         return cr_traj_repaired
 
-    def config_settings(self):
+    def config_settings(self, config: RepairerConfiguration):
         """
         Configuration settings.
         """
-        config_file = "config_" + str(self._scenario.scenario_id) + ".yaml"
+        # different vehicle setting for inD scenarios
+        if (
+            config.repair.scenario_type == "intersection"
+            and config.repair.intersection_type == IntersectionType.DATASET
+        ):
+            config_file = "config_intersection.yaml"
+        else:
+            config_file = "config_" + str(self.config.scenario.scenario_id) + ".yaml"
         config_dir = os.path.normpath(
             os.path.join(os.path.dirname(__file__), "../../../config")
         )
@@ -281,10 +339,14 @@ class MIQPPlannerRepair(MIQPPlanner):
                 settings = yaml.load(stream, Loader=yaml.Loader)
             except yaml.YAMLError as exc:
                 print(exc)
-        if config_file == "config_default.yaml":
+        if (
+            config_file == "config_default.yaml"
+            or config_file == "config_intersection.yaml"
+        ):
             settings["vehicle_settings"][
-                self._planning_problem.planning_problem_id
+                self.config.planning_problem.planning_problem_id
             ] = settings["vehicle_settings"].pop(1)
+        settings["scenario_type"] = config.repair.scenario_type
         return settings
 
 

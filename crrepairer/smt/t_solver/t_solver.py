@@ -1,11 +1,13 @@
 import math
 import time
-from typing import List
+import torch
+from typing import List, Optional
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
-
+from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
+from crrepairer.utils.configuration import RepairerConfiguration
 
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.scenario.obstacle import DynamicObstacle
@@ -24,8 +26,8 @@ class TSolver:
     def __init__(
         self,
         ego_vehicle: DynamicObstacle,
-        planning_problem: PlanningProblem,
         rule_monitor: STLRuleMonitor,
+        config: RepairerConfiguration
     ):
         self._sel_prop = None
         self._prop_full = None
@@ -33,11 +35,19 @@ class TSolver:
         self._tc_obj = TC(ego_vehicle, rule_monitor)
         self._compliant_maneuvers = list()
         self._repairability = False
-        self._qp_planner = None
+        self._planner = None
         self._miqp_planner = None
-        self._planning_problem = planning_problem
+        self._planning_problem = config.planning_problem
 
-        self.verbose = False
+        self.verbose = True
+        self.config = config
+
+        # todo: same for QP
+        self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
+            self._rule_monitor,
+            self._tc_obj,
+            self.config
+        )
 
     @property
     def tc_object(self):
@@ -47,7 +57,7 @@ class TSolver:
     def compliant_maneuvers(self):
         return self._compliant_maneuvers
 
-    def assign_proposition(self, propositions: List[PropositionNode], model: list):
+    def assign_proposition(self, propositions: List[PropositionNode], model: list, use_mpr_derivative: bool):
         """
         Assigns propositions to the T-solver.
         """
@@ -59,11 +69,11 @@ class TSolver:
                 prop.ttv_value > 0 and "~" + prop.alphabet in model
             ):
                 self._sel_prop.append(prop)
-        self._compliant_maneuvers = self.set_compliant_maneuver()
+        self._compliant_maneuvers = self.set_compliant_maneuver(use_mpr_derivative)
 
-    def set_compliant_maneuver(self):
+    def set_compliant_maneuver(self, use_mpr_derivative: bool):
         """
-        Set rul-compliant maneuvers based on the selected propositions.
+        Set rule-compliant maneuvers based on the selected propositions.
         """
         assert self._sel_prop is not None, (
             "<T-Solver>: the atomic proposition needs to be "
@@ -76,62 +86,101 @@ class TSolver:
             for predicate in prop_node.children:
                 if not hasattr(predicate, "evaluator"):
                     continue
+                # category of the predicate
                 predicate_category = (
                     predicate.evaluator.predicate_name.__class__.__name__[:3]
                 )
-                if (
-                    predicate_category == "Pos"
-                    and predicate.evaluator.predicate_name
-                    in [
-                        PositionPredicates.KeepsSafeDistancePrec,
-                        PositionPredicates.InFrontOf,
-                        PositionPredicates.Precedes,
-                    ]
-                ):
-                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
-                elif (
-                    predicate_category == "Pos"
-                    and predicate.evaluator.predicate_name
-                    in [PositionPredicates.StopLineInFront]
-                ):
-                    compliant_maneuver += [Maneuver.BRAKE]
-                elif (
-                    predicate_category == "Pos"
-                    and predicate.evaluator.predicate_name
-                    in [PositionPredicates.InIntersectionConflictArea]
-                    and predicate.agent_placeholders == (0, 1)
-                ):
-                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
-                elif (
-                    predicate_category == "Pos"
-                    and predicate.evaluator.predicate_name
-                    in [PositionPredicates.InIntersectionConflictArea]
-                    and predicate.agent_placeholders == (1, 0)
-                ):
-                    # TODO: maybe turning?
-                    compliant_maneuver += []
-                elif (
-                    predicate_category == "Pos"
-                    and predicate.evaluator.predicate_name
-                    in [PositionPredicates.OnLaneletWithTypeIntersection]
-                ):
-                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
-                elif (
-                    predicate_category == "Pos"
-                    and predicate.evaluator.predicate_name
-                    in [PositionPredicates.OnIncomingLeftOf]
-                ):
-                    compliant_maneuver += []
-                elif predicate_category == "Pos":
-                    compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
-                elif predicate_category == "Vel":
-                    compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
-                elif predicate_category == "Acc":
-                    compliant_maneuver += [Maneuver.CONSTANT]
+                if use_mpr_derivative:
+                    if prop_node.name == predicate.name:
+                        # value at TV
+                        if torch.cuda.is_available():
+                            grad_list = predicate.mpr_gradient.double().detach().numpy()[0]
+                        else:
+                            grad_list = predicate.mpr_gradient.double().detach().cpu().numpy()[0]
+                        if (predicate_category == "Pos" and
+                            predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
+                                                                   PositionPredicates.InFrontOf,
+                                                                   PositionPredicates.Precedes]) or \
+                                (predicate_category == "Vel"):
+                            grad_v = grad_list[1]
+                            print(f"* gradient towards velocity: {grad_v}")
+                            if grad_v == 0.0:  # no decision can be made
+                                compliant_maneuver += [Maneuver.BRAKE,
+                                                       Maneuver.KICKDOWN]
+                            # positive to negative, robustness needs to be decreased (Delta rob < 0)
+                            # negative to positive, robustness needs to be increased (Delta rob > 0)
+                            elif - predicate.latest_value / grad_v > 0:  # delta v > 0
+                                compliant_maneuver += [Maneuver.KICKDOWN]
+                            else:  # delta v < 0
+                                compliant_maneuver += [Maneuver.BRAKE]
+                        elif predicate_category == "Pos":
+                            grad_theta = grad_list[6]
+                            print(f"* gradient towards theta: {grad_theta}")
+                            if grad_theta == 0.0:  # no decision can be made
+                                compliant_maneuver += [Maneuver.STEERRIGHT,
+                                                       Maneuver.STEERLEFT]
+                            elif - predicate.latest_value / grad_theta > 0:  # delta theta > 0
+                                compliant_maneuver += [Maneuver.STEERLEFT]
+                            else:  # delta theta < 0
+                                compliant_maneuver += [Maneuver.STEERRIGHT]
+
+                        elif predicate_category == "Acc":
+                            compliant_maneuver += [Maneuver.CONSTANT]
+                        else:
+                            pass  # general predicate
                 else:
-                    pass  # general predicate
-                    # raise ValueError('<T-Solver>: the category {} is not specified'
-                    #                  .format(predicate_category))
+                    print("* \t<TSolver>: Unfortunately, the model predictive robustness is"
+                          " not really computed")
+                    if (
+                        predicate_category == "Pos"
+                        and predicate.evaluator.predicate_name
+                        in [
+                            PositionPredicates.KeepsSafeDistancePrec,
+                            PositionPredicates.InFrontOf,
+                            PositionPredicates.Precedes,
+                        ]
+                    ):
+                        compliant_maneuver += [Maneuver.BRAKE] #, Maneuver.KICKDOWN]
+                    elif (
+                        predicate_category == "Pos"
+                        and predicate.evaluator.predicate_name
+                        in [PositionPredicates.StopLineInFront]
+                    ):
+                        compliant_maneuver += [Maneuver.BRAKE]
+                    elif (
+                        predicate_category == "Pos"
+                        and predicate.evaluator.predicate_name
+                        in [PositionPredicates.InIntersectionConflictArea]
+                        and predicate.agent_placeholders == (0, 1)
+                    ):
+                        compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
+                    elif (
+                        predicate_category == "Pos"
+                        and predicate.evaluator.predicate_name
+                        in [PositionPredicates.InIntersectionConflictArea]
+                        and predicate.agent_placeholders == (1, 0)
+                    ):
+                        # TODO: FIXME add maneuvers
+                        pass
+                        # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
+                    elif (
+                        predicate_category == "Pos"
+                        and predicate.evaluator.predicate_name
+                        in [PositionPredicates.OnLaneletWithTypeIntersection]
+                    ):
+                        compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
+                    elif predicate_category == "Pos":
+                        # TODO: FIXME add maneuvers
+                        pass
+                        # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
+                    elif predicate_category == "Vel":
+                        compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
+                    elif predicate_category == "Acc":
+                        compliant_maneuver += [Maneuver.CONSTANT]
+                    else:
+                        pass  # general predicate
+                        # raise ValueError('<T-Solver>: the category {} is not specified'
+                        #                  .format(predicate_category))
         compliant_maneuver = list(set(compliant_maneuver))
         if not compliant_maneuver:
             print("* \t<TSolver>: no compliant maneuver is selected")
@@ -156,28 +205,42 @@ class TSolver:
         """
         Initializes the qp planner and uses it for trajectory repairing.
         """
-        self._qp_planner = QPPlannerRepair(
-            self._rule_monitor,
-            self._tc_obj,
-            self._sel_prop,
-            self._prop_full,
-            self._planning_problem,
-            verbose=self.verbose,
-        )
         start_time = time.time()
-        repaired_trajectory = self._qp_planner.plan()
+        if self.config.repair.planner == 1:
+            self._planner = QPPlannerRepair(
+                self._rule_monitor,
+                self._tc_obj,
+                self._sel_prop,
+                self._prop_full,
+                self._planning_problem,
+                self.config,
+                verbose=self.verbose,
+            )
+            print("* \t<TSolver>: QP planner is invoked")
+        elif self.config.repair.planner == 2:
+            self._planner.reset(tc_object=self.tc_object,
+                                rule_monitor=self._rule_monitor)
+            self._planner.construct_constraints(self._sel_prop, self._prop_full)
+            print(f"* \t<TSolver>: MIQP planner is invoked")
+        else:
+            raise Exception("Invalid option for the planner provided")
+
+        print(f"* \t<TSolver>: initialization time {time.time() - start_time:.3f}s")
+        start_time = time.time()
+
+        repaired_trajectory = self._planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
         print(f"* \t<TSolver>: solving time {time.time() - start_time:.3f}s")
         return repaired_trajectory
 
     def check(
-        self, proposition: List[PropositionNode], model: list
+        self, proposition: List[PropositionNode], model: list, use_mpr_derivative=False
     ) -> (bool, Trajectory):
         """
         Checks the T-consistency.
         """
         repaired_traj = None
-        self.assign_proposition(proposition, model)
+        self.assign_proposition(proposition, model, use_mpr_derivative)
         if self.compliant_maneuvers is None:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj

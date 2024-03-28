@@ -9,9 +9,9 @@ Mosek
 pandas~=1.2.4
 pyyaml
 ruamel-yaml>=0.16.12
-commonroad-io>=2023.1, <2023.2
+commonroad-io>=2023.1
 commonroad-vehicle-models
-commonroad-route-planner
+commonroad-route-planner<2023.1
 # commonroad-dc 
 commonroad-drivability-checker>=2022.2
 commonroad-crime>=0.3.0
@@ -20,6 +20,8 @@ commonroad-crime>=0.3.0
 -e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature-reach-semantic#egg=commonroad-qp-planner
 # gurobi optimizer
 gurobipy
+stlpy>=0.3.0
 
 # qp planner for intersection
--e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_repairing_intersection#egg=commonroad-qp-planner
+# -e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature_repairing_intersection#egg=commonroad-qp-planner
+
