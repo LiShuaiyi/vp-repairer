@@ -101,8 +101,8 @@ commonroad-repairer
 
 ## Minimal Example
 
-A tutorial notebook and an example script can be found in the `tutorial`/` folder. For running the examples from the paper
-[3], please refer to the folder `tests/case_study/`.
+A tutorial notebook and an example script can be found in the `tutorial/` folder. For running the examples from the paper
+[3], please refer to the folder `examples/`.
 
 * [1] <https://www.highd-dataset.com/>
 * [2] <https://commonroad.in.tum.de/dataset-converters>
