@@ -392,15 +392,16 @@ class STLRuleMonitor:
                 prop_rob.append([])
             pred = evaluator.get_predicates()
             if pred:
-                pred_rob.append([pred[pred_name] for pred_name in pred.keys()])
+                mpr_grad = evaluator.get_mpr_gradient()
+                pred_rob.append({key: [pred[key], mpr_grad[key]] for key in pred})
             else:
-                pred_rob.append([])
+                pred_rob.append({})
         return_dict = {
             "rule": np.array(rule_rob, dtype=np.float64),
             "other": other_ids,
             "prop": np.array(prop_rob, dtype=np.float64),
             "prop_name": np.array(prop_names, dtype=object),
-            "pred": np.array(pred_rob, dtype=np.float64),
+            "pred": np.array(pred_rob, dtype=object),
             "index": index,
         }
         q.put(return_dict)
