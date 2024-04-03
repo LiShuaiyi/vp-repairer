@@ -12,7 +12,7 @@ from commonroad.planning.planning_problem import PlanningProblem, PlanningProble
 
 from crrepairer.utils.general import load_scenario_and_planning_problem
 
-from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
+from commonroad_qp_planner.configuration import PlanningConfigurationVehicle, ConfigurationBuilder
 
 
 class ReferencePoint(enum.Enum):
@@ -138,6 +138,9 @@ class RepairConfiguration(BaseConfiguration):
     # choice of planner
     planner: int = 1  # 1: QP, 2: MIQP
 
+    # choice of the constraint builder
+    constraint_mode: int = 1  # 1: manual, 2. reach-semantic
+
     # the id of the vehicle, whose trajectory needs to be repaired
     ego_id: int = 201
 
@@ -217,8 +220,12 @@ class DebugConfiguration(BaseConfiguration):
 @dataclass
 class VehicleConfiguration(BaseConfiguration):
     """Class to store vehicle configurations"""
+    # todo: fix the way
+    config_builder = ConfigurationBuilder()
+    config_builder.set_root_path(root=os.path.normpath(os.path.join(os.path.dirname(__file__), "../../../commonroad-qp-planner")),
+                                 path_to_config="configurations")
+    qp_veh_config = config_builder.build_configuration()
 
-    qp_veh_config = PlanningConfigurationVehicle()
 
     kappa_dot_dot_min: float = -100
     kappa_dot_dot_max: float = 100

@@ -35,8 +35,8 @@ from commonroad_qp_planner.constraints import LatConstraints, LonConstraints
 
 from commonroad_route_planner.route_planner import RoutePlanner
 from commonroad.planning.planning_problem import PlanningProblem
-from commonroad.scenario.trajectory import Trajectory, CustomState
-from commonroad.scenario.state import InitialState
+from commonroad.scenario.trajectory import Trajectory
+from commonroad.scenario.state import InitialState, CustomState
 
 from commonroad_reach.data_structure.reach.reach_set import ReachableSet
 
@@ -152,11 +152,9 @@ class RuleConstraintsReach:
         # use the original scenario
 
         self.corridor = None
+        route_planner = RoutePlanner(scenario=self.reach_config.scenario,
+                                     planning_problem=self.reach_config.planning_problem)
 
-        route_planner = RoutePlanner(lanelet_network=self.reach_config.scenario.lanelet_network,
-                                     planning_problem=self.reach_config.planning_problem,
-                                     state_initial=initial_trajectory.state_list[0],
-                                     goal_region=self.reach_config.planning_problem.goal)
         candidate_holder = route_planner.plan_routes()
         route = candidate_holder.retrieve_first_route()
         self.reach_config.planning.route = route

@@ -29,8 +29,8 @@ def retrieve_ego_vehicle(config: RepairerConfiguration):
         new_state_list[0].time_step,
         new_state_list
     )
-    ego_initial.prediction.occupancy_set = new_occupancy_list
+    # ego_initial.prediction.occupancy_set = new_occupancy_list
     # not always being equal to tf
-    ego_initial.prediction.final_time_step = new_state_list[-1].time_step
-    ego_initial.prediction.initial_time_step = config.repair.t_0
+    # ego_initial.prediction.final_time_step = new_state_list[-1].time_step
+    # ego_initial.prediction.initial_time_step = config.repair.t_0
     return ego_initial

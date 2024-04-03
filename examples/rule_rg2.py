@@ -35,14 +35,6 @@ if __name__ == "__main__":
         veh.prediction.trajectory = Trajectory(
             1, veh.prediction.trajectory.state_list[initial_time_step: final_time_step]
         )
-        veh.prediction.occupancy_set = veh.prediction.occupancy_set[
-            initial_time_step:final_time_step
-        ]
-        for occupancy in veh.prediction.occupancy_set:
-            occupancy.time_step -= initial_time_step
-
-        veh.prediction.final_time_step = 20
-        veh.prediction.initial_time_step = 0
 
     ego_initial = retrieve_ego_vehicle(config)
 

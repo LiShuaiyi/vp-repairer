@@ -43,11 +43,16 @@ class TSolver:
         self.config = config
 
         # todo: same for QP
-        self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
-            self._rule_monitor,
-            self._tc_obj,
-            self.config
-        )
+        if config.repair.planner == 1:
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = None
+        elif config.repair.planner == 2:
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
+                self._rule_monitor,
+                self._tc_obj,
+                self.config
+            )
+        else:
+            assert AssertionError("the given planner type is not supported")
 
     @property
     def tc_object(self):
