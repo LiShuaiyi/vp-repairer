@@ -95,13 +95,13 @@ class QPPlannerRepair(QPPlanner):
         # use the coordinate system from the world
         # TODO: separate intersection and interstate
         if rule_monitor.scenario_type == "intersection":
-            self._qp_configuration.curvilinear_coordinate_system = (
+            self._qp_configuration.CLCS = (
                 rule_monitor.world.vehicle_by_id(
                     self._ego_vehicle.obstacle_id
                 ).ref_path_lane.clcs
             )
         else:
-            self._qp_configuration.curvilinear_coordinate_system = (
+            self._qp_configuration.CLCS = (
                 rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
                 .get_lane(0)
                 .clcs
@@ -138,7 +138,7 @@ class QPPlannerRepair(QPPlanner):
                 proposition_full,
                 self._qp_configuration,
                 self._initial_trajectory,
-                self.planning_problem
+                self._planning_problem
             )
 
     @property
@@ -179,7 +179,7 @@ class QPPlannerRepair(QPPlanner):
             # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
         print("* \t\t Lateral optimization")
         lat_constr = self._rule_constraints.lateral_constraints(
-            traj_lon, self._vehicle_configuration
+            traj_lon, self.vehicle_configuration
         )
         lat_constr.select_proposition = long_constr.select_proposition
         start_time_lat = time.time()

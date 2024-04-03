@@ -117,7 +117,7 @@ class RuleConstraintsManual:
             longitudinal motion: s, v, a
             lateral motion: lane
         """
-        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
+        for k in range(self._tc_obj.tc_time_step, self._tc_obj.N):
             total_assignment = self._rule_monitor.prop_robust_all[:, k]
             # longitudinal position and velocity limit
             s_limit = [-np.inf, np.inf]
@@ -188,6 +188,7 @@ class RuleConstraintsManual:
             self._lon_dis_constraints.append(s_limit)
             self._lon_vel_constraints.append(v_limit)
             self._lon_acc_constraints.append(a_limit)
+        pass
 
     def longitudinal_constraints(self, vehicle_configuration=None):
         """
@@ -201,14 +202,14 @@ class RuleConstraintsManual:
         longitudinal_velocity_constraints = np.array(self._lon_vel_constraints)
         longitudinal_acceleration_constraints = np.array(self._lon_acc_constraints)
         return LonConstraints.construct_constraints(
-            longitudinal_distance_constraints[1:, 0],
-            longitudinal_distance_constraints[1:, 1],
-            longitudinal_distance_constraints[1:, 0],
-            longitudinal_distance_constraints[1:, 1],
-            v_min=longitudinal_velocity_constraints[1:, 0],
-            v_max=longitudinal_velocity_constraints[1:, 1],
-            a_min=longitudinal_acceleration_constraints[1:, 0],
-            a_max=longitudinal_acceleration_constraints[1:, 1],
+            longitudinal_distance_constraints[:, 0],
+            longitudinal_distance_constraints[:, 1],
+            longitudinal_distance_constraints[:, 0],
+            longitudinal_distance_constraints[:, 1],
+            v_min=longitudinal_velocity_constraints[:, 0],
+            v_max=longitudinal_velocity_constraints[:, 1],
+            a_min=longitudinal_acceleration_constraints[:, 0],
+            a_max=longitudinal_acceleration_constraints[:, 1],
             prec_veh=self._target_vehicle,
             tc_time_step=self._tc_obj.tc_time_step,
             select_proposition=self._sel_prop_full,

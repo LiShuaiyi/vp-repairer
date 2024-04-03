@@ -245,11 +245,6 @@ class RuleConstraintsReach:
                     break
             if len(new_state_list) > 0:
                 new_traj = Trajectory(initial_time_step=0, state_list=new_state_list)
-                obs.prediction.occupancy_set = obs.prediction.occupancy_set[
-                        cut_off_time_step-1:
-                    ]
-                for occ in obs.prediction.occupancy_set:
-                    occ.time_step -= cut_off_time_step - 1
                 obs.prediction.trajectory = new_traj
             else:
                 self.reach_config.scenario.remove_obstacle(obs)

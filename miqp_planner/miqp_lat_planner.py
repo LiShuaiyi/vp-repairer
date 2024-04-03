@@ -138,7 +138,7 @@ class MIQPLatReference(object):
         ), "<QPLatReference>: Provided reference is not long enough for interpolation! ref = {}, traj = {}".format(
             np.max(ref_pathlength), np.max(s)
         )
-        CLCS = vehicle_configuration.qp_veh_config.curvilinear_coordinate_system
+        CLCS = vehicle_configuration.qp_veh_config.CLCS
 
         # interpolate curvature at s positions of trajectory
         # curvature_interpolated = np.interp(s, ref_pathlength, ref_curvature)

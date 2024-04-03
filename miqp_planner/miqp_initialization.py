@@ -72,7 +72,7 @@ def create_optimization_configuration_vehicle(
         reference_path = vehicle.ref_path_lane
         lanelets_leading_to_goal = vehicle.lanelets_dir
         configuration.reference_path = reference_path.smoothed_vertices
-        configuration.curvilinear_coordinate_system = reference_path.clcs
+        configuration.CLCS = reference_path.clcs
     else:
         route_planner = RoutePlanner(
             scenario, planning_problem
@@ -84,7 +84,7 @@ def create_optimization_configuration_vehicle(
             route_planner, planning_problem, settings
         )
         configuration.reference_path = np.array(reference_path)
-        configuration.curvilinear_coordinate_system = (
+        configuration.CLCS = (
             create_curvilinear_coordinate_system(configuration.reference_path)
         )
     configuration.lanelet_network = create_lanelet_network(
