@@ -1,3 +1,5 @@
+import numpy as np
+
 from commonroad_qp_planner.qp_planner import (
     QPPlanner,
     QPLongState,
@@ -111,15 +113,6 @@ class QPPlannerRepair(QPPlanner):
         self._qp_configuration.width = self._ego_vehicle.obstacle_shape.width
         self._qp_configuration.length = self._ego_vehicle.obstacle_shape.length
 
-        # initialize the QP planner
-        super().__init__(
-            self._qp_configuration,
-            num_planning_steps=self._N - self._cut_off_time_step,
-            qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
-            qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
-            verbose=verbose,
-        )
-
         # construct the rule constraints based on the traffic rules and proposition to be repaired
         if config.repair.constraint_mode == 1:
             self._rule_constraints = RuleConstraintsManual(
@@ -130,6 +123,7 @@ class QPPlannerRepair(QPPlanner):
                 self._qp_configuration,
                 self._initial_trajectory,
             )
+            safe_distance_mode = self._rule_constraints.safe_distance_modes
         elif config.repair.constraint_mode == 2:
             self._rule_constraints = RuleConstraintsReach(
                 tc_object,
@@ -140,6 +134,17 @@ class QPPlannerRepair(QPPlanner):
                 self._initial_trajectory,
                 self._planning_problem
             )
+            safe_distance_mode = None
+        else:
+            raise AssertionError(f"the constraint mode {config.repair.constraint_mode} is not supported")
+        super().__init__(
+            self._qp_configuration,
+            num_planning_steps=self._N - self._cut_off_time_step,
+            qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
+            qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
+            verbose=verbose,
+            safe_dis_modes=safe_distance_mode
+        )
 
     @property
     def rule_constraints(self):
@@ -204,11 +209,18 @@ class QPPlannerRepair(QPPlanner):
         """
         x_ref = list()
         for ts in range(0, lon_constr.N):
-            x_ref.append(
-                QPLongState(
-                    lon_constr.s_hard_min[ts], lon_constr.v_min[ts], 0.0, 0.0, 0.0
+            if lon_constr.s_hard_min[ts] != -np.inf:
+                x_ref.append(
+                    QPLongState(
+                        lon_constr.s_hard_min[ts], lon_constr.v_min[ts], 0.0, 0.0, 0.0
+                    )
                 )
-            )
+            else:
+                x_ref.append(
+                    QPLongState(
+                        None, lon_constr.v_min[ts], 0.0, 0.0, 0.0
+                    )
+                )
         return QPLongDesired(x_ref)
 
     def construct_d_reference(self):

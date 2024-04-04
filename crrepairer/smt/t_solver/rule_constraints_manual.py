@@ -217,7 +217,7 @@ class RuleConstraintsManual:
 
     def lateral_constraints(
         self,
-        long_traj: QPTrajectory,
+        long_traj: QPTrajectory, configuration_qp=None
     ):
         """
         Set the lateral constraints (based on the planned longitudinal trajectory and the previously
