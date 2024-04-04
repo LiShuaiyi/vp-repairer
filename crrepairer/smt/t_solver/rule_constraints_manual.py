@@ -6,6 +6,8 @@ from commonroad.scenario.trajectory import Trajectory
 
 from commonroad_crime.utility.simulation import Maneuver
 
+from crmonitor.common.road_network import Lane
+
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 
@@ -49,6 +51,7 @@ class RuleConstraintsManual:
         proposition_full: List[PropositionNode],
         veh_config: PlanningConfigurationVehicle,
         initial_trajectory: Trajectory,
+        ref_lane: Lane
     ):
         # initialize the needed components
         self._tc_obj = tc_object
@@ -73,6 +76,8 @@ class RuleConstraintsManual:
         self._lon_acc_constraints = list()
         self._lat_dis_constraints = list()
 
+        self._ref_lane = ref_lane
+
         self._prec_veh = None
         self._foll_veh = None
         # whether safe distance needs to be obeyed
@@ -86,10 +91,10 @@ class RuleConstraintsManual:
             )
             lane_dist = (
                 self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
-                    self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s
+                    self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step, self._ref_lane).s
                 )
                 / 2
-                - abs(self._ego_vehicle.get_lat_state(0).d)
+                - abs(self._ego_vehicle.get_lat_state(0, self._ref_lane).d)
                 - self._veh_config.width / 2
             )
             leave_time = np.sqrt(
@@ -342,7 +347,7 @@ class RuleConstraintsManual:
                         self._lon_dis_constraints[index],
                         [
                             -np.inf,
-                            self._prec_veh.rear_s(k)
+                            self._prec_veh.rear_s(k, self._ref_lane)
                             - self._veh_config.wheelbase / 2
                             - self._veh_config.length / 2,
                         ],
@@ -392,13 +397,13 @@ class RuleConstraintsManual:
         if time_step > self._target_vehicle.end_time:
             return [-np.inf, np.inf]
         if prop_assignment > 0:
-            rear_s = self._target_vehicle.rear_s(time_step)
+            rear_s = self._target_vehicle.rear_s(time_step, self._ref_lane)
             if rear_s:
                 return [-np.inf, rear_s]
             else:
                 return [-np.inf, np.inf]
         else:
-            front_s = self._target_vehicle.front_s(time_step)
+            front_s = self._target_vehicle.front_s(time_step, self._ref_lane)
             if front_s:
                 return [front_s, np.inf]
             else:

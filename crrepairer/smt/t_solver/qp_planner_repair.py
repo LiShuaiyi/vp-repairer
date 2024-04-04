@@ -97,17 +97,11 @@ class QPPlannerRepair(QPPlanner):
         # use the coordinate system from the world
         # TODO: separate intersection and interstate
         if rule_monitor.scenario_type == "intersection":
-            self._qp_configuration.CLCS = (
-                rule_monitor.world.vehicle_by_id(
-                    self._ego_vehicle.obstacle_id
-                ).ref_path_lane.clcs
-            )
+            ref_lane = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).ref_path_lane
+            self._qp_configuration.CLCS = ref_lane.clcs
         else:
-            self._qp_configuration.CLCS = (
-                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
-                .get_lane(0)
-                .clcs
-            )
+            ref_lane = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).get_lane(0)
+            self._qp_configuration.CLCS = ref_lane.clcs
 
         # update the vehicle shape
         self._qp_configuration.width = self._ego_vehicle.obstacle_shape.width
@@ -122,6 +116,7 @@ class QPPlannerRepair(QPPlanner):
                 proposition_full,
                 self._qp_configuration,
                 self._initial_trajectory,
+                ref_lane
             )
             safe_distance_mode = self._rule_constraints.safe_distance_modes
         elif config.repair.constraint_mode == 2:
