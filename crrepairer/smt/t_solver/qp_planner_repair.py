@@ -98,10 +98,10 @@ class QPPlannerRepair(QPPlanner):
         # TODO: separate intersection and interstate
         if rule_monitor.scenario_type == "intersection":
             ref_lane = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).ref_path_lane
-            self._qp_configuration.CLCS = ref_lane.clcs
         else:
             ref_lane = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).get_lane(0)
-            self._qp_configuration.CLCS = ref_lane.clcs
+
+        self._qp_configuration.CLCS = ref_lane.clcs
 
         # update the vehicle shape
         self._qp_configuration.width = self._ego_vehicle.obstacle_shape.width

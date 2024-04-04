@@ -348,7 +348,7 @@ class RuleConstraintsManual:
                         [
                             -np.inf,
                             self._prec_veh.rear_s(k, self._ref_lane)
-                            - self._veh_config.wheelbase / 2
+                            - self._veh_config.wb_ra
                             - self._veh_config.length / 2,
                         ],
                     )
