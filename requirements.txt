@@ -9,7 +9,7 @@ Mosek
 pandas~=1.2.4
 pyyaml
 ruamel-yaml>=0.16.12
-commonroad-io>=2023.1
+commonroad-io>=2024.1
 commonroad-vehicle-models
 commonroad-route-planner<2023.1
 # commonroad-dc 
