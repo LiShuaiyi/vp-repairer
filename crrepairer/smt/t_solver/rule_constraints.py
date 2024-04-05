@@ -114,7 +114,7 @@ class RuleConstraints:
         # TODO: maybe have some error in qp planner
         # add conflict area parameters
         for proposition in proposition_full:
-            if "in_intersection_conflict_area__a0_a1" in proposition.name:
+            if "in_intersection_conflict_area__0_1" in proposition.name:
                 (
                     self.s_circle_center_front,
                     self.s_circle_center_rear,
