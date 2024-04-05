@@ -258,13 +258,13 @@ class MIQPPlannerRepair(MIQPPlanner):
         """
         cartesian_traj_points = list()
         for state in trajectory.states:
-            cart_pos = self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.convert_to_cartesian_coords(
+            cart_pos = self.vehicle_configuration.qp_veh_config.CLCS.convert_to_cartesian_coords(
                 state.position[0], state.position[1]
             )
             orientation_interpolated = np.interp(
                 state.position[0],
-                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_pos,
-                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_theta,
+                self.vehicle_configuration.qp_veh_config.CLCS.ref_pos,
+                self.vehicle_configuration.qp_veh_config.CLCS.ref_theta,
             )
 
             v = state.v / np.cos(state.orientation - orientation_interpolated)
