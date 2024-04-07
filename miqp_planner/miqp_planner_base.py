@@ -9,7 +9,7 @@ from commonroad_qp_planner.configuration import (
 )
 
 from miqp_planner.miqp_lat_planner import MIQPLatState, MIQPLatReference
-from miqp_planner.miqp_constraints import (
+from miqp_planner.miqp_constraints_manual import (
     LongitudinalConstraint,
     LateralConstraint,
     TIConstraint,

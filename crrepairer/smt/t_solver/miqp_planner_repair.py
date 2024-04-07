@@ -5,10 +5,10 @@ from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
 from miqp_planner.miqp_lat_planner import MIQPLatPlanner
 from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference, MIQPLongPlanner
-from miqp_planner.miqp_constraints import (
+from miqp_planner.miqp_constraints_manual import (
     LongitudinalConstraint,
     LateralConstraint,
-    RuleConstraint,
+    RuleConstraintMIQPManual,
 )
 
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
@@ -88,7 +88,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         self._cut_off_time_step: Optional[float, int] = None
         self._cut_off_state: Optional[CustomState, InitialState] = None
         self._time_horizon: Optional[float] = None
-        self._constraints: Optional[RuleConstraint] = None
+        self._constraints: Optional[RuleConstraintMIQPManual] = None
 
         # initialize the MIQP planner
         super().__init__(config)
@@ -107,7 +107,7 @@ class MIQPPlannerRepair(MIQPPlanner):
                               sel_proposition: List[PropositionNode],
                               proposition_full: List[PropositionNode],):
         if self._vehicle_configuration is not None:
-            self._constraints = RuleConstraint(
+            self._constraints = RuleConstraintMIQPManual(
                 self.tc_object,
                 self.rule_monitor,
                 sel_proposition,

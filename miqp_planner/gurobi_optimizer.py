@@ -6,7 +6,7 @@ from gurobipy import QuadExpr, LinExpr, GRB
 
 import numpy as np
 
-from miqp_planner.miqp_constraints import (
+from miqp_planner.miqp_constraints_manual import (
     LongitudinalConstraint,
     PredicateConstraint,
     CollisionFreeConstraint,

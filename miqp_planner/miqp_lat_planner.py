@@ -8,7 +8,7 @@ from commonroad_dc.geometry.util import (
 )
 
 from miqp_planner.gurobi_optimizer import GurobiSolver
-from miqp_planner.miqp_constraints import LateralConstraint, TIConstraint
+from miqp_planner.miqp_constraints_manual import LateralConstraint, TIConstraint
 
 from commonroad_qp_planner.trajectory import Trajectory, TrajPoint, TrajectoryType
 
