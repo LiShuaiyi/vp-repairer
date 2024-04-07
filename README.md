@@ -30,9 +30,9 @@ conda activate repairverse
 
 You have to manually install the following packages:
 
-* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature/repair/miqp
-* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /feature/repair/miqp
-* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch /feature/repair/miqp
+* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature/repair/semantic
+* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /feature/repair/semantic
+* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch /feature/repair/semantic
 
 ```sh
 git clone <package_url>
