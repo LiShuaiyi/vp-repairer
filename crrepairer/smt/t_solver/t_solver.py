@@ -43,16 +43,11 @@ class TSolver:
         self.config = config
 
         # todo: same for QP
-        if config.repair.planner == 1:
-            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = None
-        elif config.repair.planner == 2:
-            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
-                self._rule_monitor,
-                self._tc_obj,
-                self.config
-            )
-        else:
-            assert AssertionError("the given planner type is not supported")
+        self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
+            self._rule_monitor,
+            self._tc_obj,
+            self.config
+        )
 
     @property
     def tc_object(self):
@@ -86,8 +81,6 @@ class TSolver:
         )
         compliant_maneuver = list()
         for prop_node in self._sel_prop:
-            if prop_node.name == 'g0':
-                continue
             for predicate in prop_node.children:
                 if not hasattr(predicate, "evaluator"):
                     continue

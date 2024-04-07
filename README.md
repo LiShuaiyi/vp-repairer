@@ -4,13 +4,13 @@ This repository contains a software package to solve trajectory repairing proble
 
 ## About Trajectory repairing
 
-_Inspired by Randall Munroe, I describe my research using the 1,200 most common English words from [www.wordfrequency.info](www.wordfrequency.info)._
+_Inspired by Randall Munroe, I describe my research using the 1,200 most common English words from [www.wordfrequency.info](www.wordfrequency.info).
 
 We want our cars to always plan a safe path. But environments change every time. Thus, the path cannot be used as we want or does not follow traffic rules from time to time. One possible solution is to remain part of the path and plan the rest.
 
 ## The required Python dependencies
 
-The code is written in Python 3.8 and has been tested on Ubuntu 20.04 and 22.04.
+The code is written in Python 3.8 and has been tested on Ubuntu 20.04.
 
 ## Installation Guide
 
@@ -30,13 +30,27 @@ conda activate repairverse
 
 You have to manually install the following packages:
 
-* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature/repair/semantic
-* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /feature/repair/semantic
-* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch /feature/repair/semantic
+* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature_repairing_intersection
+* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /intersection_mpr
+* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch /fix_intersection_feature
 
 ```sh
 git clone <package_url>
 cd <package_folder>
+pip install -e .
+```
+
+Then, install the dependencies with:
+
+```sh
+pip install -r requirements.txt
+```
+
+This will install related dependencies specified in `requirements.txt`. Or simply install the dependencies listed in `requirements.txt` and add this repository to your python path.
+
+Finally, install this commonroad-repairer package:
+
+```sh
 pip install -e .
 ```
 
@@ -47,7 +61,7 @@ For using the optimization solvers, e.g., Gurobi, Mosek, it is required to apply
 * Mosek: <https://www.mosek.com/products/academic-licenses/>
 * Gurobi: <https://www.gurobi.com/academia/academic-program-and-licenses/>
   * `conda install -c gurobi gurobi`
-  * connect to the campus network/use [eduVPN](https://docs.eduvpn.org/client/linux/installation.html)
+  * `connect to the campus network/use` [eduVPN](https://docs.eduvpn.org/client/linux/installation.html)
   * `grbgetkey xxx` (obtained from the Gurobi website)
 
 ## Folder structure
@@ -70,13 +84,11 @@ commonroad-repairer
 |        ├─ dpll                        # Davis-Putnam-Logemann-Loveland Algorithm
 |        ├─ sat_solver                  # SATisfiability solver (DPLL algorirthm-based)
 │     ├─ t_solver
-|        ├─ miqp_planner_repair         # Adaption of the MIQP-planner 
 |        ├─ qp_planner_repair           # Adaption of the QP-planner 
 |        ├─ rule_constraints            # Script to add rule constraints based on the assignments of predicates 
 |        ├─ t_solver                    # Theory solver
 |     ├─ monitor_wrapper                # Wrapper for traffic rule monitor
 ├─ evaluation                           # Evaluation with HighD scenarios[1] using converter[2]
-├─ examples                             # Examples for you to run
 ├─ scenarios
 ├─ tests
 ├─ tutorials

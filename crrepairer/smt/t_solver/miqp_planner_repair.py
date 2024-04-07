@@ -5,10 +5,10 @@ from miqp_planner.miqp_initialization import set_up_miqp
 from miqp_planner.miqp_planner_base import MIQPPlanner
 from miqp_planner.miqp_lat_planner import MIQPLatPlanner
 from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference, MIQPLongPlanner
-from miqp_planner.miqp_constraints_manual import (
+from miqp_planner.miqp_constraints import (
     LongitudinalConstraint,
     LateralConstraint,
-    RuleConstraintMIQPManual,
+    RuleConstraint,
 )
 
 from commonroad_qp_planner.initialization import convert_pos_curvilinear
@@ -70,25 +70,13 @@ class MIQPPlannerRepair(MIQPPlanner):
             self.config.planning_problem,
             self._monitor_ego_vehicle,
         )
-        if rule_monitor.scenario_type == "intersection":
-            self._vehicle_configuration.CLCS = (
-                rule_monitor.world.vehicle_by_id(
-                    self._ego_vehicle.obstacle_id
-                ).ref_path_lane.clcs
-            )
-        else:
-            self._vehicle_configuration.CLCS = (
-                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
-                .get_lane(0)
-                .clcs
-            )
 
         # empty objects
         self._N: Optional[int] = None
         self._cut_off_time_step: Optional[float, int] = None
         self._cut_off_state: Optional[CustomState, InitialState] = None
         self._time_horizon: Optional[float] = None
-        self._constraints: Optional[RuleConstraintMIQPManual] = None
+        self._constraints: Optional[RuleConstraint] = None
 
         # initialize the MIQP planner
         super().__init__(config)
@@ -107,7 +95,7 @@ class MIQPPlannerRepair(MIQPPlanner):
                               sel_proposition: List[PropositionNode],
                               proposition_full: List[PropositionNode],):
         if self._vehicle_configuration is not None:
-            self._constraints = RuleConstraintMIQPManual(
+            self._constraints = RuleConstraint(
                 self.tc_object,
                 self.rule_monitor,
                 sel_proposition,
@@ -258,13 +246,13 @@ class MIQPPlannerRepair(MIQPPlanner):
         """
         cartesian_traj_points = list()
         for state in trajectory.states:
-            cart_pos = self.vehicle_configuration.qp_veh_config.CLCS.convert_to_cartesian_coords(
+            cart_pos = self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.convert_to_cartesian_coords(
                 state.position[0], state.position[1]
             )
             orientation_interpolated = np.interp(
                 state.position[0],
-                self.vehicle_configuration.qp_veh_config.CLCS.ref_pos,
-                self.vehicle_configuration.qp_veh_config.CLCS.ref_theta,
+                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_pos,
+                self.vehicle_configuration.qp_veh_config.curvilinear_coordinate_system.ref_theta,
             )
 
             v = state.v / np.cos(state.orientation - orientation_interpolated)
@@ -288,8 +276,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         traj._u_lon = trajectory.u_lon
         traj._u_lat = trajectory.u_lat
         cr_traj_repaired = traj.convert_to_cr_trajectory(
-            self._vehicle_configuration.wheelbase,
-            self._vehicle_configuration.wb_ra
+            self._vehicle_configuration.wheelbase
         )
         # TODO: fix time step
         if self._cut_off_time_step == 1:

@@ -1,12 +1,8 @@
 from typing import Tuple
-import numpy as np
 
 from commonroad.common.file_reader import CommonRoadFileReader
 from commonroad.planning.planning_problem import PlanningProblem, PlanningProblemSet
 from commonroad.scenario.scenario import Scenario
-
-# commonroad-curvilinear-coordinatesystem
-import commonroad_dc.pycrccosy as pycrccosy
 
 
 def load_scenario_and_planning_problem(
@@ -24,9 +20,3 @@ def load_scenario_and_planning_problem(
     ]
 
     return scenario, planning_problem, planning_problem_set
-
-
-def create_curvilinear_coordinate_system(
-        reference_path: np.ndarray) -> pycrccosy.CurvilinearCoordinateSystem:
-    cosy = pycrccosy.CurvilinearCoordinateSystem(reference_path)
-    return cosy

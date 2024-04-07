@@ -158,12 +158,12 @@ class TC(CutOffBase, ABC):
             return math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
-        if rule_idx != self.rule_monitor._violated_rule_idx:
-            print("*\t Violated rule changed.")
-            rule_idx = self.rule_monitor._violated_rule_idx
-        if other_ids[rule_idx][min_tv] == ():
-            return min_tv * self.dT, self.ego_vehicle.obstacle_id
-        return min_tv * self.dT, other_ids[rule_idx][min_tv][0]
+        if rule_idx == self.rule_monitor._violated_rule_idx:
+            if other_ids[rule_idx][min_tv] == ():
+                return min_tv * self.dT, self.ego_vehicle.obstacle_id
+            return min_tv * self.dT, other_ids[rule_idx][min_tv][0]
+        else:
+            print("Violated rule changed.")
 
     def generate(self, cut_off_maneuvers: List[Maneuver]):
         """

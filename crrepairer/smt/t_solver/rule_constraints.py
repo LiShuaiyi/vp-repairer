@@ -43,7 +43,7 @@ from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 
-class RuleConstraintsManual:
+class RuleConstraints:
     """
     Class for traffic rule constraints
     """
@@ -233,7 +233,7 @@ class RuleConstraintsManual:
             self._lon_vel_constraints.append(v_limit)
             self._lon_acc_constraints.append(a_limit)
 
-    def longitudinal_constraints(self, vehicle_configuration):
+    def longitudinal_constraints(self):
         """
         Set the longitudinal constraints
         """
@@ -264,7 +264,6 @@ class RuleConstraintsManual:
     def lateral_constraints(
         self,
         long_traj: QPTrajectory,
-        configuration_qp=None
     ):
         """
         Set the lateral constraints (based on the planned longitudinal trajectory and the previously

@@ -3,7 +3,7 @@ import numpy as np
 from decimal import Decimal
 
 from miqp_planner.gurobi_optimizer import GurobiSolver
-from miqp_planner.miqp_constraints_manual import LongitudinalConstraint, TIConstraint
+from miqp_planner.miqp_constraints import LongitudinalConstraint, TIConstraint
 
 from crrepairer.utils.configuration import RepairerConfiguration
 from crmonitor.common.vehicle import Vehicle

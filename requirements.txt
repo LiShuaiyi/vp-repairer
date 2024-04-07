@@ -1,12 +1,12 @@
 matplotlib>=3.3.4
-numpy<2.0.0,>=1.26.1
+numpy>=1.19.5,<1.24.0
 sympy>=1.8
 setuptools>=50.3.2
 z3-solver>=4.8.12.0
 cvxpy>=1.1.15
 osqp>=0.6.2
 Mosek
-pandas>=1.4.2
+pandas~=1.2.4
 pyyaml
 ruamel-yaml>=0.16.12
 commonroad-io>=2024.1
@@ -16,8 +16,6 @@ commonroad-route-planner<2023.1
 commonroad-drivability-checker>=2022.2
 commonroad-crime>=0.3.0
 
-# qp planner
--e git+ssh://git@gitlab.lrz.de/cps/commonroad-qp-planner.git@feature-reach-semantic#egg=commonroad-qp-planner
 # gurobi optimizer
 gurobipy
 stlpy>=0.3.0
