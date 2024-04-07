@@ -130,7 +130,7 @@ class CollisionFreeConstraint:
         self.ub = list()
 
 
-class RuleConstraint:
+class RuleConstraintMIQPManual:
     def __init__(
         self,
         tc_object: TC,

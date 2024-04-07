@@ -173,3 +173,5 @@ cython_debug/
 **/__pycache__
 
 .csv#
+
+/tests/case_study/output

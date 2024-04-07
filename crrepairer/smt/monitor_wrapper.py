@@ -335,6 +335,7 @@ class STLRuleMonitor:
                             prop_names.append([])
                             prop_rob.append([])
                     pred = evaluator.get_predicates()
+                    # mpr_grad = evaluator.get_mpr_gradient()
                     if pred:
                         mpr_grad = evaluator.get_mpr_gradient()
                         pred_rob.append({key: [pred[key], mpr_grad[key]] for key in pred})
@@ -418,12 +419,16 @@ class STLRuleMonitor:
                 world_state.vehicle_by_id(self._vehicle_id), world_state, reset_time
             )
             self.switch_to_boolean(evaluator)
+
             rule_rob = []
             other_ids = []
+
             while evaluator.current_time < evaluator.ego_vehicle.end_time:
                 rule_rob.append(evaluator.update())
                 other_ids.append(evaluator.other_ids)
                 if rule_rob[-1] < 0:
+                    remaining_time_steps = evaluator.ego_vehicle.end_time - evaluator.current_time
+                    rule_rob.extend([-1] * remaining_time_steps)
                     break
             rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
             other_ids_all.append(other_ids)

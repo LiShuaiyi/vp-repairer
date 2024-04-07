@@ -4,9 +4,8 @@ from crrepairer.utils.visualization import visualize_repaired_result
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
-from commonroad.prediction.prediction import Trajectory
 from commonroad.scenario.state import InitialState
-
+from commonroad.scenario.trajectory import Trajectory
 import math
 
 

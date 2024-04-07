@@ -1,5 +1,6 @@
 from typing import Dict, Tuple, List, Union, Any, Optional
 import numpy as np
+import os
 
 # commonroad-io
 from commonroad.planning.planning_problem import PlanningProblem
@@ -7,18 +8,18 @@ from commonroad.scenario.scenario import Scenario
 from commonroad.scenario.lanelet import LaneletNetwork, Lanelet
 
 from commonroad_qp_planner.configuration import (
-    PlanningConfigurationVehicle,
+    ConfigurationBuilder,
     ReferencePoint,
 )
 from commonroad_qp_planner.initialization import (
     find_reference_path_and_lanelets_leading_to_goal,
-    create_curvilinear_coordinate_system,
 )
 
 from crmonitor.common.world import DynamicObstacleVehicle, Vehicle
 from commonroad_route_planner.route_planner import RoutePlanner
 
 from crrepairer.smt.monitor_wrapper import ScenarioType
+from crrepairer.utils.general import create_curvilinear_coordinate_system
 
 
 def set_up_miqp(
@@ -46,6 +47,8 @@ def create_optimization_configuration_vehicle(
     settings: Dict,
     scenario_type: ScenarioType,
     vehicle: DynamicObstacleVehicle,
+    path_root_configs: str = None,
+    path_to_config: str = "configurations"
 ):
     assert (
         planning_problem.planning_problem_id in settings
@@ -55,16 +58,24 @@ def create_optimization_configuration_vehicle(
 
     vehicle_settings = settings[planning_problem.planning_problem_id]
     # TODO: create new function instead of using qp planner
-    configuration = PlanningConfigurationVehicle()
+    config_builder = ConfigurationBuilder()
+
+    if path_root_configs:
+        config_builder.set_root_path(root=path_root_configs, path_to_config=path_to_config)
+    else:
+        config_builder.set_root_path(root=os.path.normpath(os.path.join(os.path.dirname(__file__), "../../commonroad-qp-planner")),
+                                     path_to_config=path_to_config)
+    configuration = config_builder.build_configuration(name_scenario=str(scenario.scenario_id))
+
     if scenario_type == "intersection":
         # use reference path and lanelets_dir from rule monitor
         reference_path = vehicle.ref_path_lane
         lanelets_leading_to_goal = vehicle.lanelets_dir
         configuration.reference_path = reference_path.smoothed_vertices
-        configuration.curvilinear_coordinate_system = reference_path.clcs
+        configuration.CLCS = reference_path.clcs
     else:
         route_planner = RoutePlanner(
-            scenario, planning_problem, backend=RoutePlanner.Backend.NETWORKX_REVERSED
+            scenario, planning_problem
         )
         (
             reference_path,
@@ -73,7 +84,7 @@ def create_optimization_configuration_vehicle(
             route_planner, planning_problem, settings
         )
         configuration.reference_path = np.array(reference_path)
-        configuration.curvilinear_coordinate_system = (
+        configuration.CLCS = (
             create_curvilinear_coordinate_system(configuration.reference_path)
         )
     configuration.lanelet_network = create_lanelet_network(

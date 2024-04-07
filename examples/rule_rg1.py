@@ -16,6 +16,7 @@ if __name__ == "__main__":
     config.update()
     config.debug.show_plots = False
     config.repair.planner = 2
+    config.repair.constraint_mode = 1
     config.repair.use_mpr = False
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)
