@@ -116,7 +116,7 @@ class QPPlannerRepair(QPPlanner):
                 proposition_full,
                 self._qp_configuration,
                 self._initial_trajectory,
-                ref_lane
+                self._start_time_step
             )
             safe_distance_mode = self._rule_constraints.safe_distance_modes
         elif config.repair.constraint_mode == 2:
@@ -157,9 +157,7 @@ class QPPlannerRepair(QPPlanner):
         """
         print("* \t<QPPlanner>: process starts")
         print("* \t\t Longitudinal optimization")
-        long_constr = self._rule_constraints.longitudinal_constraints(
-            self._qp_configuration
-        )
+        long_constr = self._rule_constraints.longitudinal_constraints()
         reference_lon = self.construct_s_reference(long_constr)
         self.reset(self._scenario)
         start_time_lon = time.time()
