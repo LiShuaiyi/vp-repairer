@@ -157,7 +157,9 @@ class QPPlannerRepair(QPPlanner):
         """
         print("* \t<QPPlanner>: process starts")
         print("* \t\t Longitudinal optimization")
-        long_constr = self._rule_constraints.longitudinal_constraints()
+        long_constr = self._rule_constraints.longitudinal_constraints(
+            self._qp_configuration
+        )
         reference_lon = self.construct_s_reference(long_constr)
         self.reset(self._scenario)
         start_time_lon = time.time()

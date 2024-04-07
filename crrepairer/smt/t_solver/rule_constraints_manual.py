@@ -233,7 +233,7 @@ class RuleConstraintsManual:
             self._lon_vel_constraints.append(v_limit)
             self._lon_acc_constraints.append(a_limit)
 
-    def longitudinal_constraints(self):
+    def longitudinal_constraints(self, vehicle_configuration):
         """
         Set the longitudinal constraints
         """
