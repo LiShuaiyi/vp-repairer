@@ -30,9 +30,9 @@ conda activate repairverse
 
 You have to manually install the following packages:
 
-* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch /feature_repairing_intersection
-* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch /intersection_mpr
-* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch /fix_intersection_feature
+* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch `/feature_repairing_intersection` or `branch /feature-miqp`
+* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch `/intersection_mpr` or `/feature/repair/miqp`
+* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch `/fix_intersection_feature` or `feature/repair/miqp`
 
 ```sh
 git clone <package_url>
