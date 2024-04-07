@@ -15,7 +15,7 @@ if __name__ == "__main__":
     config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
     config.update()
 
-    config.repair.rules = ["R_G1", "R_G3", "R_G3"]
+    config.repair.rules = ["R_G1", "R_G2", "R_G3"]
 
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)
