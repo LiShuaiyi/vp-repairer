@@ -6,7 +6,7 @@ z3-solver>=4.8.12.0
 cvxpy>=1.1.15
 osqp>=0.6.2
 Mosek
-pandas~=1.2.4
+pandas>=1.2.4
 pyyaml
 ruamel-yaml>=0.16.12
 commonroad-io>=2024.1
