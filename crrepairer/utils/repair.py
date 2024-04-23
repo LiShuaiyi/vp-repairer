@@ -1,5 +1,5 @@
 from commonroad.prediction.prediction import Trajectory
-from commonroad.scenario.state import CustomState, ExtendedPMState
+from commonroad.scenario.state import CustomState, ExtendedPMState, InitialState
 
 from crrepairer.utils.configuration import RepairerConfiguration
 
@@ -19,7 +19,7 @@ def retrieve_ego_vehicle(config: RepairerConfiguration):
                                         acceleration=ego_initial.state_at_time(time_step).acceleration)
             else:
                 new_state = ego_initial.state_at_time(time_step)
-            if time_step != config.repair.t_0: 
+            if not isinstance(new_state, InitialState): 
                 # skip the initial state with different type
                 new_state_list.append(new_state)
             new_occupancy_list.append(ego_initial.occupancy_at_time(time_step))
