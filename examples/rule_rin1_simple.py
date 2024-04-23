@@ -29,6 +29,6 @@ if __name__ == "__main__":
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
                 ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
             )
-            if config.debug.show_plots:
+            if config.debug.show_plots: # FIXME: redundant condition
                 # ============= Visualization =============
                 visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
