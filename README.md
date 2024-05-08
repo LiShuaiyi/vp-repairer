@@ -10,7 +10,7 @@ We want our cars to always plan a safe path. But environments change every time.
 
 ## The required Python dependencies
 
-The code is written in Python 3.8 and has been tested on Ubuntu 20.04.
+The code is written in Python 3.10 and has been tested on Ubuntu 20.04 & 22.04.
 
 ## Installation Guide
 
@@ -30,9 +30,10 @@ conda activate repairverse
 
 You have to manually install the following packages:
 
-* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch `feature_repairing_intersection` or `feature/repair/miqp`
-* [STL CRmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch `intersection_mpr` or `feature/repair/miqp`
-* [MPR](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch `fix_intersection_feature` or `feature/repair/miqp`
+* [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch `feature/repair-all`
+* [commonroad-stlmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch `feature/repair-all`
+* [commonroad-mpr](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch `feature/repair-all`
+* [commonroad-reach-semantic](https://gitlab.lrz.de/cps/commonroad/commonroad-reach-semantic): branch `feature/repair-new`
 
 ```sh
 # Clone the repository and switch to the desired branch
