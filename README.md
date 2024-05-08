@@ -31,9 +31,11 @@ conda activate repairverse
 You have to manually install the following packages:
 
 * [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch `feature/repair-all`
-* [commonroad-stlmonitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch `feature/repair-all`
+* [commonroad-stl-monitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch `feature/repair-all`
+  (you need to update the submodules with `git submodule update --init --recursive`
 * [commonroad-mpr](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch `feature/repair-all`
-* [commonroad-reach-semantic](https://gitlab.lrz.de/cps/commonroad/commonroad-reach-semantic): branch `feature/repair-new`
+* [commonroad-reach-semantic](https://gitlab.lrz.de/cps/commonroad/commonroad-reach-semantic): branch `feature/repair-new` 
+(use `export CXX=/usr/bin/g++-10` before installation)
 
 ```sh
 # Clone the repository and switch to the desired branch
