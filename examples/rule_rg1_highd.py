@@ -9,11 +9,14 @@ import math
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_Gar-1_1_T-1"
-
+    scenario_id = "DEU_LocationAUpper-54_67_T-1" # id=9
+    # scenario_id = "DEU_LocationDUpper-9_236_T-1" # id=15
     # Build configuration object
-    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
+    config = RepairerConfiguration()
+    config.general.set_path_scenario(scenario_id)
     config.update()
+    config.repair.rules = ["R_G1"]
+    config.repair.ego_id = 9
     config.debug.show_plots = True
     config.repair.planner = 2
     config.repair.constraint_mode = 2

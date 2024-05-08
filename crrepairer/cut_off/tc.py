@@ -36,6 +36,7 @@ class TC(CutOffBase, ABC):
         rule_monitor_copy = copy.copy(rule_monitor)
         rule_monitor_copy._world = copy.deepcopy(rule_monitor.world)
         super().__init__(ego_vehicle, rule_monitor_copy.world)
+
         # set round tolerance for different time step size
         if 0.01 <= self.dT < 0.1:
             self.round_tolerance = 2

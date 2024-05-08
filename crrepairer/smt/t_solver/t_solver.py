@@ -43,11 +43,21 @@ class TSolver:
         self.config = config
 
         # todo: same for QP
-        self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
-            self._rule_monitor,
-            self._tc_obj,
-            self.config
-        )
+        if config.repair.planner == 1:
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = QPPlannerRepair(
+                self._rule_monitor,
+                self._tc_obj,
+                self.config,
+                verbose=self.verbose,
+            )
+        elif config.repair.planner == 2:
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
+                self._rule_monitor,
+                self._tc_obj,
+                self.config
+            )
+        else:
+            assert AssertionError("the given planner type is not supported")
 
     @property
     def tc_object(self):
@@ -167,14 +177,18 @@ class TSolver:
                         in [PositionPredicates.OnLaneletWithTypeIntersection]
                     ):
                         compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
-                    elif predicate_category == "Pos":
-                        # TODO: FIXME add maneuvers
-                        pass
-                        # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
+                    # elif predicate_category == "Pos":
+                    #     # TODO: FIXME add maneuvers
+                    #     pass
+                    #     # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
                     elif predicate_category == "Vel":
                         compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
                     elif predicate_category == "Acc":
                         compliant_maneuver += [Maneuver.CONSTANT]
+                    elif (predicate_category == "Pos"
+                        and predicate.evaluator.predicate_name in [PositionPredicates.MainCarriagewayRightLane]):
+                        compliant_maneuver += [Maneuver.STEERRIGHT,
+                                               Maneuver.STEERLEFT]
                     else:
                         pass  # general predicate
                         # raise ValueError('<T-Solver>: the category {} is not specified'
@@ -205,15 +219,10 @@ class TSolver:
         """
         start_time = time.time()
         if self.config.repair.planner == 1:
-            self._planner = QPPlannerRepair(
-                self._rule_monitor,
-                self._tc_obj,
-                self._sel_prop,
-                self._prop_full,
-                self._planning_problem,
-                self.config,
-                verbose=self.verbose,
-            )
+            self._planner.reset(scenario=self.tc_object.scenario,
+                                tc_object=self.tc_object,
+                                sel_proposition=self._sel_prop,
+                                full_proposition=self._prop_full)
             print("* \t<TSolver>: QP planner is invoked")
         elif self.config.repair.planner == 2:
             self._planner.reset(tc_object=self.tc_object,

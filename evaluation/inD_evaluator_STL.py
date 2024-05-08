@@ -16,9 +16,28 @@ crconvert highd /home/liny/Documents/commonroad/highD-dataset-v1.0 /home/liny/Do
 (time step is 0.2s)
 
 version 2023.2
-crconvert  --num-time-steps 20 --num-processes 4 --downsample 5 --keep-ego --obstacles-start-at-zero /home/liny/Documents/commonroad/13_inD/ /home/liny/Documents/commonroad/inD-repair/ ind
+crconvert  --num-time-steps 100 --num-processes 4 --downsample 5 --keep-ego --obstacles-start-at-zero /home/liny/Documents/commonroad/13_inD/ /home/liny/Documents/commonroad/inD-repair/ ind
 
+DEU_AachenBendplatz-1_151360_T-1379 10097
+[ 1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1. -1.  1.  1.  1.
+  1.  1.]
 
+  DEU_AachenBendplatz-1_152460_T-2479 10161
+[ 1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1. -1.  1.  1.  1.
+  1.  1.]
+
+DEU_AachenBendplatz-1_162840_T-2859 10217
+[ 1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1. -1.
+  1.  1.]
+DEU_AachenBendplatz-1_161140_T-1159 10098
+[ 1.  1.  1.  1.  1.  1.  1.  1.  1.  1. -1.  1.  1.  1.  1.  1.  1.  1.
+  1.  1.]
+violation R_IN1
+
+DEU_AachenBendplatz-1_164900_T-4919 10371
+[ 1.  1.  1.  1.  1.  1.  1.  1.  1.  1.  1. -1.  1.  1.  1.  1.  1.  1.
+  1.  1.]
+violation R_IN1
 
 use the STL monitor
 """
@@ -28,17 +47,17 @@ import csv
 import numpy as np
 
 from commonroad.common.file_reader import CommonRoadFileReader
-from crmonitor.common.world import World
 from crmonitor.evaluation.evaluation import RuleEvaluator
+from crmonitor.common.world import World, get_world_config
 
 if __name__ == "__main__":
     # the highD-cr scenario directory
     # file_path = "../../highD-dataset/highD-cr-scenarios/"
-    file_path = "/home/liny/Documents/commonroad/highD-repair/"
+    file_path = "/home/liny/Documents/commonroad/inD-repair/"
 
     # file_path = "../../commonroad-scenarios-master-scenarios/scenarios/cooperative"
     # highD_scenario_dir = "/home/yuanfei/commonroad/highD-dataset/sebastian_evaluation/"
-    filename = "highD_evaluation_result.csv"
+    filename = "inD_evaluation_result.csv"
     if not os.path.isfile(filename):
         with open(filename, 'w') as f:
             f.write('')  # Create the file and write an empty string if needed
@@ -47,18 +66,22 @@ if __name__ == "__main__":
     # _ = f_r.readlines().pop(0)  # pop first line
     writer.writerow(["scenario_id", "ego_id", "rule_STL"])
 
-    rules = ["R_G1", "R_G2", "R_G3"]
+    rules = ["R_IN1"]
     for s in list(glob.glob(os.path.join(file_path, "*.xml"), recursive=True))[0:500]:
 
         scenario, planning_problem_set = CommonRoadFileReader(s).open(
             lanelet_assignment=True
         )
-
-        world = World.create_from_scenario(
-            scenario
-        )
-        for veh in scenario.dynamic_obstacles:
-            ego_id = veh.obstacle_id
+        world_config = get_world_config()
+        world_config["scenario"] = "intersection"
+        try:
+            world = World.create_from_scenario(
+                scenario, config=world_config
+            )
+        except:
+            continue
+        for veh in world.vehicles:
+            ego_id = veh.id
             print(scenario.scenario_id, ego_id)
             row = [scenario.scenario_id, ego_id]
             violation = False

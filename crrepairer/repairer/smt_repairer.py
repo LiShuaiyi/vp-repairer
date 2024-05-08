@@ -37,9 +37,12 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self._tc = -math.inf
         self._tv = -math.inf
         # initialize Solvers for SMT paradigm
+
         self.sat_solver = SATSolver(self.rule_monitor, config)
+
         self.t_solver = TSolver(ego_vehicle, self.rule_monitor, config)
         self.config = config
+
 
     @property
     def tv(self):
@@ -72,6 +75,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             if self.rule_monitor.proposition_nodes is None:
                 return None
             select_proposition, self._model = self.sat_solver.model()
+
             repairability, repaired_traj = self.t_solver.check(
                 select_proposition, list(self._model), use_mpr_derivative=self.config.repair.use_mpr_derivative
             )

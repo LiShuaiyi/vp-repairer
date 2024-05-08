@@ -191,7 +191,7 @@ class RuleConstraint:
             )
             self._time_leave_lane = int(leave_time / self._world_state.dt)
 
-    def construct_longitudinal_constraints(self, tc_time_step):
+    def construct_longitudinal_constraints(self, veh_config, tc_time_step):
         self.add_rule_constraints()
         self.add_collision_free_constraints()
         self.longitudinal_constraints.tc = tc_time_step
@@ -344,6 +344,7 @@ class RuleConstraint:
                     predicate.base_name
                     in self.longitudinal_constraints.rule_constraints.keys()
                 ):
+                    # existed constraints, then just obtain the overlapped interval
                     self._get_overlap(predicate.base_name, v_ub, v_lb, time_step)
                 else:
                     self.longitudinal_constraints.rule_constraints[
@@ -898,7 +899,7 @@ class RuleConstraint:
             conflict_points = [conflict_line_points[0], conflict_line_points[-1]]
         return conflict_points
 
-    def create_d_constraints(self, long_traj: QPTrajectory):
+    def create_d_constraints(self, long_traj: QPTrajectory, veh_config):
         self.lateral_constraints.long_traj = long_traj
         # TODO: fix construction (now copy from rule_constraints)
         self._lat_dis_constraints = list()

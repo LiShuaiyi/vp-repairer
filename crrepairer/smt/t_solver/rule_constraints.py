@@ -121,6 +121,55 @@ class RuleConstraints:
                 ) = self.create_conflict_area_parameter()
                 break
 
+    def reset(self,
+              start_time_step: int,
+              tc_object: TC,
+              rule_monitor: STLRuleMonitor,
+              sel_proposition_full: List[PropositionNode],
+              proposition_full: List[PropositionNode]):
+        if start_time_step is not None:
+            self._start_time_step = start_time_step
+
+        if rule_monitor is not None:
+            self._other_id = rule_monitor.other_id
+
+        if tc_object is not None:
+            self._tc_obj = tc_object
+            self._compliant_maneuver = tc_object.compliant_maneuver
+            self._safe_dis_mode = [
+                False for _ in range(tc_object.N -tc_object.tc_time_step + 1)
+            ]
+            if self._compliant_maneuver in [Maneuver.STEERLEFT, Maneuver.STEERRIGHT]:
+                # time for leaving the current lane
+                self._tc_obj.simulation_lateral.set_inputs(
+                    self._ego_vehicle.state_list_cr[tc_object.tc_time_step]
+                )
+                lane_dist = (
+                        self._ego_vehicle.get_lane(tc_object.tc_time_step).width(
+                            self._ego_vehicle.get_lon_state(self._tc_obj.tc_time_step).s
+                        )
+                        / 2
+                        - abs(self._ego_vehicle.get_lat_state(0).d)
+                        - self._veh_config.width / 2
+                )
+                leave_time = np.sqrt(
+                    2 * abs(lane_dist / self._tc_obj.simulation_lateral.a_lat)
+                )
+                self._time_leave_lane = int(leave_time / self._world_state.dt)
+
+        if sel_proposition_full is not None:
+            self._sel_prop_full = sel_proposition_full
+
+        if proposition_full is not None:
+            self._prop_full = proposition_full
+            for proposition in proposition_full:
+                if "in_intersection_conflict_area__0_1" in proposition.name:
+                    (
+                        self.s_circle_center_front,
+                        self.s_circle_center_rear,
+                    ) = self.create_conflict_area_parameter()
+                    break
+
     @property
     def safe_distance_modes(self):
         return self._safe_dis_mode
@@ -288,7 +337,7 @@ class RuleConstraints:
                         long_traj.states[index].position[0], 0.0
                     )
                     d_max = min(
-                        self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
+                        self._veh_config.CLCS.convert_to_curvilinear_coords(
                             lane_boundary_left[0], lane_boundary_left[1]
                         )[
                             1
@@ -296,7 +345,7 @@ class RuleConstraints:
                         d_max,
                     )
                     d_min = max(
-                        self._veh_config.curvilinear_coordinate_system.convert_to_curvilinear_coords(
+                        self._veh_config.CLCS.convert_to_curvilinear_coords(
                             lane_boundary_right[0], lane_boundary_right[1]
                         )[
                             1

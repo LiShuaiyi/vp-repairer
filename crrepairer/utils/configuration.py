@@ -12,7 +12,7 @@ from commonroad.planning.planning_problem import PlanningProblem, PlanningProble
 
 from crrepairer.utils.general import load_scenario_and_planning_problem
 
-from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
+from commonroad_qp_planner.configuration import ConfigurationBuilder
 
 
 class ReferencePoint(enum.Enum):
@@ -178,7 +178,7 @@ class MIQPPlannerConfiguration(BaseConfiguration):
     slack_long: bool = True
     # s, v, a, j, u, slack
     weight_long: List[float] =\
-        field(default_factory=lambda: [0.1, 0.2, 0.5, 1, 0.1, 1000000])
+        field(default_factory=lambda: [100.1, 25.2, 0.5, 1, 0.1, 1000000])
     # d, theta, kappa, kappa_dot, u, robust
     weight_lat: List[float] =\
         field(default_factory=lambda: [0.05, 15.1, 40.0, 20.0, 1.0, 0.1])
@@ -218,7 +218,11 @@ class DebugConfiguration(BaseConfiguration):
 class VehicleConfiguration(BaseConfiguration):
     """Class to store vehicle configurations"""
 
-    qp_veh_config = PlanningConfigurationVehicle()
+    config_builder = ConfigurationBuilder()
+    config_builder.set_root_path(root=os.path.normpath(os.path.join(os.path.dirname(__file__), "../../../commonroad-qp-planner")),
+                                 path_to_config="configurations")
+    qp_veh_config = config_builder.build_configuration()
+
 
     kappa_dot_dot_min: float = -100
     kappa_dot_dot_max: float = 100
@@ -254,8 +258,13 @@ class GeneralConfiguration(BaseConfiguration):
 
         :param scenario_name: Name of CommonRoad scenario.
         """
-        self.path_scenario = os.path.join(self.path_scenarios, scenario_name)
-        self.path_figures = os.path.join(self.path_figures, scenario_name)
+        if not scenario_name.endswith(".xml"):
+            self.path_figures = os.path.join(self.path_figures, scenario_name + ".xml")
+            self.path_scenario = os.path.join(self.path_scenarios, scenario_name + ".xml")
+        else:
+            self.path_figures = os.path.join(self.path_figures, scenario_name)
+            self.path_scenario = os.path.join(self.path_scenarios, scenario_name)
+
         os.makedirs(self.path_figures, exist_ok=True)
 
 

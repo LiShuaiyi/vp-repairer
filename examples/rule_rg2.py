@@ -21,6 +21,9 @@ if __name__ == "__main__":
     initial_time_step = 50
     final_time_step = initial_time_step + 20
 
+    config.repair.planner = 1
+    config.repair.constraint_mode = 2
+
     # # change the time horizon
     for veh in config.scenario.obstacles:
         updated_initial_state = veh.prediction.trajectory.state_list[initial_time_step - 1]

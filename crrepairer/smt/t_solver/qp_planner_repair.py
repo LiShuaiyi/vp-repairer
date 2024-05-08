@@ -1,4 +1,14 @@
-from commonroad_qp_planner.qp_planner import QPPlanner, QPLongState, QPLongReference
+import numpy as np
+from typing import Optional
+
+from commonroad_qp_planner.qp_planner import (
+    QPPlanner,
+    QPLongState,
+    LonConstraints,
+    QPLongDesired,
+    QPLatReference,
+    QPLatDesired
+)
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
@@ -17,11 +27,13 @@ from commonroad.scenario.scenario import (
     DynamicObstacle,
     TrajectoryPrediction,
     ObstacleType,
+    Scenario
 )
 from commonroad.common.util import Interval, AngleInterval
 from commonroad.planning.goal import GoalRegion
 from commonroad.planning.planning_problem import PlanningProblem
 from commonroad.geometry.shape import Rectangle
+from commonroad.scenario.lanelet import LaneletNetwork
 
 from typing import List
 import yaml
@@ -38,44 +50,29 @@ class QPPlannerRepair(QPPlanner):
         self,
         rule_monitor: STLRuleMonitor,
         tc_object: TC,
-        sel_proposition: List[PropositionNode],
-        proposition_full: List[PropositionNode],
-        planning_problem: PlanningProblem,
         config: RepairerConfiguration,
         verbose=False,
     ):
         # initialize the scenario and planning problem
         self._scenario = rule_monitor.world.scenario
+        self._tc_object = tc_object
         self._ego_vehicle = tc_object.ego_vehicle
         self._start_time_step = tc_object.ego_vehicle.initial_state.time_step
-        self._planning_problem = planning_problem
+        self._planning_problem = config.planning_problem
         self._initial_trajectory: Trajectory = self._ego_vehicle.prediction.trajectory
+        self._rule_monitor = rule_monitor
 
         # set the cut-off state as the initial state
-        self._cut_off_time_step = tc_object.tc_time_step
-        self._N = tc_object.N
-        if self._cut_off_time_step == self._ego_vehicle.initial_state.time_step:
-            self._cut_off_state = self._ego_vehicle.initial_state
-        else:
-            self._cut_off_state = self._initial_trajectory.state_at_time_step(
-                self._cut_off_time_step
-            )
-        self._time_horizon = round(
-            (self._N - self._cut_off_time_step) * self._scenario.dt,
-            tc_object.round_tolerance,
-        )
-        self._planning_problem.initial_state = InitialState(
-            position=self._cut_off_state.position,
-            velocity=self._cut_off_state.velocity,
-            orientation=self._cut_off_state.orientation,
-            time_step=self._cut_off_state.time_step,
-            acceleration=self._cut_off_state.acceleration,
-            # not needed but mandatory field
-            yaw_rate=0,
-            slip_angle=0,
-        )
-        self._planning_problem.goal = update_goal_state(self._initial_trajectory)
+        self._cut_off_time_step: Optional[float, int] = None
+        self._N: Optional[int] = None
+        self._cut_off_state: Optional[CustomState, InitialState] = None
+        self._time_horizon: Optional[float] = None
+        self.sel_proposition = None
+        self.full_proposition = None
+
         # load and set up the configuration
+        # >>> side note: the initial state is not updated to keep the reference path possibly long
+        self._planning_problem.goal = update_goal_state(self._initial_trajectory)
         self._settings = self.config_settings()
         self._qp_configuration: PlanningConfigurationVehicle = set_up(
             self._settings, self._scenario, self._planning_problem
@@ -83,28 +80,48 @@ class QPPlannerRepair(QPPlanner):
         self.config = config
 
         # use the coordinate system from the world
-        # TODO: separate intersection and interstate
-        if rule_monitor.scenario_type == "intersection":
-            self._qp_configuration.curvilinear_coordinate_system = (
-                rule_monitor.world.vehicle_by_id(
-                    self._ego_vehicle.obstacle_id
-                ).ref_path_lane.clcs
-            )
-        else:
-            test = rule_monitor.world.vehicle_by_id(
-                self._ego_vehicle.obstacle_id
-            ).get_lane(0)
-            self._qp_configuration.curvilinear_coordinate_system = (
-                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
-                .get_lane(0)
-                .clcs
-            )
+        # if rule_monitor.scenario_type == "intersection":
+        #     ref_lane = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id).ref_path_lane
+        # else:
+        #     # fixme: first or the last
+        #     obs = rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+        #     ref_lane = obs.get_lane(obs.end_time)
+
+        # self._qp_configuration.CLCS = ref_lane.clcs
+        # import matplotlib.pyplot as plt
+        # from commonroad.visualization.mp_renderer import MPRenderer
+        # rnd = MPRenderer()
+        # rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
+        # self._scenario.lanelet_network.draw(rnd)
+        # rnd.render()
+        # import numpy as np
+        # plt.plot(np.array(self._qp_configuration.CLCS.reference_path())[:, 0],
+        #          np.array(self._qp_configuration.CLCS.reference_path())[:, 1])
+        # plt.show()
 
         # update the vehicle shape
         self._qp_configuration.width = self._ego_vehicle.obstacle_shape.width
         self._qp_configuration.length = self._ego_vehicle.obstacle_shape.length
 
-        # initialize the QP planner
+        # construct the rule constraints based on the traffic rules and proposition to be repaired
+        if config.repair.constraint_mode == 1:
+            self._rule_constraints = RuleConstraintsManual(
+                self._qp_configuration,
+                rule_monitor,
+                self._initial_trajectory,
+            )
+        elif config.repair.constraint_mode == 2:
+            self._rule_constraints = RuleConstraintsReach(
+                tc_object,
+                rule_monitor,
+                self._qp_configuration,
+                self._initial_trajectory,
+            )
+            self._qp_configuration.CLCS = self._rule_constraints.reach_config.planning.CLCS
+            self._qp_configuration.reference_path = self._rule_constraints.reach_config.planning.reference_path
+
+        else:
+            raise AssertionError(f"the constraint mode {config.repair.constraint_mode} is not supported")
         super().__init__(
             self._scenario,
             self._planning_problem,
@@ -115,29 +132,59 @@ class QPPlannerRepair(QPPlanner):
             verbose=verbose,
         )
 
-        # construct the rule constraints based on the traffic rules and proposition to be repaired
-        self._rule_constraints = RuleConstraints(
-            tc_object,
-            rule_monitor,
-            sel_proposition,
-            proposition_full,
-            self._qp_configuration,
-            self._initial_trajectory,
-            self._start_time_step,
-        )
-
-    def construct_constraints(self,
-                              sel_proposition: List[PropositionNode],
-                              proposition_full: List[PropositionNode],):
-        # todo
-        pass
-
-    def reset(self, config: RepairerConfiguration = None,
-              initial_trajectory = None,
+    def reset(self,
               tc_object: TC = None,
-              rule_monitor: STLRuleMonitor = None):
-        # todo
-        pass
+              sel_proposition: List[PropositionNode] = None,
+              full_proposition: List[PropositionNode] = None,
+              scenario: Scenario = None,
+              ):
+        """
+        Initializes/resets configuration of the repairer for re-planning purposes
+        """
+
+        if scenario is not None:
+            self.scenario = scenario
+            if not hasattr(scenario, 'dt'):
+                self.dt = 0.1  # default time step
+            else:
+                self.dt = scenario.dt
+
+            self.lon_planner.reset(self.dt)
+            self.lat_planner.reset(self.dt)
+
+        if tc_object is not None:
+            self._tc_object = tc_object
+            self._cut_off_time_step = tc_object.tc_time_step
+            self._N = tc_object.N
+            if self._cut_off_time_step == self._ego_vehicle.initial_state.time_step:
+                self._cut_off_state = self._ego_vehicle.initial_state
+            else:
+                self._cut_off_state = self._initial_trajectory.state_at_time_step(
+                    self._cut_off_time_step
+                )
+            self._time_horizon = round(
+                (self._N - self._cut_off_time_step) * self._scenario.dt,
+                tc_object.round_tolerance,
+            )
+            # !! update the initial state as the cut off state
+            self._planning_problem.initial_state = InitialState(
+                position=self._cut_off_state.position,
+                velocity=self._cut_off_state.velocity,
+                orientation=self._cut_off_state.orientation,
+                time_step=self._cut_off_state.time_step,
+                acceleration=self._cut_off_state.acceleration,
+                # not needed but mandatory field
+                yaw_rate=0,
+                slip_angle=0,
+            )
+            self.lon_planner.set_time_step(self._N - self._cut_off_time_step)
+            self.lat_planner.set_time_step(self._N - self._cut_off_time_step)
+
+        if sel_proposition is not None:
+            self.sel_proposition = sel_proposition
+        if full_proposition is not None:
+            self.full_proposition = full_proposition
+
 
     @property
     def rule_constraints(self):
@@ -155,8 +202,21 @@ class QPPlannerRepair(QPPlanner):
         """
         print("* \t<QPPlanner>: process starts")
         print("* \t\t Longitudinal optimization")
-        long_constr = self._rule_constraints.longitudinal_constraints()
-        reference_lon = self.construct_s_reference()
+        start_time_lon_constr = time.time()
+
+        self._rule_constraints.reset(self._start_time_step,
+                                     self._tc_object,
+                                     self._rule_monitor,
+                                     self.sel_proposition,
+                                     self.full_proposition,
+                                     )
+        long_constr = self._rule_constraints.longitudinal_constraints(
+            self._qp_configuration
+        )
+        reference_lon = self.construct_s_reference(long_constr)
+        print(
+            "* \t\t -- longi constraint construction {} s --".format(round(time.time() - start_time_lon_constr, 3))
+        )
         start_time_lon = time.time()
         traj_lon, status = self.longitudinal_trajectory_planning(
             long_constr,
@@ -164,20 +224,30 @@ class QPPlannerRepair(QPPlanner):
             safe_dis_modes=self._rule_constraints.safe_distance_modes,
         )
         print(
-            "* \t\t -- run time {} s --".format(round(time.time() - start_time_lon, 3))
+            "* \t\t -- longi optimization time {} s --".format(round(time.time() - start_time_lon, 3))
         )
         if status is not "optimal":
             return None
             # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
         print("* \t\t Lateral optimization")
-        lat_constr = self._rule_constraints.lateral_constraints(traj_lon)
+        start_time_lat_constr = time.time()
+
+        lat_constr = self._rule_constraints.lateral_constraints(
+            traj_lon, self.vehicle_configuration
+        )
+        reference_lat = self.construct_d_reference(lat_constr)
+
         lat_constr.select_proposition = long_constr.select_proposition
+        print(
+            "* \t\t -- lateral constraint construction {} s --".format(round(time.time() - start_time_lat_constr, 3))
+        )
         start_time_lat = time.time()
+
         trajectory, status = self.lateral_trajectory_planning(
-            traj_lon, lat_constr, None
+            traj_lon, lat_constr, d_ref=reference_lat
         )
         print(
-            "* \t\t -- run time {} s --".format(round(time.time() - start_time_lat, 3))
+            "* \t\t -- lateral optimization time {} s --".format(round(time.time() - start_time_lat, 3))
         )
         # convert trajectory to cartesian space
         if status is not "optimal":
@@ -198,17 +268,27 @@ class QPPlannerRepair(QPPlanner):
             x_ref.append(QPLongState(pos[0], state.velocity, 0.0, 0.0, 0.0))
         return QPLongReference(x_ref)
 
-    def construct_d_reference(self):
+    def construct_d_reference(self, lat_constraints):
         """
         Constructs the lateral reference from the initially-planned trajectory.
         """
         d_ref = list()
         for state in self._initial_trajectory.states_in_time_interval(
-            self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
+            self._cut_off_time_step, self._N
         ):
-            pos = convert_pos_curvilinear(state, self._qp_configuration)
-            d_ref.append(pos[1])
-        return d_ref
+            time_step = state.time_step - self._cut_off_time_step - 1
+            if np.any(lat_constraints.d_hard_min[time_step]) == -np.inf and \
+                np.any(lat_constraints.d_hard_max[time_step]) == np.inf:
+                pos = convert_pos_curvilinear(state, self._qp_configuration)[1]
+            elif lat_constraints.d_hard_min[time_step][0] != np.inf and \
+                lat_constraints.d_hard_min[time_step][0] != -np.inf:
+                pos = (lat_constraints.d_hard_min[time_step][0] +
+                       lat_constraints.d_hard_max[time_step][0])/2
+            else:
+                initial_pos = self._initial_trajectory.state_list[0]
+                pos = convert_pos_curvilinear(initial_pos, self._qp_configuration)[1]
+            d_ref.append(pos)
+        return QPLatReference(d_ref)
 
     def convert_traj_to_ego_vehicle(
         self, cr_trajectory: Trajectory, vehicle_id: int = 0
@@ -324,6 +404,35 @@ def update_goal_state(initial_trajectory: Trajectory):
     goal_time_step = Interval(0, len(initial_trajectory.state_list) + 5)
     goal_state = CustomState(
         position=Rectangle(1, 1, ini_final_state.position),
+        velocity=goal_velocity,
+        orientation=goal_orientation,
+        time_step=goal_time_step,
+    )
+    goal_region = GoalRegion([goal_state])
+    return goal_region
+
+
+def update_goal_state_extension(initial_trajectory: Trajectory, lanelet_network: LaneletNetwork):
+    """
+    Update goal state for the reference generation.
+    :return: the updated goal state
+    """
+    ini_final_state = initial_trajectory.state_list[-1]
+    ini_final_lanelet = lanelet_network.find_lanelet_by_position([ini_final_state.position])[0]
+    for lanelet_id in lanelet_network.find_lanelet_by_id(ini_final_lanelet[0]).successor:
+        lanelet = lanelet_network.find_lanelet_by_id(lanelet_id)
+        # if lanelet
+    successor_lanelet = lanelet_network.find_lanelet_by_id(
+        lanelet_network.find_lanelet_by_id(ini_final_lanelet[0]).successor[0]
+    )
+    ref_point = successor_lanelet.center_vertices[-1]
+    goal_orientation = AngleInterval(
+        ini_final_state.orientation - 0.2, ini_final_state.orientation + 0.2
+    )
+    goal_velocity = Interval(ini_final_state.velocity, ini_final_state.velocity + 5.0)
+    goal_time_step = Interval(0, len(initial_trajectory.state_list) + 5)
+    goal_state = CustomState(
+        position=Rectangle(1, 1, ref_point),
         velocity=goal_velocity,
         orientation=goal_orientation,
         time_step=goal_time_step,
