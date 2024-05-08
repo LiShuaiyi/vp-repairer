@@ -8,7 +8,7 @@ from miqp_planner.miqp_long_planner import MIQPLongState, MIQPLongReference, MIQ
 from miqp_planner.miqp_constraints_manual import (
     LongitudinalConstraint,
     LateralConstraint,
-    RuleConstraint,
+    RuleConstraint as RuleConstraintMIQPManual
 )
 from miqp_planner.miqp_constraints_reach import RuleConstraintMIQPReach
 
