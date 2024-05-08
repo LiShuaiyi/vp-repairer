@@ -32,10 +32,10 @@ You have to manually install the following packages:
 
 * [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch `feature/repair-all`
 * [commonroad-stl-monitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch `feature/repair-all`
-  (you need to update the submodules with `git submodule update --init --recursive`
+  (if `rtamt` is not installed successfully, you need to update the submodules with `git submodule init` and `git submodule update`
 * [commonroad-mpr](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch `feature/repair-all`
 * [commonroad-reach-semantic](https://gitlab.lrz.de/cps/commonroad/commonroad-reach-semantic): branch `feature/repair-new` 
-(use `export CXX=/usr/bin/g++-10` before installation)
+(use `export CXX=/usr/bin/g++-10` before installation to use the correct compiler)
 
 ```sh
 # Clone the repository and switch to the desired branch
@@ -52,6 +52,7 @@ Then, install the dependencies with:
 ```sh
 pip install -r requirements.txt
 ```
+(right now pls make sure the `commonroad-route-planner==2022.3`)
 
 This will install related dependencies specified in `requirements.txt`. Or simply install the dependencies listed in `requirements.txt` and add this repository to your python path.
 
