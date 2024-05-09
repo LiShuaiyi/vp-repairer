@@ -276,8 +276,9 @@ class RuleConstraintsReach:
                     if acc_min > a_min:
                         a_min = acc_min
 
-        self.reach_config.vehicle.ego.v_max = v_max
+        self.reach_config.vehicle.ego.v_lon_max = v_max
         self.reach_config.vehicle.ego.a_lon_min = a_min
+
         #########################################################
         # self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model,
         #                                                      self.rule_interface)

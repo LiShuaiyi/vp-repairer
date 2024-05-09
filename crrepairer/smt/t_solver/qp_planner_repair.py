@@ -10,14 +10,19 @@ from commonroad_qp_planner.qp_planner import (
     QPLatDesired
 )
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
-from commonroad_qp_planner.initialization import set_up, convert_pos_curvilinear
+from commonroad_qp_planner.initialization import (
+    set_up,
+    convert_pos_curvilinear,
+    create_optimization_configuration_vehicle,
+)
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 from commonroad_qp_planner.trajectory import TrajPoint, TrajectoryType
 
 from crrepairer.smt.monitor_wrapper import PropositionNode
 
 from crrepairer.cut_off.tc import TC
-from crrepairer.smt.t_solver.rule_constraints import RuleConstraints
+from crrepairer.smt.t_solver.rule_constraints import RuleConstraintsManual
+from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.utils.configuration import RepairerConfiguration
 
@@ -123,9 +128,6 @@ class QPPlannerRepair(QPPlanner):
         else:
             raise AssertionError(f"the constraint mode {config.repair.constraint_mode} is not supported")
         super().__init__(
-            self._scenario,
-            self._planning_problem,
-            self._time_horizon,
             self._qp_configuration,
             qp_long_parameters=self._settings["qp_planner"]["longitudinal_parameters"],
             qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
@@ -218,10 +220,13 @@ class QPPlannerRepair(QPPlanner):
             "* \t\t -- longi constraint construction {} s --".format(round(time.time() - start_time_lon_constr, 3))
         )
         start_time_lon = time.time()
+        self.step(
+            self._planning_problem.initial_state,
+            self._planning_problem.initial_state.velocity,
+        )
+
         traj_lon, status = self.longitudinal_trajectory_planning(
-            long_constr,
-            reference_lon,
-            safe_dis_modes=self._rule_constraints.safe_distance_modes,
+            long_constr, reference_lon
         )
         print(
             "* \t\t -- longi optimization time {} s --".format(round(time.time() - start_time_lon, 3))
@@ -254,19 +259,29 @@ class QPPlannerRepair(QPPlanner):
             return None
             # raise ValueError('<QPPlannerRepair/_lateral_trajectory_planning>: failed')
         cr_trajectory = self.transform_merge_trajectory(trajectory)
+
+        # plot_position_constraints(trajectory, (long_constr.s_hard_min, long_constr.s_hard_max), (lat_constr.d_hard_min, lat_constr.d_hard_max))
         return cr_trajectory
 
-    def construct_s_reference(self):
+    def construct_s_reference(self, lon_constr: LonConstraints):
         """
         Constructs the longitudinal reference from the initially-planned trajectory.
         """
         x_ref = list()
-        for state in self._initial_trajectory.states_in_time_interval(
-            self._cut_off_time_step, self._ego_vehicle.prediction.final_time_step
-        ):
-            pos = convert_pos_curvilinear(state, self._qp_configuration)
-            x_ref.append(QPLongState(pos[0], state.velocity, 0.0, 0.0, 0.0))
-        return QPLongReference(x_ref)
+        for ts in range(0, lon_constr.N):
+            if lon_constr.s_hard_min[ts] != -np.inf:
+                x_ref.append(
+                    QPLongState(
+                        lon_constr.s_hard_min[ts], lon_constr.v_min[ts], 0.0, 0.0, 0.0
+                    )
+                )
+            else:
+                x_ref.append(
+                    QPLongState(
+                        None, lon_constr.v_min[ts], 0.0, 0.0, 0.0
+                    )
+                )
+        return QPLongDesired(x_ref)
 
     def construct_d_reference(self, lat_constraints):
         """
@@ -314,37 +329,19 @@ class QPPlannerRepair(QPPlanner):
         )
         return ego
 
-    def transform_merge_trajectory(self, trajectory: QPTrajectory):
+    def transform_merge_trajectory(self, trajectory_CLCS: QPTrajectory):
         """
         Transforms and merges the trajectory (before and after repairing)
         """
-        cartesian_traj_points = list()
-        for state in trajectory.states:
-            cart_pos = self.vehicle_configuration.curvilinear_coordinate_system.convert_to_cartesian_coords(
-                state.position[0], state.position[1]
-            )
-            cartesian_traj_points.append(
-                TrajPoint(
-                    t=state.t,
-                    x=cart_pos[0],
-                    y=cart_pos[1],
-                    theta=state.orientation,
-                    v=state.v,
-                    a=state.a,
-                    kappa=state.kappa,
-                    kappa_dot=state.kappa_dot,
-                    j=state.j,
-                    lane=state.lane,
-                )
-            )
-
-        traj = QPTrajectory(cartesian_traj_points, TrajectoryType.CARTESIAN)
-
-        traj._u_lon = trajectory.u_lon
-        traj._u_lat = trajectory.u_lat
-        cr_traj_repaired = traj.convert_to_cr_trajectory(
-            self._qp_configuration.wheelbase
+        trajectory = self.transform_trajectory_to_cartesian_coordinates(trajectory_CLCS)
+        cr_traj_repaired = trajectory.convert_to_cr_ego_vehicle(
+            self._qp_configuration.width,
+            self._qp_configuration.length,
+            self._qp_configuration.wheelbase,
+            self._qp_configuration.wb_ra,
+            vehicle_id=self._ego_vehicle.obstacle_id,
         )
+
         if self._cut_off_time_step == 0:
             remaining_states = [self._ego_vehicle.initial_state]
         else:
@@ -353,7 +350,7 @@ class QPPlannerRepair(QPPlanner):
             ] + self._initial_trajectory.states_in_time_interval(
                 self._start_time_step + 1, self._cut_off_time_step - 1
             )
-        for state in cr_traj_repaired.state_list:
+        for state in cr_traj_repaired.prediction.trajectory.state_list:
             state.time_step += self._cut_off_time_step
         state_list = [
             CustomState(
@@ -363,7 +360,8 @@ class QPPlannerRepair(QPPlanner):
                 orientation=state.orientation,
                 acceleration=state.acceleration,
             )
-            for state in remaining_states + cr_traj_repaired.state_list
+            for state in remaining_states
+            + cr_traj_repaired.prediction.trajectory.state_list
         ]
         cr_traj_repaired = Trajectory(self._start_time_step, state_list)
         return cr_traj_repaired

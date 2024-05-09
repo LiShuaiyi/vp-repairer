@@ -3,9 +3,9 @@ from typing import List, Optional, Union
 from collections import defaultdict
 
 import shapely
+
 from commonroad.scenario.trajectory import Trajectory
 from commonroad.geometry.transform import rotate_translate
-
 from commonroad_crime.utility.simulation import Maneuver
 
 from crrepairer.cut_off.tc import TC
@@ -43,7 +43,7 @@ from commonroad_qp_planner.initialization import convert_pos_curvilinear
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
 
 
-class RuleConstraints:
+class RuleConstraintsManual:
     """
     Class for traffic rule constraints
     """
@@ -282,7 +282,7 @@ class RuleConstraints:
             self._lon_vel_constraints.append(v_limit)
             self._lon_acc_constraints.append(a_limit)
 
-    def longitudinal_constraints(self):
+    def longitudinal_constraints(self, vehicle_configuration):
         """
         Set the longitudinal constraints
         """
@@ -313,6 +313,7 @@ class RuleConstraints:
     def lateral_constraints(
         self,
         long_traj: QPTrajectory,
+        configuration_qp=None
     ):
         """
         Set the lateral constraints (based on the planned longitudinal trajectory and the previously
