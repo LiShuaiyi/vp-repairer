@@ -5,7 +5,7 @@ repair:
   ego_id: 10276
   rules: [ "R_IN1" ]
   t_0: 8              # initial time step
-  N_r: 141            # number of time steps
+  N_r: 142            # number of time steps
 debug:
   show_plots: true
   plot_limits: [49, 70, -35, -10]
