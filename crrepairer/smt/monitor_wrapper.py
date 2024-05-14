@@ -310,6 +310,7 @@ class STLRuleMonitor:
             for p in processes:
                 p.join()
             self._rule_eval = [self._rule_eval[i] for i in rule_ids]
+            self._rules = [self._rules[i] for i in rule_ids]
 
         else:
             for evaluator in self._rule_eval:
