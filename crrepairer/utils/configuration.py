@@ -138,6 +138,9 @@ class RepairConfiguration(BaseConfiguration):
     # choice of planner
     planner: int = 1  # 1: QP, 2: MIQP
 
+    # constraint mode
+    constraint_mode: int = 1 # 1: Manual, 2: Reach
+
     # the id of the vehicle, whose trajectory needs to be repaired
     ego_id: int = 201
 
