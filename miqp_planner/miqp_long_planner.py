@@ -137,7 +137,7 @@ class MIQPLongPlanner:
 
         if nr_steps is not None:
             self.N = nr_steps
-            self.dynamic_matrix_list = self.dynamic_matrix_list * self.N
+            self.dynamic_matrix_list = [self.dynamic_matrix_list[0]] * self.N
 
     def plan(
         self,
