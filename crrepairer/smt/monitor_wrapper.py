@@ -449,7 +449,7 @@ class STLRuleMonitor:
         tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1) + self._start_time_step
         if np.all(tv_per_rule == self._start_time_step):
             return None, math.inf, None  # no violation
-        min_tv = np.min(tv_per_rule[tv_per_rule != 0])
+        min_tv = np.min(tv_per_rule[tv_per_rule != self._start_time_step])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
         if (
             self.other_ids[rule_idx][min_tv - self._start_time_step] == ()
