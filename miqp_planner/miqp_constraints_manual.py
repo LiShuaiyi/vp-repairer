@@ -542,9 +542,12 @@ class RuleConstraint:
 
     def add_collision_free_intersection(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            self._prec_veh, self._foll_veh = self._determine_related_veh(
-                k, [self._ego_vehicle.ref_path_lane]
-            )
+            # todo: add target lanes
+            if k in self._target_lanes and None not in self._target_lanes[k]:
+                lanes = [self._ego_vehicle.ref_path_lane] + self._target_lanes[k]
+            else:
+                lanes = [self._ego_vehicle.ref_path_lane]
+            self._prec_veh, self._foll_veh = self._determine_related_veh(k, lanes)
             index = k - self._tc_obj.tc_time_step
             if self._prec_veh is not None:
                 if k <= self._prec_veh.end_time:
@@ -632,12 +635,19 @@ class RuleConstraint:
         return preceding_vehicle, following_vehicle
 
     def ConstrInSameLane(self, time_step: int, prop_assignment: float):
-        if time_step in self._target_vehicle.lanelet_assignment.keys():
+        if self._target_vehicle.id == self._ego_vehicle.id:
+            target_lane = [None]
+        elif time_step in self._target_vehicle.lanelet_assignment.keys():
             tar_veh_lanelet = self._target_vehicle.lanelet_assignment[time_step]
             try:
-                tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(
-                    list(tar_veh_lanelet)[0]
-                )
+                # todo fix target lane in intersection
+                if self._rule_monitor.scenario_type == "interstate":
+                    tar_veh_lane = self._world_state.road_network.find_lane_by_lanelet(
+                        list(tar_veh_lanelet)[0]
+                    )
+                else:
+                    tar_veh_lane = self._target_vehicle.ref_path_lane
+
                 # if prop_assignment > 0:
                 #    target_lane = [tar_veh_lane]
                 if self._compliant_maneuver == Maneuver.STEERLEFT:
@@ -663,6 +673,8 @@ class RuleConstraint:
         self._target_lanes[time_step] = list(set(target_lane))
 
     def ConstrInFrontOf(self, time_step: int, prop_assignment: float):
+        if self._target_vehicle.id == self._ego_vehicle.id:
+            return -np.inf, np.inf
         # preventing KeyError
         if time_step > self._target_vehicle.end_time:
             return -np.inf, np.inf
@@ -906,8 +918,8 @@ class RuleConstraint:
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
             d_min = -np.inf
             d_max = np.inf
-            if k in self.target_lanes:
-                target_lanes = self.target_lanes[k]
+            if k in self._target_lanes and None not in self._target_lanes[k]:
+                target_lanes = self._target_lanes[k]
                 index = k - self._tc_obj.tc_time_step
                 lane_boundary_left = target_lanes[
                     -1
