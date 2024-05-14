@@ -147,6 +147,8 @@ class TC(CutOffBase, ABC):
         # check whether the rule_rob are of equal length, if not, should be a violation
         if not all(len(arr) == len(rule_rob[0]) for arr in rule_rob):
             return -math.inf, None
+        else:
+            rule_rob = np.array(rule_rob)
         if np.any(rule_rob[:, 0] < 0):
             rule_idx = np.where(rule_rob[:, 0] < 0)[0][0]
             if other_ids[rule_idx][0] == ():

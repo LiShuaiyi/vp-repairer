@@ -428,7 +428,7 @@ class STLRuleMonitor:
                     break
             rule_rob_all.append(np.array(rule_rob, dtype=np.float64))
             other_ids_all.append(other_ids)
-        return np.array(rule_rob_all), other_ids_all
+        return rule_rob_all, other_ids_all
 
     def query_rule_rob_all(self):
         """
