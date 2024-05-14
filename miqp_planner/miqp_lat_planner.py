@@ -282,7 +282,13 @@ class MIQPLatPlanner:
         )
         self.solver.solve()
         # get solution
-        trajectory = self.create_output_trajectory(lateral_constraints.long_traj)
+        try:
+            trajectory = self.create_output_trajectory(lateral_constraints.long_traj)
+        except:
+            # Compute an Irreducible Inconsistent Subsystem (IIS)
+            self.solver.model.computeIIS()
+            self.solver.model.write("model_lat.ilp")
+            return None  # fixme: better handling needed, add warning
         return trajectory
 
     def _init_state_var(self, ti_constraints: TIConstraint):

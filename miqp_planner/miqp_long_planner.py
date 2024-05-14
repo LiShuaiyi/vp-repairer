@@ -182,6 +182,9 @@ class MIQPLongPlanner:
             print("slack variable: ", self.solver.get_slack_var())
             trajectory = self.create_output_trajectory()
         except:
+            # Compute an Irreducible Inconsistent Subsystem (IIS)
+            self.solver.model.computeIIS()
+            self.solver.model.write("model_long.ilp")
             return None  # fixme: better handling needed, add warning
 
         return trajectory
