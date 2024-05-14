@@ -540,6 +540,8 @@ class GurobiSolver:
     def solve(self):
         self.model.update()
         self.model.optimize()
+        # todo: add a config value to determine whether to display model
+        # self.model.display()
 
     def get_var_x(self):
         """
