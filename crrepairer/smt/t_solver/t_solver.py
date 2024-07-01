@@ -105,10 +105,12 @@ class TSolver:
                             grad_list = predicate.mpr_gradient.double().detach().numpy()[0]
                         else:
                             grad_list = predicate.mpr_gradient.double().detach().cpu().numpy()[0]
+                        print(f"* predicate: {predicate.evaluator.predicate_name}")
                         if (predicate_category == "Pos" and
                             predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
                                                                    PositionPredicates.InFrontOf,
-                                                                   PositionPredicates.Precedes]) or \
+                                                                   PositionPredicates.Precedes,
+                                                                   PositionPredicates.StopLineInFront]) or \
                                 (predicate_category == "Vel"):
                             grad_v = grad_list[1]
                             print(f"* gradient towards velocity: {grad_v}")
