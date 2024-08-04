@@ -79,7 +79,7 @@ def create_optimization_configuration_vehicle(
         configuration.curvilinear_coordinate_system = reference_path.clcs
     else:
         route_planner = RoutePlanner(
-            scenario, planning_problem, backend=RoutePlanner.Backend.NETWORKX_REVERSED
+            scenario.lanelet_network, planning_problem
         )
         (
             reference_path,
