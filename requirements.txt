@@ -11,7 +11,7 @@ pyyaml
 ruamel-yaml>=0.16.12
 commonroad-io>=2024.1
 commonroad-vehicle-models>=2.0.0
-commonroad-route-planner<2023.1
+commonroad-route-planner>=2024.2
 # commonroad-dc 
 commonroad-drivability-checker>=2023.1
 commonroad-crime>=0.3.0
