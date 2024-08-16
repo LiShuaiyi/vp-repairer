@@ -188,10 +188,16 @@ class MIQPPlannerRepair(MIQPPlanner):
 
             # use the coordinate system from the world
             if self.config.repair.scenario_type == "interstate":
-                self._vehicle_configuration.curvilinear_coordinate_system = (
+                self._vehicle_configuration.curvilinear_coordinate_system = \
+                    self._vehicle_configuration.CLCS = (
                     self._monitor_ego_vehicle
                     .get_lane(0)
                     .clcs
+                )
+            else:
+                self._vehicle_configuration.curvilinear_coordinate_system =\
+                    self._vehicle_configuration.CLCS = (
+                    self._monitor_ego_vehicle.ref_path_lane.clcs
                 )
             # update the config from the qp planner
             self.config.vehicle.qp_veh_config = self._vehicle_configuration
