@@ -200,8 +200,8 @@ def visualize_scenario(
         rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
             TUMColor.TUMblack.value
         )
-        rnd.draw_params.dynamic_obstacle.draw_shape = False
-        rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = False
+        rnd.draw_params.dynamic_obstacle.draw_shape = True
+        rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = True
         rnd.draw_params.dynamic_obstacle.draw_signals = False
 
         # rnd.draw_params.lanelet_network.traffic_sign.draw_traffic_signs = True
