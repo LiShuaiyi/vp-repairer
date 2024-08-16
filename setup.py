@@ -1,4 +1,11 @@
 import setuptools
+from setuptools import setup, find_packages
+import os
+
+# Function to parse requirements.txt
+def parse_requirements(filename):
+    with open(filename) as f:
+        return f.read().splitlines()
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -12,6 +19,7 @@ setuptools.setup(
     long_description=long_description,
     url="https://gitlab.lrz.de/yuanfei/commonroad_repair",
     packages=setuptools.find_packages(),
+    install_requires=parse_requirements('requirements.txt'),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: BSD License",
