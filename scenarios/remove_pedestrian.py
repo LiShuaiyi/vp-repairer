@@ -9,7 +9,7 @@ plt.rcParams['figure.max_open_warning'] = 50
 
 # generate path of the file to be opened
 file_path = ("/home/liny/repairverse/commonroad-repairer/"
-             "scenarios/DEU_AachenBendplatz-1_152460_T-2479.xml")
+             "scenarios/DEU_AAH1-2_81650_T-1799.xml")
 
 # read in the scenario and planning problem set
 scenario, planning_problem_set = CommonRoadFileReader(file_path).open()
@@ -30,5 +30,5 @@ tags = {Tag.CRITICAL, Tag.INTERSECTION}
 # write new scenario
 fw = CommonRoadFileWriter(scenario, planning_problem_set, author, affiliation, source, tags)
 
-filename = "DEU_AachenBendplatz-2_152460_T-2479.xml"
+filename = "DEU_AAH1-2_81650_T-1799.xml"
 fw.write_to_file(filename, OverwriteExistingFile.ALWAYS)
