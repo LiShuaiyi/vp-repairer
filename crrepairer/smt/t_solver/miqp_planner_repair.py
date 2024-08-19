@@ -199,6 +199,8 @@ class MIQPPlannerRepair(MIQPPlanner):
                     self._vehicle_configuration.CLCS = (
                     self._monitor_ego_vehicle.ref_path_lane.clcs
                 )
+                self._vehicle_configuration.reference_path = self._constraints.reach_config.planning.reference_path
+
             # update the config from the qp planner
             self.config.vehicle.qp_veh_config = self._vehicle_configuration
             # update the vehicle shape

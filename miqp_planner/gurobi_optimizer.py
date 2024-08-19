@@ -385,6 +385,11 @@ class GurobiSolver:
                     params_dict = {}
                     params_dict["vars"] = [[-1, distance[k]]]
                     params_dict["constants"] = [d_min[i, k]]
+
+                    # If slack variables are present, include them with negative coefficients
+                    if self.slack is not None:
+                        params_dict["vars"].append([-1, self.slack[1]])
+
                     self.add_ineq_cons(
                         params_dict, "lat_dist_cons_min_{}_{}".format(i + 1, k + 1)
                     )
@@ -394,10 +399,16 @@ class GurobiSolver:
                 C = lat_dis_cons_matrix[i]["C"]
                 E = lat_dis_cons_matrix[i]["E"]
                 distance = S.dot(C.dot(self.x[:, i + 1]) + E.dot(theta))
+
                 for k in range(distance.size):
                     params_dict = {}
                     params_dict["vars"] = [[1, distance[k]]]
                     params_dict["constants"] = [-d_max[i, k]]
+
+                    # If slack variables are present, include them with negative coefficients
+                    if self.slack is not None:
+                        params_dict["vars"].append([-1, self.slack[0]])
+
                     self.add_ineq_cons(
                         params_dict, "lat_dist_cons_max_{}_{}".format(i + 1, k + 1)
                     )
@@ -500,6 +511,8 @@ class GurobiSolver:
         weight_kappa_dot = weight[3]
         weight_u = weight[4]
         weight_robust = weight[5]
+        weight_slack = weight[6]
+
         for i in range(1, self.x_shape[1]):
             diff_ref = LinExpr()
             diff_ref.add(self.x[0, i])
@@ -531,6 +544,10 @@ class GurobiSolver:
                     diff_ref.add(self.x[0, i])
                     diff_ref.addConstant(-d_rob)
                     lat_costs.add(diff_ref * diff_ref, weight_robust)
+
+        if self.slack is not None:
+            for slack in self.slack:
+                lat_costs.add(slack, weight_slack)
 
         for u in self.u:
             lat_costs.add(u * u, weight_u)
