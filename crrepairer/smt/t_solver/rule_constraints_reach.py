@@ -3,6 +3,8 @@ import time
 
 from typing import List
 
+from commonroad.scenario.obstacle import ObstacleType
+
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
 )
@@ -132,6 +134,10 @@ class RuleConstraintsReach:
         self.corridor = None
 
         self.reach_config.update()
+        # # remove non-car obstacles
+        # for obs in self.reach_config.scenario.obstacles:
+        #     if obs.obstacle_type != ObstacleType.CAR:
+        #         self.reach_config.scenario.remove_obstacle(obs)
 
         self.semantic_model = SemanticModel(self.reach_config)
 
