@@ -8,15 +8,15 @@ import math
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_AachenBendplatz-1_15160_T-179"
+    scenario_id = "DEU_AachenBendplatz-1_163800_T-3819"
 
     # Build configuration object
-    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
-
+    config = RepairerConfiguration()
+    config.general.set_path_scenario(scenario_id)
     config.update()
     config.repair.scenario_type = "intersection"
     config.repair.rules = ["R_IN4"]
-    config.repair.ego_id = 10016
+    config.repair.ego_id = 10267
     config.repair.N_r = 20
 
     config.debug.show_plots = True
@@ -25,7 +25,6 @@ if __name__ == "__main__":
 
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()
-    # rnd.draw_params.dynamic_obstacle.show_label = True
     # config.scenario.draw(rnd)
     # config.planning_problem.draw(rnd)
     # rnd.render()
