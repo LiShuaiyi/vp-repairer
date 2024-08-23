@@ -255,7 +255,7 @@ class RuleConstraintsReach:
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
             scenario=self._tc_obj.scenario,  # with the target vehicle removed!!
-            CLCS=self.reach_config.planning.CLCS,
+            CLCS=vehicle_configuration.CLCS,
         )
 
         #########################################################
