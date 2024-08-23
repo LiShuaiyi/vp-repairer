@@ -3,6 +3,8 @@ import time
 
 from typing import List
 
+from commonroad.scenario.obstacle import ObstacleType
+
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
 )
@@ -132,6 +134,10 @@ class RuleConstraintsReach:
         self.corridor = None
 
         self.reach_config.update()
+        # # remove non-car obstacles
+        # for obs in self.reach_config.scenario.obstacles:
+        #     if obs.obstacle_type != ObstacleType.CAR:
+        #         self.reach_config.scenario.remove_obstacle(obs)
 
         self.semantic_model = SemanticModel(self.reach_config)
 
@@ -292,43 +298,6 @@ class RuleConstraintsReach:
             self.spot_interface.translate_ltl_formulas()
             self.spot_interface.translate_reachability_graph()
             self.spot_interface.check()
-
-    def repair_rule_interface(self, semantic_model: SemanticModel) -> TrafficRuleInterface:
-        """
-        Based on the SAT result, deciding which propositions need to be added.
-            either to LTL or TPL constraints.
-        """
-        repaired_rules = []
-        # add the repairing propositions
-        for prop in self._sel_prop_full:
-            if PredSafeDistPrec.predicate_name in prop.name:
-                if prop.ttv_value > 0:
-                    # change the sign
-                    repaired_rules.append(f'LTL G !SafeDistance_V{self._other_id}')
-                else:
-                    repaired_rules.append(f'LTL G SafeDistance_V{self._other_id}')
-            else:
-                if PredInSameLane.predicate_name in prop.name:
-                    semantic_prop = Proposition.in_same_lane(self._other_id)
-                elif PredInFrontOf.predicate_name in prop.name:
-                    semantic_prop = Proposition.in_front_of(self._other_id)
-                elif PredStopLineInFront.predicate_name in prop.name:
-                    semantic_prop = Proposition.behind_stop_line()
-                elif PredInIntersectionConflictArea.predicate_name in prop.name:
-                    semantic_prop = Proposition.in_conflict_with(self._other_id)
-                else:
-                    # for instance unnecessary_braking
-                    semantic_prop = None
-                if semantic_prop:
-                    if prop.ttv_value > 0:
-                        # change the sign
-                        semantic_prop = "!" + semantic_prop
-                    repaired_rules.append('LTL G[' + str(self._tc_obj.tv_time_step - self._tc_obj.tc_time_step) + '..' +
-                                          str(self._tc_obj.N - self._tc_obj.tc_time_step) + '](' + semantic_prop + ')')
-        self.reach_config.traffic_rule.activated_rules = list(set(repaired_rules))
-        rule_interface = TrafficRuleInterface(self.reach_config, semantic_model)
-        rule_interface.print_summary()
-        return rule_interface
 
     def compute_semantic_reachable_set(self, vehicle_configuration, verbose=True):
         self.update_reach_interface(vehicle_configuration)

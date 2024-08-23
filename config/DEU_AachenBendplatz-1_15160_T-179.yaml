@@ -1,0 +1,12 @@
+repair:
+  planner: 2                      # miqp
+  scenario_type: "intersection"
+  ego_id: 10016
+  rules: [ "R_IN4" ]
+  N_r: 20            # number of time steps
+debug:
+  show_plots: true
+  plot_limits: [45, 70, -35, -10]
+miqp_planner:
+  slack_long: False
+  weight_long: [0.0, 10000.2, 0., 0, 0.1, 1000000]

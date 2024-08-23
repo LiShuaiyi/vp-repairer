@@ -35,6 +35,13 @@ class TC(CutOffBase, ABC):
         # avoid changing of rule_monitor in TSolver
         rule_monitor_copy = copy.copy(rule_monitor)
         rule_monitor_copy._world = copy.deepcopy(rule_monitor.world)
+        # Create a list of vehicles to remove
+        vehicles_to_remove = [veh for veh in rule_monitor_copy.world.vehicles
+                              if veh.id not in [ego_vehicle.obstacle_id, rule_monitor_copy.other_id]]
+
+        # Iterate over the list and remove each vehicle
+        for veh in vehicles_to_remove:
+            rule_monitor_copy.world.remove_vehicle(veh)
         super().__init__(ego_vehicle, rule_monitor_copy.world)
 
         # set round tolerance for different time step size

@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # _ = f_r.readlines().pop(0)  # pop first line
     writer.writerow(["scenario_id", "ego_id", "rule_STL"])
 
-    rules = ["R_IN1"]
+    rules = ["R_IN4"]
     for s in list(glob.glob(os.path.join(file_path, "*.xml"), recursive=True))[0:500]:
 
         scenario, planning_problem_set = CommonRoadFileReader(s).open(
@@ -90,7 +90,10 @@ if __name__ == "__main__":
                                                              ego_id,
                                                              rule=rule,
                                                              use_boolean=True)
-                rule_robustness = evaluator.evaluate()
+                try:
+                    rule_robustness = evaluator.evaluate()
+                except:
+                    continue
                 # check whether there is an element of the rule_robustness is smaller than 0
                 print(rule_robustness)
                 if np.any(rule_robustness < 0) and rule_robustness[0] > 0 :

@@ -188,6 +188,11 @@ class MIQPLatPlanner:
         self._n = 4
         # number of u <kappa dot dot>
         self._m = 1
+
+        # slack variable
+        self._slack_pos = config.miqp_planner.slack_lat
+        self._n_s = 2 if self._slack_pos else 0
+
         # wheelbase length
         self._wb_length = self.config.vehicle.qp_veh_config.wheelbase
         self._x_init_lat = None
@@ -197,6 +202,7 @@ class MIQPLatPlanner:
         self.weight = config.miqp_planner.weight_lat
 
         self.d_reference = None
+
 
         self.solver = GurobiSolver()
 
@@ -251,6 +257,7 @@ class MIQPLatPlanner:
         # initialize state and control variables and add time-invariant constraints
         self._init_state_var(ti_constraints)
         self._init_control_var(ti_constraints)
+
         # add lateral dynamic constraints
         init_state = np.array(
             [
@@ -265,6 +272,10 @@ class MIQPLatPlanner:
             init_state,
             self.theta_r,
         )
+
+        if self._slack_pos:
+            self._init_slack_var(ti_constraints)
+
         # add time-variant constraint
         self.solver.add_lat_dis_cons(
             self.lat_dis_cons_matrix,
@@ -273,6 +284,7 @@ class MIQPLatPlanner:
             lateral_constraints.d_max,
         )
         self.solver.add_kappa_limit(self.kappa_lim)
+
         # cost function
         self.solver.costfunc_lat(
             self._x_ref_lat,
@@ -281,8 +293,10 @@ class MIQPLatPlanner:
             lat_cons=lateral_constraints,
         )
         self.solver.solve()
+
         # get solution
         try:
+            print("slack variable: ", self.solver.get_slack_var())
             trajectory = self.create_output_trajectory(lateral_constraints.long_traj)
         except:
             # Compute an Irreducible Inconsistent Subsystem (IIS)
@@ -290,6 +304,17 @@ class MIQPLatPlanner:
             self.solver.model.write("model_lat.ilp")
             return None  # fixme: better handling needed, add warning
         return trajectory
+
+    def _init_slack_var(self, ti_constraints: TIConstraint):
+        """Initializes slack variables and adds time-invariant constraints"""
+        slack_shape = (self._n_s,)
+        slack = np.empty(slack_shape, dtype=object)
+        self.solver.add_slack_var(
+            slack,
+            slack_shape,
+            ti_constraints.slack_min,
+            ti_constraints.slack_max,
+        )
 
     def _init_state_var(self, ti_constraints: TIConstraint):
         """Initializes the state variables and adds time-invariant constraints"""

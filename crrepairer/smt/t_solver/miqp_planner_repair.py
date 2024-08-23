@@ -199,6 +199,8 @@ class MIQPPlannerRepair(MIQPPlanner):
                     self._vehicle_configuration.CLCS = (
                     self._monitor_ego_vehicle.ref_path_lane.clcs
                 )
+                # self._vehicle_configuration.reference_path = self._constraints.reach_config.planning.reference_path
+
             # update the config from the qp planner
             self.config.vehicle.qp_veh_config = self._vehicle_configuration
             # update the vehicle shape
@@ -253,6 +255,9 @@ class MIQPPlannerRepair(MIQPPlanner):
         start_time_lat = time.time()
 
         self._constraints.create_d_constraints(traj_lon, self._vehicle_configuration)
+
+        # reference_lat = self.construct_d_reference()
+        # self.lat_planner.reset(d_reference = reference_lat)
         # select_proposition = self._constraints.sel_prop_full
         trajectory = self.lateral_trajectory_planning(
             traj_lon, self._constraints.lateral_constraints
@@ -263,6 +268,17 @@ class MIQPPlannerRepair(MIQPPlanner):
         cr_trajectory = self.transform_merge_trajectory(trajectory)
         return cr_trajectory
 
+    def construct_d_reference(self):
+        """
+        Constructs the lateral reference from the reachable set.
+        """
+        d_ref = list()
+        i = 0
+        for _ in range(self._N - self._cut_off_time_step):
+            d_ref.append((self._constraints.lateral_constraints.d_max[i][0]))
+            i += 1
+        return d_ref
+
     def construct_s_reference(self):
         """
         Constructs the longitudinal reference from the initially-planned trajectory.
@@ -272,7 +288,7 @@ class MIQPPlannerRepair(MIQPPlanner):
             rule_constr = self._constraints.longitudinal_constraints.rule_constraints
             for i in range(self._N - self._cut_off_time_step + 1):
                 pos = (rule_constr["reach_position"].state_lb[i]) # + rule_constr["reach_position"].state_ub[i])/2
-                vel = (rule_constr["reach_velocity"].state_lb[i] + rule_constr["reach_velocity"].state_ub[i])/2
+                vel = (rule_constr["reach_velocity"].state_lb[i]) # + rule_constr["reach_velocity"].state_ub[i])/2
                 x_ref.append(MIQPLongState(pos, vel, 0.0, 0.0, 0.0))
         else:
             for state in self._initial_trajectory.states_in_time_interval(
