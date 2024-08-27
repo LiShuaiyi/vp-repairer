@@ -230,7 +230,10 @@ class TSolver:
         elif self.config.repair.planner == 2:
             self._planner.reset(tc_object=self.tc_object,
                                 rule_monitor=self._rule_monitor)
-            self._planner.construct_constraints(self._sel_prop, self._prop_full)
+            suc = self._planner.construct_constraints(self._sel_prop, self._prop_full)
+            if not suc:
+                print("* \t<TSolver>: the constraints are not properly constructed")
+                return
             print(f"* \t<TSolver>: MIQP planner is invoked")
         else:
             raise Exception("Invalid option for the planner provided")

@@ -73,10 +73,12 @@ class STLRuleMonitor:
             self.abstraction_names,
             self.other_ids,
         ) = self.evaluate_initially()
+
         # obtain the time-to-violation
         self._violated_rule_idx, self._tv, self._other_id = self._cal_tv_initial()
-        self._prop_nodes = self._initialize_prop_rob()
         self._future_time_step = self.search_future_time_step()[self._violated_rule_idx]
+
+        self._prop_nodes = self._initialize_prop_rob()
         print("# =========== Traffic Rule Monitor ========== #")
         print(
             "\tthe ego vehicle (id: {})'s initial\n\ttrajectory violates traffic rule {}".format(

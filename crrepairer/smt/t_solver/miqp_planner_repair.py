@@ -137,6 +137,9 @@ class MIQPPlannerRepair(MIQPPlanner):
                     sel_proposition,
                     proposition_full,
                 )
+                if not self._constraints.repaired_rules:
+                    return False
+            return True
         else:
             assert self.config is not None, "<Repairer.construct_constraints(). No Configuration object initialized>"
 
