@@ -152,7 +152,7 @@ class RuleConstraintsReach:
         self.reach_config.reachable_set.mode_computation = 8
         self.reach_config.vehicle.other.a_lon_min = -10.5
         self.reach_config.vehicle.other.a_lon_max = 10.5
-        # self.reach_config.vehicle.ego.a_lon_min = -10
+        self.reach_config.vehicle.ego.a_lon_min = -10
         self.reach_config.planning.reference_point = "REAR"
         self.reach_config.vehicle.other.width = self._target_vehicle.shape.width
         self.reach_config.vehicle.other.length = self._target_vehicle.shape.length
@@ -271,7 +271,7 @@ class RuleConstraintsReach:
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
             scenario=self._tc_obj.scenario,  # with the target vehicle removed!!
-            CLCS=vehicle_configuration.CLCS,
+            CLCS=self.reach_config.planning.CLCS,
         )
 
         #########################################################

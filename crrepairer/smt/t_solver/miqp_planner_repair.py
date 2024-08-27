@@ -82,18 +82,18 @@ class MIQPPlannerRepair(MIQPPlanner):
         self._time_horizon: Optional[float] = None
         self._constraints: Optional[RuleConstraintMIQPManual, RuleConstraintMIQPReach] = None
 
-        if rule_monitor.scenario_type == "intersection":
-            self._vehicle_configuration.CLCS = (
-                rule_monitor.world.vehicle_by_id(
-                    self._ego_vehicle.obstacle_id
-                ).ref_path_lane.clcs
-            )
-        else:
-            self._vehicle_configuration.CLCS = (
-                rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
-                .get_lane(0)
-                .clcs
-            )
+        # if rule_monitor.scenario_type == "intersection":
+        #     self._vehicle_configuration.CLCS = (
+        #         rule_monitor.world.vehicle_by_id(
+        #             self._ego_vehicle.obstacle_id
+        #         ).ref_path_lane.clcs
+        #     )
+        # else:
+        #     self._vehicle_configuration.CLCS = (
+        #         rule_monitor.world.vehicle_by_id(self._ego_vehicle.obstacle_id)
+        #         .get_lane(0)
+        #         .clcs
+        #     )
         if config.repair.constraint_mode == 2:
             self._constraints = RuleConstraintMIQPReach(self.tc_object,
                                                         self.rule_monitor,
@@ -190,19 +190,21 @@ class MIQPPlannerRepair(MIQPPlanner):
             )
 
             # use the coordinate system from the world
-            if self.config.repair.scenario_type == "interstate":
-                self._vehicle_configuration.curvilinear_coordinate_system = \
-                    self._vehicle_configuration.CLCS = (
-                    self._monitor_ego_vehicle
-                    .get_lane(0)
-                    .clcs
-                )
-            else:
-                self._vehicle_configuration.curvilinear_coordinate_system =\
-                    self._vehicle_configuration.CLCS = (
-                    self._monitor_ego_vehicle.ref_path_lane.clcs
-                )
+            # if self.config.repair.scenario_type == "interstate":
+            #     self._vehicle_configuration.curvilinear_coordinate_system = \
+            #         self._vehicle_configuration.CLCS = (
+            #         self._monitor_ego_vehicle
+            #         .get_lane(0)
+            #         .clcs
+            #     )
+            # else:
+            #     self._vehicle_configuration.curvilinear_coordinate_system =\
+            #         self._vehicle_configuration.CLCS = (
+            #         self._monitor_ego_vehicle.ref_path_lane.clcs
+            #     )
                 # self._vehicle_configuration.reference_path = self._constraints.reach_config.planning.reference_path
+
+            self._vehicle_configuration.CLCS = self._constraints.reach_config.planning.CLCS
 
             # update the config from the qp planner
             self.config.vehicle.qp_veh_config = self._vehicle_configuration
