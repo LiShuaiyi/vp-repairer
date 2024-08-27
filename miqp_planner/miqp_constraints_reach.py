@@ -55,7 +55,8 @@ class RuleConstraintMIQPReach(RuleConstraintsReach):
         print(f"* \t<TSolver>: time for computing the reachable set {time.time()-time_start:.2f}")
 
         if self.corridor is None:
-            raise Exception("the driving corridor is either not computed or empty")
+            print("the driving corridor is either not computed or empty")
+            return
         else:
             s_min, s_max = longitudinal_position_constraints(self.corridor, FULL=True)
             v_min, v_max = longitudinal_velocity_constraints(self.corridor, FULL=True)

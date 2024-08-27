@@ -237,6 +237,10 @@ class MIQPPlannerRepair(MIQPPlanner):
         print("* \t\t MIQP Longitudinal optimization")
         start_time_lon = time.time()
         self._constraints.construct_longitudinal_constraints(self._vehicle_configuration, self._cut_off_time_step)
+        # if empty rule constraints, return None
+        if not self._constraints.longitudinal_constraints.rule_constraints:
+            return None
+
         reference_lon = self.construct_s_reference()
 
         traj_lon = self.longitudinal_trajectory_planning(

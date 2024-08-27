@@ -328,8 +328,12 @@ class RuleConstraintsReach:
             self.corridor = dc_extractor.determine_optimal_corridor()
         else:
             dc_extractor = DrivingCorridorExtractor(self.reach_interface.reachable_set, self.reach_config)
-            driving_corridors = dc_extractor.extract()
-            self.corridor = driving_corridors[0]
+            try:
+                driving_corridors = dc_extractor.extract()
+                self.corridor = driving_corridors[0]
+            except Exception as e:
+                print(f"Error in extracting the driving corridor: {e}")
+                self.corridor = None
 
 
     def longitudinal_constraints(self, vehicle_configuration):
