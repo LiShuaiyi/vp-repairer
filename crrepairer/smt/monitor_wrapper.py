@@ -227,11 +227,11 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        # all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
-
+        all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
+        # masked_array = np.ma.masked_equal(self.rob_abstraction[:, self._tv - self._start_time_step:, :], -1)
 
         # use the interval instead of the exact time step TV:
-        all_prop_robs = np.min(self.rob_abstraction[:, self._tv - self._start_time_step:, :], axis=1)
+        # all_prop_robs = np.ma.min(masked_array, axis=1)
         all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
         all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
 
