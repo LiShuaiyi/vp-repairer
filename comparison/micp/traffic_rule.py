@@ -12,7 +12,7 @@ from comparison.micp.constraints import InSameLaneConstraint, InFrontOfConstrain
 from crmonitor.common.vehicle import Vehicle, Lane
 
 from commonroad.scenario.traffic_sign import SupportedTrafficSignCountry
-from commonroad.scenario.traffic_sign_interpreter import TrafficSigInterpreter
+from commonroad.scenario.traffic_sign_interpreter import TrafficSignInterpreter
 
 
 class RG1(BenchmarkScenario):
@@ -276,7 +276,7 @@ class RG123(BenchmarkScenario):
         # lane speed limit
         country = SupportedTrafficSignCountry.GERMANY
         lanelet_ids = self.ego_vehicle.lanelet_assignment[0]
-        ts_interpreter = TrafficSigInterpreter(
+        ts_interpreter = TrafficSignInterpreter(
             country, self.lanelet_network
         )
         lane_speed_limit = ts_interpreter.speed_limit(frozenset(lanelet_ids))
