@@ -94,6 +94,8 @@ class SATSolver:
                 ),
                 None,
             )
+            if sel_prop_node:
+                sel_prop_node.alphabet = m  # Assign m to the alphabet attribute
             prop_list.append(sel_prop_node)
         print("* \t<SATSolver>: model is {}".format(self._dpll_model))
         return prop_list, self._dpll_model

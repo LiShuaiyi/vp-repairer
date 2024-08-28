@@ -188,14 +188,17 @@ class RuleConstraintsReach:
 
             self._compliant_maneuver = tc_object.compliant_maneuver
 
+        if proposition_full is not None:
+            self._prop_full = proposition_full
+
         if sel_proposition_full is not None:
             self._sel_prop_full = sel_proposition_full
             self.repaired_rules = []
             # add the repairing propositions
-            for prop in self._sel_prop_full:
+            for prop in self._prop_full:
 
                 if PredSafeDistPrec.predicate_name in prop.name:
-                    if prop.ttv_value > 0:
+                    if prop.alphabet[0] == '~':
                         # change the sign
                         self.repaired_rules.append(
                             f'LTL G (!SafeDistance_V{self._other_id})')
@@ -223,13 +226,22 @@ class RuleConstraintsReach:
                         semantic_prop = Proposition.behind(self._other_id)
                     elif PredStopLineInFront.predicate_name in prop.name:
                         semantic_prop = Proposition.behind_stop_line()
+                    elif PredFovSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.fov_speed_limit()
+                    elif PredBrSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.brake_speed_limit()
+                    elif PredLaneSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.lane_speed_limit()
+                    elif PredTypeSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.type_speed_limit()
                     else:
                         # for instance unnecessary_braking
                         semantic_prop = None
                     if semantic_prop:
-                        if prop.ttv_value > 0:
+                        if prop.alphabet[0] == '~':
                             # change the sign
                             semantic_prop = "!" + semantic_prop
+
                         self.repaired_rules.append(
                             'LTL G(' + semantic_prop + ')')
             print("activated rules", list(set(self.repaired_rules)))
@@ -237,8 +249,6 @@ class RuleConstraintsReach:
             self.rule_interface.list_traffic_rules_activated = list(set(self.repaired_rules))
             for item in self.rule_interface.list_traffic_rules_activated:
                 self.rule_interface._parse_traffic_rule(item, allow_abstract_rules=True)
-        if proposition_full is not None:
-            self._prop_full = proposition_full
 
 
     def update_reach_interface(
