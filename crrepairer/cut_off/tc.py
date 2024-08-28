@@ -38,7 +38,7 @@ class TC(CutOffBase, ABC):
         # Create a list of vehicles to remove
         vehicles_to_remove = [veh for veh in rule_monitor_copy.world.vehicles
                               if veh.id not in [ego_vehicle.obstacle_id,
-                                                list(rule_monitor_copy.rule_to_other_id.values())]]
+                                                rule_monitor_copy.other_id]]
 
         # Iterate over the list and remove each vehicle
         for veh in vehicles_to_remove:
