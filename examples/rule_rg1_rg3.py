@@ -12,32 +12,17 @@ import math
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "ZAM_Zip-1_56_T-1"
+    scenario_id = "DEU_LocationDLower-8_154_T-1"
 
-    # Build configuration object
-    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
+    config = RepairerConfiguration()
+    config.general.set_path_scenario(scenario_id)
     config.update()
-
-    initial_time_step = 50
-    final_time_step = initial_time_step + 20
-
-    config.repair.planner = 1
+    config.repair.rules = ["R_G1"]
+    config.repair.ego_id = 11
+    config.debug.show_plots = True
+    config.repair.planner = 2
     config.repair.constraint_mode = 2
-
-    # # change the time horizon
-    for veh in config.scenario.obstacles:
-        updated_initial_state = veh.prediction.trajectory.state_list[initial_time_step - 1]
-        for state in veh.prediction.trajectory.state_list:
-            state.time_step -= initial_time_step
-        veh.initial_state = InitialState(time_step=0,
-                                         yaw_rate=0,
-                                         slip_angle=0,
-                                         position=updated_initial_state.position,
-                                         velocity=updated_initial_state.velocity,
-                                         orientation=updated_initial_state.orientation)
-        veh.prediction.trajectory = Trajectory(
-            1, veh.prediction.trajectory.state_list[initial_time_step: final_time_step]
-        )
+    config.repair.use_mpr = False
 
     ego_initial = retrieve_ego_vehicle(config)
 
