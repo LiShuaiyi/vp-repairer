@@ -80,7 +80,7 @@ class STLRuleMonitor:
             self._cal_tv_initial()
 
         # todo: multiple targets
-        self._other_id = [other_id for other_id in self.rule_to_other_id.values() if other_id != config.repair.ego_id][0]
+        self._other_id = [other_id for other_id in self.rule_to_other_id.values() if other_id != config.repair.ego_id]
 
         self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
 
@@ -116,7 +116,7 @@ class STLRuleMonitor:
         if self._other_id is None or not isinstance(self._other_id, int):
             return self._vehicle_id
         else:
-            return self._other_id
+            return self._other_id[0]
 
     @property
     def vehicle_id(self) -> int:
