@@ -203,9 +203,21 @@ class MIQPPlannerRepair(MIQPPlanner):
             #         self._monitor_ego_vehicle.ref_path_lane.clcs
             #     )
                 # self._vehicle_configuration.reference_path = self._constraints.reach_config.planning.reference_path
-
-            self._vehicle_configuration.CLCS = self._constraints.reach_config.planning.CLCS
-
+            if self.config.repair.constraint_mode == 2:
+                self._vehicle_configuration.CLCS = self._constraints.reach_config.planning.CLCS
+            else:
+                if self.config.repair.scenario_type == "interstate":
+                    self._vehicle_configuration.curvilinear_coordinate_system = \
+                        self._vehicle_configuration.CLCS = (
+                        self._monitor_ego_vehicle
+                        .get_lane(0)
+                        .clcs
+                    )
+                else:
+                    self._vehicle_configuration.curvilinear_coordinate_system =\
+                        self._vehicle_configuration.CLCS = (
+                        self._monitor_ego_vehicle.ref_path_lane.clcs
+                    )
             # update the config from the qp planner
             self.config.vehicle.qp_veh_config = self._vehicle_configuration
             # update the vehicle shape
