@@ -99,8 +99,10 @@ class RuleConstraintsReach:
         self._ini_traj = initial_trajectory
 
         # other vehicle (rule-relevant)
-        self._other_id = self._rule_monitor.other_id
-        self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
+        self._rule_to_other_id = self._rule_monitor.rule_to_other_id
+
+        # todo: multiple target vehicles
+        self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(rule_monitor.other_id)
 
         # configuration
         self._veh_config = veh_config
@@ -153,6 +155,7 @@ class RuleConstraintsReach:
         self.reach_config.vehicle.other.a_lon_min = -10.5
         self.reach_config.vehicle.other.a_lon_max = 10.5
         self.reach_config.vehicle.ego.a_lon_min = -10
+        self.reach_config.vehicle.ego.v_max = 50
         self.reach_config.planning.reference_point = "REAR"
         self.reach_config.vehicle.other.width = self._target_vehicle.shape.width
         self.reach_config.vehicle.other.length = self._target_vehicle.shape.length
@@ -178,7 +181,7 @@ class RuleConstraintsReach:
               ):
         if rule_monitor is not None:
             self._rule_monitor = rule_monitor
-            self._other_id = self._rule_monitor.other_id
+            self._rule_to_other_id = self._rule_monitor.rule_to_other_id
 
         if tc_object is not None:
             self._tc_obj = tc_object
@@ -201,12 +204,12 @@ class RuleConstraintsReach:
                     if prop.alphabet[0] == '~':
                         # change the sign
                         self.repaired_rules.append(
-                            f'LTL G (!SafeDistance_V{self._other_id})')
+                            f'LTL G (!SafeDistance_V{self._rule_to_other_id[prop.source_rule]})')
                     else:
                         self.repaired_rules.append(
-                            f'LTL G (SafeDistance_V{self._other_id})')
+                            f'LTL G (SafeDistance_V{self._rule_to_other_id[prop.source_rule]})')
                 elif PredInIntersectionConflictArea.predicate_name in prop.name:
-                    semantic_prop = Proposition.in_conflict_with(self._other_id)
+                    semantic_prop = Proposition.in_conflict_with(self._rule_to_other_id[prop.source_rule])
                     if prop.name[5:6] != prop.name[7:8]:
                         pattern = r"once\[(.*?)\]"
                         time_interval = re.findall(pattern, prop.name)[0]
@@ -221,9 +224,9 @@ class RuleConstraintsReach:
                             'LTL G[' + time_interval_int + '](' + semantic_prop + ')')
                 else:
                     if PredInSameLane.predicate_name in prop.name:
-                        semantic_prop = Proposition.in_same_lane(self._other_id)
+                        semantic_prop = Proposition.in_same_lane(self._rule_to_other_id[prop.source_rule])
                     elif PredInFrontOf.predicate_name in prop.name:
-                        semantic_prop = Proposition.behind(self._other_id)
+                        semantic_prop = Proposition.behind(self._rule_to_other_id[prop.source_rule])
                     elif PredStopLineInFront.predicate_name in prop.name:
                         semantic_prop = Proposition.behind_stop_line()
                     elif PredFovSpeedLimit.predicate_name in prop.name:

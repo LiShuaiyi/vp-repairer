@@ -37,7 +37,8 @@ class TC(CutOffBase, ABC):
         rule_monitor_copy._world = copy.deepcopy(rule_monitor.world)
         # Create a list of vehicles to remove
         vehicles_to_remove = [veh for veh in rule_monitor_copy.world.vehicles
-                              if veh.id not in [ego_vehicle.obstacle_id, rule_monitor_copy.other_id]]
+                              if veh.id not in [ego_vehicle.obstacle_id,
+                                                list(rule_monitor_copy.rule_to_other_id.values())]]
 
         # Iterate over the list and remove each vehicle
         for veh in vehicles_to_remove:
@@ -54,7 +55,7 @@ class TC(CutOffBase, ABC):
         self._tv_time_step = (
                 self.rule_monitor.tv_time_step + self.rule_monitor.future_time_step
         )
-        self._other_id = self.rule_monitor.other_id
+        self._rule_to_other_id = self.rule_monitor.rule_to_other_id
         self._visualize = False
         self._compliant_maneuver = None
         self._tc = -math.inf
