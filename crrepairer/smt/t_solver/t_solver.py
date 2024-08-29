@@ -87,7 +87,7 @@ class TSolver:
             # print out the selected propositions
             if self.verbose:
                 print(
-                    f"* \t<TSolver>: selected propositions: {prop.alphabet} = {prop.ttv_value}"
+                    f"* \t<TSolver>: selected propositions: {prop.alphabet[-1]} = {prop.ttv_value}"
                 )
         self._compliant_maneuvers = self.set_compliant_maneuver(use_mpr_derivative)
 
