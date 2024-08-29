@@ -238,12 +238,19 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
+        # all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
         # masked_array = np.ma.masked_equal(self.rob_abstraction[:, self._tv - self._start_time_step:, :], -1)
 
         # use the interval instead of the exact time step TV:
         # all_prop_robs = np.ma.min(masked_array, axis=1)
         all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
+        all_prop_robs = np.full(all_prop_names.shape, np.nan)  # Initialize with NaN for safety
+        for i in range(all_prop_names.shape[0]):  # Iterate over rows
+            for j in range(all_prop_names.shape[1]):  # Iterate over columns
+                prop_name = all_prop_names[i, j]
+                robustness_value = min(self.all_props_all_ids_all[i][prop_name][self.other_id]
+                                       [self._tv - self._start_time_step:])
+                all_prop_robs[i, j] = robustness_value
         all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
 
         prop_nodes = []
