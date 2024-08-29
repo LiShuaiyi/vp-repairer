@@ -137,7 +137,7 @@ class MIQPPlannerRepair(MIQPPlanner):
                     sel_proposition,
                     proposition_full,
                 )
-                if not self._constraints.repaired_rules:
+                if not self._constraints.repaired_rules and 'R_G2' not in self.rule_monitor._rules:
                     return False
             return True
         else:

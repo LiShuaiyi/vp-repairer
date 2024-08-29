@@ -141,6 +141,7 @@ class RuleConstraint:
         initial_trajectory: Trajectory,
         start_time_step: int,
     ):
+        self.repaired_rules = None
         self._tc_obj = tc_object
         self._rule_monitor = rule_monitor
         self._start_time_step = start_time_step

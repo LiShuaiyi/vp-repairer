@@ -4648,7 +4648,7 @@
     </initialState>
     <goalState>
       <position>
-        <lanelet ref="25"/>
+        <lanelet ref="24"/>
       </position>
       <time>
         <intervalStart>84</intervalStart>
