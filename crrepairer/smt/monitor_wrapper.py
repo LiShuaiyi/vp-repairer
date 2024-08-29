@@ -1,6 +1,6 @@
 import functools
 import math
-from typing import Iterable, Union, Tuple, Any, List
+from typing import Iterable, Union, Tuple, Any, List, Dict, Optional
 from collections import defaultdict
 import numpy as np
 import dataclasses
@@ -29,6 +29,7 @@ class PropositionNode:
     name: str
     alphabet: str
     ttv_value: float
+    source_rule: str
     children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
 
@@ -73,21 +74,29 @@ class STLRuleMonitor:
             self.abstraction_names,
             self.other_ids,
         ) = self.evaluate_initially()
+
         # obtain the time-to-violation
-        self._violated_rule_idx, self._tv, self._other_id = self._cal_tv_initial()
+        self._violated_rules, self.min_rule_idx, self._tv, self.rule_to_tv, self.rule_to_other_id =\
+            self._cal_tv_initial()
+
+        # todo: multiple targets
+        self._other_id = [other_id for other_id in self.rule_to_other_id.values() if other_id != config.repair.ego_id]
+
+        self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
+
         self._prop_nodes = self._initialize_prop_rob()
-        self._future_time_step = self.search_future_time_step()[self._violated_rule_idx]
         print("# =========== Traffic Rule Monitor ========== #")
-        print(
-            "\tthe ego vehicle (id: {})'s initial\n\ttrajectory violates traffic rule {}".format(
-                self._vehicle_id, self._rules[self._violated_rule_idx]
+        for rule in self._violated_rules:
+            print(
+                "\tThe ego vehicle (ID: {})'s initial trajectory violates the traffic rule: {}.".format(
+                    self._vehicle_id, rule
+                )
             )
-        )
-        print(
-            "\tw.r.t vehicle {} at time step {}.".format(
-                self.other_id, self.tv_time_step
+            print(
+                "\tViolation occurred at time step: {}, with respect to vehicle ID: {}.".format(
+                    self.rule_to_tv[rule], self.rule_to_other_id[rule]
+                )
             )
-        )
         print("# =========================================== #")
 
     @property
@@ -104,10 +113,10 @@ class STLRuleMonitor:
 
     @property
     def other_id(self) -> int:
-        if self._other_id is None or not isinstance(self._other_id, int):
+        if len(self._other_id) == 0:
             return self._vehicle_id
         else:
-            return self._other_id
+            return self._other_id[0]
 
     @property
     def vehicle_id(self) -> int:
@@ -241,6 +250,7 @@ class STLRuleMonitor:
                 all_prop_names[tuple(idx)],
                 alphabet[len(prop_nodes)],
                 all_prop_robs[tuple(idx)],
+                self._rule_eval[idx[0]]._rule.name
             )
             pred_nodes = []
             retrieve_preds(self._rule_eval[idx[0]]._rule, pred_nodes)
@@ -442,25 +452,57 @@ class STLRuleMonitor:
             raise ValueError("the evaluation procedure is not executed yet")
         return self.rob_rule, self.other_ids
 
-    def _cal_tv_initial(self) -> Tuple[Any, Union[int, float], Any]:
-        # calculate the time-to-violation: detect violation time using STL monitor
-        # evaluated_robustness, evaluated_ids = self.query_rule_rob_all()
+    def _cal_tv_initial(self) -> Tuple[List[str], int, Union[int, float], Dict[str, Union[int, float]], Dict[str, Any]]:
+        """
+        Calculate the initial time-to-violation (TV) for the monitored rules.
+
+        This function evaluates when a rule is violated based on the robustness measure.
+        It returns the index of the violated rule, the time of violation, and an associated identifier.
+
+        Returns:
+            Tuple[List[str], int, Union[int, float], Dict[str, Union[int, float]], Dict[str, Any]]:
+                - List of names of all violated rules (or empty list if no violations).
+                - Index of the rule with the minimum TV (or -1 if no violations).
+                - Minimum time-to-violation (TV) across all rules (or inf if no violations).
+                - Dictionary mapping each rule name to its corresponding TV.
+                - Dictionary mapping each rule name to the corresponding other ID.
+        """
+        rule_to_tv = {}
+        rule_to_other_id = {}
+        violated_rules = []
+        min_tv = float('inf')  # Initialize min_tv to infinity
+        min_rule_idx = -1  # Initialize min_rule_idx to -1 (no violations)
+
+        # Check if there is an immediate violation at the first time step
         if np.any(self.rob_rule[:, 0] < 0):
-            rule_idx = np.where(self.rob_rule[:, 0] < 0)[0][0]
-            if self.other_ids[rule_idx][0] == ():
-                return None, -math.inf, None
-            return None, -math.inf, self.other_ids[rule_idx][0][0]  # all violated
+            return violated_rules, min_rule_idx, -math.inf, rule_to_tv, rule_to_other_id  # all violated
+
+        # Calculate the time-to-violation for each rule
         tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1) + self._start_time_step
-        if np.all(tv_per_rule == self._start_time_step):
-            return None, math.inf, None  # no violation
-        min_tv = np.min(tv_per_rule[tv_per_rule != self._start_time_step])
-        rule_idx = np.where(tv_per_rule == min_tv)[0][0]
-        if (
-            self.other_ids[rule_idx][min_tv - self._start_time_step] == ()
-        ):  # or self._rules[rule_idx] == 'R_G2':
-            # R_G2: we focus on the ego vehicle
-            return rule_idx, int(min_tv), self._vehicle_id
-        return rule_idx, int(min_tv), self.other_ids[rule_idx][min_tv - self._start_time_step][0]
+
+        # Populate rule_to_tv and rule_to_other_id dictionaries
+        for idx, tv in enumerate(tv_per_rule):
+            rule_name = self._rules[idx]
+            if tv == self._start_time_step:
+                rule_to_tv[rule_name] = float('inf')
+                rule_to_other_id[rule_name] = None
+            else:
+                rule_to_tv[rule_name] = tv
+                if self.other_ids[idx][tv - self._start_time_step] == ():
+                    rule_to_other_id[rule_name] = self._vehicle_id
+                else:
+                    rule_to_other_id[rule_name] = self.other_ids[idx][tv - self._start_time_step][0]
+
+                violated_rules.append(rule_name)  # Add the rule to the violated list
+                if tv < min_tv:
+                    min_tv = tv  # Update the minimum TV
+                    min_rule_idx = idx  # Update the index of the rule with the minimum TV
+
+        # If no violations occurred, return an empty list, -1 for index, and inf TV
+        if not violated_rules:
+            return [], -1, float('inf'), rule_to_tv, rule_to_other_id
+
+        return violated_rules, min_rule_idx, int(min_tv), rule_to_tv, rule_to_other_id
 
     def switch_to_boolean(self, evaluator):
         if not evaluator._eval_visitor.use_boolean:

@@ -1,9 +1,11 @@
 import os
+import re
 import time
-
+from fractions import Fraction
 from typing import List
 
 from commonroad.scenario.obstacle import ObstacleType
+from mpmath.libmp.libelefun import machin
 
 from commonroad_qp_planner.configuration import (
     PlanningConfigurationVehicle,
@@ -83,6 +85,7 @@ class RuleConstraintsReach:
         initial_trajectory: Trajectory,
     ):
         # initialize the needed components
+        self.repaired_rules = None
         self._tc_obj = tc_object
         self._rule_monitor = rule_monitor
         self._world_state = self._rule_monitor.world
@@ -96,8 +99,10 @@ class RuleConstraintsReach:
         self._ini_traj = initial_trajectory
 
         # other vehicle (rule-relevant)
-        self._other_id = self._rule_monitor.other_id
-        self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(self._other_id)
+        self._rule_to_other_id = self._rule_monitor.rule_to_other_id
+
+        # todo: multiple target vehicles
+        self._target_vehicle: Vehicle = self._world_state.vehicle_by_id(rule_monitor.other_id)
 
         # configuration
         self._veh_config = veh_config
@@ -149,7 +154,8 @@ class RuleConstraintsReach:
         self.reach_config.reachable_set.mode_computation = 8
         self.reach_config.vehicle.other.a_lon_min = -10.5
         self.reach_config.vehicle.other.a_lon_max = 10.5
-        # self.reach_config.vehicle.ego.a_lon_min = -10
+        self.reach_config.vehicle.ego.a_lon_min = -10
+        self.reach_config.vehicle.ego.v_max = 50
         self.reach_config.planning.reference_point = "REAR"
         self.reach_config.vehicle.other.width = self._target_vehicle.shape.width
         self.reach_config.vehicle.other.length = self._target_vehicle.shape.length
@@ -175,7 +181,7 @@ class RuleConstraintsReach:
               ):
         if rule_monitor is not None:
             self._rule_monitor = rule_monitor
-            self._other_id = self._rule_monitor.other_id
+            self._rule_to_other_id = self._rule_monitor.rule_to_other_id
 
         if tc_object is not None:
             self._tc_obj = tc_object
@@ -185,44 +191,67 @@ class RuleConstraintsReach:
 
             self._compliant_maneuver = tc_object.compliant_maneuver
 
+        if proposition_full is not None:
+            self._prop_full = proposition_full
+
         if sel_proposition_full is not None:
             self._sel_prop_full = sel_proposition_full
-            repaired_rules = []
+            self.repaired_rules = []
             # add the repairing propositions
-            for prop in self._sel_prop_full:
+            for prop in self._prop_full:
+
                 if PredSafeDistPrec.predicate_name in prop.name:
-                    if prop.ttv_value > 0:
+                    if prop.alphabet[0] == '~':
                         # change the sign
-                        repaired_rules.append(
-                            f'LTL G (!SafeDistance_V{self._other_id})')
+                        self.repaired_rules.append(
+                            f'LTL G (!SafeDistance_V{self._rule_to_other_id[prop.source_rule]})')
                     else:
-                        repaired_rules.append(
-                            f'LTL G (SafeDistance_V{self._other_id})')
+                        self.repaired_rules.append(
+                            f'LTL G (SafeDistance_V{self._rule_to_other_id[prop.source_rule]})')
+                elif PredInIntersectionConflictArea.predicate_name in prop.name:
+                    semantic_prop = Proposition.in_conflict_with(self._rule_to_other_id[prop.source_rule])
+                    if prop.name[5:6] != prop.name[7:8]:
+                        pattern = r"once\[(.*?)\]"
+                        time_interval = re.findall(pattern, prop.name)[0]
+                        values = time_interval.split(",")
+                        divided_values = [int(Fraction(value)/self.reach_config.planning.dt) for value in values]
+                        divided_values[-1] += self._tc_obj.tv_time_step - self._tc_obj.tc_time_step
+                        time_interval_int = "..".join(str(value) for value in divided_values)
+                        if prop.ttv_value > 0:
+                            # change the sign
+                            semantic_prop = "!" + semantic_prop
+                        self.repaired_rules.append(
+                            'LTL G[' + time_interval_int + '](' + semantic_prop + ')')
                 else:
                     if PredInSameLane.predicate_name in prop.name:
-                        semantic_prop = Proposition.in_same_lane(self._other_id)
+                        semantic_prop = Proposition.in_same_lane(self._rule_to_other_id[prop.source_rule])
                     elif PredInFrontOf.predicate_name in prop.name:
-                        semantic_prop = Proposition.behind(self._other_id)
+                        semantic_prop = Proposition.behind(self._rule_to_other_id[prop.source_rule])
                     elif PredStopLineInFront.predicate_name in prop.name:
                         semantic_prop = Proposition.behind_stop_line()
-                    elif PredInIntersectionConflictArea.predicate_name in prop.name:
-                        semantic_prop = Proposition.in_conflict_with(self._other_id)
+                    elif PredFovSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.fov_speed_limit()
+                    elif PredBrSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.brake_speed_limit()
+                    elif PredLaneSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.lane_speed_limit()
+                    elif PredTypeSpeedLimit.predicate_name in prop.name:
+                        semantic_prop = Proposition.type_speed_limit()
                     else:
                         # for instance unnecessary_braking
                         semantic_prop = None
                     if semantic_prop:
-                        if prop.ttv_value > 0:
+                        if prop.alphabet[0] == '~':
                             # change the sign
                             semantic_prop = "!" + semantic_prop
-                        repaired_rules.append(
+
+                        self.repaired_rules.append(
                             'LTL G(' + semantic_prop + ')')
-            print("activated rules", list(set(repaired_rules)))
+            print("activated rules", list(set(self.repaired_rules)))
             # self.reach_config.traffic_rule.activated_rules = list(set(repaired_rules))
-            self.rule_interface.list_traffic_rules_activated = list(set(repaired_rules))
+            self.rule_interface.list_traffic_rules_activated = list(set(self.repaired_rules))
             for item in self.rule_interface.list_traffic_rules_activated:
                 self.rule_interface._parse_traffic_rule(item, allow_abstract_rules=True)
-        if proposition_full is not None:
-            self._prop_full = proposition_full
 
 
     def update_reach_interface(
@@ -255,7 +284,7 @@ class RuleConstraintsReach:
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
             scenario=self._tc_obj.scenario,  # with the target vehicle removed!!
-            CLCS=vehicle_configuration.CLCS,
+            CLCS=self.reach_config.planning.CLCS,
         )
 
         #########################################################

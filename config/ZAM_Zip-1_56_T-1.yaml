@@ -11,4 +11,4 @@ repair:
 miqp_planner:
   slack_long: False
   weight_long: [0.1, 0.4, 1, 2, 0.1, 1000000] # s, v, a, j, u, slack
-  weight_lat: [0.05, 15.1, 40.0, 20.0, 1.0, 0.1] # d, theta, kappa, kappa_dot, u, robust
+  weight_lat: [0.05, 15.1, 40.0, 20.0, 1.0, 0.1, 10000000] # d, theta, kappa, kappa_dot, u, robust, slack

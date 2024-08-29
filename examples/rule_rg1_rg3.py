@@ -4,26 +4,33 @@ from crrepairer.utils.visualization import visualize_repaired_result
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
+from commonroad.prediction.prediction import Trajectory
+from commonroad.scenario.state import InitialState
+
 import math
 
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_LocationAUpper-54_67_T-1" # id=9
-    scenario_id = "DEU_LocationELower-18_22_T-1" # id=11
-    # scenario_id = "DEU_LocationALower-26_189_T-1" # id=19
-    # Build configuration object
+    scenario_id = "DEU_LocationDLower-8_154_T-1"
+
     config = RepairerConfiguration()
     config.general.set_path_scenario(scenario_id)
     config.update()
-    config.repair.rules = ["R_G1"]
-    config.repair.ego_id = 14
+    config.repair.rules = ["R_G1", "R_G3"]
+    config.repair.ego_id = 11
     config.debug.show_plots = True
     config.repair.planner = 2
     config.repair.constraint_mode = 2
     config.repair.use_mpr = False
-    # Retrieve the ego vehicle
+
     ego_initial = retrieve_ego_vehicle(config)
+
+    for i in range(ego_initial.prediction.trajectory.final_state.time_step):
+        ego_initial.state_at_time(i).acceleration = (
+            ego_initial.state_at_time(i + 1).velocity
+            - ego_initial.state_at_time(i).velocity
+        ) / config.scenario.dt
 
     # ========== Traffic Rule Monitor =========
     traffic_rule_monitor = STLRuleMonitor(config)
@@ -31,7 +38,6 @@ if __name__ == "__main__":
     # ========== Trajectory Repairing =========
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
-
         repaired_traj = repairer.repair()
         if repaired_traj is not None and config.debug.show_plots:
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
