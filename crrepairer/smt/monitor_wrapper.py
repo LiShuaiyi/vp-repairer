@@ -249,7 +249,7 @@ class STLRuleMonitor:
         for i in range(all_prop_names.shape[0]):  # Iterate over rows
             for j in range(all_prop_names.shape[1]):  # Iterate over columns
                 prop_name = all_prop_names[i, j]
-                robustness_value = min(self.all_props_all_ids_all[i][prop_name][self.other_id]
+                robustness_value = min(self.all_props_all_ids_all[i][prop_name][self.rule_to_other_id[self._rules[i]]]
                                        [self._tv - self._start_time_step:])
                 all_prop_robs[i, j] = robustness_value
         all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
