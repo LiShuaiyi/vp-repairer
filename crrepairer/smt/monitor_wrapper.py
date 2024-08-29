@@ -29,6 +29,7 @@ class PropositionNode:
     name: str
     alphabet: str
     ttv_value: float
+    ttv_h_min: float # the mean value across TV to horizon
     source_rule: str
     children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
@@ -238,7 +239,7 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        # all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
+        all_prop_TV = self.rob_abstraction[:, self._tv - self._start_time_step]
         # masked_array = np.ma.masked_equal(self.rob_abstraction[:, self._tv - self._start_time_step:, :], -1)
 
         # use the interval instead of the exact time step TV:
@@ -258,6 +259,7 @@ class STLRuleMonitor:
             proposition = PropositionNode(
                 all_prop_names[tuple(idx)],
                 alphabet[len(prop_nodes)],
+                all_prop_TV[tuple(idx)],
                 all_prop_robs[tuple(idx)],
                 self._rule_eval[idx[0]]._rule.name
             )
