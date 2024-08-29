@@ -84,6 +84,11 @@ class TSolver:
             #     prop.ttv_value > 0 and "~" + prop.alphabet in model
             # ):
             #     self._sel_prop.append(prop)
+            # print out the selected propositions
+            if self.verbose:
+                print(
+                    f"* \t<TSolver>: selected propositions: {prop.alphabet} = {prop.ttv_value}"
+                )
         self._compliant_maneuvers = self.set_compliant_maneuver(use_mpr_derivative)
 
     def set_compliant_maneuver(self, use_mpr_derivative: bool):
