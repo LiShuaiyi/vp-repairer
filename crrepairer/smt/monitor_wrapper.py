@@ -113,7 +113,7 @@ class STLRuleMonitor:
 
     @property
     def other_id(self) -> int:
-        if self._other_id is None or not isinstance(self._other_id, int):
+        if len(self._other_id) == 0:
             return self._vehicle_id
         else:
             return self._other_id[0]
