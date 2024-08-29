@@ -47,7 +47,7 @@ class DPLL:
             for predicate in node.children:
                 if predicate.agent_placeholders == (1, 0):
                     rob_min_tv_h += 1
-            rob_min_tv_h += abs(node.ttv_value)
+            rob_min_tv_h += abs(node.ttv_h_min)
             # print("<DPLL>: the robustness of instances in TV of alphabet {} is {}"
             #       .format(alp, prop_robust_all[prop_robust_all['alphabet'] == alp[-1]].robustness.values[tv_time_step]))
             return rob_min_tv_h

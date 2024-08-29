@@ -154,6 +154,8 @@ class RuleConstraintsReach:
         self.reach_config.reachable_set.mode_computation = 8
         self.reach_config.vehicle.other.a_lon_min = -10.5
         self.reach_config.vehicle.other.a_lon_max = 10.5
+        if "R_G2" in rule_monitor._rules:
+            self.reach_config.vehicle.other.a_lon_min = -2
         self.reach_config.vehicle.ego.a_lon_min = -10
         self.reach_config.vehicle.ego.v_max = 50
         self.reach_config.planning.reference_point = "REAR"
@@ -247,7 +249,7 @@ class RuleConstraintsReach:
 
                         self.repaired_rules.append(
                             'LTL G(' + semantic_prop + ')')
-            print("activated rules", list(set(self.repaired_rules)))
+            print("* \t<TSolver>: activated rules", list(set(self.repaired_rules)))
             # self.reach_config.traffic_rule.activated_rules = list(set(repaired_rules))
             self.rule_interface.list_traffic_rules_activated = list(set(self.repaired_rules))
             for item in self.rule_interface.list_traffic_rules_activated:

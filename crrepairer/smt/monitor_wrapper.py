@@ -29,6 +29,7 @@ class PropositionNode:
     name: str
     alphabet: str
     ttv_value: float
+    ttv_h_min: float # the mean value across TV to horizon
     source_rule: str
     children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
@@ -73,6 +74,8 @@ class STLRuleMonitor:
             self.rob_abstraction,
             self.abstraction_names,
             self.other_ids,
+            self.all_props_all_ids_all,
+            self.all_rules_all_ids_all
         ) = self.evaluate_initially()
 
         # obtain the time-to-violation
@@ -213,7 +216,7 @@ class STLRuleMonitor:
     @property
     @functools.lru_cache(128)
     def prop_robust_ttv(self):
-        return self.rob_abstraction[self._violated_rule_idx][self._tv - self._start_time_step]
+        return self.rob_abstraction[self.min_rule_idx][self._tv - self._start_time_step]
 
     def _initialize_prop_rob(self):
         """
@@ -236,12 +239,19 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        all_prop_robs = self.rob_abstraction[:, self._tv - self._start_time_step]
+        all_prop_TV = self.rob_abstraction[:, self._tv - self._start_time_step]
         # masked_array = np.ma.masked_equal(self.rob_abstraction[:, self._tv - self._start_time_step:, :], -1)
 
         # use the interval instead of the exact time step TV:
         # all_prop_robs = np.ma.min(masked_array, axis=1)
         all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
+        all_prop_robs = np.full(all_prop_names.shape, np.nan)  # Initialize with NaN for safety
+        for i in range(all_prop_names.shape[0]):  # Iterate over rows
+            for j in range(all_prop_names.shape[1]):  # Iterate over columns
+                prop_name = all_prop_names[i, j]
+                robustness_value = min(self.all_props_all_ids_all[i][prop_name][self.other_id]
+                                       [self._tv - self._start_time_step:])
+                all_prop_robs[i, j] = robustness_value
         all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
 
         prop_nodes = []
@@ -249,6 +259,7 @@ class STLRuleMonitor:
             proposition = PropositionNode(
                 all_prop_names[tuple(idx)],
                 alphabet[len(prop_nodes)],
+                all_prop_TV[tuple(idx)],
                 all_prop_robs[tuple(idx)],
                 self._rule_eval[idx[0]]._rule.name
             )
@@ -304,6 +315,8 @@ class STLRuleMonitor:
         pred_rob_all = []
         other_ids_all = []
 
+        all_props_all_ids_all = []
+        all_rules_all_ids_all = []
         if self.multiproc:
             rule_ids = []
             queue = Queue()
@@ -321,6 +334,8 @@ class STLRuleMonitor:
                 pred_rob_all.append(res["pred"])
                 other_ids_all.append(res["other"])
                 rule_ids.append(res["index"])
+                all_props_all_ids_all.append(res["all_props"])
+                all_rules_all_ids_all.append(res["all_rules"])
             for p in processes:
                 p.join()
             self._rule_eval = [self._rule_eval[i] for i in rule_ids]
@@ -333,15 +348,34 @@ class STLRuleMonitor:
                 prop_names = []
                 pred_rob = []
                 other_ids = []
+
+                all_rules_all_ids = {}
+                all_props_all_ids = {}
                 for _ in range(
                     evaluator.ego_vehicle.start_time, evaluator.ego_vehicle.end_time + 1
                 ):
                     rule_rob.append(evaluator.update())
                     other_ids.append(evaluator.other_ids)
-                    prop, _, _ = evaluator.get_propositions()
-                    if prop:
-                        prop_names.append([prop_name for prop_name in prop.keys()])
-                        prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
+                    prop, other_id_props, _ = evaluator.get_propositions_all()
+                    # Combine processing of prop and all_values_all_ids
+                    for prop_name, vehicle_dict in prop.items():
+                        if prop_name not in all_props_all_ids:
+                            all_props_all_ids[prop_name] = {}
+
+                        for vid, rob in vehicle_dict.items():
+                            # Ensure that all_props_all_ids[prop_name][vid] is a list
+                            if vid not in all_props_all_ids[prop_name]:
+                                all_props_all_ids[prop_name][vid] = []
+                            # Populate all_props_all_ids
+                            all_props_all_ids[prop_name][vid].append(rob)
+
+                            # Populate all_rules_all_ids
+                            if vid not in all_rules_all_ids:
+                                all_rules_all_ids[vid] = []
+                            all_rules_all_ids[vid].append(rob)
+                    if other_id_props:
+                        prop_names.append([prop_name for prop_name in other_id_props.keys()])
+                        prop_rob.append([other_id_props[prop_name] for prop_name in other_id_props.keys()])
                     else:
                         try:
                             prop_names.append(prop_names[0])
@@ -361,6 +395,8 @@ class STLRuleMonitor:
                 prop_names_all.append(np.array(prop_names, dtype=object))
                 pred_rob_all.append(pred_rob)
                 other_ids_all.append(other_ids)
+                all_props_all_ids_all.append(all_props_all_ids)
+                all_rules_all_ids_all.append(all_rules_all_ids)
 
         assert len(rule_rob_all) == len(self._rule_eval)
         max_n_props = max([p.shape[1] for p in prop_rob_all])
@@ -384,6 +420,8 @@ class STLRuleMonitor:
             np.array(prop_rob_all),
             np.array(prop_names_all),
             other_ids_all,
+            all_props_all_ids_all,
+            all_rules_all_ids_all
         )
 
     def multiproc_evaluate(self, index, q):
@@ -393,15 +431,35 @@ class STLRuleMonitor:
         prop_names = []
         pred_rob = []
         other_ids = []
+        all_rules_all_ids = {}
+        all_props_all_ids = {}
+
         for _ in range(
             evaluator.ego_vehicle.start_time, evaluator.ego_vehicle.end_time + 1
         ):
             rule_rob.append(evaluator.update())
             other_ids.append(evaluator.other_ids)
-            prop, _, _ = evaluator.get_propositions()
-            if prop:
-                prop_names.append([prop_name for prop_name in prop.keys()])
-                prop_rob.append([prop[prop_name] for prop_name in prop.keys()])
+
+            prop, other_id_props, _ = evaluator.get_propositions_all()
+            # Combine processing of prop and all_values_all_ids
+            for prop_name, vehicle_dict in prop.items():
+                if prop_name not in all_props_all_ids:
+                    all_props_all_ids[prop_name] = {}
+
+                for vid, rob in vehicle_dict.items():
+                    # Ensure that all_props_all_ids[prop_name][vid] is a list
+                    if vid not in all_props_all_ids[prop_name]:
+                        all_props_all_ids[prop_name][vid] = []
+                    # Populate all_props_all_ids
+                    all_props_all_ids[prop_name][vid].append(rob)
+
+                    # Populate all_rules_all_ids
+                    if vid not in all_rules_all_ids:
+                        all_rules_all_ids[vid] = []
+                    all_rules_all_ids[vid].append(rob)
+            if other_id_props:
+                prop_names.append([prop_name for prop_name in other_id_props.keys()])
+                prop_rob.append([other_id_props[prop_name] for prop_name in other_id_props.keys()])
             else:
                 prop_names.append([])
                 prop_rob.append([])
@@ -418,6 +476,8 @@ class STLRuleMonitor:
             "prop_name": np.array(prop_names, dtype=object),
             "pred": np.array(pred_rob, dtype=object),
             "index": index,
+            "all_props": all_props_all_ids,
+            "all_rules": all_rules_all_ids,
         }
         q.put(return_dict)
 
