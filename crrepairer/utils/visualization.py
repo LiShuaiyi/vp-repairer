@@ -436,6 +436,7 @@ def visualize_scenario_once(
     )
     rnd.draw_params.dynamic_obstacle.draw_shape = True
     rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = True
+    rnd.draw_params.dynamic_obstacle.trajectory.line_width = 0.3
     rnd.draw_params.dynamic_obstacle.draw_signals = False
     rnd.draw_params.dynamic_obstacle.draw_icon = True
     # rnd.draw_params.lanelet_network.traffic_sign.draw_traffic_signs = True
@@ -451,7 +452,7 @@ def visualize_scenario_once(
     rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = False
 
     rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
-    rnd.draw_params.dynamic_obstacle.occupancy.draw_occupancies = True
+    rnd.draw_params.dynamic_obstacle.occupancy.draw_occupancies = False
     rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
         TUMColor.TUMblue.value
     )
@@ -464,8 +465,12 @@ def visualize_scenario_once(
     rnd.render()
 
     # Extract positions for the selected ego trajectory
-    pos_x = []
-    pos_y = []
+    if ego_to_plot.prediction.initial_time_step == ego_to_plot.initial_state.time_step:
+        pos_x = []
+        pos_y = []
+    else:
+        pos_x = [ego_to_plot.initial_state.position[0]]
+        pos_y = [ego_to_plot.initial_state.position[1]]
     for i in range(ego_to_plot.prediction.initial_time_step, ego_to_plot.prediction.final_time_step + 1):
         pos_x.append(ego_to_plot.state_at_time(i).position[0])
         pos_y.append(ego_to_plot.state_at_time(i).position[1])
@@ -478,7 +483,7 @@ def visualize_scenario_once(
                 pos_y[time_step:tc+1],
                 color=TUMColor.TUMblue.value,  # Use TUM blue for before TC
                 marker="x",
-                markersize=7.5,
+                markersize=5,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -488,7 +493,7 @@ def visualize_scenario_once(
                 pos_y[tc:end_time + 1],
                 color=TUMColor.TUMgreen.value,  # Use TUM green for after TC
                 marker=".",
-                markersize=7.5,
+                markersize=5,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -499,7 +504,7 @@ def visualize_scenario_once(
                 pos_y[time_step:end_time + 1],
                 color=TUMColor.TUMgreen.value,  # Use TUM green for the remaining trajectory
                 marker=".",
-                markersize=7.5,
+                markersize=5,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -511,7 +516,7 @@ def visualize_scenario_once(
                 pos_y[time_step:tv + 1],
                 color=TUMColor.TUMblue.value,  # Use TUM blue for before TV
                 marker="x",
-                markersize=7.5,
+                markersize=5,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -521,7 +526,7 @@ def visualize_scenario_once(
                 pos_y[tv:end_time + 1],
                 color="red",  # Use red for after TV
                 marker="x",
-                markersize=7.5,
+                markersize=5,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -532,7 +537,7 @@ def visualize_scenario_once(
                 pos_y[time_step:end_time + 1],
                 color="red",  # Use red for the remaining trajectory
                 marker="x",
-                markersize=7.5,
+                markersize=5,
                 zorder=35,
                 linewidth=1.5,
             )
