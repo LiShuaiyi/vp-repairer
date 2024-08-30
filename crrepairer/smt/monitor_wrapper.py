@@ -19,7 +19,11 @@ from crmonitor.common.world import World, get_world_config
 from crmonitor.common.config import get_traffic_rule_config
 from crmonitor.rule.rule_node import PredicateNode
 
-from crrepairer.utils.configuration import RepairerConfiguration, ScenarioType, MonitorType
+from crrepairer.utils.configuration import (
+    RepairerConfiguration,
+    ScenarioType,
+    MonitorType,
+)
 
 from commonroad_mpr.utils.configuration_builder import ConfigurationBuilder as Cfg
 
@@ -29,7 +33,7 @@ class PropositionNode:
     name: str
     alphabet: str
     ttv_value: float
-    ttv_h_min: float # the mean value across TV to horizon
+    ttv_h_min: float  # the mean value across TV to horizon
     source_rule: str
     children: List[PredicateNode] = dataclasses.field(default_factory=list)
 
@@ -43,14 +47,19 @@ class STLRuleMonitor:
         world_config = get_world_config()
         traffic_rules_config = get_traffic_rule_config()
 
-        world_config["scenario"] = self.scenario_type =\
-            traffic_rules_config["traffic_rules_param"]["mpr_scenario"] = config.repair.scenario_type
+        world_config["scenario"] = self.scenario_type = traffic_rules_config[
+            "traffic_rules_param"
+        ]["mpr_scenario"] = config.repair.scenario_type
         Cfg["common"]["scenario"] = self.scenario_type
         if self.scenario_type == ScenarioType.INTERSECTION:
-            world_config["intersection_road_network_param"]["map_type"] = config.repair.intersection_type
+            world_config["intersection_road_network_param"][
+                "map_type"
+            ] = config.repair.intersection_type
         traffic_rules_config["traffic_rules_param"]["use_mpr"] = config.repair.use_mpr
 
-        self._world: World = World.create_from_scenario(config.scenario, config=world_config)
+        self._world: World = World.create_from_scenario(
+            config.scenario, config=world_config
+        )
         self._vehicle_id = config.repair.ego_id
         self.multiproc = config.repair.multiproc
         self._rules = config.repair.rules
@@ -63,7 +72,10 @@ class STLRuleMonitor:
         )
         for rule in self._rules:
             prop_rule_eval = PropositionRuleEvaluator.create_from_config(
-                self._world, self._vehicle_id, rule, traffic_rules_config=traffic_rules_config
+                self._world,
+                self._vehicle_id,
+                rule,
+                traffic_rules_config=traffic_rules_config,
             )
             self._rule_eval.append(prop_rule_eval)
         if len(self._rule_eval) == 1:
@@ -75,15 +87,24 @@ class STLRuleMonitor:
             self.abstraction_names,
             self.other_ids,
             self.all_props_all_ids_all,
-            self.all_rules_all_ids_all
+            self.all_rules_all_ids_all,
         ) = self.evaluate_initially()
 
         # obtain the time-to-violation
-        self._violated_rules, self.min_rule_idx, self._tv, self.rule_to_tv, self.rule_to_other_id =\
-            self._cal_tv_initial()
+        (
+            self._violated_rules,
+            self.min_rule_idx,
+            self._tv,
+            self.rule_to_tv,
+            self.rule_to_other_id,
+        ) = self._cal_tv_initial()
 
         # todo: multiple targets
-        self._other_id = [other_id for other_id in self.rule_to_other_id.values() if other_id != config.repair.ego_id]
+        self._other_id = [
+            other_id
+            for other_id in self.rule_to_other_id.values()
+            if other_id != config.repair.ego_id
+        ]
 
         self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
 
@@ -162,10 +183,7 @@ class STLRuleMonitor:
                 #        print(sat_formula)
             # do not delete brackets in the rule
             # 'eventually' is replaced by 'once' because of the same replacement in rtamt
-            sat_formula = (
-                sat_formula.replace("not", "!")
-                .replace("eventually", "once")
-            )
+            sat_formula = sat_formula.replace("not", "!").replace("eventually", "once")
             clear_rob_abs = self.rob_abstraction[i][
                 self.rob_abstraction[i] == self.rob_abstraction[i]
             ]
@@ -175,13 +193,11 @@ class STLRuleMonitor:
             for prop_node in props_of_rule:
                 prop_node_name = prop_node.name
                 # if proposition name starts with "once[x,x]", it will be considered as predicate
-                if(
+                if (
                     prop_node_name[0:4] == "once"
                     and prop_node_name[5:6] == prop_node_name[7:8]
-                    ):
-                    prop_node_name = prop_node_name.replace(
-                        prop_node_name[0:9], ""
-                    )
+                ):
+                    prop_node_name = prop_node_name.replace(prop_node_name[0:9], "")
                 else:
                     pattern = r"once\[(.*?)\]"
                     matches = re.findall(pattern, prop_node_name)
@@ -189,7 +205,7 @@ class STLRuleMonitor:
                         delete_once_str = "once[" + matches[1] + "]("
                         prop_node_name = prop_node_name.replace(delete_once_str, "")
                         prop_node_name = prop_node_name[:-1]
-                if prop_node_name.startswith('(') and prop_node_name.endswith(')'):
+                if prop_node_name.startswith("(") and prop_node_name.endswith(")"):
                     prop_node_name = prop_node_name[1:-1]
                 matches = SequenceMatcher(
                     None, sat_formula, prop_node_name, autojunk=True
@@ -239,18 +255,28 @@ class STLRuleMonitor:
 
         if self._tv in (math.inf, -math.inf):
             return None
-        all_prop_TV = self.rob_abstraction[:, self._tv - self._start_time_step]
+        # all_prop_TV = self.rob_abstraction[:, self._tv - self._start_time_step]
         # masked_array = np.ma.masked_equal(self.rob_abstraction[:, self._tv - self._start_time_step:, :], -1)
 
         # use the interval instead of the exact time step TV:
         # all_prop_robs = np.ma.min(masked_array, axis=1)
         all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
-        all_prop_robs = np.full(all_prop_names.shape, np.nan)  # Initialize with NaN for safety
+        all_prop_robs = np.full(
+            all_prop_names.shape, np.nan
+        )  # Initialize with NaN for safety
+        tv_prop_robs = np.full(all_prop_names.shape, np.nan)
         for i in range(all_prop_names.shape[0]):  # Iterate over rows
             for j in range(all_prop_names.shape[1]):  # Iterate over columns
                 prop_name = all_prop_names[i, j]
-                all_prop_robs[i, j] = min(self.all_props_all_ids_all[i][prop_name][self.rule_to_other_id[self._rules[i]]]
-                                       [self._tv - self._start_time_step:])
+                # tv is now self.rule_to_tv[self._rules[i]]
+                all_prop_robs[i, j] = min(
+                    self.all_props_all_ids_all[i][prop_name][
+                        self.rule_to_other_id[self._rules[i]]
+                    ][self.rule_to_tv[self._rules[i]] - self._start_time_step :]
+                )
+                tv_prop_robs[i, j] = self.all_props_all_ids_all[i][prop_name][
+                    self.rule_to_other_id[self._rules[i]]
+                ][self.rule_to_tv[self._rules[i]] - self._start_time_step]
         all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
 
         prop_nodes = []
@@ -258,9 +284,9 @@ class STLRuleMonitor:
             proposition = PropositionNode(
                 all_prop_names[tuple(idx)],
                 alphabet[len(prop_nodes)],
-                all_prop_TV[tuple(idx)],
+                tv_prop_robs[tuple(idx)],
                 all_prop_robs[tuple(idx)],
-                self._rule_eval[idx[0]]._rule.name
+                self._rule_eval[idx[0]]._rule.name,
             )
             pred_nodes = []
             retrieve_preds(self._rule_eval[idx[0]]._rule, pred_nodes)
@@ -268,7 +294,9 @@ class STLRuleMonitor:
                 if "g0" not in all_prop_names[tuple(idx)]:
                     if pred.name in all_prop_names[tuple(idx)]:
                         # add missing values
-                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[tuple(idx)[0]][pred.name]
+                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[
+                            tuple(idx)[0]
+                        ][pred.name]
                         proposition.children.append(pred)
                 else:
                     other_props = np.delete(all_prop_names[idx[0]], idx[-1], 0)
@@ -278,7 +306,9 @@ class STLRuleMonitor:
                             for p_name in other_props[other_props == other_props]
                         ]
                     ):
-                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[tuple(idx)[0]][pred.name]
+                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[
+                            tuple(idx)[0]
+                        ][pred.name]
                         proposition.children.append(pred)
             prop_nodes.append(proposition)
         return prop_nodes
@@ -373,8 +403,15 @@ class STLRuleMonitor:
                                 all_rules_all_ids[vid] = []
                             all_rules_all_ids[vid].append(rob)
                     if other_id_props:
-                        prop_names.append([prop_name for prop_name in other_id_props.keys()])
-                        prop_rob.append([other_id_props[prop_name] for prop_name in other_id_props.keys()])
+                        prop_names.append(
+                            [prop_name for prop_name in other_id_props.keys()]
+                        )
+                        prop_rob.append(
+                            [
+                                other_id_props[prop_name]
+                                for prop_name in other_id_props.keys()
+                            ]
+                        )
                     else:
                         try:
                             prop_names.append(prop_names[0])
@@ -385,7 +422,9 @@ class STLRuleMonitor:
                     pred = evaluator.get_predicates()
                     if pred:
                         mpr_grad = evaluator.get_mpr_gradient()
-                        pred_rob.append({key: [pred[key], mpr_grad[key]] for key in pred})
+                        pred_rob.append(
+                            {key: [pred[key], mpr_grad[key]] for key in pred}
+                        )
                     else:
                         pred_rob.append([])
 
@@ -420,7 +459,7 @@ class STLRuleMonitor:
             np.array(prop_names_all),
             other_ids_all,
             all_props_all_ids_all,
-            all_rules_all_ids_all
+            all_rules_all_ids_all,
         )
 
     def multiproc_evaluate(self, index, q):
@@ -458,7 +497,9 @@ class STLRuleMonitor:
                     all_rules_all_ids[vid].append(rob)
             if other_id_props:
                 prop_names.append([prop_name for prop_name in other_id_props.keys()])
-                prop_rob.append([other_id_props[prop_name] for prop_name in other_id_props.keys()])
+                prop_rob.append(
+                    [other_id_props[prop_name] for prop_name in other_id_props.keys()]
+                )
             else:
                 prop_names.append([])
                 prop_rob.append([])
@@ -511,7 +552,11 @@ class STLRuleMonitor:
             raise ValueError("the evaluation procedure is not executed yet")
         return self.rob_rule, self.other_ids
 
-    def _cal_tv_initial(self) -> Tuple[List[str], int, Union[int, float], Dict[str, Union[int, float]], Dict[str, Any]]:
+    def _cal_tv_initial(
+        self,
+    ) -> Tuple[
+        List[str], int, Union[int, float], Dict[str, Union[int, float]], Dict[str, Any]
+    ]:
         """
         Calculate the initial time-to-violation (TV) for the monitored rules.
 
@@ -529,12 +574,18 @@ class STLRuleMonitor:
         rule_to_tv = {}
         rule_to_other_id = {}
         violated_rules = []
-        min_tv = float('inf')  # Initialize min_tv to infinity
+        min_tv = float("inf")  # Initialize min_tv to infinity
         min_rule_idx = -1  # Initialize min_rule_idx to -1 (no violations)
 
         # Check if there is an immediate violation at the first time step
         if np.any(self.rob_rule[:, 0] < 0):
-            return violated_rules, min_rule_idx, -math.inf, rule_to_tv, rule_to_other_id  # all violated
+            return (
+                violated_rules,
+                min_rule_idx,
+                -math.inf,
+                rule_to_tv,
+                rule_to_other_id,
+            )  # all violated
 
         # Calculate the time-to-violation for each rule
         tv_per_rule = np.argmax(self.rob_rule < 0, axis=-1) + self._start_time_step
@@ -543,23 +594,27 @@ class STLRuleMonitor:
         for idx, tv in enumerate(tv_per_rule):
             rule_name = self._rules[idx]
             if tv == self._start_time_step:
-                rule_to_tv[rule_name] = float('inf')
+                rule_to_tv[rule_name] = float("inf")
                 rule_to_other_id[rule_name] = None
             else:
                 rule_to_tv[rule_name] = tv
                 if self.other_ids[idx][tv - self._start_time_step] == ():
                     rule_to_other_id[rule_name] = self._vehicle_id
                 else:
-                    rule_to_other_id[rule_name] = self.other_ids[idx][tv - self._start_time_step][0]
+                    rule_to_other_id[rule_name] = self.other_ids[idx][
+                        tv - self._start_time_step
+                    ][0]
 
                 violated_rules.append(rule_name)  # Add the rule to the violated list
                 if tv < min_tv:
                     min_tv = tv  # Update the minimum TV
-                    min_rule_idx = idx  # Update the index of the rule with the minimum TV
+                    min_rule_idx = (
+                        idx  # Update the index of the rule with the minimum TV
+                    )
 
         # If no violations occurred, return an empty list, -1 for index, and inf TV
         if not violated_rules:
-            return [], -1, float('inf'), rule_to_tv, rule_to_other_id
+            return [], -1, float("inf"), rule_to_tv, rule_to_other_id
 
         return violated_rules, min_rule_idx, int(min_tv), rule_to_tv, rule_to_other_id
 
