@@ -203,7 +203,7 @@ def visualize_scenario(
         rnd.draw_params.dynamic_obstacle.draw_shape = True
         rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = True
         rnd.draw_params.dynamic_obstacle.draw_signals = False
-
+        rnd.draw_params.dynamic_obstacle.draw_icon = True
         # rnd.draw_params.lanelet_network.traffic_sign.draw_traffic_signs = True
         # rnd.draw_params.traffic_sign.draw_traffic_signs = True
         rnd.draw_params.lanelet_network.lanelet.stop_line_color = (
@@ -224,23 +224,19 @@ def visualize_scenario(
     else:
         ego_color = TUMColor.TUMblue.value
     ego_mark = "x"
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        ego_color
-    )
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        ego_color
-    )
 
     rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
-
-    ego_initial.draw(rnd_0)
+    rnd_0.draw_params.dynamic_obstacle.occupancy.draw_occupancies = True
     rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        TUMColor.TUMblack.value
+        TUMColor.TUMblue.value
     )
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        TUMColor.TUMblack.value
-    )
+    ego_initial.draw(rnd_0)
+
+
     if target_veh:
+        rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = "red"
+        rnd_0.draw_params.dynamic_obstacle.occupancy.shape.facecolor = "red"
+
         target_veh.draw(rnd_0)
 
     # render scenario and ego vehicle
@@ -290,24 +286,18 @@ def visualize_scenario(
         ego_color = TUMColor.TUMblue.value
         ego_mark = "x"
 
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        ego_color
-    )
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        ego_color
-    )
-
     rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
+    rnd_1.draw_params.dynamic_obstacle.occupancy.draw_occupancies = True
 
+
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMColor.TUMgreen.value
+    )
     ego_repaired.draw(rnd_1)
 
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        TUMColor.TUMblack.value
-    )
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        TUMColor.TUMblack.value
-    )
     if target_veh:
+        rnd_1.draw_params.dynamic_obstacle.occupancy.shape.facecolor = "red"
+        rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = "red"
         target_veh.draw(rnd_1)
 
     # render scenario and ego vehicle
