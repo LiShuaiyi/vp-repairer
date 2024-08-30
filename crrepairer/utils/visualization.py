@@ -464,56 +464,78 @@ def visualize_scenario_once(
     rnd.render()
 
     # Extract positions for the selected ego trajectory
-    pos_x = [ego_to_plot.initial_state.position[0]]
-    pos_y = [ego_to_plot.initial_state.position[1]]
-    for state in ego_to_plot.prediction.trajectory.state_list:
-        pos_x.append(state.position[0])
-        pos_y.append(state.position[1])
+    pos_x = []
+    pos_y = []
+    for i in range(ego_to_plot.prediction.initial_time_step, ego_to_plot.prediction.final_time_step + 1):
+        pos_x.append(ego_to_plot.state_at_time(i).position[0])
+        pos_y.append(ego_to_plot.state_at_time(i).position[1])
 
     if flag_repair:
-        # Plot the segment from time_step to tc (before TC)
-        rnd.ax.plot(
-            pos_x[time_step:tc+1],
-            pos_y[time_step:tc+1],
-            color=TUMColor.TUMblue.value,  # Use TUM green for before TC
-            marker="x",
-            markersize=7.5,
-            zorder=35,
-            linewidth=1.5,
-        )
-
-        # Plot the segment from tc to end_time (after TC)
-        rnd.ax.plot(
-            pos_x[tc:end_time + 1],
-            pos_y[tc:end_time + 1],
-            color=TUMColor.TUMgreen.value,  # Use TUM blue for after TC
-            marker=".",
-            markersize=7.5,
-            zorder=35,
-            linewidth=1.5,
-        )
+        if time_step <= tc:
+            # Plot the segment from time_step to tc (before TC)
+            rnd.ax.plot(
+                pos_x[time_step:tc+1],
+                pos_y[time_step:tc+1],
+                color=TUMColor.TUMblue.value,  # Use TUM blue for before TC
+                marker="x",
+                markersize=7.5,
+                zorder=35,
+                linewidth=1.5,
+            )
+            # Plot the segment from tc to end_time (after TC)
+            rnd.ax.plot(
+                pos_x[tc:end_time + 1],
+                pos_y[tc:end_time + 1],
+                color=TUMColor.TUMgreen.value,  # Use TUM green for after TC
+                marker=".",
+                markersize=7.5,
+                zorder=35,
+                linewidth=1.5,
+            )
+        else:
+            # If time_step > tc, plot only the segment from time_step to end_time
+            rnd.ax.plot(
+                pos_x[time_step:end_time + 1],
+                pos_y[time_step:end_time + 1],
+                color=TUMColor.TUMgreen.value,  # Use TUM green for the remaining trajectory
+                marker=".",
+                markersize=7.5,
+                zorder=35,
+                linewidth=1.5,
+            )
     else:
-        # Plot the segment from time_step to tv (before TV)
-        rnd.ax.plot(
-            pos_x[time_step:tv + 1],
-            pos_y[time_step:tv + 1],
-            color=TUMColor.TUMblue.value,  # Use red for before TV
-            marker="x",
-            markersize=7.5,
-            zorder=35,
-            linewidth=1.5,
-        )
-
-        # Plot the segment from tv to end_time (after TV)
-        rnd.ax.plot(
-            pos_x[tv:end_time + 1],
-            pos_y[tv:end_time + 1],
-            color="red",  # Use TUM blue for after TV
-            marker="x",
-            markersize=7.5,
-            zorder=35,
-            linewidth=1.5,
-        )
+        if time_step <= tv:
+            # Plot the segment from time_step to tv (before TV)
+            rnd.ax.plot(
+                pos_x[time_step:tv + 1],
+                pos_y[time_step:tv + 1],
+                color=TUMColor.TUMblue.value,  # Use TUM blue for before TV
+                marker="x",
+                markersize=7.5,
+                zorder=35,
+                linewidth=1.5,
+            )
+            # Plot the segment from tv to end_time (after TV)
+            rnd.ax.plot(
+                pos_x[tv:end_time + 1],
+                pos_y[tv:end_time + 1],
+                color="red",  # Use red for after TV
+                marker="x",
+                markersize=7.5,
+                zorder=35,
+                linewidth=1.5,
+            )
+        else:
+            # If time_step > tv, plot only the segment from time_step to end_time
+            rnd.ax.plot(
+                pos_x[time_step:end_time + 1],
+                pos_y[time_step:end_time + 1],
+                color="red",  # Use red for the remaining trajectory
+                marker="x",
+                markersize=7.5,
+                zorder=35,
+                linewidth=1.5,
+            )
 
 
     if target_veh and world:
