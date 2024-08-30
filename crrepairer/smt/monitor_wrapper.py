@@ -272,7 +272,7 @@ class STLRuleMonitor:
                 all_prop_robs[i, j] = min(
                     self.all_props_all_ids_all[i][prop_name][
                         self.rule_to_other_id[self._rules[i]]
-                    ][self.rule_to_tv[self._rules[i]] - self._start_time_step :]
+                    ][self._tv - self._start_time_step :]
                 )
                 tv_prop_robs[i, j] = self.all_props_all_ids_all[i][prop_name][
                     self.rule_to_other_id[self._rules[i]]
