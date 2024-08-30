@@ -544,7 +544,7 @@ def visualize_scenario_once(
 
 
     if target_veh and world:
-        ego_veh_state_ini = ego_initial.state_at_time(time_step)
+        ego_veh_state_ini = ego_to_plot.state_at_time(time_step)
         tar_veh_state = target_veh.state_at_time(time_step)
         tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
         unsafe_poly_ini = compute_unsafe_polygon(

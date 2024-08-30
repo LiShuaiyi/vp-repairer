@@ -593,6 +593,9 @@ class STLRuleMonitor:
         # Populate rule_to_tv and rule_to_other_id dictionaries
         for idx, tv in enumerate(tv_per_rule):
             rule_name = self._rules[idx]
+            # print  rule with the tv
+            print(f"\tRule: {rule_name} - TV: {tv}")
+
             if tv == self._start_time_step:
                 rule_to_tv[rule_name] = float("inf")
                 rule_to_other_id[rule_name] = None
