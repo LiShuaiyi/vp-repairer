@@ -203,11 +203,14 @@ def visualize_scenario(
         rnd.draw_params.dynamic_obstacle.draw_shape = True
         rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = True
         rnd.draw_params.dynamic_obstacle.draw_signals = False
-
+        rnd.draw_params.dynamic_obstacle.draw_icon = True
         # rnd.draw_params.lanelet_network.traffic_sign.draw_traffic_signs = True
         # rnd.draw_params.traffic_sign.draw_traffic_signs = True
         rnd.draw_params.lanelet_network.lanelet.stop_line_color = (
             TUMColor.TUMblack.value
+        )
+        rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+            TUMColor.TUMgray.value
         )
         rnd.draw_params.lanelet_network.lanelet.draw_stop_line = True
         scenario.draw(rnd)
@@ -224,23 +227,19 @@ def visualize_scenario(
     else:
         ego_color = TUMColor.TUMblue.value
     ego_mark = "x"
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        ego_color
-    )
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        ego_color
-    )
 
     rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
-
-    ego_initial.draw(rnd_0)
+    rnd_0.draw_params.dynamic_obstacle.occupancy.draw_occupancies = True
     rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        TUMColor.TUMblack.value
+        TUMColor.TUMblue.value
     )
-    rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        TUMColor.TUMblack.value
-    )
+    ego_initial.draw(rnd_0)
+
+
     if target_veh:
+        rnd_0.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = "red"
+        rnd_0.draw_params.dynamic_obstacle.occupancy.shape.facecolor = "red"
+
         target_veh.draw(rnd_0)
 
     # render scenario and ego vehicle
@@ -290,24 +289,18 @@ def visualize_scenario(
         ego_color = TUMColor.TUMblue.value
         ego_mark = "x"
 
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        ego_color
-    )
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        ego_color
-    )
-
     rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
+    rnd_1.draw_params.dynamic_obstacle.occupancy.draw_occupancies = True
 
+
+    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMColor.TUMgreen.value
+    )
     ego_repaired.draw(rnd_1)
 
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
-        TUMColor.TUMblack.value
-    )
-    rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
-        TUMColor.TUMblack.value
-    )
     if target_veh:
+        rnd_1.draw_params.dynamic_obstacle.occupancy.shape.facecolor = "red"
+        rnd_1.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = "red"
         target_veh.draw(rnd_1)
 
     # render scenario and ego vehicle
@@ -393,6 +386,196 @@ def visualize_scenario(
     # After you're done with a figure
     plt.close(fig)
 
+def visualize_scenario_once(
+    scenario: Scenario,
+    ego_initial: DynamicObstacle,
+    ego_repaired: DynamicObstacle,
+    time_step: int,
+    save_path: str = None,
+    plot_limits=None,
+    end_time=None,
+    tc=None,
+    tv=None,
+    target_veh=None,
+    world: World = None,
+    flag_repair=False,
+):
+    """
+    Function to visualize the repairing result given time step
+    :param scenario: CommonRoad scenario object
+    :param ego_initial: initially-planned trajectory
+    :param ego_repaired: repaired ego vehicle
+    :param time_step: current time step
+    :param save_path: Path to save plot as .png/.svg (optional)
+    :param plot_limits: plot limits of the scenario
+    :param end_time: ending time step
+    :param tc: time-to-comply
+    :param tv: time-to-violation
+    :param target_veh: target vehicle for repairing
+    :param world: world state
+    :param flag_repair: if True, plot ego_repaired instead of ego_initial
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(20, 10))
+    rnd = MPRenderer(ax=ax, plot_limits=plot_limits)
+
+    # visualize scenario
+    rnd.draw_params.time_begin = time_step
+    if end_time:
+        rnd.draw_params.time_end = end_time
+    rnd.draw_params.trajectory.draw_trajectory = False
+    rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
+    rnd.draw_params.occupancy.draw_occupancies = False
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = (
+        False
+    )
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMColor.TUMgray.value
+    )
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        TUMColor.TUMblack.value
+    )
+    rnd.draw_params.dynamic_obstacle.draw_shape = True
+    rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = True
+    rnd.draw_params.dynamic_obstacle.trajectory.line_width = 0.3
+    rnd.draw_params.dynamic_obstacle.draw_signals = False
+    rnd.draw_params.dynamic_obstacle.draw_icon = True
+    # rnd.draw_params.lanelet_network.traffic_sign.draw_traffic_signs = True
+    # rnd.draw_params.traffic_sign.draw_traffic_signs = True
+    rnd.draw_params.lanelet_network.lanelet.stop_line_color = (
+        TUMColor.TUMblack.value
+    )
+    rnd.draw_params.lanelet_network.lanelet.draw_stop_line = True
+    scenario.draw(rnd)
+
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = False
+    rnd.draw_params.dynamic_obstacle.draw_shape = True
+    rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = False
+
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
+    rnd.draw_params.dynamic_obstacle.occupancy.draw_occupancies = False
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMColor.TUMblue.value
+    )
+
+    # Select the correct trajectory based on flag_repair
+    ego_to_plot = ego_repaired if flag_repair else ego_initial
+    ego_to_plot.draw(rnd)
+
+    # render scenario and ego vehicle
+    rnd.render()
+
+    # Extract positions for the selected ego trajectory
+    if ego_to_plot.prediction.initial_time_step == ego_to_plot.initial_state.time_step:
+        pos_x = []
+        pos_y = []
+    else:
+        pos_x = [ego_to_plot.initial_state.position[0]]
+        pos_y = [ego_to_plot.initial_state.position[1]]
+    for i in range(ego_to_plot.prediction.initial_time_step, ego_to_plot.prediction.final_time_step + 1):
+        pos_x.append(ego_to_plot.state_at_time(i).position[0])
+        pos_y.append(ego_to_plot.state_at_time(i).position[1])
+
+    if flag_repair:
+        if time_step <= tc:
+            # Plot the segment from time_step to tc (before TC)
+            rnd.ax.plot(
+                pos_x[time_step:tc+1],
+                pos_y[time_step:tc+1],
+                color=TUMColor.TUMblue.value,  # Use TUM blue for before TC
+                marker="x",
+                markersize=5,
+                zorder=35,
+                linewidth=1.5,
+            )
+            # Plot the segment from tc to end_time (after TC)
+            rnd.ax.plot(
+                pos_x[tc:end_time + 1],
+                pos_y[tc:end_time + 1],
+                color=TUMColor.TUMgreen.value,  # Use TUM green for after TC
+                marker=".",
+                markersize=5,
+                zorder=35,
+                linewidth=1.5,
+            )
+        else:
+            # If time_step > tc, plot only the segment from time_step to end_time
+            rnd.ax.plot(
+                pos_x[time_step:end_time + 1],
+                pos_y[time_step:end_time + 1],
+                color=TUMColor.TUMgreen.value,  # Use TUM green for the remaining trajectory
+                marker=".",
+                markersize=5,
+                zorder=35,
+                linewidth=1.5,
+            )
+    else:
+        if time_step <= tv:
+            # Plot the segment from time_step to tv (before TV)
+            rnd.ax.plot(
+                pos_x[time_step:tv + 1],
+                pos_y[time_step:tv + 1],
+                color=TUMColor.TUMblue.value,  # Use TUM blue for before TV
+                marker="x",
+                markersize=5,
+                zorder=35,
+                linewidth=1.5,
+            )
+            # Plot the segment from tv to end_time (after TV)
+            rnd.ax.plot(
+                pos_x[tv:end_time + 1],
+                pos_y[tv:end_time + 1],
+                color="red",  # Use red for after TV
+                marker="x",
+                markersize=5,
+                zorder=35,
+                linewidth=1.5,
+            )
+        else:
+            # If time_step > tv, plot only the segment from time_step to end_time
+            rnd.ax.plot(
+                pos_x[time_step:end_time + 1],
+                pos_y[time_step:end_time + 1],
+                color="red",  # Use red for the remaining trajectory
+                marker="x",
+                markersize=5,
+                zorder=35,
+                linewidth=1.5,
+            )
+
+
+    if target_veh and world:
+        ego_veh_state_ini = ego_to_plot.state_at_time(time_step)
+        tar_veh_state = target_veh.state_at_time(time_step)
+        tar_veh_lane = world.vehicle_by_id(target_veh.obstacle_id).get_lane(time_step)
+        unsafe_poly_ini = compute_unsafe_polygon(
+            ego_veh_state_ini, tar_veh_state, target_veh, tar_veh_lane
+        )
+        rnd.ax.fill(
+            *unsafe_poly_ini.exterior.xy,
+            zorder=30,
+            alpha=0.2,
+            facecolor=TUMColor.TUMorange.value,
+            edgecolor=None,
+        )
+
+
+    # show plot
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if plot_limits:
+        ax.set_xlim([plot_limits[0], plot_limits[1]])
+        ax.set_ylim([plot_limits[2], plot_limits[3]])
+
+    if save_path is not None:
+        plt.savefig(
+            f"{save_path}/{str(scenario.scenario_id)}_{time_step}_once.svg",
+            format="svg",
+            dpi=300,
+            bbox_inches="tight",
+        )
+    else:
+        plt.show(block=True)
+    plt.close(fig)
 
 def compute_unsafe_polygon(ego_veh_state, tar_veh_state, target_veh, tar_veh_lane):
     safe_distance = calculate_safe_distance(

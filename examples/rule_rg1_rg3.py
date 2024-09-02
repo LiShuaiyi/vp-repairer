@@ -1,6 +1,6 @@
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-from crrepairer.utils.visualization import visualize_repaired_result
+from crrepairer.utils.visualization import visualize_repaired_result, visualize_scenario_once
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
@@ -14,8 +14,7 @@ if __name__ == "__main__":
     # ========== Scenario and Configuration =========
     scenario_id = "DEU_LocationDLower-8_154_T-1"
 
-    config = RepairerConfiguration()
-    config.general.set_path_scenario(scenario_id)
+    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
     config.update()
     config.repair.rules = ["R_G1", "R_G3"]
     config.repair.ego_id = 11
@@ -45,4 +44,16 @@ if __name__ == "__main__":
             )
             if config.debug.show_plots:
                 # ============= Visualization =============
-                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+                # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+                visualize_scenario_once(config.scenario,
+                                        ego_initial,
+                                        ego_repaired,
+                                        repairer.tc,  # Assuming time_end is the current time_step for visualization
+                                        None,
+                                        config.debug.plot_limits,
+                                        config.repair.t_f,
+                                        repairer.tc,
+                                        repairer.tv,
+                                        repairer.target_vehicle,
+                                        traffic_rule_monitor.world,
+                                        flag_repair=True)
