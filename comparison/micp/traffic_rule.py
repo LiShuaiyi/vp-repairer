@@ -4,7 +4,7 @@ from stlpy.systems.linear import DoubleIntegrator
 from stlpy.benchmarks.common import make_rectangle_patch
 
 from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, keeps_safe_distance_formula,
-                                     not_in_front_of_formula, not_in_same_lane_formula,
+                                     not_in_front_of_formula, not_in_same_lane_formula, no_backwards_driving,
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
                                      not_braking_formula, not_braking_abruptly_formula, relative_braking_abruptly_formula)
 from comparison.micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
@@ -173,7 +173,7 @@ class RG3(BenchmarkScenario):
         # lane speed limit
         country = SupportedTrafficSignCountry.GERMANY
         lanelet_ids = self.ego_vehicle.lanelet_assignment[0]
-        ts_interpreter = TrafficSigInterpreter(
+        ts_interpreter = TrafficSignInterpreter(
             country, self.lanelet_network
         )
         lane_speed_limit = ts_interpreter.speed_limit(frozenset(lanelet_ids))
@@ -296,7 +296,9 @@ class RG123(BenchmarkScenario):
         br_speed_limit = 43
         keeps_br_speed_limit = keeps_speed_limit(br_speed_limit, 2, 6)
 
-        keeps_speed_limit_one_step = (keeps_lane_speed_limit & keeps_type_speed_limit &
+
+        no_backwards = no_backwards_driving(2, 6)
+        keeps_speed_limit_one_step = (keeps_lane_speed_limit & keeps_type_speed_limit & no_backwards &
                                       keeps_foc_speed_limit & keeps_br_speed_limit)
 
         spec = keeps_speed_limit_one_step.always(0, self.T) & formula
