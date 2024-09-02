@@ -62,6 +62,7 @@ class STLRuleMonitor:
         )
         self._vehicle_id = config.repair.ego_id
         self.multiproc = config.repair.multiproc
+        self.mpr = config.repair.use_mpr
         self._rules = config.repair.rules
         self._rule_eval = []
         self._start_time_step = self._world.vehicle_by_id(self._vehicle_id).start_time
@@ -352,7 +353,7 @@ class STLRuleMonitor:
 
         all_props_all_ids_all = []
         all_rules_all_ids_all = []
-        if self.multiproc:
+        if self.multiproc and not self.mpr:
             rule_ids = []
             queue = Queue()
             processes = [
