@@ -264,7 +264,10 @@ class STLRuleMonitor:
         all_prop_robs = np.full(
             all_prop_names.shape, np.nan
         )  # Initialize with NaN for safety
+
         tv_prop_robs = np.full(all_prop_names.shape, np.nan)
+        all_pre_rob_grad = np.empty(all_prop_names.shape[0], dtype=object)
+
         for i in range(all_prop_names.shape[0]):  # Iterate over rows
             for j in range(all_prop_names.shape[1]):  # Iterate over columns
                 prop_name = all_prop_names[i, j]
@@ -277,7 +280,10 @@ class STLRuleMonitor:
                 tv_prop_robs[i, j] = self.all_props_all_ids_all[i][prop_name][
                     self.rule_to_other_id[self._rules[i]]
                 ][self.rule_to_tv[self._rules[i]] - self._start_time_step]
-        all_pre_rob_grad = self.rob_predicate[:, self._tv - self._start_time_step]
+
+            # all_pre_rob_grad should have the same length of all_prop_names.shape[0]
+            all_pre_rob_grad[i] = self.rob_predicate[i][
+                                  self.rule_to_tv[self._rules[i]] - self._start_time_step]
 
         prop_nodes = []
         for idx in np.transpose(np.isfinite(all_prop_robs).nonzero()):
