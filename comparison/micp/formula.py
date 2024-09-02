@@ -16,7 +16,7 @@ def keeps_speed_limit(speed_limit, v_index, d, name=None):
 
     # create predicate a*y >= b for the speed limit
     below_speed_limit = LinearPredicate(-a, -speed_limit)
-
+    print("below_speed_limit", speed_limit)
     if name is not None:
         below_speed_limit.name = name
     return below_speed_limit
