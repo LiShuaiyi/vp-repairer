@@ -1,6 +1,7 @@
 import numpy as np
 
 from crmonitor.common.vehicle import Vehicle, Lane
+from crmonitor.common.world import World
 
 from collections import defaultdict
 from functools import lru_cache
@@ -67,3 +68,21 @@ class KeepsSafeDistanceConstraint:
             self.constraint_dict[time_step] = (real_s_l, velocity_l)
         return self.constraint_dict
 
+class CollisionFreeConstraint:
+    def __init__(self):
+        self.constraint_dict = defaultdict(tuple)
+
+    def compute(self, world: World, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
+        for time_step in range(initial_time_step, final_time_step + 1):
+            s_min, s_max = -np.inf, np.inf
+            for vid in world.vehicle_ids_for_time_step(time_step):
+                vehicle = world.vehicle_by_id(vid)
+                if ego_vehicle.lanes_at_state(time_step).intersection(vehicle.lanes_at_state(time_step)):
+                    if (vehicle.rear_s(time_step, ego_vehicle.get_lane(initial_time_step)) >
+                            ego_vehicle.front_s(time_step, ego_vehicle.get_lane(initial_time_step))):
+                        s_max = min(s_max, vehicle.rear_s(time_step, ego_vehicle.get_lane(initial_time_step)))
+                    elif (vehicle.front_s(time_step, ego_vehicle.get_lane(initial_time_step)) <
+                            ego_vehicle.rear_s(time_step, ego_vehicle.get_lane(initial_time_step))):
+                        s_min = max(s_min, vehicle.front_s(time_step, ego_vehicle.get_lane(initial_time_step)))
+            self.constraint_dict[time_step] = (s_min, s_max)
+        return self.constraint_dict
