@@ -35,12 +35,12 @@ class VehicleModel(LinearSystem):
         I = np.eye(d)
         z = np.zeros((d, d))
 
-        # A matrix for the state space [s_x, v_x, a_x, j_x; s_y, v_y, a_y, j_y]
+        # A matrix for the state space  [s_x,s_y, v_x, v_x, a_x, a_y, j_x, j_y]
         A = np.block([
-            [z, I, z, z],   # position depends on velocity
-            [z, z, I, z],   # velocity depends on acceleration
-            [z, z, z, I],   # acceleration depends on jerk
-            [z, z, z, z]    # jerk is independent (input only)
+            [I, I, z, z],
+            [z, I, I, z],
+            [z, z, I, I],
+            [z, z, z, I]
         ])
 
         # B matrix where control input affects only jerk
@@ -51,14 +51,22 @@ class VehicleModel(LinearSystem):
             [I]
         ])
 
-        # C matrix for full state observation
-        C = np.eye(4 * d + 2)
+        # C matrix for selective state observation with direct feedthrough
+        C = np.block([
+            [I, z, z, z],  # output position
+            [z, I, z, z],  # output velocity
+            [z, z, I, z],
+            [z, z, z, I],
+            [z, z, z, z],
+        ])
 
+        # D matrix for direct feedthrough from control input to acceleration
         D = np.block([
             [z],  # no direct feedthrough to position
             [z],  # no direct feedthrough to velocity
-            [z],  # no direct feedthrough to acceleration
-            [I]  # direct feedthrough to jerk
+            [z],
+            [z],
+            [I]   # direct feedthrough to acceleration from jerk's derivative
         ])
-        # Initialize the linear system with these matrices
+
         super().__init__(A, B, C, D)
