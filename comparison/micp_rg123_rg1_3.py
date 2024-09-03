@@ -30,6 +30,7 @@ other_vehicle = world.vehicle_by_id(other_id)
 
 # Define the system and specification
 scenario = RG123(T=T,
+                 world=world,
                  ego_vehicle=ego_vehicle,
                  other_vehicle=other_vehicle,
                  lanelet_network=world.road_network.lanelet_network)
@@ -67,7 +68,8 @@ solver.AddQuadraticCost(Q, R)
 solver.AddControlBounds(u_min, u_max)
 x, u, _, _ = solver.Solve()
 
-print(f"Time elapsed: {time.time() - time_start:.2f}s")
+print(f"Time used: {time.time() - time_start:.2f}s")
+print(f"Optimal robustness: {solver.rho.X[0]}")
 traj_cr = list()
 
 # transform every trajectory point
@@ -82,6 +84,7 @@ for i in range(T + 1):
         }
     state = CustomState(**state_values)
     traj_cr.append(state)
+
 
 # plot velocity and acc
 plt.figure()
