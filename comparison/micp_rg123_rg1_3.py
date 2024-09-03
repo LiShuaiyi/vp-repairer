@@ -36,8 +36,8 @@ scenario = RG123(T=T,
 
 spec = scenario.GetSpecification()
 sys = scenario.GetSystem()
-Q = 1e-1 * np.diag([0, 0, 2, 0, 0, 0, 1, 1])   # just penalize high velocities
-R = 10 * np.eye(2)
+Q = 1e-1 * np.diag([1, 0, 2, 1, 1, 1, 1, 1])
+R = 100 * np.eye(2)
 
 initial_state_lon = ego_vehicle.get_lon_state(0, ego_vehicle.get_lane(0))
 initial_state_lat = ego_vehicle.get_lat_state(0, ego_vehicle.get_lane(0))
@@ -55,6 +55,8 @@ x0 = np.array(
 )
 
 import time
+time_start = time.time()
+
 solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
 # solver = ScipyGradientSolver(spec, sys, x0, T, verbose=True)
 
@@ -63,10 +65,9 @@ u_max = np.array([12, 12,])
 
 solver.AddQuadraticCost(Q, R)
 solver.AddControlBounds(u_min, u_max)
-time_start = time.time()
 x, u, _, _ = solver.Solve()
 
-
+print(f"Time elapsed: {time.time() - time_start:.2f}s")
 traj_cr = list()
 
 # transform every trajectory point
@@ -82,7 +83,12 @@ for i in range(T + 1):
     state = CustomState(**state_values)
     traj_cr.append(state)
 
-
+# plot velocity and acc
+plt.figure()
+plt.plot([state.velocity for state in traj_cr])
+plt.plot([state.acceleration for state in traj_cr])
+plt.legend(['velocity', 'acceleration'])
+plt.show()
 # Plot the results
 plot_limits = [158, 390, -32, -18.4]
 from commonroad.visualization.mp_renderer import MPRenderer
@@ -140,8 +146,8 @@ def plot_scenario(crscenario, traj_cr, plot_limits, time_step):
         pos_x_replanned[time_step:],
         pos_y_replanned[time_step:],
         color=TUMColor.TUMblue.value,
-        marker='x',
-        markersize=7.5,
+        marker='D',
+        markersize=5,
         zorder=22,
         linewidth=1.5,
         label="replanned trajectory",

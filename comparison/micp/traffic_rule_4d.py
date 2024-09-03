@@ -8,7 +8,8 @@ from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, 
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
                                      not_braking_formula, not_braking_abruptly_formula, relative_braking_abruptly_formula)
 from comparison.micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
-from comparison.micp.vehicle_models import VehicleModel
+# from comparison.micp.vehicle_models import VehicleModel
+from comparison.micp.vehicle_models_dt import VehicleModel
 from crmonitor.common.vehicle import Vehicle, Lane
 
 from commonroad.scenario.traffic_sign import SupportedTrafficSignCountry
@@ -303,7 +304,7 @@ class RG123(BenchmarkScenario):
         return spec
 
     def GetSystem(self):
-        sys = VehicleModel()
+        sys = VehicleModel(0.2)
         return sys
 
     def add_to_plot(self, ax):
