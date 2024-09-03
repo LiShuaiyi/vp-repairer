@@ -16,11 +16,21 @@ def keeps_speed_limit(speed_limit, v_index, d, name=None):
 
     # create predicate a*y >= b for the speed limit
     below_speed_limit = LinearPredicate(-a, -speed_limit)
-
+    print("below_speed_limit", speed_limit)
     if name is not None:
         below_speed_limit.name = name
     return below_speed_limit
 
+def no_backwards_driving(v_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, v_index] = 1
+
+    # create predicate a*y >= b for the speed limit
+    no_backwards = LinearPredicate(a, 0)
+
+    if name is not None:
+        no_backwards.name = name
+    return no_backwards
 
 def braking_formula(a_index, d, name=None):
     a = np.zeros((1, d))

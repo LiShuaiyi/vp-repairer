@@ -8,7 +8,8 @@ from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, 
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
                                      not_braking_formula, not_braking_abruptly_formula, relative_braking_abruptly_formula)
 from comparison.micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
-
+# from comparison.micp.vehicle_models import VehicleModel
+from comparison.micp.vehicle_models_dt import VehicleModel
 from crmonitor.common.vehicle import Vehicle, Lane
 
 from commonroad.scenario.traffic_sign import SupportedTrafficSignCountry
@@ -59,7 +60,7 @@ class RG1(BenchmarkScenario):
             keeps_safe_distance = linearized_keeps_safe_distance_formula(
                 self.keeps_safe_distance_constr.constraint_dict[time_step][0],
                 self.keeps_safe_distance_constr.constraint_dict[time_step][1],
-                0, 2, 6,  self.ego_vehicle.shape.length, 2.578
+                0, 2, 10,  self.ego_vehicle.shape.length, 2.578
             )
             subformula_list.append(
                 not_in_front_of | not_in_same_lane | keeps_safe_distance
@@ -69,7 +70,7 @@ class RG1(BenchmarkScenario):
         return formula
 
     def GetSystem(self):
-        sys = DoubleIntegrator(2)
+        sys = DoubleIntegrator(4)
         return sys
 
     def add_to_plot(self, ax):
@@ -116,33 +117,29 @@ class RG2(BenchmarkScenario):
         subformula_list = []
         for time_step in time_interval:
             not_in_front_of = not_in_front_of_formula(
-                self.in_front_of_constr.constraint_dict[time_step], 0, 6, self.ego_vehicle.shape.length, 2.578
+                self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
             )
             in_front_of = in_front_of_formula(
-                self.in_front_of_constr.constraint_dict[time_step], 0, 6, self.ego_vehicle.shape.length, 2.578
+                self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
             )
             not_in_same_lane = not_in_same_lane_formula(
-                self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 6
+                self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
             )
             in_same_lane = in_same_lane_formula(
-               self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 6
+               self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
             )
-            keeps_safe_distance = keeps_safe_distance_formula(
-               self.keeps_safe_distance_constr.constraint_dict[time_step][0],
-                self.keeps_safe_distance_constr.constraint_dict[time_step][1],
-                0, 2, 6,  self.ego_vehicle.shape.length, 2.578
-            )
+
             keeps_safe_distance = linearized_keeps_safe_distance_formula(
                 self.keeps_safe_distance_constr.constraint_dict[time_step][0],
                 self.keeps_safe_distance_constr.constraint_dict[time_step][1],
-                0, 2, 6,  self.ego_vehicle.shape.length, 2.578
+                0, 2, 10,  self.ego_vehicle.shape.length, 2.578
             )
-            not_braking = not_braking_formula(5, 6)
-            not_braking_abruptly = not_braking_abruptly_formula(5, 6)
+            not_braking = not_braking_formula(5, 10)
+            not_braking_abruptly = not_braking_abruptly_formula(5, 10)
 
             relative_braking_abruptly = relative_braking_abruptly_formula(
                 self.other_vehicle.get_lon_state(time_step, self.ego_vehicle.get_lane(0)).a,
-                5, 6
+                5, 10
             )
             subformula_list.append(
                 not_braking | not_in_front_of | not_in_same_lane | not_braking_abruptly
@@ -153,7 +150,7 @@ class RG2(BenchmarkScenario):
         return formula
 
     def GetSystem(self):
-        sys = DoubleIntegrator(2)
+        sys = VehicleModel()
         return sys
 
     def add_to_plot(self, ax):
@@ -179,19 +176,19 @@ class RG3(BenchmarkScenario):
         lane_speed_limit = ts_interpreter.speed_limit(frozenset(lanelet_ids))
         if lane_speed_limit is None:
             lane_speed_limit = 60
-        keeps_lane_speed_limit = keeps_speed_limit(lane_speed_limit, 2, 6)
+        keeps_lane_speed_limit = keeps_speed_limit(lane_speed_limit, 2, 10)
 
         # type speed_limit
         type_speed_limit = 60
-        keeps_type_speed_limit = keeps_speed_limit(type_speed_limit, 2, 6)
+        keeps_type_speed_limit = keeps_speed_limit(type_speed_limit, 2, 10)
 
         # FOV speed limit
         fov_speed_limit = 50
-        keeps_foc_speed_limit = keeps_speed_limit(fov_speed_limit, 2, 6)
+        keeps_foc_speed_limit = keeps_speed_limit(fov_speed_limit, 2, 10)
 
         # braking speed limit
         br_speed_limit = 43
-        keeps_br_speed_limit = keeps_speed_limit(br_speed_limit, 2, 6)
+        keeps_br_speed_limit = keeps_speed_limit(br_speed_limit, 2, 10)
 
         keeps_speed_limit_one_step = (keeps_lane_speed_limit & keeps_type_speed_limit &
                                       keeps_foc_speed_limit & keeps_br_speed_limit)
@@ -238,16 +235,16 @@ class RG123(BenchmarkScenario):
         subformula_list = []
         for time_step in time_interval:
             not_in_front_of = not_in_front_of_formula(
-                self.in_front_of_constr.constraint_dict[time_step], 0, 6, self.ego_vehicle.shape.length, 2.578
+                self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
             )
             in_front_of = in_front_of_formula(
-                self.in_front_of_constr.constraint_dict[time_step], 0, 6, self.ego_vehicle.shape.length, 2.578
+                self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
             )
             not_in_same_lane = not_in_same_lane_formula(
-                self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 6
+                self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
             )
             in_same_lane = in_same_lane_formula(
-               self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 6
+               self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
             )
             # keeps_safe_distance = keeps_safe_distance_formula(
             #    self.keeps_safe_distance_constr.constraint_dict[time_step][0],
@@ -257,14 +254,14 @@ class RG123(BenchmarkScenario):
             keeps_safe_distance = linearized_keeps_safe_distance_formula(
                 self.keeps_safe_distance_constr.constraint_dict[time_step][0],
                 self.keeps_safe_distance_constr.constraint_dict[time_step][1],
-                0, 2, 6,  self.ego_vehicle.shape.length, 2.578
+                0, 2, 10,  self.ego_vehicle.shape.length, 2.578
             )
-            not_braking = not_braking_formula(5, 6)
-            not_braking_abruptly = not_braking_abruptly_formula(5, 6)
+            not_braking = not_braking_formula(5, 10)
+            not_braking_abruptly = not_braking_abruptly_formula(5, 10)
 
             relative_braking_abruptly = relative_braking_abruptly_formula(
                 self.other_vehicle.get_lon_state(time_step, self.ego_vehicle.get_lane(0)).a,
-                5, 6
+                5, 10
             )
             subformula_list.append(
                 (not_braking | not_in_front_of | not_in_same_lane | not_braking_abruptly
@@ -282,22 +279,22 @@ class RG123(BenchmarkScenario):
         lane_speed_limit = ts_interpreter.speed_limit(frozenset(lanelet_ids))
         if lane_speed_limit is None:
             lane_speed_limit = 60
-        keeps_lane_speed_limit = keeps_speed_limit(lane_speed_limit, 2, 6)
+        keeps_lane_speed_limit = keeps_speed_limit(lane_speed_limit, 2, 10)
 
         # type speed_limit
         type_speed_limit = 60
-        keeps_type_speed_limit = keeps_speed_limit(type_speed_limit, 2, 6)
+        keeps_type_speed_limit = keeps_speed_limit(type_speed_limit, 2, 10)
 
         # FOV speed limit
         fov_speed_limit = 50
-        keeps_foc_speed_limit = keeps_speed_limit(fov_speed_limit, 2, 6)
+        keeps_foc_speed_limit = keeps_speed_limit(fov_speed_limit, 2, 10)
 
         # braking speed limit
         br_speed_limit = 43
-        keeps_br_speed_limit = keeps_speed_limit(br_speed_limit, 2, 6)
+        keeps_br_speed_limit = keeps_speed_limit(br_speed_limit, 2, 10)
 
 
-        no_backwards = no_backwards_driving(2, 6)
+        no_backwards = no_backwards_driving(2, 10)
         keeps_speed_limit_one_step = (keeps_lane_speed_limit & keeps_type_speed_limit & no_backwards &
                                       keeps_foc_speed_limit & keeps_br_speed_limit)
 
@@ -307,7 +304,7 @@ class RG123(BenchmarkScenario):
         return spec
 
     def GetSystem(self):
-        sys = DoubleIntegrator(2)
+        sys = VehicleModel(0.2)
         return sys
 
     def add_to_plot(self, ax):
