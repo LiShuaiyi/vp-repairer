@@ -34,8 +34,8 @@ scenario = RG123(T=T,
 
 spec = scenario.GetSpecification()
 sys = scenario.GetSystem()
-Q = 1e-1 * np.diag([0, 0, 0, 0, 0, 0, 1, 1])   # just penalize high velocities
-R = 1 * np.eye(2)
+Q = 1e-1 * np.diag([0, 0, 10, 10, 0, 0, 1, 1])   # just penalize high velocities
+R = 10 * np.eye(2)
 
 initial_state_lon = ego_vehicle.get_lon_state(0, ego_vehicle.get_lane(0))
 initial_state_lat = ego_vehicle.get_lat_state(0, ego_vehicle.get_lane(0))
