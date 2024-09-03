@@ -6,17 +6,19 @@ from micp.traffic_rule_4d import RG123
 from stlpy.solvers import *
 
 from commonroad.common.file_reader import CommonRoadFileReader
-
+from commonroad.scenario.state import CustomState
 from crmonitor.common.world import World
+
+from crrepairer.utils.visualization import TUMColor
 from micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
 from crmonitor.evaluation.evaluation import RuleEvaluator
 
 scenario_path = "../scenarios/DEU_LocationDLower-8_154_T-1.xml"
 
 # Open the scenario
-scenario, _ = CommonRoadFileReader(scenario_path).open(lanelet_assignment=True)
+crscenario, _ = CommonRoadFileReader(scenario_path).open(lanelet_assignment=True)
 
-world = World.create_from_scenario(scenario)
+world = World.create_from_scenario(crscenario)
 
 T = 20
 ego_id = 11
@@ -34,7 +36,7 @@ scenario = RG123(T=T,
 
 spec = scenario.GetSpecification()
 sys = scenario.GetSystem()
-Q = 1e-1 * np.diag([0, 0, 10, 10, 0, 0, 1, 1])   # just penalize high velocities
+Q = 1e-1 * np.diag([0, 0, 2, 0, 0, 0, 1, 1])   # just penalize high velocities
 R = 10 * np.eye(2)
 
 initial_state_lon = ego_vehicle.get_lon_state(0, ego_vehicle.get_lane(0))
@@ -45,7 +47,7 @@ x0 = np.array(
         initial_state_lat.d,
         initial_state_lon.v,
         0,
-        0,
+        initial_state_lon.a,
         0,
         0,
         0,
@@ -63,14 +65,89 @@ solver.AddQuadraticCost(Q, R)
 solver.AddControlBounds(u_min, u_max)
 time_start = time.time()
 x, u, _, _ = solver.Solve()
-print(x)
-print(u)
-print("", time.time() - time_start)
-if x is not None:
-    # Plot the solution
 
-    ax = plt.gca()
-    scenario.add_to_plot(ax)
 
-    plt.scatter(*x[:2,:])
+traj_cr = list()
+
+# transform every trajectory point
+for i in range(T + 1):
+    clcs_pos = [x[0, i], x[1, i]]
+    cart_pos = ego_vehicle.get_lane(0).clcs.convert_to_cartesian_coords(clcs_pos[0], clcs_pos[1])
+    state_values = {
+        'position': np.array([cart_pos[0], cart_pos[1]]),
+        'velocity': np.sqrt(x[2, i] **2 + x[3, i] **2),
+        'acceleration': np.sqrt(x[4, i] **2 + x[5, i] **2),
+        'time_step': i
+        }
+    state = CustomState(**state_values)
+    traj_cr.append(state)
+
+
+# Plot the results
+plot_limits = [158, 390, -32, -18.4]
+from commonroad.visualization.mp_renderer import MPRenderer
+
+def plot_scenario(crscenario, traj_cr, plot_limits, time_step):
+    fig, ax = plt.subplots(1, 1, figsize=(20, 10))
+    rnd = MPRenderer(ax=ax, plot_limits=plot_limits)
+
+    # visualize scenario
+    rnd.draw_params.time_begin = time_step
+    rnd.draw_params.trajectory.draw_trajectory = False
+    rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
+    rnd.draw_params.occupancy.draw_occupancies = False
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = (
+        False
+    )
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMColor.TUMgray.value
+    )
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.edgecolor = (
+        TUMColor.TUMblack.value
+    )
+    rnd.draw_params.dynamic_obstacle.draw_shape = True
+    rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = True
+    rnd.draw_params.dynamic_obstacle.trajectory.line_width = 0.3
+    rnd.draw_params.dynamic_obstacle.draw_signals = False
+    rnd.draw_params.dynamic_obstacle.draw_icon = True
+    # rnd.draw_params.lanelet_network.traffic_sign.draw_traffic_signs = True
+    # rnd.draw_params.traffic_sign.draw_traffic_signs = True
+    rnd.draw_params.lanelet_network.lanelet.stop_line_color = (
+        TUMColor.TUMblack.value
+    )
+    rnd.draw_params.lanelet_network.lanelet.draw_stop_line = True
+    crscenario.draw(rnd)
+
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = False
+    rnd.draw_params.dynamic_obstacle.draw_shape = True
+    rnd.draw_params.dynamic_obstacle.trajectory.draw_trajectory = False
+
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.opacity = 0.5
+    rnd.draw_params.dynamic_obstacle.occupancy.draw_occupancies = False
+    rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.shape.facecolor = (
+        TUMColor.TUMblue.value
+    )
+
+    # render scenario and ego vehicle
+    rnd.render()
+    pos_x_replanned = []
+    pos_y_replanned = []
+    for state in traj_cr:
+        pos_x_replanned.append(state.position[0])
+        pos_y_replanned.append(state.position[1])
+
+    rnd.ax.plot(
+        pos_x_replanned[time_step:],
+        pos_y_replanned[time_step:],
+        color=TUMColor.TUMblue.value,
+        marker='x',
+        markersize=7.5,
+        zorder=22,
+        linewidth=1.5,
+        label="replanned trajectory",
+    )
     plt.show()
+
+
+for i in range(T + 1):
+    plot_scenario(crscenario, traj_cr, plot_limits, i)
