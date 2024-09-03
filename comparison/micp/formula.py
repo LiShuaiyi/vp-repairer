@@ -96,6 +96,16 @@ def not_braking_abruptly_formula(a_index, d, name=None):
 def in_same_lane_formula(bounds, y1_index, y2_index, d, name=None):
     return inside_rectangle_formula(bounds, y1_index, y2_index, d, name)
 
+def collision_free_formula(interval, index, d, length, wheelbase):
+    # Convert tuple to list
+    interval_list = list(interval)
+
+    # Perform the operation
+    interval_list[1] -= (1 / 2 * length/2)
+
+    # Convert back to tuple if necessary
+    interval = tuple(interval_list)
+    return inside_interval_formula(interval, index, d, "collision_free")
 
 def not_in_same_lane_formula(bounds, y1_index, y2_index, d, name=None):
     return outside_rectangle_formula(bounds, y1_index, y2_index, d, name)
@@ -106,7 +116,7 @@ def in_front_of_formula(interval, index, d, length, wheelbase):
     interval_list = list(interval)
 
     # Perform the operation
-    interval_list[1] -= (1 / 2 * length/2 + wheelbase/2)
+    interval_list[1] -= (1 / 2 * length/2)
 
     # Convert back to tuple if necessary
     interval = tuple(interval_list)
@@ -118,7 +128,7 @@ def not_in_front_of_formula(interval, index, d, length, wheelbase):
     interval_list = list(interval)
 
     # Perform the operation
-    interval_list[1] -= (1 / 2 * length/2 + wheelbase/2)
+    interval_list[1] -= (1 / 2 * length/2)
 
     # Convert back to tuple if necessary
     interval = tuple(interval_list)
@@ -135,7 +145,7 @@ def keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_ind
                 + y[velocity_index] * 0.4
         )
         # return rear_l - (y[position_index]) - d_safe
-        return rear_l - (y[position_index] + 1/2 * length + wheelbase/2) - d_safe
+        return rear_l - (y[position_index] + 1/2 * length) - d_safe
     return NonlinearPredicate(g, d, name)
 
 
@@ -154,7 +164,7 @@ def linearized_keeps_safe_distance_formula(rear_l, velocity_l, position_index, v
         safe_distance_der_0 = derivative_safe_distance(
             velocity_samples[i], -10, 0.4
         )
-        right_hand = - rear_l + length/2 + wheelbase/2 + safe_distance_0 - safe_distance_der_0 * velocity_samples[i]
+        right_hand = - rear_l + length/2 + safe_distance_0 - safe_distance_der_0 * velocity_samples[i]
         a = np.zeros((1, d))
         a[:, position_index] = -1
         a[:, velocity_index] = -safe_distance_der_0

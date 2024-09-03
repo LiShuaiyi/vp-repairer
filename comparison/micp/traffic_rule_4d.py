@@ -4,13 +4,16 @@ from stlpy.systems.linear import DoubleIntegrator
 from stlpy.benchmarks.common import make_rectangle_patch
 
 from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, keeps_safe_distance_formula,
+                                     collision_free_formula,
                                      not_in_front_of_formula, not_in_same_lane_formula, no_backwards_driving,
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
                                      not_braking_formula, not_braking_abruptly_formula, relative_braking_abruptly_formula)
-from comparison.micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
+from comparison.micp.constraints import (InSameLaneConstraint, InFrontOfConstraint,
+                                         KeepsSafeDistanceConstraint, CollisionFreeConstraint)
 # from comparison.micp.vehicle_models import VehicleModel
 from comparison.micp.vehicle_models_dt import VehicleModel
 from crmonitor.common.vehicle import Vehicle, Lane
+from crmonitor.common.world import World
 
 from commonroad.scenario.traffic_sign import SupportedTrafficSignCountry
 from commonroad.scenario.traffic_sign_interpreter import TrafficSignInterpreter
@@ -208,7 +211,7 @@ class RG3(BenchmarkScenario):
 
 class RG123(BenchmarkScenario):
     """Rule RG1-3"""
-    def __init__(self, T: int, ego_vehicle: Vehicle, other_vehicle: Vehicle, lanelet_network):
+    def __init__(self, T: int, world: World, ego_vehicle: Vehicle, other_vehicle: Vehicle, lanelet_network):
         self.T: int = T
         self.ego_vehicle = ego_vehicle
         self.other_vehicle = other_vehicle
@@ -227,6 +230,11 @@ class RG123(BenchmarkScenario):
         self.keeps_safe_distance_constr = KeepsSafeDistanceConstraint()
         self.keeps_safe_distance_constr.compute(
             self.ego_vehicle, self.other_vehicle, 0, self.T
+        )
+
+        self.collision_avoidance_constr = CollisionFreeConstraint()
+        self.collision_avoidance_constr.compute(
+            world, self.ego_vehicle, self.other_vehicle, 0, self.T
         )
 
     def GetSpecification(self):
@@ -256,6 +264,11 @@ class RG123(BenchmarkScenario):
                 self.keeps_safe_distance_constr.constraint_dict[time_step][1],
                 0, 2, 10,  self.ego_vehicle.shape.length, 2.578
             )
+
+            collision_free = collision_free_formula(
+                self.collision_avoidance_constr.constraint_dict[time_step], 0, 10,
+                self.ego_vehicle.shape.length, 2.578
+            )
             not_braking = not_braking_formula(5, 10)
             not_braking_abruptly = not_braking_abruptly_formula(5, 10)
 
@@ -263,10 +276,11 @@ class RG123(BenchmarkScenario):
                 self.other_vehicle.get_lon_state(time_step, self.ego_vehicle.get_lane(0)).a,
                 5, 10
             )
+
             subformula_list.append(
                 (not_braking | not_in_front_of | not_in_same_lane | not_braking_abruptly
                 | (keeps_safe_distance & in_front_of & in_same_lane & relative_braking_abruptly))
-                 & (not_in_front_of | not_in_same_lane | keeps_safe_distance)
+                 & (not_in_front_of | not_in_same_lane | keeps_safe_distance) & collision_free
             )
         formula = STLTree(subformula_list, "and", time_interval)
 
