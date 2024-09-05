@@ -486,6 +486,11 @@ class GurobiSolver:
             diff_ref.addConstant(-x_ref.reference[i].j)
             long_costs.add(diff_ref * diff_ref, weight_j)
 
+        # fixme: additional punishment of the last state
+        diff_ref = LinExpr()
+        diff_ref.add(self.x[0, -1])
+        long_costs.add(diff_ref * diff_ref, 1000)
+        
         for u in self.u:
             long_costs.add(u * u, weight_u)
 
