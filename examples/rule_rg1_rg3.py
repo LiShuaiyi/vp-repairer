@@ -1,6 +1,6 @@
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-from crrepairer.utils.visualization import visualize_repaired_result, visualize_scenario_once
+from crrepairer.utils.visualization import visualize_repaired_result, visualize_scenario_once, visualize_v_profile_tc_all
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
@@ -44,16 +44,17 @@ if __name__ == "__main__":
             )
             if config.debug.show_plots:
                 # ============= Visualization =============
+                visualize_v_profile_tc_all(repairer, ego_initial, ego_repaired, config.repair.t_0, config.repair.t_f)
                 # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
-                visualize_scenario_once(config.scenario,
-                                        ego_initial,
-                                        ego_repaired,
-                                        repairer.tc,  # Assuming time_end is the current time_step for visualization
-                                        None,
-                                        config.debug.plot_limits,
-                                        config.repair.t_f,
-                                        repairer.tc,
-                                        repairer.tv,
-                                        repairer.target_vehicle,
-                                        traffic_rule_monitor.world,
-                                        flag_repair=True)
+                # visualize_scenario_once(config.scenario,
+                #                         ego_initial,
+                #                         ego_repaired,
+                #                         repairer.tc,  # Assuming time_end is the current time_step for visualization
+                #                         None,
+                #                         config.debug.plot_limits,
+                #                         config.repair.t_f,
+                #                         repairer.tc,
+                #                         repairer.tv,
+                #                         repairer.target_vehicle,
+                #                         traffic_rule_monitor.world,
+                #                         flag_repair=True)

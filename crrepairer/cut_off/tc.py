@@ -57,11 +57,14 @@ class TC(CutOffBase, ABC):
         )
         self._rule_to_other_id = self.rule_monitor.rule_to_other_id
         self._visualize = False
+        self._save_state_lists = False
+
         self._compliant_maneuver = None
         self._tc = -math.inf
         self._tc_dict = defaultdict(float)
         self._mid = None
         self._search_mode = TCSearchMode.BINARY
+        self.state_list_set = []
 
         # todo fix in params in crime
         yaml_file = os.path.join(
@@ -260,6 +263,8 @@ class TC(CutOffBase, ABC):
                     self.scenario,
                     self._sim_lat.vehicle_dynamics.shape,
                 )
+            if self._save_state_lists:
+                self.state_list_set.append(state_list[start_time:])
             check_elements_state_list(state_list, self.dT)
             try:
                 tv, _ = self.calc_tv_updated(

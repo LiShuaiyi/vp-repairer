@@ -29,6 +29,7 @@ class TUMColor(List, Enum):
     TUMdarkblue = [0, 82 / 255, 147 / 255]
     TUMwhite = [1, 1, 1]
     TUMblack = [0, 0, 0]
+    TUMlightBlue = [100/255, 160/255, 200/255]
     TUMlightgray = [217 / 255, 218 / 255, 219 / 255]
 
 
@@ -92,9 +93,42 @@ def plot_velocity_acceleration_profile(
         color=color,
         linestyle=linestyle,
         marker=marker,
-        linewidth=1.0,
+        linewidth=1.5,
         label=label
     )
+
+def visualize_v_profile_tc_all(
+    repairer: SMTTrajectoryRepairer,
+    ego_initial: DynamicObstacle,
+    ego_repaired: DynamicObstacle,
+    time_start: int,
+    time_end: int,
+):
+    plt.figure(figsize=(6, 2.4))
+    tv = repairer.tv
+    tc = repairer.tc
+    time_list = [time_step - time_start for time_step in range(time_start, time_end)]
+    ego_ini_vel = [ego_initial.state_at_time(t).velocity for t in range(time_start, time_end)]
+    ego_rep_vel = [ego_repaired.state_at_time(t).velocity for t in range(time_start, time_end)]
+
+    plt.axhline(y=0, linestyle="--", linewidth=1.0)
+    plot_velocity_acceleration_profile(time_list, ego_ini_vel, TUMColor.TUMblue.value, "Initial", marker="x")
+    plot_velocity_acceleration_profile(time_list[tv - time_start:], ego_ini_vel[tv - time_start:], "red", "Violation", marker="x")
+    plot_velocity_acceleration_profile(time_list[tc - time_start:], ego_rep_vel[tc - time_start:], TUMColor.TUMgreen.value, "Repaired")
+
+    for state_list in repairer.t_solver.tc_object.state_list_set:
+        plt.plot(
+            [state.time_step - time_start for state in state_list],
+            [state.velocity for state in state_list],
+            color=TUMColor.TUMgray.value,
+            linestyle=":",
+            linewidth=1.5,
+        )
+    plt.xticks(range(0, time_end - time_start, 10))
+    plt.xlim([0, time_end - time_start])
+    plt.xlabel("Time step")
+    plt.ylabel("Velocity")
+    plt.show()
 
 
 def visualize_v_profile(
