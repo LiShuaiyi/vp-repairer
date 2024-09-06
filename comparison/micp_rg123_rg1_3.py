@@ -87,8 +87,13 @@ for i in range(T + 1):
 
 
 # plot velocity and acc
-plt.figure()
-plt.plot([state.velocity for state in traj_cr])
+plt.figure(figsize=(6, 2.4))
+plt.plot([state.velocity for state in traj_cr], linewidth=3, marker='D',
+        markersize=5, color=TUMColor.TUMblue.value)
+plt.xticks(range(0, 20, 10))
+plt.xlim(0, 20)
+
+plt.ylim(19.363476994916265, 45.246605857384935)
 plt.plot([state.acceleration for state in traj_cr])
 plt.legend(['velocity', 'acceleration'])
 plt.show()
