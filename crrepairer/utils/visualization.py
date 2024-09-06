@@ -29,6 +29,7 @@ class TUMColor(List, Enum):
     TUMdarkblue = [0, 82 / 255, 147 / 255]
     TUMwhite = [1, 1, 1]
     TUMblack = [0, 0, 0]
+    TUMyellow = [203/255, 171/255, 1/255]
     TUMlightBlue = [100/255, 160/255, 200/255]
     TUMlightgray = [217 / 255, 218 / 255, 219 / 255]
 

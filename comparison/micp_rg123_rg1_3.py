@@ -89,7 +89,7 @@ for i in range(T + 1):
 # plot velocity and acc
 plt.figure(figsize=(6, 2.4))
 plt.plot([state.velocity for state in traj_cr], linewidth=3, marker='D',
-        markersize=5, color=TUMColor.TUMblue.value)
+        markersize=4, color=TUMColor.TUMyellow.value)
 plt.xticks(range(0, 20, 10))
 plt.xlim(0, 20)
 
@@ -153,11 +153,11 @@ def plot_scenario(crscenario, traj_cr, plot_limits, time_step):
     rnd.ax.plot(
         pos_x_replanned[time_step:],
         pos_y_replanned[time_step:],
-        color=TUMColor.TUMblue.value,
+        color=TUMColor.TUMyellow.value,
         marker='D',
-        markersize=5,
+        markersize=4,
         zorder=22,
-        linewidth=1.5,
+        linewidth=3,
         label="replanned trajectory",
     )
     plt.show()
