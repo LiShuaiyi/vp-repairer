@@ -174,7 +174,8 @@ class TSolver:
                         in [PositionPredicates.InIntersectionConflictArea]
                         and predicate.agent_placeholders == (0, 1)
                     ):
-                        compliant_maneuver += [Maneuver.BRAKE]
+                        compliant_maneuver += [Maneuver.BRAKE,
+                                               Maneuver.KICKDOWN]
                     elif (
                         predicate_category == "Pos"
                         and predicate.evaluator.predicate_name
