@@ -216,7 +216,7 @@ class RuleConstraintsReach:
                         pattern = r"once\[(.*?)\]"
                         time_interval = re.findall(pattern, prop.name)[0]
                         values = time_interval.split(",")
-                        divided_values = [int(Fraction(value)/self.reach_config.planning.dt) for value in values]
+                        divided_values = [round(Fraction(value)/self.reach_config.planning.dt) for value in values]
                         divided_values[-1] += self._tc_obj.tv_time_step - self._tc_obj.tc_time_step
                         time_interval_int = "..".join(str(value) for value in divided_values)
                         if prop.ttv_value > 0:
