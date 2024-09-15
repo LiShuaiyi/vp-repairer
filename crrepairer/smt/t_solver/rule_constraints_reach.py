@@ -347,7 +347,7 @@ class RuleConstraintsReach:
         #
         # util_visual_semantic.plot_reach_graph(self.reach_interface, node_to_group=node_to_group)
         # util_visual_semantic.plot_scenario_with_regions(self.semantic_model, "CVLN")
-        util_visual_semantic.plot_scenario_with_reachable_sets(self.reach_interface, save_gif=True)
+        # util_visual_semantic.plot_scenario_with_reachable_sets(self.reach_interface, save_gif=True)
 
         # * for debugging the original reach
         #util_visual.plot_scenario_with_reachable_sets(self.reach_interface)
