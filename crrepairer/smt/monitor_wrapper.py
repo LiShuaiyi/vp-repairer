@@ -273,14 +273,23 @@ class STLRuleMonitor:
             for j in range(all_prop_names.shape[1]):  # Iterate over columns
                 prop_name = all_prop_names[i, j]
                 # tv is now self.rule_to_tv[self._rules[i]]
-                all_prop_robs[i, j] = min(
-                    self.all_props_all_ids_all[i][prop_name][
-                        self.rule_to_other_id[self._rules[i]]
-                    ][self._tv - self._start_time_step :]
-                )
-                tv_prop_robs[i, j] = self.all_props_all_ids_all[i][prop_name][
-                    self.rule_to_other_id[self._rules[i]]
-                ][self.rule_to_tv[self._rules[i]] - self._start_time_step]
+                seq = self.all_props_all_ids_all[i][prop_name][
+                          self.rule_to_other_id[self._rules[i]]
+                      ][self._tv - self._start_time_step:]
+                # Check if the sequence is empty
+                if seq:
+                    all_prop_robs[i, j] = min(seq)
+                else:
+                    all_prop_robs[i, j] = -1
+
+                # Calculate the index for tv_prop_robs safely
+                tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
+                # Check if the index is within the valid range of the list
+                if 0 <= tv_index < len(self.all_props_all_ids_all[i][prop_name][self.rule_to_other_id[self._rules[i]]]):
+                    tv_prop_robs[i, j] = \
+                    self.all_props_all_ids_all[i][prop_name][self.rule_to_other_id[self._rules[i]]][tv_index]
+                else:
+                    tv_prop_robs[i, j] = -1  # Assign -1 if the index is out of range or invalid
 
             # all_pre_rob_grad should have the same length of all_prop_names.shape[0]
             all_pre_rob_grad[i] = self.rob_predicate[i][
