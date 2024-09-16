@@ -201,7 +201,8 @@ class RuleConstraintsReach:
             self.repaired_rules = []
             # add the repairing propositions
             for prop in self._prop_full:
-
+                if prop is None:
+                    continue
                 if PredSafeDistPrec.predicate_name in prop.name:
                     if prop.alphabet[0] == '~':
                         # change the sign
