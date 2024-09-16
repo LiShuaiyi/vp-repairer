@@ -392,7 +392,7 @@ class STLRuleMonitor:
                 ):
                     rule_rob.append(evaluator.update())
                     other_ids.append(evaluator.other_ids)
-                    prop, other_id_props, _ = evaluator.get_propositions_all()
+                    prop, other_id_props, all_rules_all_pre, _ = evaluator.get_propositions_all()
                     # Combine processing of prop and all_values_all_ids
                     for prop_name, vehicle_dict in prop.items():
                         if prop_name not in all_props_all_ids:
@@ -405,10 +405,11 @@ class STLRuleMonitor:
                             # Populate all_props_all_ids
                             all_props_all_ids[prop_name][vid].append(rob)
 
-                            # Populate all_rules_all_ids
-                            if vid not in all_rules_all_ids:
-                                all_rules_all_ids[vid] = []
-                            all_rules_all_ids[vid].append(rob)
+                    for vid in all_rules_all_pre.keys():
+                        # Populate all_rules_all_ids
+                        if vid not in all_rules_all_ids:
+                            all_rules_all_ids[vid] = []
+                        all_rules_all_ids[vid].append(all_rules_all_pre[vid])
                     if other_id_props:
                         prop_names.append(
                             [prop_name for prop_name in other_id_props.keys()]
@@ -485,7 +486,7 @@ class STLRuleMonitor:
             rule_rob.append(evaluator.update())
             other_ids.append(evaluator.other_ids)
 
-            prop, other_id_props, _ = evaluator.get_propositions_all()
+            prop, other_id_props, all_rules_all_pre, _ = evaluator.get_propositions_all()
             # Combine processing of prop and all_values_all_ids
             for prop_name, vehicle_dict in prop.items():
                 if prop_name not in all_props_all_ids:
@@ -498,10 +499,11 @@ class STLRuleMonitor:
                     # Populate all_props_all_ids
                     all_props_all_ids[prop_name][vid].append(rob)
 
+                for vid in all_rules_all_pre.keys():
                     # Populate all_rules_all_ids
                     if vid not in all_rules_all_ids:
                         all_rules_all_ids[vid] = []
-                    all_rules_all_ids[vid].append(rob)
+                    all_rules_all_ids[vid].append(all_rules_all_pre[vid])
             if other_id_props:
                 prop_names.append([prop_name for prop_name in other_id_props.keys()])
                 prop_rob.append(
