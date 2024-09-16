@@ -75,20 +75,15 @@ class TSolver:
         self._sel_prop = list()
         for prop in propositions:
             # if not the same value
-            if prop.alphabet in model:
+            if prop is not None and prop.alphabet in model:
                 if (prop.ttv_value < 0 and prop.alphabet[0] != "~") or (
                     prop.ttv_value > 0 and prop.alphabet[0] == "~"
                 ):
                     self._sel_prop.append(prop)
-            # if (prop.ttv_value < 0 and prop.alphabet in model) or (
-            #     prop.ttv_value > 0 and "~" + prop.alphabet in model
-            # ):
-            #     self._sel_prop.append(prop)
-            # print out the selected propositions
-            if self.verbose:
-                print(
-                    f"* \t<TSolver>: selected propositions: {prop.alphabet[-1]} {prop.name} = {prop.ttv_value}"
-                )
+                    if self.verbose:
+                        print(
+                            f"* \t<TSolver>: selected propositions: {prop.alphabet[-1]} {prop.name} = {prop.ttv_value}"
+                        )
         self._compliant_maneuvers = self.set_compliant_maneuver(use_mpr_derivative)
 
     def set_compliant_maneuver(self, use_mpr_derivative: bool):

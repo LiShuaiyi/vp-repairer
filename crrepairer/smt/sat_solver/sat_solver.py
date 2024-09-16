@@ -90,7 +90,7 @@ class SATSolver:
                 (
                     prop_node
                     for prop_node in self._prop_nodes
-                    if prop_node.alphabet == m[-1]
+                    if prop_node.alphabet[-1] == m[-1]
                 ),
                 None,
             )

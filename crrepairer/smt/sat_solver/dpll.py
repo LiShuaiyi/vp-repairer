@@ -42,7 +42,7 @@ class DPLL:
     def get_literal(cnf, prop_nodes, tv_time_step: int):
         def robustness_degree(alp):
             rob_min_tv_h = 0
-            node = next((x for x in prop_nodes if x.alphabet == alp[-1]), None)
+            node = next((x for x in prop_nodes if x.alphabet[-1] == alp[-1]), None)
             # TODO: FIXME: fix proposition sort. currently first consider propositions determined by the ego vehicle
             for predicate in node.children:
                 if predicate.agent_placeholders == (1, 0):

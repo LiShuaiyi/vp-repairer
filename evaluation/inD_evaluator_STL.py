@@ -97,7 +97,7 @@ if __name__ == "__main__":
                 # check whether there is an element of the rule_robustness is smaller than 0
                 print(rule_robustness)
                 if np.any(rule_robustness < 0) and rule_robustness[0] > 0 :
-                    row.append(rule)
+                    row.append(rule, rule_robustness)
                     violation = True
                     print("violation", rule)
             if violation:

@@ -201,7 +201,8 @@ class RuleConstraintsReach:
             self.repaired_rules = []
             # add the repairing propositions
             for prop in self._prop_full:
-
+                if prop is None:
+                    continue
                 if PredSafeDistPrec.predicate_name in prop.name:
                     if prop.alphabet[0] == '~':
                         # change the sign
@@ -217,8 +218,10 @@ class RuleConstraintsReach:
                         time_interval = re.findall(pattern, prop.name)[0]
                         values = time_interval.split(",")
                         divided_values = [round(Fraction(value)/self.reach_config.planning.dt) for value in values]
-                        divided_values += self._tc_obj.tv_time_step - self._tc_obj.tc_time_step
-                        time_interval_int = "..".join(str(value) for value in divided_values)
+                        time_steps = [self._tc_obj.tv_time_step - self._tc_obj.tc_time_step,
+                                      self._tc_obj.N - self._tc_obj.tc_time_step]
+                        time_steps[0] = max(time_steps[0] - divided_values[-1], 0)
+                        time_interval_int = "..".join(str(value) for value in time_steps)
                         if prop.ttv_value > 0:
                             # change the sign
                             semantic_prop = "!" + semantic_prop
