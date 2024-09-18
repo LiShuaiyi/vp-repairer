@@ -64,7 +64,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         return self._model
 
     def repair(self, check_flag=True, *args, **kwargs):
-        self._tv = self.rule_monitor.tv_time_step
+        self._tv = self.rule_monitor.tv_time_step_with_future
         if self._tv == -math.inf:
             return None
         nr = 1

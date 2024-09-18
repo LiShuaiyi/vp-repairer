@@ -129,6 +129,10 @@ class STLRuleMonitor:
         return self._tv - self._future_time_step
 
     @property
+    def tv_time_step_with_future(self) -> Union[int, float]:
+        return self._tv
+
+    @property
     def future_time_step(self) -> Union[int, float]:
         return self._future_time_step
 
