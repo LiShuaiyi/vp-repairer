@@ -351,7 +351,8 @@ class RIN4(BenchmarkScenario):
         self.lanelet_network = lanelet_network
 
         self.conflict_area = self.obtain_conflict_area()
-        self.conflict_area_bound = self.conflict_area.bounds # (xmin, xmax, ymin, ymax)
+        xmin, ymin, xmax, ymax = self.conflict_area.bounds
+        self.conflict_area_bound = (xmin, xmax, ymin, ymax) # (xmin, xmax, ymin, ymax)
         print(f"Conflict Area Bounds: {self.conflict_area_bound}")
 
     def obtain_conflict_area(self):
@@ -380,24 +381,24 @@ class RIN4(BenchmarkScenario):
 
         conflict_region_enl_clcs_polygon = shapely.Polygon(conflict_region_enl_clcs)
 
-        # # Plotting both the Cartesian and Curvilinear conflict regions
-        # fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-        #
-        # # Plot Cartesian conflict region
-        # ax[0].set_title("Conflict Region in Cartesian Coordinates")
-        # ax[0].plot(*conflict_region_CART.exterior.xy, color='blue', label='Original Region')
-        # ax[0].plot(*conflict_region_enl_polygon.exterior.xy, color='red', linestyle='--', label='Enlarged Region')
-        # ax[0].set_aspect('equal', 'box')
-        # ax[0].legend()
-        #
-        # # Plot Curvilinear conflict region
-        # ax[1].set_title("Conflict Region in Curvilinear Coordinates")
-        # ax[1].plot(*zip(*conflict_region_enl_clcs), color='green', label='Enlarged CLCS Region')
-        # ax[1].set_aspect('equal', 'box')
-        # ax[1].legend()
-        #
-        # # Show the plots
-        # plt.show()
+        # Plotting both the Cartesian and Curvilinear conflict regions
+        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+
+        # Plot Cartesian conflict region
+        ax[0].set_title("Conflict Region in Cartesian Coordinates")
+        ax[0].plot(*conflict_region_CART.exterior.xy, color='blue', label='Original Region')
+        ax[0].plot(*conflict_region_enl_polygon.exterior.xy, color='red', linestyle='--', label='Enlarged Region')
+        ax[0].set_aspect('equal', 'box')
+        ax[0].legend()
+
+        # Plot Curvilinear conflict region
+        ax[1].set_title("Conflict Region in Curvilinear Coordinates")
+        ax[1].plot(*zip(*conflict_region_enl_clcs), color='green', label='Enlarged CLCS Region')
+        ax[1].set_aspect('equal', 'box')
+        ax[1].legend()
+
+        # Show the plots
+        plt.show()
 
         return conflict_region_enl_clcs_polygon
 
