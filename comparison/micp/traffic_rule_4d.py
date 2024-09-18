@@ -440,8 +440,10 @@ class RIN4(BenchmarkScenario):
         #     ) or not (on_lanelet_with_type_intersection(a0))
         # )
         other_veh_in_conflict_area_time = [9, 13]
+        no_backwards = no_backwards_driving(2, 10)
         spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
-                outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
+                outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]) &
+                no_backwards.always(0, self.T))
 
         return spec
 
