@@ -375,29 +375,29 @@ class RIN4(BenchmarkScenario):
 
         conflict_region_enl_polygon = shapely.Polygon(conflict_region_enlarged)
 
-        conflict_region_enl_clcs = [self.ego_vehicle.ref_path_lane.CLCS.convert_to_curvilinear_coords(
+        conflict_region_enl_clcs = [self.ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
             vertex[0], vertex[1]) for vertex in conflict_region_enl_polygon.exterior.coords]
 
         conflict_region_enl_clcs_polygon = shapely.Polygon(conflict_region_enl_clcs)
 
-        # Plotting both the Cartesian and Curvilinear conflict regions
-        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-
-        # Plot Cartesian conflict region
-        ax[0].set_title("Conflict Region in Cartesian Coordinates")
-        ax[0].plot(*conflict_region_CART.exterior.xy, color='blue', label='Original Region')
-        ax[0].plot(*conflict_region_enl_polygon.exterior.xy, color='red', linestyle='--', label='Enlarged Region')
-        ax[0].set_aspect('equal', 'box')
-        ax[0].legend()
-
-        # Plot Curvilinear conflict region
-        ax[1].set_title("Conflict Region in Curvilinear Coordinates")
-        ax[1].plot(*zip(*conflict_region_enl_clcs), color='green', label='Enlarged CLCS Region')
-        ax[1].set_aspect('equal', 'box')
-        ax[1].legend()
-
-        # Show the plots
-        plt.show()
+        # # Plotting both the Cartesian and Curvilinear conflict regions
+        # fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+        #
+        # # Plot Cartesian conflict region
+        # ax[0].set_title("Conflict Region in Cartesian Coordinates")
+        # ax[0].plot(*conflict_region_CART.exterior.xy, color='blue', label='Original Region')
+        # ax[0].plot(*conflict_region_enl_polygon.exterior.xy, color='red', linestyle='--', label='Enlarged Region')
+        # ax[0].set_aspect('equal', 'box')
+        # ax[0].legend()
+        #
+        # # Plot Curvilinear conflict region
+        # ax[1].set_title("Conflict Region in Curvilinear Coordinates")
+        # ax[1].plot(*zip(*conflict_region_enl_clcs), color='green', label='Enlarged CLCS Region')
+        # ax[1].set_aspect('equal', 'box')
+        # ax[1].legend()
+        #
+        # # Show the plots
+        # plt.show()
 
         return conflict_region_enl_clcs_polygon
 
@@ -440,7 +440,7 @@ class RIN4(BenchmarkScenario):
         # )
         other_veh_in_conflict_area_time = [9, 13]
         spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
-                inside_conflict_area.eventually(other_veh_in_conflict_area_time[-1], self.T))
+                outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
 
         return spec
 
