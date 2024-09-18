@@ -434,6 +434,7 @@ def visualize_scenario_once(
     target_veh=None,
     world: World = None,
     flag_repair=False,
+    marksize=5,
 ):
     """
     Function to visualize the repairing result given time step
@@ -518,7 +519,7 @@ def visualize_scenario_once(
                 pos_y[time_step:tc+1],
                 color=TUMColor.TUMblue.value,  # Use TUM blue for before TC
                 marker="x",
-                markersize=5,
+                markersize=marksize,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -528,7 +529,7 @@ def visualize_scenario_once(
                 pos_y[tc:end_time + 1],
                 color=TUMColor.TUMgreen.value,  # Use TUM green for after TC
                 marker=".",
-                markersize=5,
+                markersize=marksize,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -539,7 +540,7 @@ def visualize_scenario_once(
                 pos_y[time_step:end_time + 1],
                 color=TUMColor.TUMgreen.value,  # Use TUM green for the remaining trajectory
                 marker=".",
-                markersize=5,
+                markersize=marksize,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -551,7 +552,7 @@ def visualize_scenario_once(
                 pos_y[time_step:tv + 1],
                 color=TUMColor.TUMblue.value,  # Use TUM blue for before TV
                 marker="x",
-                markersize=5,
+                markersize=marksize,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -561,7 +562,7 @@ def visualize_scenario_once(
                 pos_y[tv:end_time + 1],
                 color="red",  # Use red for after TV
                 marker="x",
-                markersize=5,
+                markersize=marksize,
                 zorder=35,
                 linewidth=1.5,
             )
@@ -572,7 +573,7 @@ def visualize_scenario_once(
                 pos_y[time_step:end_time + 1],
                 color="red",  # Use red for the remaining trajectory
                 marker="x",
-                markersize=5,
+                markersize=marksize,
                 zorder=35,
                 linewidth=1.5,
             )
