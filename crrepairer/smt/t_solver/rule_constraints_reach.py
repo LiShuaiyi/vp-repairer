@@ -152,12 +152,17 @@ class RuleConstraintsReach:
         # update params
         self.reach_config.vehicle.ego.t_react = 0.4
         self.reach_config.reachable_set.mode_computation = 8
-        self.reach_config.vehicle.other.a_lon_min = -10.5
-        self.reach_config.vehicle.other.a_lon_max = 10.5
-        if "R_G2" in rule_monitor._rules:
-            self.reach_config.vehicle.other.a_lon_min = -2
         self.reach_config.vehicle.ego.a_lon_min = -10
         self.reach_config.vehicle.ego.v_max = 50
+        if "R_IN4" in rule_monitor._rules:
+            self.reach_config.vehicle.ego.a_lon_max = 4
+            self.reach_config.vehicle.ego.v_max = 4
+        else:
+            self.reach_config.vehicle.other.a_lon_min = -10.5
+            self.reach_config.vehicle.other.a_lon_max = 10.5
+        if "R_G2" in rule_monitor._rules:
+            self.reach_config.vehicle.other.a_lon_min = -2
+
         self.reach_config.planning.reference_point = "REAR"
         self.reach_config.vehicle.other.width = self._target_vehicle.shape.width
         self.reach_config.vehicle.other.length = self._target_vehicle.shape.length
