@@ -100,12 +100,12 @@ plt.plot([state.velocity for state in traj_cr], linewidth=3, marker='D',
 plt.xticks(range(0, 20, 10))
 plt.xlim(0, 20)
 
-plt.ylim(19.363476994916265, 45.246605857384935)
+plt.ylim(0, 3)
 plt.plot([state.acceleration for state in traj_cr])
 plt.legend(['velocity', 'acceleration'])
 plt.show()
 # Plot the results
-plot_limits = [158, 390, -32, -18.4]
+plot_limits = [40, 69, -45, -17]
 from commonroad.visualization.mp_renderer import MPRenderer
 
 def plot_scenario(crscenario, traj_cr, plot_limits, time_step):
@@ -162,7 +162,7 @@ def plot_scenario(crscenario, traj_cr, plot_limits, time_step):
         pos_y_replanned[time_step:],
         color=TUMColor.TUMyellow.value,
         marker='D',
-        markersize=4,
+        markersize=10,
         zorder=22,
         linewidth=3,
         label="replanned trajectory",

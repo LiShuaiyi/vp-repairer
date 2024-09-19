@@ -48,20 +48,23 @@ if __name__ == "__main__":
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
                 ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
             )
+            visualize_v_profile_tc_all(repairer, ego_initial, ego_repaired, config.repair.t_0, config.repair.t_f,
+                                       ylim=[-0.2, 2.2], figsize=(6,1.5))
+
             # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
-            visualize_scenario_once(config.scenario,
-                                    ego_initial,
-                                    ego_repaired,
-                                    0,  # Assuming time_end is the current time_step for visualization
-                                    None,
-                                    config.debug.plot_limits,
-                                    config.repair.t_f,
-                                    repairer.tc,
-                                    repairer.tv,
-                                    repairer.target_vehicle,
-                                    traffic_rule_monitor.world,
-                                    flag_repair=False,
-                                    marksize=10)
+            # visualize_scenario_once(config.scenario,
+            #                         ego_initial,
+            #                         ego_repaired,
+            #                         0,  # Assuming time_end is the current time_step for visualization
+            #                         None,
+            #                         config.debug.plot_limits,
+            #                         config.repair.t_f,
+            #                         repairer.tc,
+            #                         repairer.tv,
+            #                         repairer.target_vehicle,
+            #                         traffic_rule_monitor.world,
+            #                         flag_repair=False,
+            #                         marksize=10)
             # if config.debug.show_plots:
             #     # ============= Visualization =============
             #     visualize_repaired_result(config, ego_initial, ego_repaired, repairer)

@@ -104,8 +104,10 @@ def visualize_v_profile_tc_all(
     ego_repaired: DynamicObstacle,
     time_start: int,
     time_end: int,
+    ylim: Optional[List[float]] = None,
+    figsize = (6, 2.4)
 ):
-    plt.figure(figsize=(6, 2.4))
+    plt.figure(figsize=figsize)
     tv = repairer.tv
     tc = repairer.tc
     time_list = [time_step - time_start for time_step in range(time_start, time_end)]
@@ -126,6 +128,8 @@ def visualize_v_profile_tc_all(
             linewidth=1.5,
         )
     plt.xticks(range(0, time_end - time_start, 10))
+    if ylim:
+        plt.ylim(ylim)
     plt.xlim([0, time_end - time_start])
     plt.xlabel("Time step")
     plt.ylabel("Velocity")
