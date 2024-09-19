@@ -53,7 +53,7 @@ class TC(CutOffBase, ABC):
         self.rule_monitor = rule_monitor_copy
         self._world_ego = self.world.vehicle_by_id(ego_vehicle.obstacle_id)
         self._tv_time_step = (
-                self.rule_monitor.tv_time_step + self.rule_monitor.future_time_step
+                self.rule_monitor.tv_time_step
         )
         self._rule_to_other_id = self.rule_monitor.rule_to_other_id
         self._visualize = False
