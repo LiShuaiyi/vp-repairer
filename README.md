@@ -107,6 +107,18 @@ commonroad-repairer
 └─ setup.py                                      
 ```
 
+> [!NOTE]
+> **Error**: `RuntimeError: New dt is not a multiple of obstacle dt`
+> 
+> **Solution**: You need to use the `TkAgg` backend instead of `QtAgg`.
+> 
+> Here's how to check the current backend and switch to `TkAgg`:
+> ```python
+> import matplotlib
+> print(matplotlib.get_backend())  # Check the current backend
+> matplotlib.use('TkAgg')          # Set the backend to TkAgg
+> ```
+
 ## Minimal Example
 
 A tutorial notebook and an example script can be found in the `tutorial/` folder. For running the examples from the paper
