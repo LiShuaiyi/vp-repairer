@@ -107,7 +107,8 @@ commonroad-repairer
 └─ setup.py                                      
 ```
 
-> [!NOTE]
+> **IMPORTANT!**
+>
 > **Error**: `RuntimeError: New dt is not a multiple of obstacle dt`
 > 
 > **Solution**: You need to use the `TkAgg` backend instead of `QtAgg`.
