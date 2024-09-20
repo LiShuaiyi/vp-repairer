@@ -86,3 +86,22 @@ class CollisionFreeConstraint:
                         s_min = max(s_min, vehicle.front_s(time_step, ego_vehicle.get_lane(initial_time_step)))
             self.constraint_dict[time_step] = (s_min, s_max)
         return self.constraint_dict
+
+class CollisionFreeConstraintIntersection:
+    def __init__(self):
+        self.constraint_dict = defaultdict(tuple)
+
+    def compute(self, world: World, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
+        for time_step in range(initial_time_step, final_time_step + 1):
+            s_min, s_max = -np.inf, np.inf
+            for vid in world.vehicle_ids_for_time_step(time_step):
+                vehicle = world.vehicle_by_id(vid)
+                if ego_vehicle.lanes_at_state(time_step).intersection(vehicle.lanes_at_state(time_step)):
+                    if (vehicle.rear_s(time_step, ego_vehicle.get_lane(initial_time_step)) >
+                            ego_vehicle.front_s(time_step, ego_vehicle.ref_path_lane)):
+                        s_max = min(s_max, vehicle.rear_s(time_step, ego_vehicle.ref_path_lane))
+                    elif (vehicle.front_s(time_step, ego_vehicle.ref_path_lane) <
+                            ego_vehicle.rear_s(time_step, ego_vehicle.get_lane(initial_time_step))):
+                        s_min = max(s_min, vehicle.front_s(time_step, ego_vehicle.ref_path_lane))
+            self.constraint_dict[time_step] = (s_min, s_max)
+        return self.constraint_dict

@@ -14,7 +14,7 @@ from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, 
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
                                      not_braking_formula, not_braking_abruptly_formula, relative_braking_abruptly_formula)
 from comparison.micp.constraints import (InSameLaneConstraint, InFrontOfConstraint,
-                                         KeepsSafeDistanceConstraint, CollisionFreeConstraint)
+                                         KeepsSafeDistanceConstraint, CollisionFreeConstraint, CollisionFreeConstraintIntersection)
 # from comparison.micp.vehicle_models import VehicleModel
 from comparison.micp.vehicle_models_dt import VehicleModel
 from crmonitor.common.vehicle import Vehicle, Lane
@@ -355,6 +355,11 @@ class RIN4(BenchmarkScenario):
         self.conflict_area_bound = (xmin, xmax, ymin, ymax) # (xmin, xmax, ymin, ymax)
         print(f"Conflict Area Bounds: {self.conflict_area_bound}")
 
+        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
+        self.collision_avoidance_constr.compute(
+            world, self.ego_vehicle, self.other_vehicle, 0, self.T
+        )
+
     def obtain_conflict_area(self):
         lanelets_dir_ego = self.ego_vehicle.lanelets_dir
         lanelets_dir_other = self.other_vehicle.lanelets_dir
@@ -381,24 +386,24 @@ class RIN4(BenchmarkScenario):
 
         conflict_region_enl_clcs_polygon = shapely.Polygon(conflict_region_enl_clcs)
 
-        # Plotting both the Cartesian and Curvilinear conflict regions
-        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-
-        # Plot Cartesian conflict region
-        ax[0].set_title("Conflict Region in Cartesian Coordinates")
-        ax[0].plot(*conflict_region_CART.exterior.xy, color='blue', label='Original Region')
-        ax[0].plot(*conflict_region_enl_polygon.exterior.xy, color='red', linestyle='--', label='Enlarged Region')
-        ax[0].set_aspect('equal', 'box')
-        ax[0].legend()
-
-        # Plot Curvilinear conflict region
-        ax[1].set_title("Conflict Region in Curvilinear Coordinates")
-        ax[1].plot(*zip(*conflict_region_enl_clcs), color='green', label='Enlarged CLCS Region')
-        ax[1].set_aspect('equal', 'box')
-        ax[1].legend()
-
-        # Show the plots
-        plt.show()
+        # # Plotting both the Cartesian and Curvilinear conflict regions
+        # fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+        #
+        # # Plot Cartesian conflict region
+        # ax[0].set_title("Conflict Region in Cartesian Coordinates")
+        # ax[0].plot(*conflict_region_CART.exterior.xy, color='blue', label='Original Region')
+        # ax[0].plot(*conflict_region_enl_polygon.exterior.xy, color='red', linestyle='--', label='Enlarged Region')
+        # ax[0].set_aspect('equal', 'box')
+        # ax[0].legend()
+        #
+        # # Plot Curvilinear conflict region
+        # ax[1].set_title("Conflict Region in Curvilinear Coordinates")
+        # ax[1].plot(*zip(*conflict_region_enl_clcs), color='green', label='Enlarged CLCS Region')
+        # ax[1].set_aspect('equal', 'box')
+        # ax[1].legend()
+        #
+        # # Show the plots
+        # plt.show()
 
         return conflict_region_enl_clcs_polygon
 
@@ -440,11 +445,23 @@ class RIN4(BenchmarkScenario):
         #     ) or not (on_lanelet_with_type_intersection(a0))
         # )
         other_veh_in_conflict_area_time = [9, 13]
-        no_backwards = no_backwards_driving(2, 10)
         spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
-                outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]) &
-                no_backwards.always(0, self.T))
+                outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
 
+        time_interval = [t for t in range(0, self.T + 1)]
+        subformula_list = []
+        for time_step in time_interval:
+            collision_free = collision_free_formula(
+                self.collision_avoidance_constr.constraint_dict[time_step], 0, 10,
+                self.ego_vehicle.shape.length, 2.578
+            )
+            no_backwards = no_backwards_driving(2, 10)
+            if collision_free:
+                subformula_list.append(collision_free & no_backwards)
+            else:
+                subformula_list.append(no_backwards)
+        formula = STLTree(subformula_list, "and", time_interval)
+        spec = spec & formula
         return spec
 
     def GetSystem(self):
