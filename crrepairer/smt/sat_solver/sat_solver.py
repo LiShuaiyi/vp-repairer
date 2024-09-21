@@ -1,14 +1,13 @@
-import sympy as sp
-
 from crrepairer.smt.sat_solver.dpll import DPLL
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.utils.configuration import RepairerConfiguration
-
+from crrepairer.utils.smt import construct_cnf
 
 class SATSolver:
     def __init__(self, rule_monitor: STLRuleMonitor, config: RepairerConfiguration):
-        self._formula = self.construct_nnf(rule_monitor.sat_formula)
-        self._formula = self.construct_cnf(self._formula)
+        # nnf is constructed with the monitor
+        # self._formula = construct_nnf(rule_monitor.sat_formula)
+        self._formula = construct_cnf(rule_monitor.sat_formula)
         self._prop_nodes = rule_monitor.proposition_nodes
         self._prop_robust_all = rule_monitor.rob_abstraction
         self._init_assign = list()
@@ -26,48 +25,6 @@ class SATSolver:
     @property
     def initial_assignment(self):
         return self._init_assign
-
-    @staticmethod
-    def stl2sympy(input_formula: str):
-        return (
-            input_formula.replace("and", "&")
-            .replace("or", "|")
-            .replace("!", "~")
-            .replace("implies", ">>")
-        )
-
-    @staticmethod
-    def construct_cnf(stl_formula):
-        """
-        Construct Conjunctive Normal Form (CNF) using sympy - first needs to convert the formula to sp's interface.
-        """
-        if isinstance(stl_formula, str):
-            sp_formula = SATSolver.stl2sympy(stl_formula)
-        else:
-            sp_formula = stl_formula
-        cnf_formula = str(sp.to_cnf(sp_formula))
-        return cnf_formula
-
-    @staticmethod
-    def construct_dnf(stl_formula):
-        """
-        Construct Disjunctive Normal Form (DNF) using sympy - first needs to convert the formula to sp's interface.
-        """
-        if isinstance(stl_formula, str):
-            sp_formula = SATSolver.stl2sympy(stl_formula)
-        else:
-            sp_formula = stl_formula
-        dnf_formula = str(sp.to_dnf(sp_formula))
-        return dnf_formula
-
-    @staticmethod
-    def construct_nnf(stl_formula):
-        """
-        Construct Negation Normal Form (NNF) using sympy - first needs to convert the formula to sp's interface.
-        """
-        sp_formula = SATSolver.stl2sympy(stl_formula)
-        nnf_formula = sp.to_nnf(sp.simplify(sp_formula))
-        return nnf_formula
 
     def solve(self):
         """

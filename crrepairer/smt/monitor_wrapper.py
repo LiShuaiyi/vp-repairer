@@ -24,6 +24,7 @@ from crrepairer.utils.configuration import (
     ScenarioType,
     MonitorType,
 )
+from crrepairer.utils.smt import construct_nnf
 
 from commonroad_mpr.utils.configuration_builder import ConfigurationBuilder as Cfg
 
@@ -110,6 +111,8 @@ class STLRuleMonitor:
         self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
 
         self._prop_nodes = self._initialize_prop_rob()
+
+        self.sat_formula = self.obtain_sat_formula_in_nnf()
         print("# =========== Traffic Rule Monitor ========== #")
         for rule in self._violated_rules:
             print(
@@ -167,8 +170,7 @@ class STLRuleMonitor:
     def proposition_nodes(self) -> List[PropositionNode]:
         return self._prop_nodes
 
-    @property
-    def sat_formula(self):
+    def obtain_sat_formula_in_nnf(self):
         """
         For all propositions find the overlapping subsequences in the rule string
         and replace with the alphabet.
@@ -227,7 +229,8 @@ class STLRuleMonitor:
             subformula_list.append("(" + sat_formula + ")")
         for i, substr in enumerate(subformula_list[:-1]):
             subformula_list[i] = substr + " and "
-        return "".join(subformula_list)
+        sat_formula = "".join(subformula_list)
+        return construct_nnf(sat_formula)
 
     @property
     @functools.lru_cache(128)
