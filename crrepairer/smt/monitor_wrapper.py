@@ -1,6 +1,7 @@
 import functools
 import math
 import string
+from itertools import product
 from typing import Iterable, Union, Tuple, Any, List, Dict, Optional
 from collections import defaultdict
 import numpy as np
@@ -25,7 +26,7 @@ from crrepairer.utils.configuration import (
     ScenarioType,
     MonitorType,
 )
-from crrepairer.utils.smt import construct_nnf
+from crrepairer.utils.smt import construct_nnf, parse_nnf_formula, NNFFormula
 
 from commonroad_mpr.utils.configuration_builder import ConfigurationBuilder as Cfg
 
@@ -102,6 +103,8 @@ class STLRuleMonitor:
         self._prop_nodes = self._initialize_prop_nodes()
         # generate the SAT formula in the NNF
         self.sat_formula = self.obtain_sat_formula_in_nnf()
+
+        self.parsed_nnf_formula: NNFFormula = parse_nnf_formula(str(self.sat_formula))
 
         # obtain the time-to-violation using the way written in the Journal paper
         tv = self._cal_tv_def()
@@ -266,7 +269,7 @@ class STLRuleMonitor:
     @staticmethod
     def infinite_alphabet():
         """Generate an infinite sequence of alphabetic labels like a, b, ..., z, aa, ab, ..., zz, aaa, ..."""
-        from itertools import product
+
         for size in range(1, 100):  # Choose a high enough range for your needs
             for letters in product(string.ascii_lowercase, repeat=size):
                 yield ''.join(letters)
@@ -551,6 +554,7 @@ class STLRuleMonitor:
         if np.any(self.rob_rule[:, 0] < 0):
             return -math.inf
         all_id_all_props_tv = dict()
+        all_rule_all_tv = dict()
         for idx in range(len(self._rules)):
             all_id_all_props_tv[self._rules[idx]] = dict()
 
@@ -598,6 +602,43 @@ class STLRuleMonitor:
                         # If no valid values are found (only -inf), set both satisfaction and violation to inf
                         all_id_all_props_tv[self._rules[idx]][veh][prop_node.alphabet] = float('inf')
                         all_id_all_props_tv[self._rules[idx]][veh]['~' + prop_node.alphabet] = float('inf')
+
+        rule_to_tv = {}
+        rule_to_other_id = {}
+        violated_rules = []
+
+        for idx in range(len(self._rules)):
+            rule = self._rules[idx]
+            tv_list = []
+            tv_by_veh = {}
+
+            # Calculate TV for each vehicle for this rule
+            for veh, props_tv in all_id_all_props_tv[rule].items():
+                tv = self.parsed_nnf_formula.compute_tv(props_tv)
+
+                # Replace tv with inf if it's equal to start_time_step
+                tv = math.inf if tv == self._start_time_step else tv
+
+                tv_list.append(tv)
+                tv_by_veh[veh] = tv
+
+            # Find the minimum TV and the corresponding vehicle
+            min_tv = min(tv_list)
+            rule_to_tv[rule] = min_tv
+            rule_to_other_id[rule] = next(veh for veh, tv in tv_by_veh.items() if tv == min_tv)
+
+            # If the rule has a valid TV (i.e., finite), it is considered violated
+            if min_tv != math.inf:
+                violated_rules.append(rule)
+
+        # Determine the minimum TV overall and the corresponding rule
+        if violated_rules:
+            min_rule_idx = min(violated_rules, key=lambda rule: rule_to_tv[rule])
+            min_tv = rule_to_tv[min_rule_idx]
+        else:
+            min_rule_idx = None
+            min_tv = math.inf
+
 
         all_prop_names = self.abstraction_names[:, 0]
 
