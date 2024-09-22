@@ -103,6 +103,9 @@ class STLRuleMonitor:
         # generate the SAT formula in the NNF
         self.sat_formula = self.obtain_sat_formula_in_nnf()
 
+        # obtain the time-to-violation using the way written in the Journal paper
+        tv = self._cal_tv_def()
+
         # obtain the time-to-violation
         (
             self._violated_rules,
@@ -542,6 +545,73 @@ class STLRuleMonitor:
         if self.rob_rule is None:
             raise ValueError("the evaluation procedure is not executed yet")
         return self.rob_rule, self.other_ids
+
+    def _cal_tv_def(self):
+        # Check if there is an immediate violation at the first time step
+        if np.any(self.rob_rule[:, 0] < 0):
+            return -math.inf
+        all_id_all_props_tv = dict()
+        for idx in range(len(self._rules)):
+            all_id_all_props_tv[self._rules[idx]] = dict()
+
+            for prop_node in self._prop_nodes:
+                evaluation = self.all_props_all_ids_all[idx][prop_node.name]
+                for veh in evaluation.keys():
+                    if veh not in all_id_all_props_tv[self._rules[idx]]:
+                        all_id_all_props_tv[self._rules[idx]][veh] = dict()
+
+                    # List of time evaluations for a given vehicle and proposition
+                    time_values = evaluation[veh]
+
+                    # Find the first valid (non -inf) index and then search for violations/satisfactions from there
+                    valid_time_values = [val for val in time_values if val != float('-inf')]
+                    valid_start_index = next((i for i, val in enumerate(time_values) if val != float('-inf')), None)
+
+                    if valid_time_values:
+                        # todo: consider the future/globally operator
+                        # Find the first index of a negative value (satisfaction)
+                        satisfaction_index = next(
+                            (i for i, val in enumerate(valid_time_values) if val < 0),
+                            float('inf')
+                        )
+                        # Adjust the index by subtracting self._start_time_step
+                        if satisfaction_index != float('inf'):
+                            satisfaction_index -= self._start_time_step
+                        all_id_all_props_tv[self._rules[idx]][veh][prop_node.alphabet] = satisfaction_index
+
+                        # Find the first index of a positive value (violation)
+                        violation_index = next(
+                            (i for i, val in enumerate(valid_time_values) if val > 0),
+                            float('inf')
+                        )
+                        # Adjust the index by subtracting self._start_time_step
+                        if violation_index != float('inf'):
+                            violation_index -= self._start_time_step
+
+                        if prop_node.name.startswith("once"):
+                            # for future, if its satisfied, we consider the maximum time in the interval
+                            if prop_node.name[5:6] != prop_node.name[7:8]:
+                                satisfaction_index += valid_start_index
+
+                        all_id_all_props_tv[self._rules[idx]][veh]['~' + prop_node.alphabet] = violation_index
+                    else:
+                        # If no valid values are found (only -inf), set both satisfaction and violation to inf
+                        all_id_all_props_tv[self._rules[idx]][veh][prop_node.alphabet] = float('inf')
+                        all_id_all_props_tv[self._rules[idx]][veh]['~' + prop_node.alphabet] = float('inf')
+
+        all_prop_names = self.abstraction_names[:, 0]
+
+        all_prop_robs = tv_prop_robs = np.full(
+            all_prop_names.shape, np.nan
+        )  # Initialize with NaN for safety
+
+        all_pre_rob_grad = np.empty(all_prop_names.shape[0], dtype=object)
+
+        for i in range(all_prop_names.shape[0]):  # Iterate over rows
+            for j in range(all_prop_names.shape[1]):  # Iterate over columns
+                prop_name = all_prop_names[i, j]
+
+
 
     def _cal_tv_initial(
         self,
