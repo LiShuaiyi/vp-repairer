@@ -1,10 +1,11 @@
 import functools
 import math
+import string
 from typing import Iterable, Union, Tuple, Any, List, Dict, Optional
 from collections import defaultdict
 import numpy as np
 import dataclasses
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import copy
 from difflib import SequenceMatcher
 from multiprocessing import Process, Queue
@@ -33,10 +34,15 @@ from commonroad_mpr.utils.configuration_builder import ConfigurationBuilder as C
 class PropositionNode:
     name: str
     alphabet: str
-    ttv_value: float
-    ttv_h_min: float  # the mean value across TV to horizon
     source_rule: str
-    children: List[PredicateNode] = dataclasses.field(default_factory=list)
+    children: List['PredicateNode'] = field(default_factory=list)
+    ttv_value: Optional[float] = None
+    ttv_h_min: Optional[float] = None  # Optional, initialized as None
+
+    def set_ttv_values(self, ttv_value: float, ttv_h_min: float):
+        """Method to set the ttv_value and ttv_h_min later."""
+        self.ttv_value = ttv_value
+        self.ttv_h_min = ttv_h_min
 
 
 class STLRuleMonitor:
@@ -92,6 +98,11 @@ class STLRuleMonitor:
             self.all_rules_all_ids_all,
         ) = self.evaluate_initially()
 
+        # initialize the propositional nodes
+        self._prop_nodes = self._initialize_prop_nodes()
+        # generate the SAT formula in the NNF
+        self.sat_formula = self.obtain_sat_formula_in_nnf()
+
         # obtain the time-to-violation
         (
             self._violated_rules,
@@ -110,9 +121,6 @@ class STLRuleMonitor:
 
         self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
 
-        self._prop_nodes = self._initialize_prop_rob()
-
-        self.sat_formula = self.obtain_sat_formula_in_nnf()
         print("# =========== Traffic Rule Monitor ========== #")
         for rule in self._violated_rules:
             print(
@@ -172,65 +180,75 @@ class STLRuleMonitor:
 
     def obtain_sat_formula_in_nnf(self):
         """
-        For all propositions find the overlapping subsequences in the rule string
-        and replace with the alphabet.
+        For all propositions, find the overlapping subsequences in the rule string
+        and replace them with the alphabet symbols corresponding to the proposition nodes.
         """
         subformula_list = []
         prev_idx = 0
+
         for i, evaluator in enumerate(self._rule_eval):
             rule_node = evaluator._rule
-            if len(rule_node.children) == 1:
-                sat_formula = rule_node.children[0].rule_str
-            else:
-                sat_formula = rule_node.rule_str
-                # for child in rule_node.children:
-                #    if hasattr(child, 'quantified_vehicle'):
-                #        sat_formula = sat_formula.replace(child.name,
-                #                                          child.children[0].rule_str)
-                #        print(sat_formula)
-            # do not delete brackets in the rule
+            sat_formula = rule_node.children[0].rule_str if len(rule_node.children) == 1 else rule_node.rule_str
+
+            # Normalize formula strings: Replace logical symbols and keywords
             # 'eventually' is replaced by 'once' because of the same replacement in rtamt
             sat_formula = sat_formula.replace("not", "!").replace("eventually", "once")
+
+            # Find the relevant proposition nodes based on the robustness abstraction
             clear_rob_abs = self.rob_abstraction[i][
                 self.rob_abstraction[i] == self.rob_abstraction[i]
             ]
             length = int(clear_rob_abs.shape[0] / self.rob_abstraction[i].shape[0])
             props_of_rule = self._prop_nodes[prev_idx : prev_idx + length]
             prev_idx += length
+
             for prop_node in props_of_rule:
-                prop_node_name = prop_node.name
-                # if proposition name starts with "once[x,x]", it will be considered as predicate
-                if (
-                    prop_node_name[0:4] == "once"
-                    and prop_node_name[5:6] == prop_node_name[7:8]
-                ):
-                    prop_node_name = prop_node_name.replace(prop_node_name[0:9], "")
-                else:
-                    pattern = r"once\[(.*?)\]"
-                    matches = re.findall(pattern, prop_node_name)
-                    if len(matches) == 2:
-                        delete_once_str = "once[" + matches[1] + "]("
-                        prop_node_name = prop_node_name.replace(delete_once_str, "")
-                        prop_node_name = prop_node_name[:-1]
-                if prop_node_name.startswith("(") and prop_node_name.endswith(")"):
-                    prop_node_name = prop_node_name[1:-1]
-                matches = SequenceMatcher(
-                    None, sat_formula, prop_node_name, autojunk=True
-                ).get_matching_blocks()
-                # TODO: match.size>1, further check necessary
+                prop_node_name = self._normalize_prop_name(prop_node.name)
+
+                # Match and replace the proposition name in the formula
+                matches = SequenceMatcher(None, sat_formula, prop_node_name, autojunk=True).get_matching_blocks()
                 clean_matches = [match for match in matches if match.size > 1]
-                first_index = clean_matches[0].a
-                last_index = clean_matches[-1].a + clean_matches[-1].size
-                to_repl = sat_formula[first_index:last_index]
-                to_repl = re.escape(to_repl)
-                # avoid issue of replacing wrong proposition
-                pattern = rf"(?<!\]\(){to_repl}"
-                sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
-            subformula_list.append("(" + sat_formula + ")")
-        for i, substr in enumerate(subformula_list[:-1]):
-            subformula_list[i] = substr + " and "
-        sat_formula = "".join(subformula_list)
+                if clean_matches:
+                    first_index = clean_matches[0].a
+                    last_index = clean_matches[-1].a + clean_matches[-1].size
+                    to_replace = re.escape(sat_formula[first_index:last_index])
+
+                    # Avoid replacing incorrect propositions
+                    pattern = rf"(?<!\]\(){to_replace}"
+                    sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
+
+            subformula_list.append(f"({sat_formula})")
+
+        # Join the subformulas with "and" operators
+        sat_formula = " and ".join(subformula_list)
+
+        # Return the formula in NNF
         return construct_nnf(sat_formula)
+
+    def _normalize_prop_name(self, prop_name):
+        """
+        Normalize proposition names that start with 'once' or contain temporal predicates.
+        Ensure that if a name starts and ends with parentheses, only the outermost pair is removed.
+        """
+        # Handle propositions that are predicates (starting with "once" and similar patterns)
+        if prop_name.startswith("once") and prop_name[5:6] == prop_name[7:8]:
+            prop_name = prop_name.replace(prop_name[0:9], "")
+
+        # Remove "once[...]" pattern from the proposition name
+        pattern = r"once\[(.*?)\]"
+        matches = re.findall(pattern, prop_name)
+        if len(matches) == 2:
+            to_delete = f"once[{matches[1]}]("
+            prop_name = prop_name.replace(to_delete, "")
+            # Remove only the last closing parenthesis if it exists
+            if prop_name.endswith(")"):
+                prop_name = prop_name[:-1]
+
+        # Remove one pair of parentheses from both ends if both exist
+        while prop_name.startswith("(") and prop_name.endswith(")"):
+            prop_name = prop_name[1:-1]  # Remove only the outermost pair of parentheses
+
+        return prop_name
 
     @property
     @functools.lru_cache(128)
@@ -242,98 +260,46 @@ class STLRuleMonitor:
     def prop_robust_ttv(self):
         return self.rob_abstraction[self.min_rule_idx][self._tv - self._start_time_step]
 
-    def _initialize_prop_rob(self):
+    @staticmethod
+    def infinite_alphabet():
+        """Generate an infinite sequence of alphabetic labels like a, b, ..., z, aa, ab, ..., zz, aaa, ..."""
+        from itertools import product
+        for size in range(1, 100):  # Choose a high enough range for your needs
+            for letters in product(string.ascii_lowercase, repeat=size):
+                yield ''.join(letters)
+
+    def _initialize_prop_nodes(self):
         """
         Construct 'nodes' for propositions for better backward compatibility.
 
         Returns:
         prop_nodes (List[PropositionNode]): List of proposition nodes
         """
-        # Currently does not support multiple quantifiers at the same level
-        # TODO: Incorporate support for multiple quantifiers
-        alphabet = "abcdefghijklmnopqrstuvwxyz"
-
-        def retrieve_preds(node, liste):
-            # Method for retrieving PredicateNodes, which are to be used in determining maneuvers
-            for child in node.children:
-                if hasattr(child, "latest_value"):
-                    liste.append(child)
-                else:
-                    retrieve_preds(child, liste)
-
-        if self._tv in (math.inf, -math.inf):
-            return None
-        # all_prop_TV = self.rob_abstraction[:, self._tv - self._start_time_step]
-        # masked_array = np.ma.masked_equal(self.rob_abstraction[:, self._tv - self._start_time_step:, :], -1)
-
-        # use the interval instead of the exact time step TV:
-        # all_prop_robs = np.ma.min(masked_array, axis=1)
-        all_prop_names = self.abstraction_names[:, self._tv - self._start_time_step]
-        all_prop_robs = np.full(
-            all_prop_names.shape, np.nan
-        )  # Initialize with NaN for safety
-
-        tv_prop_robs = np.full(all_prop_names.shape, np.nan)
-        all_pre_rob_grad = np.empty(all_prop_names.shape[0], dtype=object)
-
-        for i in range(all_prop_names.shape[0]):  # Iterate over rows
-            for j in range(all_prop_names.shape[1]):  # Iterate over columns
-                prop_name = all_prop_names[i, j]
-                # tv is now self.rule_to_tv[self._rules[i]]
-                seq = self.all_props_all_ids_all[i][prop_name][
-                          self.rule_to_other_id[self._rules[i]]
-                      ][self._tv - self._start_time_step:]
-                # Check if the sequence is empty
-                if seq:
-                    all_prop_robs[i, j] = min(seq)
-                else:
-                    all_prop_robs[i, j] = -1
-
-                # Calculate the index for tv_prop_robs safely
-                tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
-                # Check if the index is within the valid range of the list
-                if 0 <= tv_index < len(self.all_props_all_ids_all[i][prop_name][self.rule_to_other_id[self._rules[i]]]):
-                    tv_prop_robs[i, j] = \
-                    self.all_props_all_ids_all[i][prop_name][self.rule_to_other_id[self._rules[i]]][tv_index]
-                else:
-                    tv_prop_robs[i, j] = -1  # Assign -1 if the index is out of range or invalid
-
-            # all_pre_rob_grad should have the same length of all_prop_names.shape[0]
-            all_pre_rob_grad[i] = self.rob_predicate[i][
-                                  self.rule_to_tv[self._rules[i]] - self._start_time_step]
+        all_prop_names = self.abstraction_names[:, 0]
 
         prop_nodes = []
-        for idx in np.transpose(np.isfinite(all_prop_robs).nonzero()):
+        alphabet_gen = self.infinite_alphabet()  # Initialize the infinite alphabet generator
+
+        # Get the indices of non-empty proposition names
+        non_empty_indices = np.transpose(all_prop_names.nonzero())
+
+        # Loop through each index of `all_prop_names` to create proposition nodes
+        for idx in non_empty_indices:
+            prop_name = all_prop_names[tuple(idx)]  # Access the valid proposition name
+
+            # Get the next available alphabet character/sequence
+            prop_alphabet = next(alphabet_gen)
+
+            # Construct the PropositionNode without ttv_value and ttv_h_min, since they are optional
             proposition = PropositionNode(
-                all_prop_names[tuple(idx)],
-                alphabet[len(prop_nodes)],
-                tv_prop_robs[tuple(idx)],
-                all_prop_robs[tuple(idx)],
-                self._rule_eval[idx[0]]._rule.name,
+                name=prop_name,
+                alphabet=prop_alphabet,
+                source_rule=self._rule_eval[idx[0]]._rule.name
             )
-            pred_nodes = []
-            retrieve_preds(self._rule_eval[idx[0]]._rule, pred_nodes)
-            for pred in pred_nodes:
-                if "g0" not in all_prop_names[tuple(idx)]:
-                    if pred.name in all_prop_names[tuple(idx)]:
-                        # add missing values
-                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[
-                            tuple(idx)[0]
-                        ][pred.name]
-                        proposition.children.append(pred)
-                else:
-                    other_props = np.delete(all_prop_names[idx[0]], idx[-1], 0)
-                    if not any(
-                        [
-                            pred.name in p_name
-                            for p_name in other_props[other_props == other_props]
-                        ]
-                    ):
-                        pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[
-                            tuple(idx)[0]
-                        ][pred.name]
-                        proposition.children.append(pred)
+
+            # Append the constructed node to the list
             prop_nodes.append(proposition)
+
         return prop_nodes
 
     def search_future_time_step(self):

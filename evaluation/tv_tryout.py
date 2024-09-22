@@ -17,7 +17,7 @@ class Formula:
         elif self.kind == 'or':
             return f'({self.left} ∨ {self.right})'
 
-    def compute_tv(self, tv_values):
+    def compute_tv(self, tv_values: dict):
         """Recursively compute the Time-to-Violation (TV) based on the given values."""
         if self.kind == 'prop':
             return tv_values[self.prop]
