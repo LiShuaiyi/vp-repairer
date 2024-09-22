@@ -6,7 +6,6 @@ class Formula:
         self.left = left  # Left operand for binary operators
         self.right = right  # Right operand for binary operators
         self.prop = prop  # Atomic proposition (for 'prop' type)
-        self.tv_cache = None  # Cache to store the TV result for this formula
 
     def __repr__(self):
         if self.kind == 'prop':
@@ -20,28 +19,23 @@ class Formula:
 
     def compute_tv(self, tv_values: dict):
         """Recursively compute the Time-to-Violation (TV) based on the given values."""
-        if self.tv_cache is not None:
-            return self.tv_cache
-
         if self.kind == 'prop':
             # Look up the TV value for the atomic proposition
-            self.tv_cache = tv_values[self.prop]
+            return tv_values[self.prop]
         elif self.kind == 'neg':
             # For negation, we now explicitly expect the negated form in the tv_values
             neg_prop = f'~{self.left.prop}'  # Representing negation as ~prop in tv_values
             if neg_prop not in tv_values:
                 raise ValueError(f"TV for negation of {self.left.prop} (as ~{self.left.prop}) not provided in tv_values")
-            self.tv_cache = tv_values[neg_prop]
+            return tv_values[neg_prop]
         elif self.kind == 'and':
             tv_left = self.left.compute_tv(tv_values)
             tv_right = self.right.compute_tv(tv_values)
-            self.tv_cache = min(tv_left, tv_right)
+            return min(tv_left, tv_right)
         elif self.kind == 'or':
             tv_left = self.left.compute_tv(tv_values)
             tv_right = self.right.compute_tv(tv_values)
-            self.tv_cache = max(tv_left, tv_right)
-
-        return self.tv_cache
+            return max(tv_left, tv_right)
 
 
 def parse_nnf_formula(input_str):
@@ -87,7 +81,13 @@ parsed_nnf_formula = parse_nnf_formula(input_nnf_formula_str)
 # Example TV values for each atomic proposition
 # Including the negated versions (~a, ~b, ..., ~o)
 inf = float('inf')
-tv_values = {'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'f': 0, 'g': 0, 'h': 0, 'i': 0, 'j': 0, 'k': 0, 'l': 0, 'm': 0, 'n': 0, 'o': inf, '~a': 3, '~b': 3, '~c': 3, '~d': 3, '~e': 3, '~f': 3, '~g': inf, '~h': inf, '~i': inf, '~j': 7, '~k': inf, '~l': 9, '~m': 9, '~n': 7, '~o': 0}
+tv_values = {
+    'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'f': 0, 'g': 0, 'h': 0, 'i': 0,
+    'j': 0, 'k': 0, 'l': 0, 'm': 0, 'n': 0, 'o': inf,
+    '~a': 3, '~b': 3, '~c': 3, '~d': 3, '~e': 3, '~f': 3, '~g': inf,
+    '~h': inf, '~i': inf, '~j': 7, '~k': inf, '~l': 9, '~m': 9, '~n': 7, '~o': 0
+}
+
 # Compute TV for the formula in NNF
 import time
 iniT = time.time()

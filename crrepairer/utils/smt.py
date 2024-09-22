@@ -7,7 +7,6 @@ class NNFFormula:
         self.left = left  # Left operand for binary operators
         self.right = right  # Right operand for binary operators
         self.prop = prop  # Atomic proposition (for 'prop' type)
-        self.tv_cache = None  # Cache to store the TV result for this formula
 
     def __repr__(self):
         if self.kind == 'prop':
@@ -21,28 +20,23 @@ class NNFFormula:
 
     def compute_tv(self, tv_values: dict):
         """Recursively compute the Time-to-Violation (TV) based on the given values."""
-        if self.tv_cache is not None:
-            return self.tv_cache
-
         if self.kind == 'prop':
             # Look up the TV value for the atomic proposition
-            self.tv_cache = tv_values[self.prop]
+            return tv_values[self.prop]
         elif self.kind == 'neg':
             # For negation, we now explicitly expect the negated form in the tv_values
             neg_prop = f'~{self.left.prop}'  # Representing negation as ~prop in tv_values
             if neg_prop not in tv_values:
                 raise ValueError(f"TV for negation of {self.left.prop} (as ~{self.left.prop}) not provided in tv_values")
-            self.tv_cache = tv_values[neg_prop]
+            return tv_values[neg_prop]
         elif self.kind == 'and':
             tv_left = self.left.compute_tv(tv_values)
             tv_right = self.right.compute_tv(tv_values)
-            self.tv_cache = min(tv_left, tv_right)
+            return min(tv_left, tv_right)
         elif self.kind == 'or':
             tv_left = self.left.compute_tv(tv_values)
             tv_right = self.right.compute_tv(tv_values)
-            self.tv_cache = max(tv_left, tv_right)
-
-        return self.tv_cache
+            return max(tv_left, tv_right)
 
 def parse_nnf_formula(input_str):
     """Parse the NNF formula string and return a structured Formula object."""
