@@ -646,56 +646,47 @@ class STLRuleMonitor:
             return -math.inf
         all_id_all_props_tv = dict()
 
-        for idx in range(len(self._rules)):
-            all_id_all_props_tv[self._rules[idx]] = dict()
+        for rule_idx in range(len(self._rules)):
+            all_id_all_props_tv[self._rules[rule_idx]] = dict()
 
             for prop_node in self._prop_nodes:
-                evaluation = self.all_props_all_ids_all[idx][prop_node.name]
+                evaluation = self.all_props_all_ids_all[rule_idx][prop_node.name]
                 for veh in evaluation.keys():
-                    if veh not in all_id_all_props_tv[self._rules[idx]]:
-                        all_id_all_props_tv[self._rules[idx]][veh] = dict()
+                    if veh not in all_id_all_props_tv[self._rules[rule_idx]]:
+                        all_id_all_props_tv[self._rules[rule_idx]][veh] = dict()
+
+                    # Initialize lists for tv_satisfaction and tv_violation
+                    tv_satisfaction = []
+                    tv_violation = []
 
                     # List of time evaluations for a given vehicle and proposition
                     time_values = evaluation[veh]
 
-                    # Find the first valid (non -inf and non inf) index and then search for violations/satisfactions from there
-                    valid_time_values = [val for val in time_values if val != float('-inf') and val != float('inf')]
+                    # Iterate over the time_values and build both lists
+                    for idx, value in enumerate(time_values):
+                        # Handle satisfaction for positive or inf values
+                        if value > 0 or value == float('inf'):
+                            tv_satisfaction.append(float('inf'))
+                            tv_violation.append(
+                                idx - self._start_time_step)  # Violation: positive values get adjusted index
+                        else:
+                            # Handle satisfaction for negative values
+                            tv_satisfaction.append(
+                                idx - self._start_time_step)  # Satisfaction: negative values get adjusted index
+                            tv_violation.append(float('inf'))  # Violation: negative values get inf
 
-                    # Find the first valid index excluding both -inf and inf values
-                    valid_start_index = next(
-                        (i for i, val in enumerate(time_values) if val != float('-inf') and val != float('inf')), None)
+                    # Exception for processing prop_node logic
+                    if prop_node.name[5:6] != prop_node.name[7:8]:
+                        valid_start_index = next(
+                            (i for i, val in enumerate(time_values) if val != float('-inf') and val != float('inf')),
+                            None)
+                        if valid_start_index is not None:
+                            # Adjusting tv_satisfaction by adding each index with valid_start_index
+                            tv_satisfaction = [val + valid_start_index if val != float('inf') else float('inf') for val
+                                               in tv_satisfaction]
 
-                    if valid_time_values:
-                        # todo: consider the future/globally operator
-                        # Find the first index of a negative value (satisfaction)
-                        satisfaction_index = next(
-                            (i for i, val in enumerate(valid_time_values) if val < 0),
-                            float('inf')
-                        )
-                        # Adjust the index by subtracting self._start_time_step
-                        if satisfaction_index != float('inf'):
-                            satisfaction_index -= self._start_time_step
-                        all_id_all_props_tv[self._rules[idx]][veh][prop_node.alphabet] = satisfaction_index
-
-                        # Find the first index of a positive value (violation)
-                        violation_index = next(
-                            (i for i, val in enumerate(valid_time_values) if val > 0),
-                            float('inf')
-                        )
-                        # Adjust the index by subtracting self._start_time_step
-                        if violation_index != float('inf'):
-                            violation_index -= self._start_time_step
-
-                        if prop_node.name.startswith("once"):
-                            # for future, if its satisfied, we consider the maximum time in the interval
-                            if prop_node.name[5:6] != prop_node.name[7:8]:
-                                satisfaction_index += valid_start_index
-
-                        all_id_all_props_tv[self._rules[idx]][veh]['~' + prop_node.alphabet] = violation_index
-                    else:
-                        # If no valid values are found (only -inf), set both satisfaction and violation to inf
-                        all_id_all_props_tv[self._rules[idx]][veh][prop_node.alphabet] = float('inf')
-                        all_id_all_props_tv[self._rules[idx]][veh]['~' + prop_node.alphabet] = float('inf')
+                    all_id_all_props_tv[self._rules[rule_idx]][veh][prop_node.alphabet] = tv_satisfaction
+                    all_id_all_props_tv[self._rules[rule_idx]][veh]['~' + prop_node.alphabet] = tv_violation
 
         rule_to_tv = {}
         rule_to_other_id = {}
