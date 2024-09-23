@@ -554,7 +554,7 @@ class STLRuleMonitor:
         if np.any(self.rob_rule[:, 0] < 0):
             return -math.inf
         all_id_all_props_tv = dict()
-        all_rule_all_tv = dict()
+
         for idx in range(len(self._rules)):
             all_id_all_props_tv[self._rules[idx]] = dict()
 
@@ -567,9 +567,12 @@ class STLRuleMonitor:
                     # List of time evaluations for a given vehicle and proposition
                     time_values = evaluation[veh]
 
-                    # Find the first valid (non -inf) index and then search for violations/satisfactions from there
-                    valid_time_values = [val for val in time_values if val != float('-inf')]
-                    valid_start_index = next((i for i, val in enumerate(time_values) if val != float('-inf')), None)
+                    # Find the first valid (non -inf and non inf) index and then search for violations/satisfactions from there
+                    valid_time_values = [val for val in time_values if val != float('-inf') and val != float('inf')]
+
+                    # Find the first valid index excluding both -inf and inf values
+                    valid_start_index = next(
+                        (i for i, val in enumerate(time_values) if val != float('-inf') and val != float('inf')), None)
 
                     if valid_time_values:
                         # todo: consider the future/globally operator
@@ -639,20 +642,12 @@ class STLRuleMonitor:
             min_rule_idx = None
             min_tv = math.inf
 
+        # Convert the rule index to integer if possible
+        min_rule_idx = self._rules.index(min_rule_idx) if min_rule_idx is not None else None
 
-        all_prop_names = self.abstraction_names[:, 0]
-
-        all_prop_robs = tv_prop_robs = np.full(
-            all_prop_names.shape, np.nan
-        )  # Initialize with NaN for safety
-
-        all_pre_rob_grad = np.empty(all_prop_names.shape[0], dtype=object)
-
-        for i in range(all_prop_names.shape[0]):  # Iterate over rows
-            for j in range(all_prop_names.shape[1]):  # Iterate over columns
-                prop_name = all_prop_names[i, j]
-
-
+        # Return: violated rules, the index of the rule with the minimum TV, the minimum TV as an integer, rule-to-TV dictionary, and rule-to-other-ID dictionary
+        return violated_rules, min_rule_idx, int(
+            min_tv) if min_tv != math.inf else math.inf, rule_to_tv, rule_to_other_id
 
     def _cal_tv_initial(
         self,
