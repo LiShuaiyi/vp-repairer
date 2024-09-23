@@ -107,16 +107,23 @@ class STLRuleMonitor:
         self.parsed_nnf_formula: NNFFormula = parse_nnf_formula(str(self.sat_formula))
 
         # obtain the time-to-violation using the way written in the Journal paper
-        tv = self._cal_tv_def()
-
-        # obtain the time-to-violation
         (
             self._violated_rules,
             self.min_rule_idx,
             self._tv,
             self.rule_to_tv,
             self.rule_to_other_id,
-        ) = self._cal_tv_initial()
+        ) = self._cal_tv_def()
+        self._update_prop_nodes()
+
+        # # obtain the time-to-violation
+        # (
+        #     self._violated_rules,
+        #     self.min_rule_idx,
+        #     self._tv,
+        #     self.rule_to_tv,
+        #     self.rule_to_other_id,
+        # ) = self._cal_tv_initial()
 
         # todo: multiple targets
         self._other_id = [
@@ -307,6 +314,88 @@ class STLRuleMonitor:
             prop_nodes.append(proposition)
 
         return prop_nodes
+
+    def _update_prop_nodes(self):
+        """
+        Update the ttv_value and ttv_h_min of the proposition nodes.
+        """
+
+        def retrieve_preds(node, liste):
+            # Method for retrieving PredicateNodes, which are to be used in determining maneuvers
+            for child in node.children:
+                if hasattr(child, "latest_value"):
+                    liste.append(child)
+                else:
+                    retrieve_preds(child, liste)
+
+        all_prop_names = self.abstraction_names[:, 0]
+        all_prop_robs = np.full(
+            all_prop_names.shape, np.nan
+        )  # Initialize with NaN for safety
+
+        tv_prop_robs = np.full(all_prop_names.shape, np.nan)
+        all_pre_rob_grad = np.empty(all_prop_names.shape[0], dtype=object)
+
+        # Initialize prop_index for prop_node assignments
+        prop_index = 0
+
+        for i in range(all_prop_names.shape[0]):  # Iterate over rows
+            pred_nodes = []
+            retrieve_preds(self._rule_eval[i]._rule, pred_nodes)
+
+            # all_pre_rob_grad should have the same length as all_prop_names.shape[0]
+            rob_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
+            if 0 <= rob_index < len(self.rob_predicate[i]):
+                all_pre_rob_grad[i] = self.rob_predicate[i][rob_index]
+            else:
+                all_pre_rob_grad[i] = np.nan  # Assign NaN if the index is out of range or invalid
+
+            for j in range(all_prop_names.shape[1]):  # Iterate over columns
+                # tv is now self.rule_to_tv[self._rules[i]]
+                # Get the property name and sequence
+                prop_name = all_prop_names[i, j]
+                other_id = self.rule_to_other_id[self._rules[i]]
+                seq = self.all_props_all_ids_all[i][prop_name][other_id]
+
+                # Check if the sequence is empty or if the slicing would go out of bounds
+                if seq and (self._tv - self._start_time_step) < len(seq):
+                    # Safely slice the sequence from the desired index to the end
+                    all_prop_robs[i, j] = min(seq[self._tv - self._start_time_step:])
+                else:
+                    # If sequence is empty or the slicing index is out of bounds, set to -1
+                    all_prop_robs[i, j] = -1
+
+                # Calculate the index for tv_prop_robs safely
+                tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
+                if 0 <= tv_index < len(seq):  # Ensure tv_index is within valid range
+                    tv_prop_robs[i, j] = seq[tv_index]
+                else:
+                    tv_prop_robs[i, j] = -1  # Assign -1 if the index is out of range or invalid
+
+                # Update the property node with ttv_value and ttv_h_min
+                if prop_index < len(self._prop_nodes):  # Ensure prop_index does not exceed the number of prop_nodes
+                    self._prop_nodes[prop_index].set_ttv_values(
+                        ttv_value=tv_prop_robs[i, j],
+                        ttv_h_min=all_prop_robs[i, j]
+                    )
+
+                    for pred in pred_nodes:
+                        if "g0" not in all_prop_names[tuple([i, j])]:
+                            if pred.name in all_prop_names[tuple([i, j])]:
+                                # Add the missing values (latest_value, mpr_gradient)
+                                pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                self._prop_nodes[prop_index].children.append(pred)
+                        else:
+                            # Handle case when "g0" is present in the prop_name
+                            other_props = np.delete(all_prop_names[i], j, 0)
+                            if not any([pred.name in p_name for p_name in other_props if p_name]):
+                                pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                self._prop_nodes[prop_index].children.append(pred)
+                else:
+                    raise IndexError(f"prop_index {prop_index} exceeds the number of propositional nodes.")
+
+                prop_index += 1  # Increment the prop_index for the next property node
+
 
     def search_future_time_step(self):
         future_time_step = np.zeros(len(self.rule_eval), dtype=int)
