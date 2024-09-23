@@ -38,6 +38,34 @@ class NNFFormula:
             tv_right = self.right.compute_tv(tv_values)
             return max(tv_left, tv_right)
 
+    def compute_tv_list(self, tv_values: dict):
+        """Recursively compute the Time-to-Violation (TV) series based on the given time series."""
+
+        # Handle atomic propositions
+        if self.kind == 'prop':
+            # Get the time series for the proposition
+            return tv_values[self.prop]
+
+        # Handle negation
+        elif self.kind == 'neg':
+            neg_prop = f'~{self.left.prop}'  # Representing negation as ~prop in tv_values
+            if neg_prop not in tv_values:
+                raise ValueError(
+                    f"TV for negation of {self.left.prop} (as ~{self.left.prop}) not provided in tv_values")
+            return tv_values[neg_prop]
+
+        # Handle conjunction (element-wise min between left and right time series)
+        elif self.kind == 'and':
+            tv_left = self.left.compute_tv(tv_values)
+            tv_right = self.right.compute_tv(tv_values)
+            return [min(l, r) for l, r in zip(tv_left, tv_right)]
+
+        # Handle disjunction (element-wise max between left and right time series)
+        elif self.kind == 'or':
+            tv_left = self.left.compute_tv(tv_values)
+            tv_right = self.right.compute_tv(tv_values)
+            return [max(l, r) for l, r in zip(tv_left, tv_right)]
+
 def parse_nnf_formula(input_str):
     """Parse the NNF formula string and return a structured Formula object."""
     # Remove spaces from the input string

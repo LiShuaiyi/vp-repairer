@@ -662,28 +662,62 @@ class STLRuleMonitor:
                     # List of time evaluations for a given vehicle and proposition
                     time_values = evaluation[veh]
 
+                    # Start index after initial -inf values are skipped
+                    start_index = None
+
                     # Iterate over the time_values and build both lists
                     for idx, value in enumerate(time_values):
+                        # Skip leading -inf values
+                        if value == float('-inf') and start_index is None:
+                            # todo: skip the valuations to align the tv with the future/once operator
+                            continue
+
+                        # Mark the first non -inf index as the start_index
+                        if start_index is None:
+                            start_index = idx
+
                         # Handle satisfaction for positive or inf values
                         if value > 0 or value == float('inf'):
                             tv_satisfaction.append(float('inf'))
                             tv_violation.append(
-                                idx - self._start_time_step)  # Violation: positive values get adjusted index
+                                idx - start_index - self._start_time_step)  # Violation: positive values get adjusted index
                         else:
                             # Handle satisfaction for negative values
                             tv_satisfaction.append(
-                                idx - self._start_time_step)  # Satisfaction: negative values get adjusted index
+                                idx - start_index - self._start_time_step)  # Satisfaction: negative values get adjusted index
                             tv_violation.append(float('inf'))  # Violation: negative values get inf
 
-                    # Exception for processing prop_node logic
-                    if prop_node.name[5:6] != prop_node.name[7:8]:
-                        valid_start_index = next(
-                            (i for i, val in enumerate(time_values) if val != float('-inf') and val != float('inf')),
-                            None)
-                        if valid_start_index is not None:
-                            # Adjusting tv_satisfaction by adding each index with valid_start_index
-                            tv_satisfaction = [val + valid_start_index if val != float('inf') else float('inf') for val
-                                               in tv_satisfaction]
+                    # todo: more complicated version
+                    # # Exception for processing prop_node logic
+                    # if prop_node.name[5:6] != prop_node.name[7:8]:
+                    #     sub_name = prop_node.name[:5] + prop_node.name[7] + prop_node.name[6:]
+                    #     sub_evaluation = self.all_props_all_ids_all[rule_idx][sub_name][veh]
+                    #     sub_tv = next(
+                    #         (i for i, v in enumerate(sub_evaluation) if v != float('-inf') and v < 0),
+                    #         None
+                    #     ) # first index where the value is non-inf and < 0
+                    #     # fixme: sub_tv for satisfaction
+                    #     if sub_tv is not None:  # Make sure sub_tv is not None (valid)
+                    #         # Count the number of -inf values before the first valid negative value (sub_tv)
+                    #         len_inf = len([v for v in sub_evaluation[:sub_tv] if v == float('-inf')])
+                    #
+                    #         # Initialize tv_violation as an empty list
+                    #         tv_violation = []
+                    #
+                    #         # Iterate over sub_evaluation and calculate min over the slice
+                    #         for idx in range(len(sub_evaluation)):
+                    #             # Ensure the slice doesn't exceed the length of sub_evaluation
+                    #             slice_end = min(idx + len_inf, len(sub_evaluation))
+                    #
+                    #             # Take the slice from idx to slice_end and find the min, excluding -inf values
+                    #             slice_values = [v for v in sub_evaluation[idx:slice_end] if v != float('-inf')]
+                    #
+                    #             if slice_values:
+                    #                 # Append the minimum of the valid slice values
+                    #                 tv_violation.append(min(slice_values))
+                    #             else:
+                    #                 # If the slice is empty or contains only -inf, append float('inf') or another placeholder
+                    #                 tv_violation.append(float('inf'))
 
                     all_id_all_props_tv[self._rules[rule_idx]][veh][prop_node.alphabet] = tv_satisfaction
                     all_id_all_props_tv[self._rules[rule_idx]][veh]['~' + prop_node.alphabet] = tv_violation
@@ -699,7 +733,7 @@ class STLRuleMonitor:
 
             # Calculate TV for each vehicle for this rule
             for veh, props_tv in all_id_all_props_tv[rule].items():
-                tv = self.parsed_nnf_formula.compute_tv(props_tv)
+                tv = min(self.parsed_nnf_formula.compute_tv_list(props_tv)) # min: globally
 
                 # Replace tv with inf if it's equal to start_time_step
                 tv = math.inf if tv == self._start_time_step else tv
