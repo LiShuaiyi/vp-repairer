@@ -102,9 +102,8 @@ class STLRuleMonitor:
         # initialize the propositional nodes
         self._prop_nodes = self._initialize_prop_nodes()
         # generate the SAT formula in the NNF
-        self.sat_formula = self.obtain_sat_formula_in_nnf()
 
-        self.parsed_nnf_formula: NNFFormula = parse_nnf_formula(str(self.sat_formula))
+        self.sat_formula, self.sat_formula_sep = self.obtain_sat_formula_in_nnf()
 
         # obtain the time-to-violation using the way written in the Journal paper
         (
@@ -150,7 +149,7 @@ class STLRuleMonitor:
 
     @property
     def tv_time_step(self) -> Union[int, float]:
-        return self._tv - self._future_time_step
+        return self._tv  # - self._future_time_step
 
     @property
     def tv_time_step_with_future(self) -> Union[int, float]:
@@ -196,6 +195,7 @@ class STLRuleMonitor:
         For all propositions, find the overlapping subsequences in the rule string
         and replace them with the alphabet symbols corresponding to the proposition nodes.
         """
+        subformula_dict = {}
         subformula_list = []
         prev_idx = 0
 
@@ -231,12 +231,13 @@ class STLRuleMonitor:
                     sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
 
             subformula_list.append(f"({sat_formula})")
+            subformula_dict[rule_node.name] = construct_nnf(sat_formula)
 
         # Join the subformulas with "and" operators
         sat_formula = " and ".join(subformula_list)
 
         # Return the formula in NNF
-        return construct_nnf(sat_formula)
+        return construct_nnf(sat_formula), subformula_dict
 
     def _normalize_prop_name(self, prop_name):
         """
@@ -645,82 +646,92 @@ class STLRuleMonitor:
         if np.any(self.rob_rule[:, 0] < 0):
             return -math.inf
         all_id_all_props_tv = dict()
+        #
+        # for rule_idx in range(len(self._rules)):
+        #     all_id_all_props_tv[self._rules[rule_idx]] = dict()
 
-        for rule_idx in range(len(self._rules)):
-            all_id_all_props_tv[self._rules[rule_idx]] = dict()
+        for prop_node in self._prop_nodes:
+            rule_idx = self._rules.index(prop_node.source_rule)
 
-            for prop_node in self._prop_nodes:
-                evaluation = self.all_props_all_ids_all[rule_idx][prop_node.name]
-                for veh in evaluation.keys():
-                    if veh not in all_id_all_props_tv[self._rules[rule_idx]]:
-                        all_id_all_props_tv[self._rules[rule_idx]][veh] = dict()
+            # Initialize the dictionary for the current rule if it doesn't already exist
+            if self._rules[rule_idx] not in all_id_all_props_tv:
+                all_id_all_props_tv[self._rules[rule_idx]] = dict()
 
-                    # Initialize lists for tv_satisfaction and tv_violation
-                    tv_satisfaction = []
-                    tv_violation = []
+            source_rule = prop_node.source_rule
+            # index of the source rule
+            source_rule_idx = self._rules.index(source_rule)
 
-                    # List of time evaluations for a given vehicle and proposition
-                    time_values = evaluation[veh]
+            evaluation = self.all_props_all_ids_all[source_rule_idx][prop_node.name]
+            for veh in evaluation.keys():
+                if veh not in all_id_all_props_tv[self._rules[rule_idx]]:
+                    all_id_all_props_tv[self._rules[rule_idx]][veh] = dict()
 
-                    # Start index after initial -inf values are skipped
-                    start_index = None
+                # Initialize lists for tv_satisfaction and tv_violation
+                tv_satisfaction = []
+                tv_violation = []
 
-                    # Iterate over the time_values and build both lists
-                    for idx, value in enumerate(time_values):
-                        # Skip leading -inf values
-                        if value == float('-inf') and start_index is None:
-                            # todo: skip the valuations to align the tv with the future/once operator
-                            continue
+                # List of time evaluations for a given vehicle and proposition
+                time_values = evaluation[veh]
 
-                        # Mark the first non -inf index as the start_index
-                        if start_index is None:
-                            start_index = idx
+                # Start index after initial -inf values are skipped
+                start_index = None
 
-                        # Handle satisfaction for positive or inf values
-                        if value > 0 or value == float('inf'):
-                            tv_satisfaction.append(float('inf'))
-                            tv_violation.append(
-                                idx - start_index - self._start_time_step)  # Violation: positive values get adjusted index
-                        else:
-                            # Handle satisfaction for negative values
-                            tv_satisfaction.append(
-                                idx - start_index - self._start_time_step)  # Satisfaction: negative values get adjusted index
-                            tv_violation.append(float('inf'))  # Violation: negative values get inf
+                # Iterate over the time_values and build both lists
+                for idx, value in enumerate(time_values):
+                    # Skip leading -inf values
+                    if value == float('-inf') and start_index is None:
+                        # todo: skip the valuations to align the tv with the future/once operator
+                        continue
 
-                    # todo: more complicated version
-                    # # Exception for processing prop_node logic
-                    # if prop_node.name[5:6] != prop_node.name[7:8]:
-                    #     sub_name = prop_node.name[:5] + prop_node.name[7] + prop_node.name[6:]
-                    #     sub_evaluation = self.all_props_all_ids_all[rule_idx][sub_name][veh]
-                    #     sub_tv = next(
-                    #         (i for i, v in enumerate(sub_evaluation) if v != float('-inf') and v < 0),
-                    #         None
-                    #     ) # first index where the value is non-inf and < 0
-                    #     # fixme: sub_tv for satisfaction
-                    #     if sub_tv is not None:  # Make sure sub_tv is not None (valid)
-                    #         # Count the number of -inf values before the first valid negative value (sub_tv)
-                    #         len_inf = len([v for v in sub_evaluation[:sub_tv] if v == float('-inf')])
-                    #
-                    #         # Initialize tv_violation as an empty list
-                    #         tv_violation = []
-                    #
-                    #         # Iterate over sub_evaluation and calculate min over the slice
-                    #         for idx in range(len(sub_evaluation)):
-                    #             # Ensure the slice doesn't exceed the length of sub_evaluation
-                    #             slice_end = min(idx + len_inf, len(sub_evaluation))
-                    #
-                    #             # Take the slice from idx to slice_end and find the min, excluding -inf values
-                    #             slice_values = [v for v in sub_evaluation[idx:slice_end] if v != float('-inf')]
-                    #
-                    #             if slice_values:
-                    #                 # Append the minimum of the valid slice values
-                    #                 tv_violation.append(min(slice_values))
-                    #             else:
-                    #                 # If the slice is empty or contains only -inf, append float('inf') or another placeholder
-                    #                 tv_violation.append(float('inf'))
+                    # Mark the first non -inf index as the start_index
+                    if start_index is None:
+                        start_index = idx
 
-                    all_id_all_props_tv[self._rules[rule_idx]][veh][prop_node.alphabet] = tv_satisfaction
-                    all_id_all_props_tv[self._rules[rule_idx]][veh]['~' + prop_node.alphabet] = tv_violation
+                    # Handle satisfaction for positive or inf values
+                    if value > 0 or value == float('inf'):
+                        tv_satisfaction.append(float('inf'))
+                        tv_violation.append(
+                            idx - start_index - self._start_time_step)  # Violation: positive values get adjusted index
+                    else:
+                        # Handle satisfaction for negative values
+                        tv_satisfaction.append(
+                            idx - start_index - self._start_time_step)  # Satisfaction: negative values get adjusted index
+                        tv_violation.append(float('inf'))  # Violation: negative values get inf
+
+                # todo: more complicated version
+                # # Exception for processing prop_node logic
+                # if prop_node.name[5:6] != prop_node.name[7:8]:
+                #     sub_name = prop_node.name[:5] + prop_node.name[7] + prop_node.name[6:]
+                #     sub_evaluation = self.all_props_all_ids_all[rule_idx][sub_name][veh]
+                #     sub_tv = next(
+                #         (i for i, v in enumerate(sub_evaluation) if v != float('-inf') and v < 0),
+                #         None
+                #     ) # first index where the value is non-inf and < 0
+                #     # fixme: sub_tv for satisfaction
+                #     if sub_tv is not None:  # Make sure sub_tv is not None (valid)
+                #         # Count the number of -inf values before the first valid negative value (sub_tv)
+                #         len_inf = len([v for v in sub_evaluation[:sub_tv] if v == float('-inf')])
+                #
+                #         # Initialize tv_violation as an empty list
+                #         tv_violation = []
+                #
+                #         # Iterate over sub_evaluation and calculate min over the slice
+                #         for idx in range(len(sub_evaluation)):
+                #             # Ensure the slice doesn't exceed the length of sub_evaluation
+                #             slice_end = min(idx + len_inf, len(sub_evaluation))
+                #
+                #             # Take the slice from idx to slice_end and find the min, excluding -inf values
+                #             slice_values = [v for v in sub_evaluation[idx:slice_end] if v != float('-inf')]
+                #
+                #             if slice_values:
+                #                 # Append the minimum of the valid slice values
+                #                 tv_violation.append(min(slice_values))
+                #             else:
+                #                 # If the slice is empty or contains only -inf, append float('inf') or another placeholder
+                #                 tv_violation.append(float('inf'))
+
+                all_id_all_props_tv[self._rules[rule_idx]][veh][prop_node.alphabet] = tv_satisfaction
+                all_id_all_props_tv[self._rules[rule_idx]][veh]['~' + prop_node.alphabet] = tv_violation
 
         rule_to_tv = {}
         rule_to_other_id = {}
@@ -730,10 +741,12 @@ class STLRuleMonitor:
             rule = self._rules[idx]
             tv_list = []
             tv_by_veh = {}
+            sat_formula_ind = self.sat_formula_sep[rule]
+            parsed_nnf_formula: NNFFormula = parse_nnf_formula(str(sat_formula_ind))
 
             # Calculate TV for each vehicle for this rule
             for veh, props_tv in all_id_all_props_tv[rule].items():
-                tv = min(self.parsed_nnf_formula.compute_tv_list(props_tv)) # min: globally
+                tv = min(parsed_nnf_formula.compute_tv_list(props_tv)) # min: globally
 
                 # Replace tv with inf if it's equal to start_time_step
                 tv = math.inf if tv == self._start_time_step else tv
