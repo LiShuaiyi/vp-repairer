@@ -360,7 +360,9 @@ class STLRuleMonitor:
                 # Check if the sequence is empty or if the slicing would go out of bounds
                 if seq and (self._tv - self._start_time_step) < len(seq):
                     # Safely slice the sequence from the desired index to the end
-                    all_prop_robs[i, j] = min(seq[self._tv - self._start_time_step:])
+                    all_prop_robs[i, j] = min(abs(val) for val in seq[self._tv - self._start_time_step:])
+                    # fixme
+                    # all_prop_robs[i, j] = min(seq[self._tv - self._start_time_step:])
                 else:
                     # If sequence is empty or the slicing index is out of bounds, set to -1
                     all_prop_robs[i, j] = -1
