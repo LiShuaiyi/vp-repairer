@@ -1,5 +1,6 @@
 import re
 
+
 class Formula:
     def __init__(self, kind, left=None, right=None, prop=None):
         self.kind = kind  # Can be 'prop', 'neg', 'and', 'or'
@@ -18,24 +19,32 @@ class Formula:
             return f'({self.left} ∨ {self.right})'
 
     def compute_tv(self, tv_values: dict):
-        """Recursively compute the Time-to-Violation (TV) based on the given values."""
+        """Recursively compute the Time-to-Violation (TV) series based on the given time series."""
+
+        # Handle atomic propositions
         if self.kind == 'prop':
-            # Look up the TV value for the atomic proposition
+            # Get the time series for the proposition
             return tv_values[self.prop]
+
+        # Handle negation
         elif self.kind == 'neg':
-            # For negation, we now explicitly expect the negated form in the tv_values
             neg_prop = f'~{self.left.prop}'  # Representing negation as ~prop in tv_values
             if neg_prop not in tv_values:
-                raise ValueError(f"TV for negation of {self.left.prop} (as ~{self.left.prop}) not provided in tv_values")
+                raise ValueError(
+                    f"TV for negation of {self.left.prop} (as ~{self.left.prop}) not provided in tv_values")
             return tv_values[neg_prop]
+
+        # Handle conjunction (element-wise min between left and right time series)
         elif self.kind == 'and':
             tv_left = self.left.compute_tv(tv_values)
             tv_right = self.right.compute_tv(tv_values)
-            return min(tv_left, tv_right)
+            return [min(l, r) for l, r in zip(tv_left, tv_right)]
+
+        # Handle disjunction (element-wise max between left and right time series)
         elif self.kind == 'or':
             tv_left = self.left.compute_tv(tv_values)
             tv_right = self.right.compute_tv(tv_values)
-            return max(tv_left, tv_right)
+            return [max(l, r) for l, r in zip(tv_left, tv_right)]
 
 
 def parse_nnf_formula(input_str):
@@ -59,7 +68,7 @@ def parse_nnf_formula(input_str):
             depth -= 1
         elif depth == 0 and char in {'&', '|'}:
             left = parse_nnf_formula(input_str[:i])
-            right = parse_nnf_formula(input_str[i+1:])
+            right = parse_nnf_formula(input_str[i + 1:])
             if char == '&':
                 return Formula('and', left=left, right=right)
             elif char == '|':
@@ -79,17 +88,44 @@ input_nnf_formula_str = "~o | (~j & ~m) | (~j & ~n) | (~k & ~l & ~m) | (~k & ~l 
 parsed_nnf_formula = parse_nnf_formula(input_nnf_formula_str)
 
 # Example TV values for each atomic proposition
-# Including the negated versions (~a, ~b, ..., ~o)
+# Now using time series instead of single values
 inf = float('inf')
 tv_values = {
-    'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'f': 0, 'g': 0, 'h': 0, 'i': 0,
-    'j': 0, 'k': 0, 'l': 0, 'm': 0, 'n': 0, 'o': inf,
-    '~a': 3, '~b': 3, '~c': 3, '~d': 3, '~e': 3, '~f': 3, '~g': inf,
-    '~h': inf, '~i': inf, '~j': 7, '~k': inf, '~l': 9, '~m': 9, '~n': 7, '~o': 0
+    'a': [0, 1, 0, 0, 0],
+    'b': [0, 0, 0, 1, 0],
+    'c': [0, 0, 0, 0, 1],
+    'd': [0, 0, 1, 0, 0],
+    'e': [0, 0, 0, 0, 0],
+    'f': [0, 0, 0, 0, 0],
+    'g': [0, 0, 0, 0, 0],
+    'h': [0, 0, 0, 0, 0],
+    'i': [0, 0, 0, 0, 0],
+    'j': [0, 0, 0, 0, 0],
+    'k': [0, 0, 0, 0, 0],
+    'l': [0, 0, 0, 0, 0],
+    'm': [0, 0, 0, 0, 0],
+    'n': [0, 0, 0, 0, 0],
+    'o': [inf, inf, inf, inf, inf],
+    '~a': [3, 0, 0, 0, 0],
+    '~b': [3, 0, 0, 0, 0],
+    '~c': [3, 0, 0, 0, 0],
+    '~d': [3, 0, 0, 0, 0],
+    '~e': [3, 0, 0, 0, 0],
+    '~f': [3, 0, 0, 0, 0],
+    '~g': [inf, inf, inf, inf, inf],
+    '~h': [inf, inf, inf, inf, inf],
+    '~i': [inf, inf, inf, inf, inf],
+    '~j': [7, 0, 0, 0, 0],
+    '~k': [inf, inf, inf, inf, inf],
+    '~l': [9, 0, 0, 0, 0],
+    '~m': [9, 0, 0, 0, 0],
+    '~n': [7, 0, 0, 0, 0],
+    '~o': [0, 0, 0, 0, 0]
 }
 
 # Compute TV for the formula in NNF
 import time
+
 iniT = time.time()
 for _ in range(1000):
     tv_result = parsed_nnf_formula.compute_tv(tv_values)
