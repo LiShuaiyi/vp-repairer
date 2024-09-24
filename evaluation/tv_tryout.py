@@ -90,7 +90,36 @@ parsed_nnf_formula = parse_nnf_formula(input_nnf_formula_str)
 # Example TV values for each atomic proposition
 # Now using time series instead of single values
 inf = float('inf')
-tv_values = {'a': [0, 1, 2, inf, inf, inf, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'b': [0, 1, 2, inf, inf, inf, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'c': [0, 1, 2, inf, inf, inf, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'd': [0, 1, 2, inf, inf, inf, inf, inf, inf, inf, inf, 11, 12, 13, 14], 'e': [0, 1, 2, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], 'f': [0, 1, 2, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], 'g': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'h': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'i': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'j': [0, 1, 2, 3, 4, 5, 6, inf, inf, inf, inf, inf, inf, inf, inf], 'k': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 'l': [0, 1, 2, 3, 4, 5, 6, 7, 8, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, 19], 'm': [0, 1, 2, 3, 4, 5, 6, 7, 8, inf, inf, inf, inf, inf, 14], 'n': [0, 1, 2, 3, 4, 5, 6, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], 'o': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~a': [inf, inf, inf, 3, 4, 5, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~b': [inf, inf, inf, 3, 4, 5, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~c': [inf, inf, inf, 3, 4, 5, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~d': [inf, inf, inf, 3, 4, 5, 6, 7, 8, 9, 10, inf, inf, inf, inf], '~e': [inf, inf, inf, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], '~f': [inf, inf, inf, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], '~g': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~h': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~i': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~j': [inf, inf, inf, inf, inf, inf, inf, 7, 8, 9, 10, 11, 12, 13, 14], '~k': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf], '~l': [inf, inf, inf, inf, inf, inf, inf, inf, inf, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, inf], '~m': [inf, inf, inf, inf, inf, inf, inf, inf, inf, 9, 10, 11, 12, 13, inf], '~n': [inf, inf, inf, inf, inf, inf, inf, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], '~o': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]}
+tv_values = {'a': [0, 1, 2, inf, inf, inf, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'b': [0, 1, 2, inf, inf, inf, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'c': [0, 1, 2, inf, inf, inf, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'd': [0, 1, 2, inf, inf, inf, inf, inf, inf, inf, inf, 11, 12, 13, 14],
+             'e': [0, 1, 2, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             'f': [0, 1, 2, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             'g': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'h': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'i': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'j': [0, 1, 2, 3, 4, 5, 6, inf, inf, inf, inf, inf, inf, inf, inf],
+             'k': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'l': [0, 1, 2, 3, 4, 5, 6, 7, 8, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, 19],
+             'm': [0, 1, 2, 3, 4, 5, 6, 7, 8, inf, inf, inf, inf, inf, 14],
+             'n': [0, 1, 2, 3, 4, 5, 6, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             'o': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~a': [inf, inf, inf, 3, 4, 5, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~b': [inf, inf, inf, 3, 4, 5, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~c': [inf, inf, inf, 3, 4, 5, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~d': [inf, inf, inf, 3, 4, 5, 6, 7, 8, 9, 10, inf, inf, inf, inf],
+             '~e': [inf, inf, inf, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             '~f': [inf, inf, inf, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             '~g': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~h': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~i': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~j': [inf, inf, inf, inf, inf, inf, inf, 7, 8, 9, 10, 11, 12, 13, 14],
+             '~k': [inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf, inf],
+             '~l': [inf, inf, inf, inf, inf, inf, inf, inf, inf, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, inf],
+             '~m': [inf, inf, inf, inf, inf, inf, inf, inf, inf, 9, 10, 11, 12, 13, inf],
+             '~n': [inf, inf, inf, inf, inf, inf, inf, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+             '~o': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]}
 # tv_values = {
 #     'a': [0, 1, 0, 0, 0],
 #     'b': [0, 0, 0, 1, 0],
