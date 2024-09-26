@@ -97,8 +97,8 @@ class TSolver:
         compliant_maneuver = list()
         for prop_node in self._sel_prop:
             for predicate in prop_node.children:
-                if not hasattr(predicate, "evaluator"):
-                    continue
+                # if not hasattr(predicate, "evaluator"):
+                #     continue
                 # category of the predicate
                 predicate_category = (
                     predicate.evaluator.predicate_name.__class__.__name__[:3]
