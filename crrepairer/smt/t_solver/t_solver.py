@@ -107,7 +107,7 @@ class TSolver:
                     if prop_node.name == predicate.name:
                         # value at TV
                         if torch.cuda.is_available():
-                            grad_list = predicate.mpr_gradient.double().detach().cpu().numpy()[0]
+                            grad_list = predicate.mpr_gradient[0].double().detach().cpu().numpy()
                         else:
                             grad_list = predicate.mpr_gradient.double().detach().cpu().numpy()[0]
                         print(f"* predicate: {predicate.evaluator.predicate_name}")
