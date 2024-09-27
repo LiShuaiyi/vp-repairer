@@ -381,7 +381,11 @@ class STLRuleMonitor:
                         ttv_value=tv_prop_robs[i, j],
                         ttv_h_min=all_prop_robs[i, j]
                     )
-
+                    print(
+                        f"Proposition '{prop_name}' ({self._prop_nodes[prop_index].alphabet})"
+                        f" of rule {self._prop_nodes[prop_index].source_rule}"
+                        f"has ttv_value: {tv_prop_robs[i, j]} and ttv_h_min: {all_prop_robs[i, j]}"
+                    )
                     for pred in pred_nodes:
                         if "g0" not in all_prop_names[tuple([i, j])]:
                             if pred.name in all_prop_names[tuple([i, j])]:

@@ -118,9 +118,9 @@ class TSolver:
                                                                PositionPredicates.Precedes,
                                                                PositionPredicates.StopLineInFront]) or \
                             (predicate_category == "Vel"):
-                        grad_a = grad_list[2]
+                        grad_a = grad_list[4]
                         print(f"* gradient list: {grad_list}")
-                        print(f"* gradient towards acceleration: {grad_a}")
+                        print(f"* gradient towards input: {grad_a}")
                         if abs(grad_a) <= 0.01:  # no decision can be made
                             compliant_maneuver += [Maneuver.BRAKE,
                                                    Maneuver.KICKDOWN]
