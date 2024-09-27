@@ -348,9 +348,11 @@ class STLRuleMonitor:
             rob_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
             if 0 <= rob_index < len(self.rob_predicate[i]):
                 all_pre_rob_grad[i] = self.rob_predicate[i][rob_index]
+                # print out the gradient of the predicate
             else:
                 all_pre_rob_grad[i] = np.nan  # Assign NaN if the index is out of range or invalid
 
+            print("=====================================")
             for j in range(all_prop_names.shape[1]):  # Iterate over columns
                 # tv is now self.rule_to_tv[self._rules[i]]
                 # Get the property name and sequence
@@ -384,7 +386,7 @@ class STLRuleMonitor:
                     print(
                         f"Proposition '{prop_name}' ({self._prop_nodes[prop_index].alphabet})"
                         f" of rule {self._prop_nodes[prop_index].source_rule}"
-                        f"has ttv_value: {tv_prop_robs[i, j]} and ttv_h_min: {all_prop_robs[i, j]}"
+                        f" has ttv_value: {tv_prop_robs[i, j]} and ttv_h_min: {all_prop_robs[i, j]}"
                     )
                     for pred in pred_nodes:
                         if "g0" not in all_prop_names[tuple([i, j])]:
@@ -400,9 +402,8 @@ class STLRuleMonitor:
                                 self._prop_nodes[prop_index].children.append(pred)
                 else:
                     raise IndexError(f"prop_index {prop_index} exceeds the number of propositional nodes.")
-
                 prop_index += 1  # Increment the prop_index for the next property node
-
+            print("=====================================")
 
     def search_future_time_step(self):
         future_time_step = np.zeros(len(self.rule_eval), dtype=int)
