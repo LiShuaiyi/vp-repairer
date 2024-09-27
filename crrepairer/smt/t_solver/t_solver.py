@@ -142,8 +142,7 @@ class TSolver:
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards lat input: {grad_theta}")
                         if abs(grad_theta) <= 0.01:  # no decision can be made
-                            compliant_maneuver += [Maneuver.STEERRIGHT,
-                                                   Maneuver.STEERLEFT]
+                            compliant_maneuver += []
                         elif - predicate.latest_value / grad_theta > 0:  # delta theta > 0
                             compliant_maneuver += [Maneuver.STEERLEFT]
                         else:  # delta theta < 0
