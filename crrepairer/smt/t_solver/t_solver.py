@@ -107,10 +107,17 @@ class TSolver:
                     # if prop_node.name == predicate.name:
                         # value at TV
                     if torch.cuda.is_available():
-                        print(predicate.mpr_gradient[0])
-                        grad_list = predicate.mpr_gradient[0].double().detach().cpu().numpy()
+                        grad_tensor = predicate.mpr_gradient[0]
                     else:
-                        grad_list = predicate.mpr_gradient.double().detach().cpu().numpy()[0]
+                        grad_tensor = predicate.mpr_gradient
+                    # Check dtype and convert if necessary
+                    if grad_tensor.dtype != torch.float64:
+                        grad_tensor = grad_tensor.float()
+                    else:
+                        grad_tensor = grad_tensor.double()
+
+                    # Detach, move to CPU, and convert to numpy
+                    grad_list = grad_tensor.detach().cpu().numpy()
                     print(f"* predicate: {predicate.evaluator.predicate_name}")
                     if (predicate_category == "Pos" and
                         predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
