@@ -123,7 +123,8 @@ class TSolver:
                         predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
                                                                PositionPredicates.InFrontOf,
                                                                PositionPredicates.Precedes,
-                                                               PositionPredicates.StopLineInFront]) or \
+                                                               PositionPredicates.StopLineInFront,
+                                                               PositionPredicates.InIntersectionConflictArea]) or \
                             (predicate_category == "Vel"):
                         grad_a = grad_list[4]
                         print(f"* gradient list: {grad_list}")
