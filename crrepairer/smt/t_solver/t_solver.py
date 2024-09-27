@@ -121,7 +121,7 @@ class TSolver:
                         grad_a = grad_list[2]
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards acceleration: {grad_a}")
-                        if abs(grad_a) <= 1e-6:  # no decision can be made
+                        if abs(grad_a) <= 0.01:  # no decision can be made
                             compliant_maneuver += [Maneuver.BRAKE,
                                                    Maneuver.KICKDOWN]
                         # positive to negative, robustness needs to be decreased (Delta rob < 0)
@@ -133,7 +133,7 @@ class TSolver:
                     elif predicate_category == "Pos":
                         grad_theta = grad_list[7]
                         print(f"* gradient towards theta: {grad_theta}")
-                        if grad_theta == 0.0:  # no decision can be made
+                        if abs(grad_theta) <= 0.01:  # no decision can be made
                             compliant_maneuver += [Maneuver.STEERRIGHT,
                                                    Maneuver.STEERLEFT]
                         elif - predicate.latest_value / grad_theta > 0:  # delta theta > 0
