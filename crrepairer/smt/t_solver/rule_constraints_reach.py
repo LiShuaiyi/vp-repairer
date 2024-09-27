@@ -234,8 +234,6 @@ class RuleConstraintsReach:
                             'LTL G[' + time_interval_int + '](' + semantic_prop + ')')
                 else:
                     if PredInSameLane.predicate_name in prop.name:
-                        # fix me
-                        continue
                         semantic_prop = Proposition.in_same_lane(self._rule_to_other_id[prop.source_rule])
                     elif PredInFrontOf.predicate_name in prop.name:
                         semantic_prop = Proposition.behind(self._rule_to_other_id[prop.source_rule])
