@@ -127,7 +127,7 @@ class TSolver:
                             (predicate_category == "Vel"):
                         grad_a = grad_list[4]
                         print(f"* gradient list: {grad_list}")
-                        print(f"* gradient towards input: {grad_a}")
+                        print(f"* gradient towards lon input: {grad_a}")
                         if abs(grad_a) <= 0.01:  # no decision can be made
                             compliant_maneuver += [Maneuver.BRAKE,
                                                    Maneuver.KICKDOWN]
@@ -138,8 +138,9 @@ class TSolver:
                         else:  # delta v < 0
                             compliant_maneuver += [Maneuver.BRAKE]
                     elif predicate_category == "Pos":
-                        grad_theta = grad_list[7]
-                        print(f"* gradient towards theta: {grad_theta}")
+                        grad_theta = grad_list[9]
+                        print(f"* gradient list: {grad_list}")
+                        print(f"* gradient towards lat input: {grad_theta}")
                         if abs(grad_theta) <= 0.01:  # no decision can be made
                             compliant_maneuver += [Maneuver.STEERRIGHT,
                                                    Maneuver.STEERLEFT]
