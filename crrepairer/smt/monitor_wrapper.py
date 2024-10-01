@@ -104,7 +104,7 @@ class STLRuleMonitor:
         # generate the SAT formula in the NNF
 
         self.sat_formula, self.sat_formula_sep = self.obtain_sat_formula_in_nnf()
-
+        print("===== formula in NNF: ", self.sat_formula)
         # obtain the time-to-violation using the way written in the Journal paper
         (
             self._violated_rules,
