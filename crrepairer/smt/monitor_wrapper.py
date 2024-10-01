@@ -113,6 +113,8 @@ class STLRuleMonitor:
             self.rule_to_tv,
             self.rule_to_other_id,
         ) = self._cal_tv_def()
+
+        self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
         self._update_prop_nodes()
 
         # # obtain the time-to-violation
@@ -130,8 +132,6 @@ class STLRuleMonitor:
             for other_id in self.rule_to_other_id.values()
             if other_id != config.repair.ego_id
         ]
-
-        self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
 
         print("# =========== Traffic Rule Monitor ========== #")
         for rule in self._violated_rules:
@@ -365,10 +365,15 @@ class STLRuleMonitor:
                     index = str(self.sat_formula).find(self._prop_nodes[prop_index].alphabet)
                     sign = '~' if index > 0 and str(self.sat_formula)[index - 1] == '~' else None
                     # Check if the sequence is empty or if the slicing would go out of bounds
+                    if prop_name.startswith("once") and prop_name[5:6] == prop_name[7:8]:
+                        future_index = self._future_time_step
+                    else:
+                        future_index = 0
                     if seq and (self._tv - self._start_time_step) < len(seq):
                         # Safely slice the sequence from the desired index to the end
                         # Calculate the relevant subsequence
-                        subseq = seq[self._tv - self._start_time_step:]
+
+                        subseq = seq[self._tv - self._start_time_step + future_index:]
 
                         # Assign to all_prop_robs based on the presence of a negation sign
                         # G(a) and G(not a) are handled differently
@@ -383,8 +388,8 @@ class STLRuleMonitor:
 
                     # Calculate the index for tv_prop_robs safely
                     tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
-                    if 0 <= tv_index < len(seq):  # Ensure tv_index is within valid range
-                        tv_prop_robs[i, j] = seq[tv_index]
+                    if 0 <= tv_index + future_index < len(seq):  # Ensure tv_index is within valid range
+                        tv_prop_robs[i, j] = seq[tv_index + future_index]
                     else:
                         tv_prop_robs[i, j] = -1  # Assign -1 if the index is out of range or invalid
 
