@@ -8,6 +8,7 @@ class SATSolver:
         # nnf is constructed with the monitor
         # self._formula = construct_nnf(rule_monitor.sat_formula)
         self._formula = construct_cnf(rule_monitor.sat_formula)
+        print("* \t<SATSolver>: the formula in CNF is {}".format(self._formula))
         self._prop_nodes = rule_monitor.proposition_nodes
         self._prop_robust_all = rule_monitor.rob_abstraction
         self._init_assign = list()

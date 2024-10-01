@@ -348,40 +348,56 @@ class STLRuleMonitor:
             rob_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
             if 0 <= rob_index < len(self.rob_predicate[i]):
                 all_pre_rob_grad[i] = self.rob_predicate[i][rob_index]
+                # print out the gradient of the predicate
             else:
                 all_pre_rob_grad[i] = np.nan  # Assign NaN if the index is out of range or invalid
 
+            print("=====================================")
             for j in range(all_prop_names.shape[1]):  # Iterate over columns
-                # tv is now self.rule_to_tv[self._rules[i]]
-                # Get the property name and sequence
-                prop_name = all_prop_names[i, j]
-                other_id = self.rule_to_other_id[self._rules[i]]
-                seq = self.all_props_all_ids_all[i][prop_name][other_id]
 
-                # Check if the sequence is empty or if the slicing would go out of bounds
-                if seq and (self._tv - self._start_time_step) < len(seq):
-                    # Safely slice the sequence from the desired index to the end
-                    # all_prop_robs[i, j] = min(abs(val) for val in seq[self._tv - self._start_time_step:])
-                    # fixme
-                    all_prop_robs[i, j] = min(seq[self._tv - self._start_time_step:])
-                else:
-                    # If sequence is empty or the slicing index is out of bounds, set to -1
-                    all_prop_robs[i, j] = -1
+                if prop_index < len(self._prop_nodes):  # Ensure prop_index does not exceed the number of prop_nodes
+                    # tv is now self.rule_to_tv[self._rules[i]]
+                    # Get the property name and sequence
+                    prop_name = all_prop_names[i, j]
+                    other_id = self.rule_to_other_id[self._rules[i]]
+                    seq = self.all_props_all_ids_all[i][prop_name][other_id]
 
-                # Calculate the index for tv_prop_robs safely
-                tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
-                if 0 <= tv_index < len(seq):  # Ensure tv_index is within valid range
-                    tv_prop_robs[i, j] = seq[tv_index]
-                else:
-                    tv_prop_robs[i, j] = -1  # Assign -1 if the index is out of range or invalid
+                    index = str(self.sat_formula).find(self._prop_nodes[prop_index].alphabet)
+                    sign = '~' if index > 0 and str(self.sat_formula)[index - 1] == '~' else None
+                    # Check if the sequence is empty or if the slicing would go out of bounds
+                    if seq and (self._tv - self._start_time_step) < len(seq):
+                        # Safely slice the sequence from the desired index to the end
+                        # Calculate the relevant subsequence
+                        subseq = seq[self._tv - self._start_time_step:]
+
+                        # Assign to all_prop_robs based on the presence of a negation sign
+                        # G(a) and G(not a) are handled differently
+                        # Assign to all_prop_robs based on the presence of a negation sign
+                        if sign:
+                            all_prop_robs[i, j] = min(-val for val in subseq)
+                        else:
+                            all_prop_robs[i, j] = min(subseq)
+                    else:
+                        # If sequence is empty or the slicing index is out of bounds, set to -1
+                        all_prop_robs[i, j] = -1
+
+                    # Calculate the index for tv_prop_robs safely
+                    tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
+                    if 0 <= tv_index < len(seq):  # Ensure tv_index is within valid range
+                        tv_prop_robs[i, j] = seq[tv_index]
+                    else:
+                        tv_prop_robs[i, j] = -1  # Assign -1 if the index is out of range or invalid
 
                 # Update the property node with ttv_value and ttv_h_min
-                if prop_index < len(self._prop_nodes):  # Ensure prop_index does not exceed the number of prop_nodes
                     self._prop_nodes[prop_index].set_ttv_values(
                         ttv_value=tv_prop_robs[i, j],
                         ttv_h_min=all_prop_robs[i, j]
                     )
-
+                    print(
+                        f"Proposition '{prop_name}' ({self._prop_nodes[prop_index].alphabet})"
+                        f" of rule {self._prop_nodes[prop_index].source_rule}"
+                        f" has ttv_value: {tv_prop_robs[i, j]} and ttv_h_min: {all_prop_robs[i, j]}"
+                    )
                     for pred in pred_nodes:
                         if "g0" not in all_prop_names[tuple([i, j])]:
                             if pred.name in all_prop_names[tuple([i, j])]:
@@ -396,9 +412,8 @@ class STLRuleMonitor:
                                 self._prop_nodes[prop_index].children.append(pred)
                 else:
                     raise IndexError(f"prop_index {prop_index} exceeds the number of propositional nodes.")
-
                 prop_index += 1  # Increment the prop_index for the next property node
-
+            print("=====================================")
 
     def search_future_time_step(self):
         future_time_step = np.zeros(len(self.rule_eval), dtype=int)

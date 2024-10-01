@@ -96,6 +96,8 @@ class TSolver:
         )
         compliant_maneuver = list()
         for prop_node in self._sel_prop:
+            if prop_node.name.startswith("previous"):
+                continue
             for predicate in prop_node.children:
                 if not hasattr(predicate, "evaluator"):
                     continue
@@ -104,47 +106,55 @@ class TSolver:
                     predicate.evaluator.predicate_name.__class__.__name__[:3]
                 )
                 if use_mpr_derivative:
-                    if prop_node.name == predicate.name:
+                    # if prop_node.name == predicate.name:
                         # value at TV
-                        if torch.cuda.is_available():
-                            print(predicate.mpr_gradient[0])
-                            grad_list = predicate.mpr_gradient[0].double().detach().cpu().numpy()
-                        else:
-                            grad_list = predicate.mpr_gradient.double().detach().cpu().numpy()[0]
-                        print(f"* predicate: {predicate.evaluator.predicate_name}")
-                        if (predicate_category == "Pos" and
-                            predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
-                                                                   PositionPredicates.InFrontOf,
-                                                                   PositionPredicates.Precedes,
-                                                                   PositionPredicates.StopLineInFront]) or \
-                                (predicate_category == "Vel"):
-                            grad_a = grad_list[2]
-                            print(f"* gradient list: {grad_list}")
-                            print(f"* gradient towards acceleration: {grad_a}")
-                            if abs(grad_a) <= 1e-6:  # no decision can be made
-                                compliant_maneuver += [Maneuver.BRAKE,
-                                                       Maneuver.KICKDOWN]
-                            # positive to negative, robustness needs to be decreased (Delta rob < 0)
-                            # negative to positive, robustness needs to be increased (Delta rob > 0)
-                            elif - predicate.latest_value / grad_a > 0:  # delta v > 0
-                                compliant_maneuver += [Maneuver.KICKDOWN]
-                            else:  # delta v < 0
-                                compliant_maneuver += [Maneuver.BRAKE]
-                        elif predicate_category == "Pos":
-                            grad_theta = grad_list[7]
-                            print(f"* gradient towards theta: {grad_theta}")
-                            if grad_theta == 0.0:  # no decision can be made
-                                compliant_maneuver += [Maneuver.STEERRIGHT,
-                                                       Maneuver.STEERLEFT]
-                            elif - predicate.latest_value / grad_theta > 0:  # delta theta > 0
-                                compliant_maneuver += [Maneuver.STEERLEFT]
-                            else:  # delta theta < 0
-                                compliant_maneuver += [Maneuver.STEERRIGHT]
+                    if torch.cuda.is_available():
+                        grad_tensor = predicate.mpr_gradient[0]
+                    else:
+                        grad_tensor = predicate.mpr_gradient
+                    # Check dtype and convert if necessary
+                    if grad_tensor.dtype != torch.float64:
+                        grad_tensor = grad_tensor.float()
+                    else:
+                        grad_tensor = grad_tensor.double()
 
-                        elif predicate_category == "Acc":
-                            compliant_maneuver += [Maneuver.CONSTANT]
-                        else:
-                            pass  # general predicate
+                    # Detach, move to CPU, and convert to numpy
+                    grad_list = grad_tensor.detach().cpu().numpy()
+                    print(f"* predicate: {predicate.evaluator.predicate_name}")
+                    if (predicate_category == "Pos" and
+                        predicate.evaluator.predicate_name in [PositionPredicates.KeepsSafeDistancePrec,
+                                                               PositionPredicates.InFrontOf,
+                                                               PositionPredicates.Precedes,
+                                                               PositionPredicates.StopLineInFront,
+                                                               PositionPredicates.InIntersectionConflictArea]) or \
+                            (predicate_category == "Vel"):
+                        grad_a = grad_list[4]
+                        print(f"* gradient list: {grad_list}")
+                        print(f"* gradient towards lon input: {grad_a}")
+                        if abs(grad_a) <= 0.01:  # no decision can be made
+                            compliant_maneuver += [Maneuver.BRAKE,
+                                                   Maneuver.KICKDOWN]
+                        # positive to negative, robustness needs to be decreased (Delta rob < 0)
+                        # negative to positive, robustness needs to be increased (Delta rob > 0)
+                        elif - predicate.latest_value / grad_a > 0:  # delta v > 0
+                            compliant_maneuver += [Maneuver.KICKDOWN]
+                        else:  # delta v < 0
+                            compliant_maneuver += [Maneuver.BRAKE]
+                    elif predicate_category == "Pos":
+                        grad_theta = grad_list[9]
+                        print(f"* gradient list: {grad_list}")
+                        print(f"* gradient towards lat input: {grad_theta}")
+                        if abs(grad_theta) <= 0.01:  # no decision can be made
+                            compliant_maneuver += []
+                        elif - predicate.latest_value / grad_theta > 0:  # delta theta > 0
+                            compliant_maneuver += [Maneuver.STEERLEFT]
+                        else:  # delta theta < 0
+                            compliant_maneuver += [Maneuver.STEERRIGHT]
+
+                    elif predicate_category == "Acc":
+                        compliant_maneuver += [Maneuver.CONSTANT]
+                    else:
+                        pass  # general predicate
                 else:
                     print("* \t<TSolver>: Unfortunately, the model predictive robustness is"
                           " not really computed")
