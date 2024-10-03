@@ -1,6 +1,6 @@
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-from crrepairer.utils.visualization import visualize_repaired_result
+from crrepairer.utils.visualization import visualize_repaired_result, visualize_scenario_once
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     config.repair.ego_id = 10111
     config.repair.N_r = 20
 
-
+    # config.miqp_planner.slack_lat = False
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()
     # rnd.draw_params.dynamic_obstacle.show_label = True
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     config.debug.show_plots = True
     config.repair.planner = 2
     config.repair.constraint_mode = 2
+    config.debug.plot_limits = [28.6, 53.6, -30, -5]
 
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)
@@ -56,4 +57,19 @@ if __name__ == "__main__":
             )
             if config.debug.show_plots:
                 # ============= Visualization =============
-                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+                # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+                visualize_scenario_once(config.scenario,
+                                        ego_initial,
+                                        ego_repaired,
+                                        repairer.tc,  # Assuming time_end is the current time_step for visualization
+                                        None,
+                                        config.debug.plot_limits,
+                                        config.repair.t_f,
+                                        repairer.tc,
+                                        repairer.tv,
+                                        repairer.target_vehicle,
+                                        traffic_rule_monitor.world,
+                                        marksize=10,
+                                        lanewidth=5,
+                                        marker_linewidth=2,
+                                        flag_repair=True)

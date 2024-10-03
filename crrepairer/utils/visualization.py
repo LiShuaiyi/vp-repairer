@@ -439,6 +439,8 @@ def visualize_scenario_once(
     world: World = None,
     flag_repair=False,
     marksize=5,
+    lanewidth=1.5,
+    marker_linewidth=1.5,
 ):
     """
     Function to visualize the repairing result given time step
@@ -525,7 +527,8 @@ def visualize_scenario_once(
                 marker="x",
                 markersize=marksize,
                 zorder=35,
-                linewidth=1.5,
+                linewidth=lanewidth,
+                markeredgewidth=marker_linewidth,
             )
             # Plot the segment from tc to end_time (after TC)
             rnd.ax.plot(
@@ -535,7 +538,8 @@ def visualize_scenario_once(
                 marker=".",
                 markersize=marksize,
                 zorder=35,
-                linewidth=1.5,
+                markeredgewidth=marker_linewidth,  # Set your desired marker line width here
+                linewidth=lanewidth,
             )
         else:
             # If time_step > tc, plot only the segment from time_step to end_time
@@ -546,7 +550,8 @@ def visualize_scenario_once(
                 marker=".",
                 markersize=marksize,
                 zorder=35,
-                linewidth=1.5,
+                linewidth=lanewidth,
+                markeredgewidth=marker_linewidth,
             )
     else:
         if time_step <= tv:
@@ -558,7 +563,8 @@ def visualize_scenario_once(
                 marker="x",
                 markersize=marksize,
                 zorder=35,
-                linewidth=1.5,
+                linewidth=lanewidth,
+                markeredgewidth=marker_linewidth,
             )
             # Plot the segment from tv to end_time (after TV)
             rnd.ax.plot(
@@ -568,7 +574,8 @@ def visualize_scenario_once(
                 marker="x",
                 markersize=marksize,
                 zorder=35,
-                linewidth=1.5,
+                linewidth=lanewidth,
+                markeredgewidth=marker_linewidth,
             )
         else:
             # If time_step > tv, plot only the segment from time_step to end_time
@@ -579,7 +586,8 @@ def visualize_scenario_once(
                 marker="x",
                 markersize=marksize,
                 zorder=35,
-                linewidth=1.5,
+                linewidth=lanewidth,
+                markeredgewidth=marker_linewidth,
             )
 
 
