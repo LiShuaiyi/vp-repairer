@@ -206,7 +206,7 @@ class RuleConstraintsReach:
             self.repaired_rules = []
             # add the repairing propositions
             for prop in self._prop_full:
-                if prop is None or prop.name.startswith("previous"):
+                if prop is None or prop.name.startswith("previous") or "historically" in prop.name:
                     continue
                 if PredSafeDistPrec.predicate_name in prop.name:
                     if prop.alphabet[0] == '~':
