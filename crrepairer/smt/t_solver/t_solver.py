@@ -96,7 +96,7 @@ class TSolver:
         )
         compliant_maneuver = list()
         for prop_node in self._sel_prop:
-            if prop_node.name.startswith("previous"):
+            if prop_node.name.startswith("previous") or "historically" in prop_node.name:
                 continue
             for predicate in prop_node.children:
                 if not hasattr(predicate, "evaluator"):
