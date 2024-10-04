@@ -74,8 +74,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             print("* {}. iteration...".format(nr))
             if self.rule_monitor.proposition_nodes is None:
                 return None
+            sat_start_time = time.time()
             select_proposition, self._model = self.sat_solver.model()
-
+            print("SAT reasoning time: {:.3f}s".format(time.time() - sat_start_time))
             repairability, repaired_traj = self.t_solver.check(
                 select_proposition, list(self._model), use_mpr_derivative=self.config.repair.use_mpr_derivative
             )
