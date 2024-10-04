@@ -8,6 +8,7 @@ import enum
 import os
 import copy
 import numpy as np
+import multiprocess as mp
 
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.state import CustomState, PMState, KSState
@@ -212,7 +213,10 @@ class TC(CutOffBase, ABC):
     @functools.lru_cache(128)
     def search_ttm_binary(self, maneuver: Maneuver):
         ttm = -math.inf
-        low = self._world_ego.start_time
+        if self._tc_dict:
+            low = max(self._tc_dict.values())
+        else:
+            low = self._world_ego.start_time
         high = int(int_round(self.tv / self.dT, self.round_tolerance))
         while low < high:
             self._mid = int(int_round(low + high) / 2)
