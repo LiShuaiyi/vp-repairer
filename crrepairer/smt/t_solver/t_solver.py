@@ -202,11 +202,12 @@ class TSolver:
                     #     pass
                     #     # compliant_maneuver += [Maneuver.STEERRIGHT, Maneuver.STEERLEFT]
                     elif predicate_category == "Vel":
-                        compliant_maneuver += [Maneuver.BRAKE, Maneuver.KICKDOWN]
+                        compliant_maneuver += [Maneuver.BRAKE]
                     elif predicate_category == "Acc":
                         compliant_maneuver += [Maneuver.CONSTANT]
                     elif (predicate_category == "Pos"
-                        and predicate.evaluator.predicate_name in [PositionPredicates.MainCarriagewayRightLane]):
+                        and predicate.evaluator.predicate_name in [PositionPredicates.MainCarriagewayRightLane,
+                                                                   PositionPredicates.InSameLane]):
                         compliant_maneuver += [Maneuver.STEERRIGHT,
                                                Maneuver.STEERLEFT]
                     else:

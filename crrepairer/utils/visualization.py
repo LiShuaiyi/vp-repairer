@@ -105,7 +105,8 @@ def visualize_v_profile_tc_all(
     time_start: int,
     time_end: int,
     ylim: Optional[List[float]] = None,
-    figsize = (6, 2.4)
+    figsize = (6, 2.4),
+    velocity_limit = None
 ):
     plt.figure(figsize=figsize)
     tv = repairer.tv
@@ -113,8 +114,8 @@ def visualize_v_profile_tc_all(
     time_list = [time_step - time_start for time_step in range(time_start, time_end)]
     ego_ini_vel = [ego_initial.state_at_time(t).velocity for t in range(time_start, time_end)]
     ego_rep_vel = [ego_repaired.state_at_time(t).velocity for t in range(time_start, time_end)]
-
-    plt.axhline(y=0, linestyle="--", linewidth=1.0)
+    if velocity_limit:
+        plt.axhline(y=velocity_limit, linestyle="--", linewidth=1.0)
     plot_velocity_acceleration_profile(time_list, ego_ini_vel, TUMColor.TUMblue.value, "Initial", marker="x")
     plot_velocity_acceleration_profile(time_list[tv - time_start:], ego_ini_vel[tv - time_start:], "red", "Violation", marker="x")
     plot_velocity_acceleration_profile(time_list[tc - time_start:], ego_rep_vel[tc - time_start:], TUMColor.TUMgreen.value, "Repaired")

@@ -44,7 +44,8 @@ if __name__ == "__main__":
             )
             if config.debug.show_plots:
                 # ============= Visualization =============
-                visualize_v_profile_tc_all(repairer, ego_initial, ego_repaired, config.repair.t_0, config.repair.t_f)
+                visualize_v_profile_tc_all(repairer, ego_initial, ego_repaired, config.repair.t_0, config.repair.t_f,
+                                           figsize=(6, 1.5), ylim=[20, 45], velocity_limit=43)
                 # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
                 # visualize_scenario_once(config.scenario,
                 #                         ego_initial,
