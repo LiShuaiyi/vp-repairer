@@ -17,7 +17,7 @@ from commonroad_crime.utility.simulation import Maneuver
 
 from crmonitor.predicates.position import PositionPredicates
 
-tolerance = 1e-6 # tolerance for the gradient-based decision making
+tolerance = 1e-2 # tolerance for the gradient-based decision making
 
 class TSolver:
     """
