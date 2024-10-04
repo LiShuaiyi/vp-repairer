@@ -17,7 +17,7 @@ from commonroad_crime.utility.simulation import Maneuver
 
 from crmonitor.predicates.position import PositionPredicates
 
-tolerance = 10-6
+tolerance = 1e-6
 
 class TSolver:
     """
