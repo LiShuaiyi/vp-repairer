@@ -131,7 +131,8 @@ class TSolver:
                         grad_a = grad_list[4]
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards lon input: {grad_a}")
-                        if abs(predicate.latest_value * grad_a) <= 10-4:  # no decision can be made
+                        print(f"* multiplied value: {abs(predicate.latest_value * grad_a)}")
+                        if abs(predicate.latest_value * grad_a) <= 10-6:  # no decision can be made
                             compliant_maneuver += [Maneuver.BRAKE,
                                                    Maneuver.KICKDOWN]
                         # positive to negative, robustness needs to be decreased (Delta rob < 0)
@@ -144,7 +145,8 @@ class TSolver:
                         grad_theta = grad_list[9]
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards lat input: {grad_theta}")
-                        if abs(predicate.latest_value * grad_theta) <= 10-4:  # no decision can be made
+                        print(f"* multiplied value: {abs(predicate.latest_value * grad_theta)}")
+                        if abs(predicate.latest_value * grad_theta) <= 10-6:  # no decision can be made
                             compliant_maneuver += [Maneuver.STEERLEFT,
                                                    Maneuver.STEERRIGHT]
                         elif - predicate.latest_value * grad_theta > 0:  # delta theta > 0
