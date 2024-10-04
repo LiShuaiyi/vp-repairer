@@ -213,11 +213,13 @@ class TC(CutOffBase, ABC):
     def search_ttm_binary(self, maneuver: Maneuver):
         ttm = -math.inf
         if self._tc_dict and max(self._tc_dict.values()) not in (math.inf, -math.inf):
-            low = int_round(max(self._tc_dict.values()))
-            print(f"* \t<Tsolver>: start from the previous ttm {low}")
+            low = int(int_round(max(self._tc_dict.values()) / self.dT, self.round_tolerance))
+            if self.singleton_search(maneuver, low) == -math.inf:
+                return -math.inf
+            print(f"* \t<Tsolver>: {maneuver.value} start from the previous ttm {low}")
         else:
             low = self._world_ego.start_time
-            print(f"* \t<Tsolver>: start from {low}")
+            print(f"* \t<Tsolver>: {maneuver.value} start from {low}")
         high = int(int_round(self.tv / self.dT, self.round_tolerance))
         while low < high:
             self._mid = int(int_round(low + high) / 2)
@@ -247,6 +249,7 @@ class TC(CutOffBase, ABC):
             ttm = ts * self.dT
         return ttm
 
+    @functools.lru_cache(128)
     def singleton_search(self, maneuver: Maneuver, start_time: int):
         if maneuver in [Maneuver.BRAKE, Maneuver.KICKDOWN, Maneuver.CONSTANT]:
             self._sim_lon.update_maneuver(maneuver)
