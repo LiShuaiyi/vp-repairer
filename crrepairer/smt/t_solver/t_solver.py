@@ -131,12 +131,12 @@ class TSolver:
                         grad_a = grad_list[4]
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards lon input: {grad_a}")
-                        if abs(grad_a) <= 0.01:  # no decision can be made
+                        if abs(predicate.latest_value * grad_a) <= 10-4:  # no decision can be made
                             compliant_maneuver += [Maneuver.BRAKE,
                                                    Maneuver.KICKDOWN]
                         # positive to negative, robustness needs to be decreased (Delta rob < 0)
                         # negative to positive, robustness needs to be increased (Delta rob > 0)
-                        elif - predicate.latest_value / grad_a > 0:  # delta v > 0
+                        elif - predicate.latest_value * grad_a > 0:  # delta v > 0
                             compliant_maneuver += [Maneuver.KICKDOWN]
                         else:  # delta v < 0
                             compliant_maneuver += [Maneuver.BRAKE]
@@ -144,9 +144,10 @@ class TSolver:
                         grad_theta = grad_list[9]
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards lat input: {grad_theta}")
-                        if abs(grad_theta) <= 0.01:  # no decision can be made
-                            compliant_maneuver += []
-                        elif - predicate.latest_value / grad_theta > 0:  # delta theta > 0
+                        if abs(predicate.latest_value * grad_theta) <= 10-4:  # no decision can be made
+                            compliant_maneuver += [Maneuver.STEERLEFT,
+                                                   Maneuver.STEERRIGHT]
+                        elif - predicate.latest_value * grad_theta > 0:  # delta theta > 0
                             compliant_maneuver += [Maneuver.STEERLEFT]
                         else:  # delta theta < 0
                             compliant_maneuver += [Maneuver.STEERRIGHT]
