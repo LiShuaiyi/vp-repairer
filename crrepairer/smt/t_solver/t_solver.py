@@ -135,6 +135,7 @@ class TSolver:
                         if abs(predicate.latest_value * grad_a) <= 10-6:  # no decision can be made
                             compliant_maneuver += [Maneuver.BRAKE,
                                                    Maneuver.KICKDOWN]
+                            print("* \t<TSolver>: no decision can be made, both maneuvers are selected")
                         # positive to negative, robustness needs to be decreased (Delta rob < 0)
                         # negative to positive, robustness needs to be increased (Delta rob > 0)
                         elif - predicate.latest_value * grad_a > 0:  # delta v > 0
@@ -149,6 +150,7 @@ class TSolver:
                         if abs(predicate.latest_value * grad_theta) <= 10-6:  # no decision can be made
                             compliant_maneuver += [Maneuver.STEERLEFT,
                                                    Maneuver.STEERRIGHT]
+                            print("* \t<TSolver>: no decision can be made, both maneuvers are selected")
                         elif - predicate.latest_value * grad_theta > 0:  # delta theta > 0
                             compliant_maneuver += [Maneuver.STEERLEFT]
                         else:  # delta theta < 0
