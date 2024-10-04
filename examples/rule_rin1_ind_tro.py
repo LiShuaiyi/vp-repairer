@@ -12,7 +12,7 @@ import math
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_AachenBendplatz-1_101840_T-1859"
+    scenario_id = "DEU_AachenBendplatz-1_151520_T-1539"
 
     # Build configuration object
     config = RepairerConfiguration()
@@ -20,10 +20,10 @@ if __name__ == "__main__":
     config.update()
     config.repair.scenario_type = "intersection"
     config.repair.rules = ["R_IN1"]
-    config.repair.ego_id = 10111
+    config.repair.ego_id = 10108
     config.repair.N_r = 20
 
-    # config.miqp_planner.slack_lat = False
+    # # config.miqp_planner.slack_lat = False
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()
     # rnd.draw_params.dynamic_obstacle.show_label = True
@@ -57,7 +57,7 @@ if __name__ == "__main__":
             )
             if config.debug.show_plots:
                 # ============= Visualization =============
-                # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
                 visualize_scenario_once(config.scenario,
                                         ego_initial,
                                         ego_repaired,
