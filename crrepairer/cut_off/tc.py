@@ -8,7 +8,6 @@ import enum
 import os
 import copy
 import numpy as np
-import multiprocess as mp
 
 from commonroad.scenario.obstacle import DynamicObstacle
 from commonroad.scenario.state import CustomState, PMState, KSState
