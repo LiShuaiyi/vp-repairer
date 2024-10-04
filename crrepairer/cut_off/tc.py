@@ -212,7 +212,7 @@ class TC(CutOffBase, ABC):
     @functools.lru_cache(128)
     def search_ttm_binary(self, maneuver: Maneuver):
         ttm = -math.inf
-        if self._tc_dict:
+        if self._tc_dict and max(self._tc_dict.values()) not in (math.inf, -math.inf):
             low = max(self._tc_dict.values())
         else:
             low = self._world_ego.start_time

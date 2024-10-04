@@ -17,7 +17,7 @@ from commonroad_crime.utility.simulation import Maneuver
 
 from crmonitor.predicates.position import PositionPredicates
 
-tolerance = 1e-6
+tolerance = 1e-6 # tolerance for the gradient-based decision making
 
 class TSolver:
     """
@@ -220,6 +220,8 @@ class TSolver:
                         # raise ValueError('<T-Solver>: the category {} is not specified'
                         #                  .format(predicate_category))
         compliant_maneuver = list(set(compliant_maneuver))
+        # Sort by the first letter, giving preference to "Brake" over "Steer/Turn"
+        compliant_maneuver.sort(key=lambda m: (m.value[0] != 'B', m.value))
         if not compliant_maneuver:
             print("* \t<TSolver>: no compliant maneuver is selected")
         else:
@@ -285,7 +287,7 @@ class TSolver:
         print(
             "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv)
         )
-        print(f"* \t<Tsolver>: run time {time.time() - start_time:.3f}s")
+        print(f"* \t<Tsolver>: run time {(time.time() - start_time)/len(self.compliant_maneuvers):.3f}s")
         if tc != -math.inf:
             repaired_traj = self._optimization_based_repair()
             if repaired_traj is not None:
