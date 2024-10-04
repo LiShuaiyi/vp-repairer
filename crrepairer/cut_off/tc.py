@@ -213,9 +213,11 @@ class TC(CutOffBase, ABC):
     def search_ttm_binary(self, maneuver: Maneuver):
         ttm = -math.inf
         if self._tc_dict and max(self._tc_dict.values()) not in (math.inf, -math.inf):
-            low = max(self._tc_dict.values())
+            low = int_round(max(self._tc_dict.values()))
+            print(f"* \t<Tsolver>: start from the previous ttm {low}")
         else:
             low = self._world_ego.start_time
+            print(f"* \t<Tsolver>: start from {low}")
         high = int(int_round(self.tv / self.dT, self.round_tolerance))
         while low < high:
             self._mid = int(int_round(low + high) / 2)
