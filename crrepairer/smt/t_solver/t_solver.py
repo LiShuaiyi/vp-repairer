@@ -17,6 +17,7 @@ from commonroad_crime.utility.simulation import Maneuver
 
 from crmonitor.predicates.position import PositionPredicates
 
+tolerance = 10-6
 
 class TSolver:
     """
@@ -131,8 +132,8 @@ class TSolver:
                         grad_a = grad_list[4]
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards lon input: {grad_a}")
-                        print(f"* multiplied value: {abs(predicate.latest_value * grad_a)}")
-                        if abs(predicate.latest_value * grad_a) <= 10-6:  # no decision can be made
+                        print(f"Multiplied value: {abs(predicate.latest_value * grad_a)}, Tolerance: {tolerance}")
+                        if abs(predicate.latest_value * grad_a) <= tolerance:  # no decision can be made
                             compliant_maneuver += [Maneuver.BRAKE,
                                                    Maneuver.KICKDOWN]
                             print("* \t<TSolver>: no decision can be made, both maneuvers are selected")
@@ -146,8 +147,8 @@ class TSolver:
                         grad_theta = grad_list[9]
                         print(f"* gradient list: {grad_list}")
                         print(f"* gradient towards lat input: {grad_theta}")
-                        print(f"* multiplied value: {abs(predicate.latest_value * grad_theta)}")
-                        if abs(predicate.latest_value * grad_theta) <= 10-6:  # no decision can be made
+                        print(f"Multiplied value: {abs(predicate.latest_value * grad_theta)}, Tolerance: {tolerance}")
+                        if abs(predicate.latest_value * grad_theta) <= tolerance:  # no decision can be made
                             compliant_maneuver += [Maneuver.STEERLEFT,
                                                    Maneuver.STEERRIGHT]
                             print("* \t<TSolver>: no decision can be made, both maneuvers are selected")
