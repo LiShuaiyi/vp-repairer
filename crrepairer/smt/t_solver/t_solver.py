@@ -278,16 +278,16 @@ class TSolver:
         Checks the T-consistency.
         """
         repaired_traj = None
+        start_time = time.time()
         self.assign_proposition(proposition, model, use_mpr_derivative)
         if self.compliant_maneuvers is None:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj
-        start_time = time.time()
         tc = self.search_tc()
         print(
             "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv)
         )
-        print(f"* \t<Tsolver>: run time {(time.time() - start_time)/len(self.compliant_maneuvers):.3f}s")
+        print(f"* \t<Tsolver>: run time {time.time() - start_time:.3f}s")
         if tc != -math.inf:
             repaired_traj = self._optimization_based_repair()
             if repaired_traj is not None:
