@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     # file_path = "../../commonroad-scenarios-master-scenarios/scenarios/cooperative"
     # highD_scenario_dir = "/home/yuanfei/commonroad/highD-dataset/sebastian_evaluation/"
-    filename = "inD_evaluation_result.csv"
+    filename = "inD_evaluation_result_all.csv"
     if not os.path.isfile(filename):
         with open(filename, 'w') as f:
             f.write('')  # Create the file and write an empty string if needed
