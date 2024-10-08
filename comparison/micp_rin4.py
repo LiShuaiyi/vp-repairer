@@ -167,6 +167,13 @@ def plot_scenario(crscenario, traj_cr, plot_limits, time_step):
         linewidth=3,
         label="replanned trajectory",
     )
+
+    rnd.ax.plot(np.array(ego_vehicle.ref_path_lane.clcs.reference_path())[:, 0],
+                np.array(ego_vehicle.ref_path_lane.clcs.reference_path())[:, 1],
+                color=TUMColor.TUMblue.value,
+                zorder=23,
+                linewidth=3,
+                label="reference path")
     plt.show()
 
 

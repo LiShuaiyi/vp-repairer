@@ -36,10 +36,11 @@ if __name__ == "__main__":
     config.update()
 
     config.repair.use_mpr = False
+    config.repair.use_mpr_derivative = False
     config.debug.show_plots = True
     config.repair.planner = 2
     config.repair.constraint_mode = 2
-    config.debug.plot_limits = [28.6, 53.6, -30, -5]
+    config.debug.plot_limits = [37, 54, -30, -12]
 
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)
@@ -57,7 +58,7 @@ if __name__ == "__main__":
             )
             if config.debug.show_plots:
                 # ============= Visualization =============
-                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+                # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
                 visualize_scenario_once(config.scenario,
                                         ego_initial,
                                         ego_repaired,
