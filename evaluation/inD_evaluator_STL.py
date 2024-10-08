@@ -59,7 +59,7 @@ from crmonitor.common.world import World, get_world_config
 if __name__ == "__main__":
     # the highD-cr scenario directory
     # file_path = "../../highD-dataset/highD-cr-scenarios/"
-    file_path = "/home/liny/Documents/commonroad/ind_scenarios_2024/"
+    file_path = "/home/liny/scenarios/ind_scenarios_2024/"
 
     # file_path = "../../commonroad-scenarios-master-scenarios/scenarios/cooperative"
     # highD_scenario_dir = "/home/yuanfei/commonroad/highD-dataset/sebastian_evaluation/"
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # _ = f_r.readlines().pop(0)  # pop first line
     writer.writerow(["scenario_id", "ego_id", "rule_STL"])
 
-    rules = ["R_IN1"]
+    rules = ["R_IN1", "R_IN4"]
     for s in list(glob.glob(os.path.join(file_path, "*.xml"), recursive=True)):
         if True:
             scenario, planning_problem_set = CommonRoadFileReader(s).open(
