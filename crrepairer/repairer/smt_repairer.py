@@ -43,6 +43,8 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         self.t_solver = TSolver(ego_vehicle, self.rule_monitor, config)
         self.config = config
 
+        # Runtime tracking variables
+        self.sat_reasoning_time = 0
 
     @property
     def tv(self):
@@ -76,13 +78,20 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 return None
             sat_start_time = time.time()
             select_proposition, self._model = self.sat_solver.model()
-            print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(time.time() - sat_start_time))
+            self.sat_reasoning_time += time.time() - sat_start_time
+            print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(self.sat_reasoning_time))
             repairability, repaired_traj = self.t_solver.check(
                 select_proposition, list(self._model), use_mpr_derivative=self.config.repair.use_mpr_derivative
             )
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
                 print(f"----- Computation Time: {time.time() - start_time:.3f}s -----")
+                print("*****  Successfully Repaired! •ᴗ•  *****")
+                print(f"----- Time details ----- \n***** SAT: {self.sat_reasoning_time:.6f}s"
+                      f"\n***** TC search: {self.t_solver.tc_search_time:.3f}s"
+                      f"\n***** Reachset computation: {self.t_solver.reach_set_time:.3f}s"
+                      f"\n***** Optimization: {self.t_solver.opti_plan_time:.3f}s"
+                      f"\n***** Total: {self.sat_reasoning_time + self.t_solver.total_runtime:.3f}s")
                 return repaired_traj
                 # tv, _ = self.t_solver.tc_object.calc_tv_updated(
                 #     repaired_traj.state_list, int(self._tc)
