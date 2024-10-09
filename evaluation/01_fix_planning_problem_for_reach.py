@@ -88,12 +88,12 @@ for index, row in df.iterrows():
     planning_problem.goal = update_goal_state(ego_initial.initial_state,
                                               ego_initial.prediction.trajectory,
                                               scenario.lanelet_network)
-
-    rnd = MPRenderer()
-    planning_problem.draw(rnd)
-    scenario.draw(rnd)
-    rnd.render()
-    plt.show()
+    #
+    # rnd = MPRenderer()
+    # planning_problem.draw(rnd)
+    # scenario.draw(rnd)
+    # rnd.render()
+    # plt.show()
 
     route_planner = RoutePlanner(scenario.lanelet_network, planning_problem)
     route = route_planner.plan_routes().retrieve_first_route()
@@ -102,3 +102,5 @@ for index, row in df.iterrows():
         fw = CommonRoadFileWriter(scenario, planning_problem_set, author, affiliation, source, tags)
         file_name = target_path + scenario_id + '--' + str(ego_id) + '.xml'
         fw.write_to_file(file_name, OverwriteExistingFile.ALWAYS)
+    else:
+        print('FAIL! No route found for scenario: ', scenario_id)
