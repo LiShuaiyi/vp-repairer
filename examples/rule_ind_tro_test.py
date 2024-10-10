@@ -10,7 +10,9 @@ if __name__ == "__main__":
     # ========== Scenario and Configuration =========
     # scenario_id = "DEU_AachenBendplatz-10011_1180_T-99"
     # scenario_id = "DEU_AachenFrankenburg-10294_223180_T-3199"
-    scenario_id = "DEU_AachenBendplatz-10075_71780_T-1799"
+    # scenario_id = "DEU_AachenBendplatz-10075_71780_T-1799"
+    scenario_id = "DEU_AachenBendplatz-10039_10500_T-519"
+    scenario_id = "DEU_AachenBendplatz-10046_16640_T-659"
     # Build configuration object
     config = RepairerConfiguration()
     config.general.set_path_scenario(scenario_id)
@@ -23,15 +25,21 @@ if __name__ == "__main__":
     # config.repair.rules = ["R_IN4"]
     # config.repair.ego_id = 10294
 
-    config.repair.rules = ["R_IN1"]
-    config.repair.ego_id = 10075
+    # config.repair.rules = ["R_IN1"]
+    # config.repair.ego_id = 10075
+
+    # config.repair.rules = ["R_IN4"]
+    # config.repair.ego_id = 10039
+
+    config.repair.rules = ["R_IN4"]
+    config.repair.ego_id = 10046
     # ego vehicle does not have state at time step 0-3
 
     config.repair.N_r = 20
 
     config.debug.show_plots = True
     config.repair.planner = 2
-    config.repair.constraint_mode = 1
+    config.repair.constraint_mode = 2
 
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()
