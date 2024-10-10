@@ -33,7 +33,7 @@ if __name__ == "__main__":
             ego_id = int(result[1])
             rule = result[2]
             print(">>", rule, scenario_id, ego_id)
-            scenario_id_with_extension = scenario_id.replace('-1', '-' + str(ego_id))
+            scenario_id_with_extension = scenario_id.replace('-1_', '-' + str(ego_id) + '_')
 
             # Load the scenario and configuration
             config = RepairerConfiguration()
@@ -43,7 +43,7 @@ if __name__ == "__main__":
             config.update()
 
             config.repair.scenario_type = "intersection"
-            config.repair.rules = ["R_IN1"]
+            config.repair.rules = [str(rule)]
             config.repair.ego_id = ego_id
             config.repair.N_r = config.scenario.obstacle_by_id(ego_id).prediction.trajectory.final_state.time_step
 
@@ -66,7 +66,16 @@ if __name__ == "__main__":
 
             # ========== Trajectory Repairing =========
             repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
-            repaired_traj = repairer.repair()
+            try:
+                repaired_traj = repairer.repair()
+            except Exception as e:
+                print(f"Error: {e}")
+                writer.writerow([scenario_id, ego_id, rule, "error/failed", repairer.model, repairer.tv, repairer.tc,
+                                 repairer.sat_reasoning_time,
+                                 getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
+                                 getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
+                                 getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time])
+                continue
 
             # Writing result based on repairability
             if repaired_traj is not None:

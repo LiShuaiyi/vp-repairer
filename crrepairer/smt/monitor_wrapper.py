@@ -774,7 +774,10 @@ class STLRuleMonitor:
 
             # Calculate TV for each vehicle for this rule
             for veh, props_tv in all_id_all_props_tv[rule].items():
-                tv = min(parsed_nnf_formula.compute_tv_list(props_tv)) # min: globally
+                if len(parsed_nnf_formula.compute_tv_list(props_tv)) == 0:
+                    tv = math.inf
+                else:
+                    tv = min(parsed_nnf_formula.compute_tv_list(props_tv)) # min: globally
 
                 # Replace tv with inf if it's equal to start_time_step
                 tv = math.inf if tv == self._start_time_step else tv
