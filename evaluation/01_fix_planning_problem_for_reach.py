@@ -99,8 +99,8 @@ for index, row in df.iterrows():
     route = route_planner.plan_routes().retrieve_first_route()
     visualize_route(route, scenario, planning_problem)
     if route:
-        file_name = target_path + scenario_id + '--' + str(ego_id) + '.xml'
-        scenario.scenario_id = scenario_id + '--' + str(ego_id)
+        file_name = target_path + str(scenario_id).replace('-1', '-' + str(ego_id)) + '.xml'
+        scenario.scenario_id = str(scenario_id).replace('-1',  '-' + str(ego_id))
         fw = CommonRoadFileWriter(scenario, planning_problem_set, author, affiliation, source, tags)
         fw.write_to_file(file_name, OverwriteExistingFile.ALWAYS)
     else:
