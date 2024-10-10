@@ -15,6 +15,7 @@ from crrepairer.utils.constraints import (
     lateral_position_constraints,
     longitudinal_velocity_constraints,
 )
+from crrepairer.utils.configuration import RepairerConfiguration
 
 from crmonitor.predicates.position import (
     PredInIntersectionConflictArea,
@@ -83,6 +84,7 @@ class RuleConstraintsReach:
         rule_monitor: STLRuleMonitor,
         veh_config: PlanningConfigurationVehicle,
         initial_trajectory: Trajectory,
+        config_repair: RepairerConfiguration,
     ):
         # initialize the needed components
         self.repaired_rules = None
@@ -129,10 +131,13 @@ class RuleConstraintsReach:
         self.reach_config.planning.dt = self._world_state.dt
 
         # update the path
-        path_scenarios = os.path.join(script_dir, '..', '..', '..', 'scenarios/')
-        self.reach_config.general.path_scenarios = path_scenarios
-        self.reach_config.general.path_scenario = os.path.join(path_scenarios,
-                                                               f"{str(self._world_state.scenario.scenario_id)}.xml")
+        self.reach_config.general.path_scenarios = config_repair.general.path_scenarios
+        self.reach_config.general.path_scenario = config_repair.general.path_scenario
+
+        # path_scenarios = os.path.join(script_dir, '..', '..', '..', 'scenarios/')
+        # self.reach_config.general.path_scenarios = path_scenarios
+        # self.reach_config.general.path_scenario = os.path.join(path_scenarios,
+        #                                                        f"{str(self._world_state.scenario.scenario_id)}.xml")
 
         # use the original scenario
 

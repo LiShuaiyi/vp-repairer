@@ -98,7 +98,8 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._constraints = RuleConstraintMIQPReach(self.tc_object,
                                                         self.rule_monitor,
                                                         self._vehicle_configuration,
-                                                        self._initial_trajectory)
+                                                        self._initial_trajectory,
+                                                        self.config)
             self._vehicle_configuration.CLCS = self._constraints.reach_config.planning.CLCS
             self._vehicle_configuration.reference_path = self._constraints.reach_config.planning.reference_path
 
