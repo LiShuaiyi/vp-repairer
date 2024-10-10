@@ -59,7 +59,12 @@ if __name__ == "__main__":
             ego_initial = retrieve_ego_vehicle(config)
 
             # ========== Traffic Rule Monitor =========
-            traffic_rule_monitor = STLRuleMonitor(config)
+            try:
+                traffic_rule_monitor = STLRuleMonitor(config)
+            except Exception as e:
+                print(f"Error: {e}")
+                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
+                continue
 
             if traffic_rule_monitor.tv_time_step in (-math.inf, math.inf):
                 writer.writerow([scenario_id, ego_id, rule, "initial feasibility"])
@@ -71,13 +76,13 @@ if __name__ == "__main__":
                 repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
             except Exception as e:
                 print(f"Error: {e}")
-                writer.writerow([scenario_id, ego_id, rule, "initialization fails", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
+                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
                 continue
             try:
                 repaired_traj = repairer.repair()
             except Exception as e:
                 print(f"Error: {e}")
-                writer.writerow([scenario_id, ego_id, rule, "error/failed", repairer.model, repairer.tv, repairer.tc,
+                writer.writerow([scenario_id, ego_id, rule, f"error/failed with {e}", repairer.model, repairer.tv, repairer.tc,
                                  repairer.sat_reasoning_time,
                                  getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),

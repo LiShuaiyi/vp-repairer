@@ -232,11 +232,20 @@ class RuleConstraintsReach:
                                       self._tc_obj.N - self._tc_obj.tc_time_step]
                         time_steps[0] = max(time_steps[0] - divided_values[-1], 0)
                         time_interval_int = "..".join(str(value) for value in time_steps)
+                        if prop.ttv_value == -float("inf"):
+                            continue
                         if prop.ttv_value > 0:
                             # change the sign
                             semantic_prop = "!" + semantic_prop
                         self.repaired_rules.append(
                             'LTL G[' + time_interval_int + '](' + semantic_prop + ')')
+                    else:
+                        if prop.alphabet[0] == '~':
+                            # change the sign
+                            semantic_prop = "!" + semantic_prop
+                        self.repaired_rules.append(
+                            'LTL G(' + semantic_prop + ')')
+
                 else:
                     if PredInSameLane.predicate_name in prop.name:
                         semantic_prop = Proposition.in_same_lane(self._rule_to_other_id[prop.source_rule])
