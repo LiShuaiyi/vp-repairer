@@ -407,13 +407,21 @@ class STLRuleMonitor:
                         if "g0" not in all_prop_names[tuple([i, j])]:
                             if pred.name in all_prop_names[tuple([i, j])]:
                                 # Add the missing values (latest_value, mpr_gradient)
-                                pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                if all_pre_rob_grad[i] is not np.nan:
+                                    pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                else:
+                                    pred.latest_value = None
+                                    pred.mpr_gradient = None
                                 self._prop_nodes[prop_index].children.append(pred)
                         else:
                             # Handle case when "g0" is present in the prop_name
                             other_props = np.delete(all_prop_names[i], j, 0)
                             if not any([pred.name in p_name for p_name in other_props if p_name]):
-                                pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                if all_pre_rob_grad[i] is not np.nan:
+                                    pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                else:
+                                    pred.latest_value = None
+                                    pred.mpr_gradient = None
                                 self._prop_nodes[prop_index].children.append(pred)
                 else:
                     raise IndexError(f"prop_index {prop_index} exceeds the number of propositional nodes.")
