@@ -43,6 +43,8 @@ if __name__ == "__main__":
             config.update()
 
             config.repair.scenario_type = "intersection"
+            config.repair.intersection_type = "dataset"
+
             config.repair.rules = [str(rule)]
             config.repair.ego_id = ego_id
             config.repair.N_r = config.scenario.obstacle_by_id(ego_id).prediction.trajectory.final_state.time_step
@@ -65,7 +67,12 @@ if __name__ == "__main__":
                 continue
 
             # ========== Trajectory Repairing =========
-            repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
+            try:
+                repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
+            except Exception as e:
+                print(f"Error: {e}")
+                writer.writerow([scenario_id, ego_id, rule, "initialization fails", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
+                continue
             try:
                 repaired_traj = repairer.repair()
             except Exception as e:
