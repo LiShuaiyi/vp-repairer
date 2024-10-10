@@ -58,7 +58,7 @@ file_path = "/home/liny/Documents/commonroad/ind_scenarios_2024/"
 target_path = "/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
 
 # Skip the first line and load the rest of the CSV
-df = pd.read_csv(csv_file_path, skiprows=1)
+df = pd.read_csv(csv_file_path, skiprows=1, header=None)
 
 author = 'Yuanfei Lin'
 affiliation = 'Technical University of Munich, Germany'
@@ -99,8 +99,9 @@ for index, row in df.iterrows():
     route = route_planner.plan_routes().retrieve_first_route()
     visualize_route(route, scenario, planning_problem)
     if route:
-        fw = CommonRoadFileWriter(scenario, planning_problem_set, author, affiliation, source, tags)
         file_name = target_path + scenario_id + '--' + str(ego_id) + '.xml'
+        scenario.scenario_id = scenario_id + '--' + str(ego_id)
+        fw = CommonRoadFileWriter(scenario, planning_problem_set, author, affiliation, source, tags)
         fw.write_to_file(file_name, OverwriteExistingFile.ALWAYS)
     else:
         print('FAIL! No route found for scenario: ', scenario_id)
