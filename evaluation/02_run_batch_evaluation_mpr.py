@@ -9,9 +9,9 @@ import math
 import torch
 
 # Limit GPU memory usage to 50% of the available memory
-torch.cuda.set_per_process_memory_fraction(0.5, device=0)
+torch.cuda.set_per_process_memory_fraction(0.8, device=0)
 
-file_path = "/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
+file_path = "/home/liny/ind_scenarios_2024_repaired/"
 
 if __name__ == "__main__":
     nr_infeasible = 0
@@ -56,8 +56,8 @@ if __name__ == "__main__":
             config.repair.ego_id = ego_id
             config.repair.N_r = config.scenario.obstacle_by_id(ego_id).prediction.trajectory.final_state.time_step
 
-            config.repair.use_mpr = False
-            config.repair.use_mpr_derivative = False
+            config.repair.use_mpr = True
+            config.repair.use_mpr_derivative = True
             config.debug.show_plots = False
             config.repair.planner = 2
             config.repair.constraint_mode = 2
