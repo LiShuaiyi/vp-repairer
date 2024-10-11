@@ -1,0 +1,2 @@
+scenario_id,ego_id,rule,repairability,model,TV,TC,maneuvers,SAT_time,TC_time,reach_time,total_time
+DEU_AachenBendplatz-1_155320_T-5339,10335,R_IN1,bingo,"{'b', '~a', '~e'}",3,0,[<Maneuver.BRAKE: 'brake'>],2.4318695068359375e-05,0.014363527297973633,0.1092977523803711,0.16531991958618164
