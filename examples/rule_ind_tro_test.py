@@ -13,8 +13,17 @@ if __name__ == "__main__":
     # scenario_id = "DEU_AachenBendplatz-10075_71780_T-1799"
     scenario_id = "DEU_AachenBendplatz-10039_10500_T-519"
     scenario_id = "DEU_AachenBendplatz-10046_16640_T-659"
+    scenario_id = "DEU_AachenBendplatz-10226_82920_T-2939"
+    scenario_id = "DEU_AachenBendplatz-10108_101840_T-1859"
+    scenario_id = "DEU_AachenFrankenburg-10208_262060_T-2079"
+    scenario_id = "DEU_AachenBendplatz-10226_82940_T-2959"
+    scenario_id = "DEU_AachenBendplatz-10371_125460_T-5479"
+    scenario_id = "DEU_AachenFrankenburg-10521_235720_T-5739"
+    scenario_id = "DEU_AachenBendplatz-10369_144980_T-4999"
+    scenario_id = "DEU_AachenBendplatz-10217_93620_T-3639"
     # Build configuration object
     config = RepairerConfiguration()
+    config.general.path_scenarios = "/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
     config.general.set_path_scenario(scenario_id)
     config.update()
     config.repair.scenario_type = "intersection"
@@ -31,8 +40,10 @@ if __name__ == "__main__":
     # config.repair.rules = ["R_IN4"]
     # config.repair.ego_id = 10039
 
+    # config.repair.rules = ["R_IN4"]
+    # config.repair.ego_id = 10046
     config.repair.rules = ["R_IN4"]
-    config.repair.ego_id = 10046
+    config.repair.ego_id = int(scenario_id.split('-')[1].split('_')[0])
     # ego vehicle does not have state at time step 0-3
 
     config.repair.N_r = 20
