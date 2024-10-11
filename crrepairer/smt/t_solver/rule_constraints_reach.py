@@ -237,6 +237,9 @@ class RuleConstraintsReach:
                         if prop.ttv_value > 0:
                             # change the sign
                             semantic_prop = "!" + semantic_prop
+                        else:
+                            # fixme:
+                            continue
                         self.repaired_rules.append(
                             'LTL G[' + time_interval_int + '](' + semantic_prop + ')')
                     else:
