@@ -9,7 +9,7 @@ import math
 import torch
 
 # Limit GPU memory usage to 50% of the available memory
-torch.cuda.set_per_process_memory_fraction(0.8, device=0)
+# torch.cuda.set_per_process_memory_fraction(0.8, device=0)
 
 file_path = "/home/liny/ind_scenarios_2024_repaired/"
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     nr_not_repairable = 0
 
     # Read the scenario violation information from a CSV file
-    with open("inD_evaluation_result_all.csv", "r") as f_r:
+    with open("inD_evaluation_rin1_4_filtered.csv", "r") as f_r:
         reader = csv.reader(f_r)
         header = next(reader)  # Read header if needed
         result_inD = [row for row in reader]  # Read all rows from the file
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         writer = csv.writer(f_w)
 
         # Write headers to the result file
-        headers = ["scenario_id", "ego_id", "rule", "repairability", "model", "TV", "TC",
+        headers = ["scenario_id", "ego_id", "rule", "repairability", "model", "TV", "TC", "maneuvers",
                    "SAT_time", "TC_time", "reach_time", "total_time"]
         writer.writerow(headers)
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
                 traffic_rule_monitor = STLRuleMonitor(config)
             except Exception as e:
                 print(f"Error: {e}")
-                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
+                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
                 continue
 
             if traffic_rule_monitor.tv_time_step in (-math.inf, math.inf):
@@ -83,13 +83,14 @@ if __name__ == "__main__":
                 repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
             except Exception as e:
                 print(f"Error: {e}")
-                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
+                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
                 continue
             try:
                 repaired_traj = repairer.repair()
             except Exception as e:
                 print(f"Error: {e}")
                 writer.writerow([scenario_id, ego_id, rule, f"error/failed with {e}", repairer.model, repairer.tv, repairer.tc,
+                                 repairer.t_solver.compliant_maneuvers,
                                  repairer.sat_reasoning_time,
                                  getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
@@ -100,6 +101,7 @@ if __name__ == "__main__":
             if repaired_traj is not None:
                 nr_repairable += 1
                 writer.writerow([scenario_id, ego_id, rule, "bingo", repairer.model, repairer.tv, repairer.tc,
+                                 repairer.t_solver.compliant_maneuvers,
                                  repairer.sat_reasoning_time,
                                  getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
@@ -107,6 +109,7 @@ if __name__ == "__main__":
             else:
                 nr_not_repairable += 1
                 writer.writerow([scenario_id, ego_id, rule, "not repairable", repairer.model, repairer.tv, repairer.tc,
+                                 repairer.t_solver.compliant_maneuvers,
                                  repairer.sat_reasoning_time,
                                  getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
