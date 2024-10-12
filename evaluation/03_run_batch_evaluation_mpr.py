@@ -5,11 +5,15 @@ from crrepairer.utils.repair import retrieve_ego_vehicle
 
 import csv
 import math
-
 import torch
-
 # Limit GPU memory usage to 50% of the available memory
 # torch.cuda.set_per_process_memory_fraction(0.8, device=0)
+import logging
+logging.getLogger().setLevel(logging.CRITICAL)
+
+import warnings
+warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", message="You have passed data through a FixedNoiseGaussianLikelihood")
 
 file_path = "/home/liny/ind_scenarios_2024_repaired/"
 
