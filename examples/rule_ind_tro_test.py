@@ -25,6 +25,7 @@ if __name__ == "__main__":
     scenario_id = "DEU_AachenBendplatz-10051_8740_T-759"
     scenario_id = "DEU_AachenBendplatz-10269_154200_T-4219"
     scenario_id = "DEU_AachenBendplatz-10102_121860_T-1879"
+    scenario_id = "DEU_AachenBendplatz-10030_8340_T-359"
     # Build configuration object
     config = RepairerConfiguration()
     config.general.path_scenarios = "/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     config.debug.show_plots = True
     config.repair.planner = 2
     config.repair.constraint_mode = 2
-
+    #
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()
     # rnd.draw_params.dynamic_obstacle.show_label = True
