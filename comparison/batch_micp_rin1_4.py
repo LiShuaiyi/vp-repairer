@@ -117,7 +117,12 @@ with open("inD_evaluation_rin1_4.csv", "w", newline="") as f_w:
 
         time_start = time.time()
 
-        solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
+        try:
+            solver = GurobiMICPSolver(spec, sys, x0, T, robustness_cost=True)
+        except Exception as e:
+            print(f"Error: {e}")
+            writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A"])
+            continue
         # solver = ScipyGradientSolver(spec, sys, x0, T, verbose=True)
 
         u_min = np.array([-2000, -2000])
