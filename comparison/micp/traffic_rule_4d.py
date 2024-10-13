@@ -225,6 +225,11 @@ class RG123(BenchmarkScenario):
         self.other_vehicle = other_vehicle
         self.lanelet_network = lanelet_network
 
+        self.world = world
+
+
+    def GetSpecification(self):
+
         self.in_same_lane_constr = InSameLaneConstraint()
         self.in_same_lane_constr.compute(
             self.ego_vehicle, self.other_vehicle, 0, self.T
@@ -242,11 +247,8 @@ class RG123(BenchmarkScenario):
 
         self.collision_avoidance_constr = CollisionFreeConstraint()
         self.collision_avoidance_constr.compute(
-            world, self.ego_vehicle, self.other_vehicle, 0, self.T
+            self.world, self.ego_vehicle, self.other_vehicle, 0, self.T
         )
-
-    def GetSpecification(self):
-
         time_interval = [t for t in range(0, self.T + 1)]
         subformula_list = []
         for time_step in time_interval:
@@ -354,12 +356,8 @@ class RIN1(BenchmarkScenario):
         self.T: int = T
         self.ego_vehicle = ego_vehicle
         self.lanelet_network = lanelet_network
-        self.stop_line_s = self.obtain_stop_line_s() - self.ego_vehicle.shape.length/2
 
-        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
-        self.collision_avoidance_constr.compute(
-            world, self.ego_vehicle, 0, self.T
-        )
+        self.world = world
 
     def obtain_stop_line_s(self):
 
@@ -397,6 +395,14 @@ class RIN1(BenchmarkScenario):
         return stop_line_s
 
     def GetSpecification(self):
+
+        self.stop_line_s = self.obtain_stop_line_s() - self.ego_vehicle.shape.length/2
+
+        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
+        self.collision_avoidance_constr.compute(
+            self.world, self.ego_vehicle, 0, self.T
+        )
+
         # inside the conflict area
         stop_line_in_front = inside_interval_formula(
             [self.stop_line_s - 1.0, self.stop_line_s], 0, 10
