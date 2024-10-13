@@ -88,7 +88,12 @@ with open("inD_evaluation_rin1_4.csv", "w", newline="") as f_w:
                             world=world,
                             ego_vehicle=ego_vehicle,
                             lanelet_network=world.road_network.lanelet_network)
-        spec = scenario.GetSpecification()
+        try:
+            spec = scenario.GetSpecification()
+        except Exception as e:
+            print(f"Error: {e}")
+            writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A"])
+            continue
         sys = scenario.GetSystem()
         Q = np.diag([0.1, 0.1, 0.5, 1, 0.1, 0.1, 0.5, 1])
         R = 1 * np.eye(2)
