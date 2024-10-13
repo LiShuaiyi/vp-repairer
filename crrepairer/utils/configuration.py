@@ -182,10 +182,10 @@ class MIQPPlannerConfiguration(BaseConfiguration):
     slack_lat: bool = True
     # s, v, a, j, u, slack
     weight_long: List[float] =\
-        field(default_factory=lambda: [100.1, 25.2, 0.5, 1, 0.1, 1000000])
+        field(default_factory=lambda: [0.1, 0.1, 0.5, 1, 0.1, 1000000])
     # d, theta, kappa, kappa_dot, u, robust, slack
     weight_lat: List[float] =\
-        field(default_factory=lambda: [0.05, 15.1, 40.0, 20.0, 1.0, 0.1, 1000000])
+        field(default_factory=lambda: [0.1, 0.1, 0.5, 1.0, 0.1, 0.1, 1000000])
 
     def __post_init__(self):
         pass

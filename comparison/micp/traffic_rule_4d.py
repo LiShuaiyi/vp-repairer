@@ -250,15 +250,15 @@ class RG123(BenchmarkScenario):
             not_in_front_of = not_in_front_of_formula(
                 self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
             )
-            in_front_of = in_front_of_formula(
-                self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
-            )
+            # in_front_of = in_front_of_formula(
+            #     self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
+            # )
             not_in_same_lane = not_in_same_lane_formula(
                 self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
             )
-            in_same_lane = in_same_lane_formula(
-               self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
-            )
+            # in_same_lane = in_same_lane_formula(
+            #    self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
+            # )
             # keeps_safe_distance = keeps_safe_distance_formula(
             #    self.keeps_safe_distance_constr.constraint_dict[time_step][0],
             #     self.keeps_safe_distance_constr.constraint_dict[time_step][1],
@@ -274,18 +274,21 @@ class RG123(BenchmarkScenario):
                 self.collision_avoidance_constr.constraint_dict[time_step], 0, 10,
                 self.ego_vehicle.shape.length, 2.578
             )
-            not_braking = not_braking_formula(5, 10)
-            not_braking_abruptly = not_braking_abruptly_formula(5, 10)
+            # not_braking = not_braking_formula(5, 10)
+            # not_braking_abruptly = not_braking_abruptly_formula(5, 10)
+            #
+            # relative_braking_abruptly = relative_braking_abruptly_formula(
+            #     self.other_vehicle.get_lon_state(time_step, self.ego_vehicle.get_lane(0)).a,
+            #     5, 10
+            # )
 
-            relative_braking_abruptly = relative_braking_abruptly_formula(
-                self.other_vehicle.get_lon_state(time_step, self.ego_vehicle.get_lane(0)).a,
-                5, 10
-            )
-
+            # subformula_list.append(
+            #     (not_braking | not_in_front_of | not_in_same_lane | not_braking_abruptly
+            #     | (keeps_safe_distance & in_front_of & in_same_lane & relative_braking_abruptly))
+            #      & (not_in_front_of | not_in_same_lane | keeps_safe_distance) & collision_free
+            # )
             subformula_list.append(
-                (not_braking | not_in_front_of | not_in_same_lane | not_braking_abruptly
-                | (keeps_safe_distance & in_front_of & in_same_lane & relative_braking_abruptly))
-                 & (not_in_front_of | not_in_same_lane | keeps_safe_distance) & collision_free
+                (not_in_front_of | not_in_same_lane | keeps_safe_distance) & collision_free
             )
         formula = STLTree(subformula_list, "and", time_interval)
 

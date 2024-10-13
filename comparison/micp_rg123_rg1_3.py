@@ -37,8 +37,8 @@ scenario = RG123(T=T,
 
 spec = scenario.GetSpecification()
 sys = scenario.GetSystem()
-Q = 1e-1 * np.diag([1, 0, 2, 1, 1, 1, 1, 1])
-R = 100 * np.eye(2)
+Q = np.diag([0.1, 0.1, 0.5, 1, 0.1, 0.1, 0.5, 1])
+R = 1 * np.eye(2)
 
 initial_state_lon = ego_vehicle.get_lon_state(0, ego_vehicle.get_lane(0))
 initial_state_lat = ego_vehicle.get_lat_state(0, ego_vehicle.get_lane(0))

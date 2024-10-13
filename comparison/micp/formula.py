@@ -151,7 +151,7 @@ def keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_ind
 
 def linearized_keeps_safe_distance_formula(rear_l, velocity_l, position_index, velocity_index, d,
                                            length, wheelbase, name=None):
-    velocity_samples = np.linspace(0, 25, 5)
+    velocity_samples = np.linspace(0, 25, 10)
     safe_formula = []
     for i in range(len(velocity_samples)):
         safe_distance_0 = calculate_safe_distance(
