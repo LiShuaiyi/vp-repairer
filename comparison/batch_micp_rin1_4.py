@@ -66,8 +66,12 @@ with open("inD_evaluation_rin1_4.csv", "w", newline="") as f_w:
             repair_config.repair.rules = ["R_IN4"]
             repair_config.repair.ego_id = ego_id
             repair_config.scenario = crscenario
-            traffic_rule_monitor = STLRuleMonitor(repair_config)
-
+            try:
+                traffic_rule_monitor = STLRuleMonitor(repair_config)
+            except Exception as e:
+                print(f"Error: {e}")
+                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A"])
+                continue
             other_id = traffic_rule_monitor.other_id
 
             other_vehicle = world.vehicle_by_id(other_id)
