@@ -408,7 +408,7 @@ class RIN1(BenchmarkScenario):
         # spec = passing_stop_line.negation().always(0, self.T)
 
         # not a or not X(not a) = not a or X a
-        not_passing_stop_line = stop_line_in_front_not | stop_line_in_front.eventually(0, 1)
+        not_passing_stop_line = stop_line_in_front_not | stop_line_in_front.eventually(1, 1)
 
         spec = not_passing_stop_line.always(0, self.T - 1)
 
@@ -444,15 +444,8 @@ class RIN4(BenchmarkScenario):
         self.other_vehicle = other_vehicle
         self.lanelet_network = lanelet_network
 
-        self.conflict_area = self.obtain_conflict_area()
-        xmin, ymin, xmax, ymax = self.conflict_area.bounds
-        self.conflict_area_bound = (xmin, xmax, ymin, ymax) # (xmin, xmax, ymin, ymax)
-        print(f"Conflict Area Bounds: {self.conflict_area_bound}")
+        self.world = world
 
-        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
-        self.collision_avoidance_constr.compute(
-            world, self.ego_vehicle, self.other_vehicle, 0, self.T
-        )
 
     def obtain_conflict_area(self):
         lanelets_dir_ego = self.ego_vehicle.lanelets_dir
@@ -516,6 +509,16 @@ class RIN4(BenchmarkScenario):
         ]
 
     def GetSpecification(self):
+        for _ in range(0, self.T):
+            self.conflict_area = self.obtain_conflict_area()
+        xmin, ymin, xmax, ymax = self.conflict_area.bounds
+        self.conflict_area_bound = (xmin, xmax, ymin, ymax) # (xmin, xmax, ymin, ymax)
+        print(f"Conflict Area Bounds: {self.conflict_area_bound}")
+
+        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
+        self.collision_avoidance_constr.compute(
+            self.world, self.ego_vehicle, 0, self.T
+        )
         # inside the conflict area
         inside_conflict_area = inside_rectangle_formula(self.conflict_area_bound, 0, 1, 10)
 
@@ -538,9 +541,10 @@ class RIN4(BenchmarkScenario):
         #     )
         #     ) or not (on_lanelet_with_type_intersection(a0))
         # )
-        other_veh_in_conflict_area_time = [9, 13]
-        spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
-                outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
+        # other_veh_in_conflict_area_time = [9, 13]
+        # spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
+        #         outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
+        spec = (outside_conflict_area.always(0, self.T))
 
         time_interval = [t for t in range(0, self.T + 1)]
         subformula_list = []
