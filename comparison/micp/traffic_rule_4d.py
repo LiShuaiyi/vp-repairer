@@ -1,3 +1,4 @@
+import numpy as np
 import shapely
 
 from typing import List
@@ -12,7 +13,9 @@ from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, 
                                      collision_free_formula,
                                      not_in_front_of_formula, not_in_same_lane_formula, no_backwards_driving,
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
-                                     not_braking_formula, not_braking_abruptly_formula, relative_braking_abruptly_formula)
+                                     not_braking_formula, not_braking_abruptly_formula,
+                                     relative_braking_abruptly_formula, inside_interval_formula,
+                                     outside_interval_formula)
 from comparison.micp.constraints import (InSameLaneConstraint, InFrontOfConstraint,
                                          KeepsSafeDistanceConstraint, CollisionFreeConstraint, CollisionFreeConstraintIntersection)
 # from comparison.micp.vehicle_models import VehicleModel
@@ -344,6 +347,94 @@ class RG123(BenchmarkScenario):
             ax.add_patch(obstacle)
         ax.set_ylim((0, 10))
         ax.set_aspect('equal')
+
+class RIN1(BenchmarkScenario):
+    """Rule RIN1"""
+    def __init__(self, T: int, world: World, ego_vehicle: Vehicle, lanelet_network):
+        self.T: int = T
+        self.ego_vehicle = ego_vehicle
+        self.lanelet_network = lanelet_network
+        self.stop_line_s = self.obtain_stop_line_s() - self.ego_vehicle.shape.length/2
+
+        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
+        self.collision_avoidance_constr.compute(
+            world, self.ego_vehicle, 0, self.T
+        )
+
+    def obtain_stop_line_s(self):
+
+        lanelets_with_stop_line = [
+            l.lanelet_id
+            for l in self.lanelet_network.lanelets
+            if l.stop_line is not None
+        ]
+
+        # Get the set of lanelets in the current path, that have a stop line
+        intersection_lanelets = list(
+            self.ego_vehicle.ref_path_lane.contained_lanelets.intersection(
+                lanelets_with_stop_line
+            )
+        )
+
+        stop_line_s = np.array(
+            [
+                min(
+                    self.ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *self.lanelet_network.find_lanelet_by_id(
+                            l
+                        ).stop_line.start
+                    )[0],
+                    self.ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *self.lanelet_network.find_lanelet_by_id(
+                            l
+                        ).stop_line.end
+                    )[0],
+                )
+                for l in intersection_lanelets
+            ]
+        )
+
+        return stop_line_s
+
+    def GetSpecification(self):
+        # inside the conflict area
+        stop_line_in_front = inside_interval_formula(
+            [self.stop_line_s - 1.0, self.stop_line_s], 0, 10
+        )
+        stop_line_in_front_not = outside_interval_formula(
+            [self.stop_line_s - 1.0, self.stop_line_s], 0, 10
+        )
+        # passing_stop_line = stop_line_in_front & stop_line_in_front_not.eventually(0, 1)
+        # spec = passing_stop_line.negation().always(0, self.T)
+
+        # not a or not X(not a) = not a or X a
+        not_passing_stop_line = stop_line_in_front_not | stop_line_in_front.eventually(0, 1)
+
+        spec = not_passing_stop_line.always(0, self.T - 1)
+
+        time_interval = [t for t in range(0, self.T + 1)]
+        subformula_list = []
+        for time_step in time_interval:
+            collision_free = collision_free_formula(
+                self.collision_avoidance_constr.constraint_dict[time_step], 0, 10,
+                self.ego_vehicle.shape.length, 2.578
+            )
+            no_backwards = no_backwards_driving(2, 10)
+            if collision_free:
+                subformula_list.append(collision_free & no_backwards)
+            else:
+                subformula_list.append(no_backwards)
+        formula = STLTree(subformula_list, "and", time_interval)
+
+        spec = spec & formula
+        return spec
+
+    def GetSystem(self):
+        sys = VehicleModel(0.2)
+        return sys
+
+    def add_to_plot(self, ax):
+        pass
 
 class RIN4(BenchmarkScenario):
     """Rule RIN4"""

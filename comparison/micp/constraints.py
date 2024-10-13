@@ -91,7 +91,7 @@ class CollisionFreeConstraintIntersection:
     def __init__(self):
         self.constraint_dict = defaultdict(tuple)
 
-    def compute(self, world: World, ego_vehicle: Vehicle, target_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
+    def compute(self, world: World, ego_vehicle: Vehicle, initial_time_step: int, final_time_step: int):
         for time_step in range(initial_time_step, final_time_step + 1):
             s_min, s_max = -np.inf, np.inf
             for vid in world.vehicle_ids_for_time_step(time_step):
