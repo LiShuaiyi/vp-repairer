@@ -14,16 +14,34 @@ from crrepairer.utils.visualization import TUMColor
 from micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
 from crmonitor.evaluation.evaluation import RuleEvaluator
 
-scenario_path = ("/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
-                 "DEU_AachenFrankenburg-10023_2120_T-39.xml")
-ego_id = 10023
-other_id = 10000
+scenario_path = "/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
+
+# scenario_id = "DEU_AachenBendplatz-1_84260_T-4279"
+# ego_id = 10324
+# other_id = 10328
+
+scenario_id = "DEU_AachenBendplatz-1_8740_T-759"
+ego_id = 10051
+other_id = 10050
+scenario_id_with_extension = scenario_id.replace('-1_', '-' + str(ego_id) + '_')
+scenario_path = scenario_path + scenario_id_with_extension + ".xml"
 
 # Open the scenario
 crscenario, _ = CommonRoadFileReader(scenario_path).open(lanelet_assignment=True)
 rule_config_path = (
     "/home/liny/repairverse/commonroad-stl-monitor/crmonitor/config.yaml"
 )
+
+# show the scenario
+from commonroad.visualization.mp_renderer import MPRenderer
+rnd = MPRenderer()
+rnd.draw_params.dynamic_obstacle.show_label = True
+crscenario.draw(rnd)
+rnd.render()
+from matplotlib.pyplot import show
+show()
+
+
 config = load_yaml(rule_config_path)
 
 config["scenario"] = "intersection"
