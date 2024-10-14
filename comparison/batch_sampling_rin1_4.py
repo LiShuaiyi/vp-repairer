@@ -101,13 +101,17 @@ with open("inD_evaluation_rin1_4_sampling.csv", "w", newline="") as f_w:
 
         planner.record_state_and_input(planner.x_0)
 
-        planner.set_desired_velocity(current_speed=planner.x_0.velocity,
-                                     desired_velocity=0.0)
+        planner.set_desired_velocity(current_speed=planner.x_0.velocity)
 
         # planner.set_v_sampling_parameters(0.01, 2)
 
         time_start = time.time()
-        optimal = planner.plan()
+        try:
+            optimal = planner.plan()
+        except Exception as e:
+            print(f"Error: {e}")
+            writer.writerow([scenario_id, ego_id, rule, f"error/failed with {e}", "N/A"])
+            continue
         # i = 1
         # while optimal is None and i <= planner.sampling_level:
         #     optimal = planner.plan(i)
