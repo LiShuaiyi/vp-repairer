@@ -34,11 +34,11 @@ from crmonitor.evaluation.evaluation import RuleEvaluator
 if __name__ == "__main__":
     # the highD-cr scenario directory
     # file_path = "../../highD-dataset/highD-cr-scenarios/"
-    file_path = "/home/liny/Documents/commonroad/highD-repair/"
+    file_path = "/home/liny/commonroad/highD-repair/"
 
     # file_path = "../../commonroad-scenarios-master-scenarios/scenarios/cooperative"
     # highD_scenario_dir = "/home/yuanfei/commonroad/highD-dataset/sebastian_evaluation/"
-    filename = "highD_evaluation_result.csv"
+    filename = "highD_evaluation_rg1_3.csv"
     if not os.path.isfile(filename):
         with open(filename, 'w') as f:
             f.write('')  # Create the file and write an empty string if needed
