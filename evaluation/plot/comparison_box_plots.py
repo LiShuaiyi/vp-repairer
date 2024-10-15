@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-
 # Function to load CSV and extract only the third and last columns
+# Also converts the values from seconds to milliseconds
 def load_csv(file_path):
     with open(file_path, "r") as f_r:
         reader = csv.reader(f_r)
@@ -15,11 +15,11 @@ def load_csv(file_path):
     third_column = [row[2] for row in data]
     last_column = [row[-1] for row in data]
 
+    # Convert the last column from seconds to milliseconds
     return pd.DataFrame({
         'R_IN': third_column,
-        'Value': pd.to_numeric(last_column, errors='coerce')
+        'Value': pd.to_numeric(last_column, errors='coerce') * 1000  # Convert to milliseconds
     })
-
 
 # Load the three datasets
 df_repair = load_csv("inD_rin1_4_clean_repair.csv")
@@ -42,18 +42,15 @@ plt.figure(figsize=(10, 6))
 
 # Plot grouped boxplot
 sns.boxplot(x='Value', y='R_IN', hue='case', data=df_all,
-            palette={ 'Repair': 'lightgreen','MICP': 'lightblue', 'Sampling': 'lightpink',}, orient='h')
+            palette={'Repair': 'lightgreen', 'MICP': 'lightblue', 'Sampling': 'lightpink'}, orient='h')
 
 # Customize the plot
-plt.xlabel('Computation time [ms]')
+plt.xlabel('Computation time [ms]')  # Change label to reflect milliseconds
 plt.xscale('log')
-plt.xlim(left=0.01)  # Set the x-axis lower limit to a small value close to zero (e.g., 1)
+plt.xlim(left=10)  # Set the x-axis lower limit to a small value close to zero (e.g., 1ms)
 plt.ylabel('')
 plt.legend(title='', loc='upper right', frameon=True)
 plt.title('Comparison of MICP, Sampling, and Repair')
-
-# Adjust x-axis to log scale (if needed, as in your reference image)
-plt.xscale('log')
 
 # Show the plot
 plt.tight_layout()
