@@ -1,0 +1,8 @@
+\ Model _copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+Minimize
+ 
+Subject To
+ state_trans1_at_time-1: x_long_1_0 = -0.00559832912787694
+Bounds
+End
