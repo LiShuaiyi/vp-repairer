@@ -23,13 +23,13 @@ if __name__ == "__main__":
     nr_not_repairable = 0
 
     # Read the scenario violation information from a CSV file
-    with open("inD_evaluation_rin1_4_filtered.csv", "r") as f_r:
+    with open("highD_evaluation_rg1_3_filtered.csv", "r") as f_r:
         reader = csv.reader(f_r)
         header = next(reader)  # Read header if needed
         result_inD = [row for row in reader]  # Read all rows from the file
 
     # Prepare to write to result CSV files
-    with open("inD_evaluation_rin1_4_with_mpr.csv", "a", newline="") as f_w:
+    with open("highD_evaluation_rg1_3_with_mpr.csv", "a", newline="") as f_w:
         writer = csv.writer(f_w)
 
         # Write headers to the result file
@@ -53,10 +53,10 @@ if __name__ == "__main__":
             config.general.set_path_scenario(scenario_id_with_extension)
             config.update()
 
-            config.repair.scenario_type = "intersection"
+            config.repair.scenario_type = "interstate"
             config.repair.intersection_type = "dataset"
 
-            config.repair.rules = [str(rule)]
+            config.repair.rules = ["R_G1", "R_G3"]
             config.repair.ego_id = ego_id
             config.repair.N_r = config.scenario.obstacle_by_id(ego_id).prediction.trajectory.final_state.time_step
 
