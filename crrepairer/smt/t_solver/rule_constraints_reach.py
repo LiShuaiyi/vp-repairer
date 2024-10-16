@@ -318,30 +318,30 @@ class RuleConstraintsReach:
         ##     update the velocity and acceleration rules      ##
         #########################################################
         self.reach_config.vehicle.ego.v_lon_min = 0  ## no driving backward
-        v_max = self.reach_config.vehicle.ego.v_max
-        a_min = self.reach_config.vehicle.ego.a_lon_min
-        for prop in self._sel_prop_full:
-            # velocity limit
-            for predicate in prop.children:
-                if predicate.base_name in (
-                    PredFovSpeedLimit.predicate_name,
-                    PredBrSpeedLimit.predicate_name,
-                    PredTypeSpeedLimit.predicate_name,
-                    PredLaneSpeedLimit.predicate_name,
-                ):
-                    speed_limit = predicate.evaluator.get_speed_limit(
-                        self._world_state, self._tc_obj.tv_time_step, [self._ego_id]
-                    )
-                    if speed_limit:  # not None
-                        if speed_limit < v_max:
-                            v_max = speed_limit
-                if predicate.base_name in [PredAbruptBreaking]:
-                    acc_min = predicate.evaluator.config["a_abrupt"]
-                    if acc_min > a_min:
-                        a_min = acc_min
-
-        self.reach_config.vehicle.ego.v_lon_max = v_max
-        self.reach_config.vehicle.ego.a_lon_min = a_min
+        # v_max = self.reach_config.vehicle.ego.v_max
+        # a_min = self.reach_config.vehicle.ego.a_lon_min
+        # for prop in self._sel_prop_full:
+        #     # velocity limit
+        #     for predicate in prop.children:
+        #         if predicate.base_name in (
+        #             PredFovSpeedLimit.predicate_name,
+        #             PredBrSpeedLimit.predicate_name,
+        #             PredTypeSpeedLimit.predicate_name,
+        #             PredLaneSpeedLimit.predicate_name,
+        #         ):
+        #             speed_limit = predicate.evaluator.get_speed_limit(
+        #                 self._world_state, self._tc_obj.tv_time_step, [self._ego_id]
+        #             )
+        #             if speed_limit:  # not None
+        #                 if speed_limit < v_max:
+        #                     v_max = speed_limit
+        #         if predicate.base_name in [PredAbruptBreaking]:
+        #             acc_min = predicate.evaluator.config["a_abrupt"]
+        #             if acc_min > a_min:
+        #                 a_min = acc_min
+        #
+        # self.reach_config.vehicle.ego.v_lon_max = v_max
+        # self.reach_config.vehicle.ego.a_lon_min = a_min
 
         #########################################################
         # self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model,
