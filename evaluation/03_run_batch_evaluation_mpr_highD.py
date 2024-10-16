@@ -23,13 +23,13 @@ if __name__ == "__main__":
     nr_not_repairable = 0
 
     # Read the scenario violation information from a CSV file
-    with open("highD_evaluation_rg1_3_filtered.csv", "r") as f_r:
+    with open("highD_evaluation_rg1_3_repair.csv", "r") as f_r:
         reader = csv.reader(f_r)
         header = next(reader)  # Read header if needed
         result_inD = [row for row in reader]  # Read all rows from the file
 
     # Prepare to write to result CSV files
-    with open("highD_evaluation_rg1_3_with_mpr.csv", "a", newline="") as f_w:
+    with open("highD_evaluation_rg1_3_repair_with_mpr.csv", "a", newline="") as f_w:
         writer = csv.writer(f_w)
 
         # Write headers to the result file
