@@ -1,0 +1,67 @@
+scenario_id,ego_id,rule,replanability,total_time
+scenario_id,ego_id,rule,replanability,total_time
+DEU_LocationALower-11_102_T-1,16,R_G1,yes,1.771233320236206
+DEU_LocationALower-11_110_T-1,16,R_G1,yes,1.765604019165039
+DEU_LocationALower-11_131_T-1,18,R_G1,yes,1.7517151832580566
+DEU_LocationALower-11_4_T-1,18,R_G1,yes,1.6891391277313232
+DEU_LocationALower-11_43_T-1,17,R_G1,yes,1.743342638015747
+DEU_LocationALower-11_56_T-1,15,R_G1,yes,1.7190496921539307
+DEU_LocationALower-11_64_T-1,18,R_G1,yes,1.7707288265228271
+DEU_LocationALower-12_109_T-1,20,R_G1,yes,1.7100882530212402
+DEU_LocationALower-12_167_T-1,12,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-12_217_T-1,14,R_G1,yes,1.7393739223480225
+DEU_LocationALower-12_52_T-1,26,R_G1,yes,1.8259263038635254
+DEU_LocationALower-13_162_T-1,21,R_G1,yes,1.6948294639587402
+DEU_LocationALower-13_167_T-1,17,R_G1,yes,1.7165849208831787
+DEU_LocationALower-13_168_T-1,12,R_G1,yes,1.7409381866455078
+DEU_LocationALower-13_214_T-1,21,R_G1,yes,1.7256290912628174
+DEU_LocationALower-13_239_T-1,18,R_G1,yes,1.6701793670654297
+DEU_LocationALower-13_241_T-1,20,R_G1,yes,1.642136812210083
+DEU_LocationALower-13_56_T-1,10,R_G1,yes,1.7425410747528076
+DEU_LocationALower-14_161_T-1,21,R_G1,yes,1.6654002666473389
+DEU_LocationALower-14_219_T-1,12,R_G1,yes,1.7523562908172607
+DEU_LocationALower-14_247_T-1,16,R_G1,yes,1.7602033615112305
+DEU_LocationALower-14_252_T-1,12,R_G1,yes,1.7206039428710938
+DEU_LocationALower-14_39_T-1,15,R_G1,yes,1.7743773460388184
+DEU_LocationALower-14_96_T-1,15,R_G1,yes,1.6713979244232178
+DEU_LocationALower-25_155_T-1,15,R_G1,yes,1.7605738639831543
+DEU_LocationALower-27_140_T-1,14,R_G1,yes,1.7231640815734863
+DEU_LocationALower-27_184_T-1,13,R_G1,yes,1.6812160015106201
+DEU_LocationALower-28_109_T-1,13,R_G1,yes,1.7465617656707764
+DEU_LocationALower-28_109_T-1,18,R_G1,yes,1.7757890224456787
+DEU_LocationALower-28_228_T-1,11,R_G1,yes,1.7517261505126953
+DEU_LocationALower-28_252_T-1,18,R_G1,yes,1.6979458332061768
+DEU_LocationALower-29_123_T-1,16,R_G1,yes,1.6641366481781006
+DEU_LocationALower-29_134_T-1,9,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-29_192_T-1,9,R_G1,yes,1.6889572143554688
+DEU_LocationALower-29_245_T-1,12,R_G1,yes,1.776374340057373
+DEU_LocationALower-29_249_T-1,23,R_G1,yes,1.6414623260498047
+DEU_LocationALower-29_250_T-1,12,R_G1,yes,1.737781047821045
+DEU_LocationALower-29_65_T-1,8,R_G1,yes,1.742677927017212
+DEU_LocationALower-30_218_T-1,16,R_G1,yes,1.7364511489868164
+DEU_LocationALower-31_239_T-1,16,R_G1,yes,1.7411534786224365
+DEU_LocationALower-31_31_T-1,15,R_G1,yes,1.6951279640197754
+DEU_LocationALower-32_186_T-1,12,R_G1,yes,1.893643856048584
+DEU_LocationALower-32_84_T-1,13,R_G1,yes,1.76597261428833
+DEU_LocationALower-33_219_T-1,8,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-33_228_T-1,14,R_G1,yes,1.7442185878753662
+DEU_LocationALower-33_233_T-1,14,R_G1,yes,1.7486402988433838
+DEU_LocationALower-33_265_T-1,22,R_G1,yes,1.6741924285888672
+DEU_LocationALower-33_96_T-1,9,R_G1,yes,1.7432501316070557
+DEU_LocationALower-34_146_T-1,14,R_G1,yes,1.6965491771697998
+DEU_LocationALower-34_147_T-1,16,R_G1,yes,1.668635606765747
+DEU_LocationALower-34_37_T-1,9,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-34_49_T-1,10,R_G1,yes,1.7493414878845215
+DEU_LocationALower-34_96_T-1,14,R_G1,yes,1.6806445121765137
+DEU_LocationALower-35_126_T-1,20,R_G1,yes,1.7258310317993164
+DEU_LocationALower-35_263_T-1,12,R_G1,yes,1.9918458461761475
+DEU_LocationALower-35_34_T-1,19,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-36_113_T-1,14,R_G1,yes,1.746767282485962
+DEU_LocationALower-36_208_T-1,8,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-36_269_T-1,18,R_G1,yes,1.7485201358795166
+DEU_LocationALower-36_291_T-1,13,R_G1,yes,1.7539401054382324
+DEU_LocationALower-36_61_T-1,9,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-37_1_T-1,11,R_G1,initialization fails with unsupported operand type(s) for |: 'NoneType' and 'STLTree',N/A
+DEU_LocationALower-37_205_T-1,15,R_G1,yes,1.7392420768737793
+DEU_LocationALower-37_231_T-1,23,R_G1,yes,1.6643095016479492
+DEU_LocationALower-37_4_T-1,22,R_G1,yes,1.753676176071167
