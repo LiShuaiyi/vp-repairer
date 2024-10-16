@@ -17,21 +17,22 @@ from commonroad_rp.utility.general import update_goal_state
 
 from commonroad_rp.utility.config import ReactivePlannerConfiguration
 from commonroad_rp.utility.logger import initialize_logger
+from commonroad_route_planner.route_planner import RoutePlanner
 
 logger = logging.getLogger("RP_LOGGER")
 rp_config = ReactivePlannerConfiguration()
 initialize_logger(rp_config)
 
-file_path = "/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
+file_path = "/home/liny/Documents/commonroad/highd_scenarios_2024_repaired/"
 
 
 # Read the scenario violation information from a CSV file
-with open("./../evaluation/inD_evaluation_rin1_4_filtered.csv", "r") as f_r:
+with open("./../evaluation/highD_evaluation_rg1_3_repair.csv", "r") as f_r:
     reader = csv.reader(f_r)
     header = next(reader)  # Read header if needed
     result_inD = [row for row in reader]  # Read all rows from the file
 
-with open("inD_evaluation_rin1_4_sampling.csv", "w", newline="") as f_w:
+with open("highD_evaluation_rg1_3_sampling.csv", "w", newline="") as f_w:
     writer = csv.writer(f_w)
 
     # Write headers to the result file
@@ -42,11 +43,10 @@ with open("inD_evaluation_rin1_4_sampling.csv", "w", newline="") as f_w:
     for result in result_inD:
         scenario_id = result[0]
         ego_id = int(result[1])
-        rule = result[2]
 
-        print(">>", rule, scenario_id, ego_id)
+        print(">>", scenario_id, ego_id)
 
-        scenario_id_with_extension = scenario_id.replace('-1_', '-' + str(ego_id) + '_')
+        scenario_id_with_extension = scenario_id.replace('T-1', 'T-' + str(ego_id))
 
         scenario_path = file_path + scenario_id_with_extension + ".xml"
 
@@ -56,11 +56,10 @@ with open("inD_evaluation_rin1_4_sampling.csv", "w", newline="") as f_w:
         rp_config.general.set_path_scenario(scenario_id_with_extension + ".xml")
         rp_config.update()
         rp_config.planning.ego_id = ego_id
-        rp_config.planning.rules = [rule]
+        rp_config.planning.rules = ["R_G1", "R_G3"]
         # set up the stl monitor world
         world_config = get_world_config()
-        world_config["scenario"] = "intersection"
-        world_config["intersection_road_network_param"]["map_type"] = "dataset"
+        world_config["scenario"] = "interstate"
         world = World.create_from_scenario(rp_config.scenario, config=world_config)
 
         # set up the reactive planner
@@ -97,13 +96,17 @@ with open("inD_evaluation_rin1_4_sampling.csv", "w", newline="") as f_w:
 
         planner.rule_evaluators = rule_evaluators
         planner.world = world
-        planner.set_reference_path(reference_path=np.array(monitor_ego.ref_path_lane.clcs.reference_path()))
+
+        # run route planner and add reference path to config
+        route_planner = RoutePlanner(rp_config.scenario.lanelet_network, rp_config.planning_problem)
+        route = route_planner.plan_routes().retrieve_first_route()
+
+        # set reference path for curvilinear coordinate system
+        planner.set_reference_path(route.reference_path)
 
         planner.record_state_and_input(planner.x_0)
 
         planner.set_desired_velocity(current_speed=planner.x_0.velocity)
-
-        # planner.set_v_sampling_parameters(0.01, 2)
 
         time_start = time.time()
         try:
