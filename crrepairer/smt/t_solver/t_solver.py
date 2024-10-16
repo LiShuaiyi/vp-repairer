@@ -117,6 +117,8 @@ class TSolver:
                 if use_mpr_derivative:
                     # if prop_node.name == predicate.name:
                         # value at TV
+                    if predicate.mpr_gradient is None:
+                        return [Maneuver.BRAKE]
                     if torch.cuda.is_available():
                         grad_tensor = predicate.mpr_gradient[0]
                     else:
