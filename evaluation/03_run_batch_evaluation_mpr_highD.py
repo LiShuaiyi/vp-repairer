@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings("ignore")
 warnings.filterwarnings("ignore", message="You have passed data through a FixedNoiseGaussianLikelihood")
 
-file_path = "/home/liny/ind_scenarios_2024_repaired/"
+file_path = "/home/liny/highd_scenarios_2024_repaired/"
 
 if __name__ == "__main__":
     nr_infeasible = 0
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     with open("highD_evaluation_rg1_3_repair.csv", "r") as f_r:
         reader = csv.reader(f_r)
         header = next(reader)  # Read header if needed
-        result_inD = [row for row in reader]  # Read all rows from the file
+        result_highD = [row for row in reader]  # Read all rows from the file
 
     # Prepare to write to result CSV files
     with open("highD_evaluation_rg1_3_repair_with_mpr.csv", "a", newline="") as f_w:
@@ -37,14 +37,14 @@ if __name__ == "__main__":
                    "SAT_time", "TC_time", "reach_time", "total_time"]
         writer.writerow(headers)
 
-        for result in result_inD:
+        for result in result_highD:
             torch.cuda.empty_cache()  # Releases any unused cached memory back to the system
 
             scenario_id = result[0]
             ego_id = int(result[1])
             rule = result[2]
             print(">>", rule, scenario_id, ego_id)
-            scenario_id_with_extension = scenario_id.replace('-1_', '-' + str(ego_id) + '_')
+            scenario_id_with_extension = scenario_id.replace('T-1', 'T-' + str(ego_id))
 
             # Load the scenario and configuration
             config = RepairerConfiguration()
@@ -54,7 +54,6 @@ if __name__ == "__main__":
             config.update()
 
             config.repair.scenario_type = "interstate"
-            config.repair.intersection_type = "dataset"
 
             config.repair.rules = ["R_G1", "R_G3"]
             config.repair.ego_id = ego_id
