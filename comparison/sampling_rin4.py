@@ -186,7 +186,7 @@ def main(
             # new planning cycle -> plan a new optimal trajectory
             planner.set_desired_velocity(current_speed=planner.x_0.velocity,
                                          desired_velocity=0)
-            planner.set_v_sampling_parameters(0.01, 2)
+            planner.set_v_sampling_parameters(-0.01, 1)
 
             if SAMPLING_ITERATION_IN_PLANNER:
                 optimal = planner.plan()
