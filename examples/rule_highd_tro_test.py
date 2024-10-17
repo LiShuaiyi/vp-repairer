@@ -12,18 +12,19 @@ import math
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_LocationALower-11_110_T-16"
+    scenario_id = "DEU_LocationALower-13_241_T-20"
     config = RepairerConfiguration()
     config.general.path_scenarios = "/home/liny/Documents/commonroad/highd_scenarios_2024_repaired/"
     config.general.set_path_scenario(scenario_id)
 
     config.update()
     config.repair.rules = ["R_G1", "R_G3"]
-    config.repair.ego_id = 16
+    config.repair.ego_id = 20
+    config.repair.use_mpr_derivative = True
+    config.repair.use_mpr = True
     config.debug.show_plots = True
     config.repair.planner = 2
     config.repair.constraint_mode = 2
-    config.repair.use_mpr = False
 
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()

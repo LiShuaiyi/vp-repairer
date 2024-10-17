@@ -10,12 +10,12 @@ from stlpy.systems.linear import DoubleIntegrator
 from stlpy.benchmarks.common import make_rectangle_patch, inside_rectangle_formula, outside_rectangle_formula
 
 from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, keeps_safe_distance_formula,
-                                     collision_free_formula,
+                                     collision_free_formula, phantom_true, phantom_false,
                                      not_in_front_of_formula, not_in_same_lane_formula, no_backwards_driving,
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
                                      not_braking_formula, not_braking_abruptly_formula,
                                      relative_braking_abruptly_formula, inside_interval_formula,
-                                     outside_interval_formula)
+                                     outside_interval_formula, braking_formula)
 from comparison.micp.constraints import (InSameLaneConstraint, InFrontOfConstraint,
                                          KeepsSafeDistanceConstraint, CollisionFreeConstraint, CollisionFreeConstraintIntersection)
 # from comparison.micp.vehicle_models import VehicleModel
@@ -414,7 +414,11 @@ class RIN1(BenchmarkScenario):
         # spec = passing_stop_line.negation().always(0, self.T)
 
         # not a or not X(not a) = not a or X a
-        not_passing_stop_line = stop_line_in_front_not | stop_line_in_front.eventually(1, 1)
+        p_false_1 = phantom_false(1, 10)
+        p_false_2 = phantom_false(1, 10)
+        p_false_3 = phantom_false(1, 10)
+
+        not_passing_stop_line = stop_line_in_front_not | stop_line_in_front.eventually(1, 1) | p_false_1 | p_false_2 | p_false_3
 
         spec = not_passing_stop_line.always(0, self.T - 1)
 
@@ -550,7 +554,49 @@ class RIN4(BenchmarkScenario):
         # other_veh_in_conflict_area_time = [9, 13]
         # spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
         #         outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
-        spec = (outside_conflict_area.always(0, self.T))
+
+        # entire_subformula = (not_braking_1 & not_braking_2 & not_braking_3) | (not_braking_4 & not_braking_5 & not_braking_6)
+
+
+        p_false_1 = phantom_false(1, 10)
+        p_false_2 = phantom_false(1, 10)
+        p_false_3 = phantom_false(1, 10)
+        p_false_4 = phantom_false(1, 10)
+        p_false_5 = phantom_false(1, 10)
+        p_false_6 = phantom_false(1, 10)
+        p_false_7 = phantom_false(1, 10)
+        p_false_8 = phantom_false(1, 10)
+        p_false_9 = phantom_false(1, 10)
+        p_false_10 = phantom_false(1, 10)
+        p_false_11 = phantom_false(1, 10)
+        p_false_12 = phantom_false(1, 10)
+        p_false_13 = phantom_false(1, 10)
+        p_false_14 = phantom_false(1, 10)
+        p_false_15 = phantom_false(1, 10)
+        p_false_16 = phantom_false(1, 10)
+        p_false_17 = phantom_false(1, 10)
+        p_false_18 = phantom_false(1, 10)
+        p_false_19 = phantom_false(1, 10)
+        p_false_20 = phantom_false(1, 10)
+        p_false_21 = phantom_false(1, 10)
+        p_false_22 = phantom_false(1, 10)
+        p_false_23 = phantom_false(1, 10)
+        p_false_24 = phantom_false(1, 10)
+        p_false_25 = phantom_false(1, 10)
+        p_false_26 = phantom_false(1, 10)
+        p_false_27 = phantom_false(1, 10)
+
+        not_entire_subformula = ((p_false_1 | p_false_2 | p_false_3) &
+                                 (p_false_4 | p_false_5 | p_false_6) &
+                                 (p_false_7 | p_false_8 | p_false_9) &
+                                 (p_false_10 | p_false_11 | p_false_12) &
+                                 (p_false_13 | p_false_14 | p_false_15) &
+                                    (p_false_16 | p_false_17 | p_false_18) &
+                                    (p_false_19 | p_false_20 | p_false_21) &
+                                    (p_false_22 | p_false_23 | p_false_24) &
+                                    (p_false_25 | p_false_26 | p_false_27)
+                                 )
+        spec = ((not_entire_subformula | outside_conflict_area).always(0, self.T))
 
         time_interval = [t for t in range(0, self.T + 1)]
         subformula_list = []

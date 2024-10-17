@@ -32,6 +32,28 @@ def no_backwards_driving(v_index, d, name=None):
         no_backwards.name = name
     return no_backwards
 
+def phantom_true(x_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, x_index] = 1
+
+    # create predicate a*y >= b
+    phantom = LinearPredicate(a, 0)
+
+    if name is not None:
+        phantom.name = name
+    return phantom
+
+def phantom_false(x_index, d, name=None):
+    a = np.zeros((1, d))
+    a[:, x_index] = 1
+
+    # create predicate a*y >= b
+    phantom = LinearPredicate(-a, 0)
+
+    if name is not None:
+        phantom.name = name
+    return phantom
+
 def braking_formula(a_index, d, name=None):
     a = np.zeros((1, d))
     a[:, a_index] = 1
