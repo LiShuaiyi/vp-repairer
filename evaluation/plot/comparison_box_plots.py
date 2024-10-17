@@ -61,21 +61,21 @@ df_hd_combined['R_IN'] = 'R_G13'
 df_inD_combined = pd.concat([df_repair, df_micp, df_sampling])
 
 # Combine both inD and highD datasets
-df_all = pd.concat([df_inD_combined, df_hd_combined])
+df_all = pd.concat([df_hd_combined, df_inD_combined])
 
 # Set style for the plot
 sns.set(style="whitegrid")
 
 # Create the horizontal box plot with Seaborn for better aesthetics
 # Adjust the figure size for a 16:9 aspect ratio
-plt.figure(figsize=(16, 9))
+plt.figure(figsize=(8, 4.5))
 
 # Create a boxplot with both color and hatch patterns for better differentiation
 ax = sns.boxplot(x='Value', y='R_IN', hue='case', data=df_all,
                  palette={'Repair': 'lightgreen', 'MICP': 'lightblue', 'Sampling': 'lightpink'}, orient='h')
 
 # Apply hatch patterns for each category
-hatches = {'Repair': '///', 'MICP': '\\\\', 'Sampling': '++'}  # Different hatch patterns for categories
+hatches = {'Repair': '////', 'MICP': '\\\\', 'Sampling': 'oo'}  # Different hatch patterns for categories
 
 # Get the number of patches and loop through them
 n_patches = len(ax.patches)
@@ -95,21 +95,21 @@ plt.xlabel('Computation time [ms]')  # Change label to reflect milliseconds
 plt.xscale('log')
 
 # Set ticks on the x-axis for better visibility
-xticks = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]  # Custom ticks
+xticks = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]  # Custom ticks
 ax = plt.gca()
 ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs='auto', numticks=10))
 
 # Enable grid for minor ticks
 ax.grid(True, which='both', axis='x')
+ax.grid(True, which='both', axis='y')
 
 # Set custom ticks and limits for the x-axis
 plt.xticks(xticks, labels=[str(x) for x in xticks])
-plt.xlim(left=10)  # Set the x-axis lower limit to a small value close to zero (e.g., 10ms)
+plt.xlim(left=50, right=10000)  # Set the x-axis lower limit to a small value close to zero (e.g., 10ms)
 
 # Final plot adjustments
 plt.ylabel('')  # Remove y-axis label
 plt.legend(title='', loc='upper right', frameon=True)
-plt.title('Comparison of MICP, Sampling, and Repair')
 
 # Show the plot
 plt.tight_layout()
