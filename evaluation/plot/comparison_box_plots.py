@@ -90,22 +90,24 @@ for i, patch in enumerate(ax.patches):
     patch.set_hatch(hatches[case])
     patch.set_edgecolor('black')  # Use black borders for better contrast
 
-
 # Customize the plot
 plt.xlabel('Computation time [ms]')  # Change label to reflect milliseconds
 plt.xscale('log')
+
 # Set ticks on the x-axis for better visibility
 xticks = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]  # Custom ticks
-# Add minor ticks with 9 ticks between the powers of 10
 ax = plt.gca()
-from matplotlib.ticker import LogLocator
 ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs='auto', numticks=10))
 
 # Enable grid for minor ticks
 ax.grid(True, which='both', axis='x')
+
+# Set custom ticks and limits for the x-axis
 plt.xticks(xticks, labels=[str(x) for x in xticks])
 plt.xlim(left=10)  # Set the x-axis lower limit to a small value close to zero (e.g., 10ms)
-plt.ylabel('')
+
+# Final plot adjustments
+plt.ylabel('')  # Remove y-axis label
 plt.legend(title='', loc='upper right', frameon=True)
 plt.title('Comparison of MICP, Sampling, and Repair')
 

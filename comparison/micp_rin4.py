@@ -75,7 +75,7 @@ solver.AddQuadraticCost(Q, R)
 solver.AddControlBounds(u_min, u_max)
 x, u, _, _ = solver.Solve()
 
-print(f"Time used: {time.time() - time_start:.2f}s")
+print(f"Time used: {time.time() - time_start:.8f}s")
 print(f"Optimal robustness: {solver.rho.X[0]}")
 traj_cr = list()
 print()
