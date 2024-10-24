@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from micp.traffic_rule_4d import RIN4
+from micp.traffic_rule_4d import RIN1
 
 from stlpy.solvers import *
 
@@ -14,13 +14,22 @@ from crrepairer.utils.visualization import TUMColor
 from micp.constraints import InSameLaneConstraint, InFrontOfConstraint, KeepsSafeDistanceConstraint
 from crmonitor.evaluation.evaluation import RuleEvaluator
 
-scenario_path = "../scenarios/DEU_AachenBendplatz-1_162280_T-2299.xml"
+scenario_path = ("/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
+                 "DEU_AachenBendplatz-10203_75140_T-5159.xml")
+ego_id = 10203
 
 # Open the scenario
 crscenario, _ = CommonRoadFileReader(scenario_path).open(lanelet_assignment=True)
 rule_config_path = (
     "/home/liny/repairverse/commonroad-stl-monitor/crmonitor/config.yaml"
 )
+
+from commonroad.visualization.mp_renderer import MPRenderer
+rnd = MPRenderer()
+crscenario.draw(rnd)
+rnd.render()
+plt.show()
+
 config = load_yaml(rule_config_path)
 
 config["scenario"] = "intersection"
@@ -28,24 +37,20 @@ config["intersection_road_network_param"]["map_type"] = "dataset"
 world = World.create_from_scenario(crscenario, config)
 
 T = 19
-ego_id = 10179
-other_id = 10180
 
 ego_vehicle = world.vehicle_by_id(ego_id)
-other_vehicle = world.vehicle_by_id(other_id)
 
 
 # Define the system and specification
-scenario = RIN4(T=T,
+scenario = RIN1(T=T,
                  world=world,
                  ego_vehicle=ego_vehicle,
-                 other_vehicle=other_vehicle,
                  lanelet_network=world.road_network.lanelet_network)
 
 spec = scenario.GetSpecification()
 sys = scenario.GetSystem()
-Q = np.diag([0.1, 0.1, 0.5, 1, 0.1, 0.1, 0.5, 1])
-R = 1 * np.eye(2)
+Q = 1e-1 * np.diag([1, 0, 2, 1, 1, 1, 1, 1])
+R = 100 * np.eye(2)
 
 initial_state_lon = ego_vehicle.get_lon_state(0, ego_vehicle.ref_path_lane)
 initial_state_lat = ego_vehicle.get_lat_state(0, ego_vehicle.ref_path_lane)
@@ -75,7 +80,7 @@ solver.AddQuadraticCost(Q, R)
 solver.AddControlBounds(u_min, u_max)
 x, u, _, _ = solver.Solve()
 
-print(f"Time used: {time.time() - time_start:.8f}s")
+print(f"Time used: {time.time() - time_start:.2f}s")
 print(f"Optimal robustness: {solver.rho.X[0]}")
 traj_cr = list()
 print()

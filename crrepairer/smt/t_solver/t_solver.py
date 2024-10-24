@@ -60,6 +60,14 @@ class TSolver:
         else:
             assert AssertionError("the given planner type is not supported")
 
+        self.tc_search_time = 0
+        self.reach_set_time = 0
+        self.opti_plan_time = 0
+
+    @property
+    def total_runtime(self):
+        return self.tc_search_time + self.reach_set_time + self.opti_plan_time
+
     @property
     def tc_object(self):
         return self._tc_obj
@@ -109,6 +117,8 @@ class TSolver:
                 if use_mpr_derivative:
                     # if prop_node.name == predicate.name:
                         # value at TV
+                    if predicate.mpr_gradient is None:
+                        return [Maneuver.BRAKE]
                     if torch.cuda.is_available():
                         grad_tensor = predicate.mpr_gradient[0]
                     else:
@@ -262,12 +272,13 @@ class TSolver:
             print(f"* \t<TSolver>: MIQP planner is invoked")
         else:
             raise Exception("Invalid option for the planner provided")
-
-        print(f"* \t<TSolver>: initialization time {time.time() - start_time:.3f}s")
+        print(f"* \t<TSolver>: initialization time {self.reach_set_time:.3f}s")
         start_time = time.time()
 
         repaired_trajectory = self._planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
+        self.reach_set_time = self._planner.reach_set_time
+        self.opti_plan_time = self._planner.opti_plan_time
         print(f"* \t<TSolver>: solving time {time.time() - start_time:.3f}s")
         return repaired_trajectory
 
@@ -287,7 +298,8 @@ class TSolver:
         print(
             "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv)
         )
-        print(f"* \t<Tsolver>: run time {time.time() - start_time:.3f}s")
+        self.tc_search_time += time.time() - start_time
+        print(f"* \t<Tsolver>: run time {self.tc_search_time:.3f}s")
         if tc != -math.inf:
             repaired_traj = self._optimization_based_repair()
             if repaired_traj is not None:

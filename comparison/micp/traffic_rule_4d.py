@@ -1,3 +1,4 @@
+import numpy as np
 import shapely
 
 from typing import List
@@ -9,10 +10,12 @@ from stlpy.systems.linear import DoubleIntegrator
 from stlpy.benchmarks.common import make_rectangle_patch, inside_rectangle_formula, outside_rectangle_formula
 
 from comparison.micp.formula import (in_front_of_formula, in_same_lane_formula, keeps_safe_distance_formula,
-                                     collision_free_formula,
+                                     collision_free_formula, phantom_true, phantom_false,
                                      not_in_front_of_formula, not_in_same_lane_formula, no_backwards_driving,
                                      linearized_keeps_safe_distance_formula, keeps_speed_limit,
-                                     not_braking_formula, not_braking_abruptly_formula, relative_braking_abruptly_formula)
+                                     not_braking_formula, not_braking_abruptly_formula,
+                                     relative_braking_abruptly_formula, inside_interval_formula,
+                                     outside_interval_formula, braking_formula)
 from comparison.micp.constraints import (InSameLaneConstraint, InFrontOfConstraint,
                                          KeepsSafeDistanceConstraint, CollisionFreeConstraint, CollisionFreeConstraintIntersection)
 # from comparison.micp.vehicle_models import VehicleModel
@@ -222,6 +225,11 @@ class RG123(BenchmarkScenario):
         self.other_vehicle = other_vehicle
         self.lanelet_network = lanelet_network
 
+        self.world = world
+
+
+    def GetSpecification(self):
+
         self.in_same_lane_constr = InSameLaneConstraint()
         self.in_same_lane_constr.compute(
             self.ego_vehicle, self.other_vehicle, 0, self.T
@@ -239,26 +247,23 @@ class RG123(BenchmarkScenario):
 
         self.collision_avoidance_constr = CollisionFreeConstraint()
         self.collision_avoidance_constr.compute(
-            world, self.ego_vehicle, self.other_vehicle, 0, self.T
+            self.world, self.ego_vehicle, self.other_vehicle, 0, self.T
         )
-
-    def GetSpecification(self):
-
         time_interval = [t for t in range(0, self.T + 1)]
         subformula_list = []
         for time_step in time_interval:
             not_in_front_of = not_in_front_of_formula(
                 self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
             )
-            in_front_of = in_front_of_formula(
-                self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
-            )
+            # in_front_of = in_front_of_formula(
+            #     self.in_front_of_constr.constraint_dict[time_step], 0, 10, self.ego_vehicle.shape.length, 2.578
+            # )
             not_in_same_lane = not_in_same_lane_formula(
                 self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
             )
-            in_same_lane = in_same_lane_formula(
-               self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
-            )
+            # in_same_lane = in_same_lane_formula(
+            #    self.in_same_lane_constr.constraint_dict[time_step], 0, 1, 10
+            # )
             # keeps_safe_distance = keeps_safe_distance_formula(
             #    self.keeps_safe_distance_constr.constraint_dict[time_step][0],
             #     self.keeps_safe_distance_constr.constraint_dict[time_step][1],
@@ -274,18 +279,21 @@ class RG123(BenchmarkScenario):
                 self.collision_avoidance_constr.constraint_dict[time_step], 0, 10,
                 self.ego_vehicle.shape.length, 2.578
             )
-            not_braking = not_braking_formula(5, 10)
-            not_braking_abruptly = not_braking_abruptly_formula(5, 10)
+            # not_braking = not_braking_formula(5, 10)
+            # not_braking_abruptly = not_braking_abruptly_formula(5, 10)
+            #
+            # relative_braking_abruptly = relative_braking_abruptly_formula(
+            #     self.other_vehicle.get_lon_state(time_step, self.ego_vehicle.get_lane(0)).a,
+            #     5, 10
+            # )
 
-            relative_braking_abruptly = relative_braking_abruptly_formula(
-                self.other_vehicle.get_lon_state(time_step, self.ego_vehicle.get_lane(0)).a,
-                5, 10
-            )
-
+            # subformula_list.append(
+            #     (not_braking | not_in_front_of | not_in_same_lane | not_braking_abruptly
+            #     | (keeps_safe_distance & in_front_of & in_same_lane & relative_braking_abruptly))
+            #      & (not_in_front_of | not_in_same_lane | keeps_safe_distance) & collision_free
+            # )
             subformula_list.append(
-                (not_braking | not_in_front_of | not_in_same_lane | not_braking_abruptly
-                | (keeps_safe_distance & in_front_of & in_same_lane & relative_braking_abruptly))
-                 & (not_in_front_of | not_in_same_lane | keeps_safe_distance) & collision_free
+                (not_in_front_of | not_in_same_lane | keeps_safe_distance) & collision_free
             )
         formula = STLTree(subformula_list, "and", time_interval)
 
@@ -342,6 +350,102 @@ class RG123(BenchmarkScenario):
         ax.set_ylim((0, 10))
         ax.set_aspect('equal')
 
+class RIN1(BenchmarkScenario):
+    """Rule RIN1"""
+    def __init__(self, T: int, world: World, ego_vehicle: Vehicle, lanelet_network):
+        self.T: int = T
+        self.ego_vehicle = ego_vehicle
+        self.lanelet_network = lanelet_network
+
+        self.world = world
+
+    def obtain_stop_line_s(self):
+
+        lanelets_with_stop_line = [
+            l.lanelet_id
+            for l in self.lanelet_network.lanelets
+            if l.stop_line is not None
+        ]
+
+        # Get the set of lanelets in the current path, that have a stop line
+        intersection_lanelets = list(
+            self.ego_vehicle.ref_path_lane.contained_lanelets.intersection(
+                lanelets_with_stop_line
+            )
+        )
+
+        stop_line_s = np.array(
+            [
+                min(
+                    self.ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *self.lanelet_network.find_lanelet_by_id(
+                            l
+                        ).stop_line.start
+                    )[0],
+                    self.ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        *self.lanelet_network.find_lanelet_by_id(
+                            l
+                        ).stop_line.end
+                    )[0],
+                )
+                for l in intersection_lanelets
+            ]
+        )
+
+        return stop_line_s
+
+    def GetSpecification(self):
+
+        self.stop_line_s = self.obtain_stop_line_s() - self.ego_vehicle.shape.length/2
+
+        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
+        self.collision_avoidance_constr.compute(
+            self.world, self.ego_vehicle, 0, self.T
+        )
+
+        # inside the conflict area
+        stop_line_in_front = inside_interval_formula(
+            [self.stop_line_s - 1.0, self.stop_line_s], 0, 10
+        )
+        stop_line_in_front_not = outside_interval_formula(
+            [self.stop_line_s - 1.0, self.stop_line_s], 0, 10
+        )
+        # passing_stop_line = stop_line_in_front & stop_line_in_front_not.eventually(0, 1)
+        # spec = passing_stop_line.negation().always(0, self.T)
+
+        # not a or not X(not a) = not a or X a
+        p_false_1 = phantom_false(1, 10)
+        p_false_2 = phantom_false(1, 10)
+        p_false_3 = phantom_false(1, 10)
+
+        not_passing_stop_line = stop_line_in_front_not | stop_line_in_front.eventually(1, 1) | p_false_1 | p_false_2 | p_false_3
+
+        spec = not_passing_stop_line.always(0, self.T - 1)
+
+        time_interval = [t for t in range(0, self.T + 1)]
+        subformula_list = []
+        for time_step in time_interval:
+            collision_free = collision_free_formula(
+                self.collision_avoidance_constr.constraint_dict[time_step], 0, 10,
+                self.ego_vehicle.shape.length, 2.578
+            )
+            no_backwards = no_backwards_driving(2, 10)
+            if collision_free:
+                subformula_list.append(collision_free & no_backwards)
+            else:
+                subformula_list.append(no_backwards)
+        formula = STLTree(subformula_list, "and", time_interval)
+
+        spec = spec & formula
+        return spec
+
+    def GetSystem(self):
+        sys = VehicleModel(0.2)
+        return sys
+
+    def add_to_plot(self, ax):
+        pass
+
 class RIN4(BenchmarkScenario):
     """Rule RIN4"""
     def __init__(self, T: int, world: World, ego_vehicle: Vehicle, other_vehicle: Vehicle, lanelet_network):
@@ -350,15 +454,8 @@ class RIN4(BenchmarkScenario):
         self.other_vehicle = other_vehicle
         self.lanelet_network = lanelet_network
 
-        self.conflict_area = self.obtain_conflict_area()
-        xmin, ymin, xmax, ymax = self.conflict_area.bounds
-        self.conflict_area_bound = (xmin, xmax, ymin, ymax) # (xmin, xmax, ymin, ymax)
-        print(f"Conflict Area Bounds: {self.conflict_area_bound}")
+        self.world = world
 
-        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
-        self.collision_avoidance_constr.compute(
-            world, self.ego_vehicle, self.other_vehicle, 0, self.T
-        )
 
     def obtain_conflict_area(self):
         lanelets_dir_ego = self.ego_vehicle.lanelets_dir
@@ -422,6 +519,16 @@ class RIN4(BenchmarkScenario):
         ]
 
     def GetSpecification(self):
+        for _ in range(0, self.T):
+            self.conflict_area = self.obtain_conflict_area()
+        xmin, ymin, xmax, ymax = self.conflict_area.bounds
+        self.conflict_area_bound = (xmin, xmax, ymin, ymax) # (xmin, xmax, ymin, ymax)
+        print(f"Conflict Area Bounds: {self.conflict_area_bound}")
+
+        self.collision_avoidance_constr = CollisionFreeConstraintIntersection()
+        self.collision_avoidance_constr.compute(
+            self.world, self.ego_vehicle, 0, self.T
+        )
         # inside the conflict area
         inside_conflict_area = inside_rectangle_formula(self.conflict_area_bound, 0, 1, 10)
 
@@ -444,9 +551,52 @@ class RIN4(BenchmarkScenario):
         #     )
         #     ) or not (on_lanelet_with_type_intersection(a0))
         # )
-        other_veh_in_conflict_area_time = [9, 13]
-        spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
-                outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
+        # other_veh_in_conflict_area_time = [9, 13]
+        # spec = (outside_conflict_area.always(other_veh_in_conflict_area_time[0], other_veh_in_conflict_area_time[1] + 3) &
+        #         outside_conflict_area.always(other_veh_in_conflict_area_time[0] - 5, other_veh_in_conflict_area_time[0]))
+
+        # entire_subformula = (not_braking_1 & not_braking_2 & not_braking_3) | (not_braking_4 & not_braking_5 & not_braking_6)
+
+
+        p_false_1 = phantom_false(1, 10)
+        p_false_2 = phantom_false(1, 10)
+        p_false_3 = phantom_false(1, 10)
+        p_false_4 = phantom_false(1, 10)
+        p_false_5 = phantom_false(1, 10)
+        p_false_6 = phantom_false(1, 10)
+        p_false_7 = phantom_false(1, 10)
+        p_false_8 = phantom_false(1, 10)
+        p_false_9 = phantom_false(1, 10)
+        p_false_10 = phantom_false(1, 10)
+        p_false_11 = phantom_false(1, 10)
+        p_false_12 = phantom_false(1, 10)
+        p_false_13 = phantom_false(1, 10)
+        p_false_14 = phantom_false(1, 10)
+        p_false_15 = phantom_false(1, 10)
+        p_false_16 = phantom_false(1, 10)
+        p_false_17 = phantom_false(1, 10)
+        p_false_18 = phantom_false(1, 10)
+        p_false_19 = phantom_false(1, 10)
+        p_false_20 = phantom_false(1, 10)
+        p_false_21 = phantom_false(1, 10)
+        p_false_22 = phantom_false(1, 10)
+        p_false_23 = phantom_false(1, 10)
+        p_false_24 = phantom_false(1, 10)
+        p_false_25 = phantom_false(1, 10)
+        p_false_26 = phantom_false(1, 10)
+        p_false_27 = phantom_false(1, 10)
+
+        not_entire_subformula = ((p_false_1 | p_false_2 | p_false_3) &
+                                 (p_false_4 | p_false_5 | p_false_6) &
+                                 (p_false_7 | p_false_8 | p_false_9) &
+                                 (p_false_10 | p_false_11 | p_false_12) &
+                                 (p_false_13 | p_false_14 | p_false_15) &
+                                    (p_false_16 | p_false_17 | p_false_18) &
+                                    (p_false_19 | p_false_20 | p_false_21) &
+                                    (p_false_22 | p_false_23 | p_false_24) &
+                                    (p_false_25 | p_false_26 | p_false_27)
+                                 )
+        spec = ((not_entire_subformula | outside_conflict_area).always(0, self.T))
 
         time_interval = [t for t in range(0, self.T + 1)]
         subformula_list = []

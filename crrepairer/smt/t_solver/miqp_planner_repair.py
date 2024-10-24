@@ -98,7 +98,8 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._constraints = RuleConstraintMIQPReach(self.tc_object,
                                                         self.rule_monitor,
                                                         self._vehicle_configuration,
-                                                        self._initial_trajectory)
+                                                        self._initial_trajectory,
+                                                        self.config)
             self._vehicle_configuration.CLCS = self._constraints.reach_config.planning.CLCS
             self._vehicle_configuration.reference_path = self._constraints.reach_config.planning.reference_path
 
@@ -114,6 +115,9 @@ class MIQPPlannerRepair(MIQPPlanner):
         self.lat_planner = MIQPLatPlanner(
             config=self.config,
         )
+
+        self.reach_set_time = 0
+        self.opti_plan_time = 0
 
     def construct_constraints(self,
                               sel_proposition: List[PropositionNode],
@@ -252,11 +256,16 @@ class MIQPPlannerRepair(MIQPPlanner):
             Then: generates the trajectory in both longitudinal and lateral directions
         """
         print("* \t\t MIQP Longitudinal optimization")
-        start_time_lon = time.time()
+        start_time_reach = time.time()
         self._constraints.construct_longitudinal_constraints(self._vehicle_configuration, self._cut_off_time_step)
+        self.reach_set_time += time.time() - start_time_reach
+        print(
+            "* \t\t -- reachset takes {} s --".format(round(self.reach_set_time, 3))
+        )
         # if empty rule constraints, return None
         if not self._constraints.longitudinal_constraints.rule_constraints:
             return None
+        start_time_lon = time.time()
 
         reference_lon = self.construct_s_reference()
 
@@ -283,6 +292,7 @@ class MIQPPlannerRepair(MIQPPlanner):
         trajectory = self.lateral_trajectory_planning(
             traj_lon, self._constraints.lateral_constraints
         )
+        self.opti_plan_time += time.time() - start_time_lon
         print(
             "* \t\t -- run time {} s --".format(round(time.time() - start_time_lat, 3))
         )

@@ -3,6 +3,7 @@
 
 # output
 output/
+evaluation/img
 *.out
 
 ## Python

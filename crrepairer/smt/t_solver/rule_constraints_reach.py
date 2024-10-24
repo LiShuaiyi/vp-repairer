@@ -15,6 +15,7 @@ from crrepairer.utils.constraints import (
     lateral_position_constraints,
     longitudinal_velocity_constraints,
 )
+from crrepairer.utils.configuration import RepairerConfiguration
 
 from crmonitor.predicates.position import (
     PredInIntersectionConflictArea,
@@ -83,6 +84,7 @@ class RuleConstraintsReach:
         rule_monitor: STLRuleMonitor,
         veh_config: PlanningConfigurationVehicle,
         initial_trajectory: Trajectory,
+        config_repair: RepairerConfiguration,
     ):
         # initialize the needed components
         self.repaired_rules = None
@@ -129,10 +131,13 @@ class RuleConstraintsReach:
         self.reach_config.planning.dt = self._world_state.dt
 
         # update the path
-        path_scenarios = os.path.join(script_dir, '..', '..', '..', 'scenarios/')
-        self.reach_config.general.path_scenarios = path_scenarios
-        self.reach_config.general.path_scenario = os.path.join(path_scenarios,
-                                                               f"{str(self._world_state.scenario.scenario_id)}.xml")
+        self.reach_config.general.path_scenarios = config_repair.general.path_scenarios
+        self.reach_config.general.path_scenario = config_repair.general.path_scenario
+
+        # path_scenarios = os.path.join(script_dir, '..', '..', '..', 'scenarios/')
+        # self.reach_config.general.path_scenarios = path_scenarios
+        # self.reach_config.general.path_scenario = os.path.join(path_scenarios,
+        #                                                        f"{str(self._world_state.scenario.scenario_id)}.xml")
 
         # use the original scenario
 
@@ -227,11 +232,23 @@ class RuleConstraintsReach:
                                       self._tc_obj.N - self._tc_obj.tc_time_step]
                         time_steps[0] = max(time_steps[0] - divided_values[-1], 0)
                         time_interval_int = "..".join(str(value) for value in time_steps)
+                        if prop.ttv_value == -float("inf"):
+                            continue
                         if prop.ttv_value > 0:
                             # change the sign
                             semantic_prop = "!" + semantic_prop
+                        else:
+                            # fixme:
+                            continue
                         self.repaired_rules.append(
                             'LTL G[' + time_interval_int + '](' + semantic_prop + ')')
+                    else:
+                        if prop.alphabet[0] == '~':
+                            # change the sign
+                            semantic_prop = "!" + semantic_prop
+                        self.repaired_rules.append(
+                            'LTL G(' + semantic_prop + ')')
+
                 else:
                     if PredInSameLane.predicate_name in prop.name:
                         semantic_prop = Proposition.in_same_lane(self._rule_to_other_id[prop.source_rule])
@@ -301,30 +318,30 @@ class RuleConstraintsReach:
         ##     update the velocity and acceleration rules      ##
         #########################################################
         self.reach_config.vehicle.ego.v_lon_min = 0  ## no driving backward
-        v_max = self.reach_config.vehicle.ego.v_max
-        a_min = self.reach_config.vehicle.ego.a_lon_min
-        for prop in self._sel_prop_full:
-            # velocity limit
-            for predicate in prop.children:
-                if predicate.base_name in (
-                    PredFovSpeedLimit.predicate_name,
-                    PredBrSpeedLimit.predicate_name,
-                    PredTypeSpeedLimit.predicate_name,
-                    PredLaneSpeedLimit.predicate_name,
-                ):
-                    speed_limit = predicate.evaluator.get_speed_limit(
-                        self._world_state, self._tc_obj.tv_time_step, [self._ego_id]
-                    )
-                    if speed_limit:  # not None
-                        if speed_limit < v_max:
-                            v_max = speed_limit
-                if predicate.base_name in [PredAbruptBreaking]:
-                    acc_min = predicate.evaluator.config["a_abrupt"]
-                    if acc_min > a_min:
-                        a_min = acc_min
-
-        self.reach_config.vehicle.ego.v_lon_max = v_max
-        self.reach_config.vehicle.ego.a_lon_min = a_min
+        # v_max = self.reach_config.vehicle.ego.v_max
+        # a_min = self.reach_config.vehicle.ego.a_lon_min
+        # for prop in self._sel_prop_full:
+        #     # velocity limit
+        #     for predicate in prop.children:
+        #         if predicate.base_name in (
+        #             PredFovSpeedLimit.predicate_name,
+        #             PredBrSpeedLimit.predicate_name,
+        #             PredTypeSpeedLimit.predicate_name,
+        #             PredLaneSpeedLimit.predicate_name,
+        #         ):
+        #             speed_limit = predicate.evaluator.get_speed_limit(
+        #                 self._world_state, self._tc_obj.tv_time_step, [self._ego_id]
+        #             )
+        #             if speed_limit:  # not None
+        #                 if speed_limit < v_max:
+        #                     v_max = speed_limit
+        #         if predicate.base_name in [PredAbruptBreaking]:
+        #             acc_min = predicate.evaluator.config["a_abrupt"]
+        #             if acc_min > a_min:
+        #                 a_min = acc_min
+        #
+        # self.reach_config.vehicle.ego.v_lon_max = v_max
+        # self.reach_config.vehicle.ego.a_lon_min = a_min
 
         #########################################################
         # self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model,

@@ -1,10 +1,11 @@
 scenario_id,ego_id,rule_STL
-DEU_LocationALower-30_18_T-1,9,R_G3
-DEU_LocationAUpper-13_141_T-1,13,R_G1
-DEU_LocationALower-36_42_T-1,24,R_G1
-DEU_LocationAUpper-31_249_T-1,17,R_G1
-DEU_LocationAUpper-31_249_T-1,20,R_G3
-DEU_LocationALower-40_53_T-1,12,R_G3
+DEU_LocationALower-13_149_T-1,8,R_G3
+DEU_LocationALower-13_149_T-1,25,R_G3
+
+DEU_LocationALower-13_149_T-1,18,R_G3
+DEU_LocationALower-13_149_T-1,19,R_G3
+DEU_LocationALower-13_149_T-1,20,R_G3
+_LocationALower-40_53_T-1,12,R_G3
 DEU_LocationALower-40_53_T-1,14,R_G3
 DEU_LocationAUpper-54_67_T-1,9,R_G1
 DEU_LocationALower-12_148_T-1,11,R_G1

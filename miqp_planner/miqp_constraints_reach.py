@@ -1,7 +1,7 @@
 import time
 
 from crrepairer.smt.t_solver.rule_constraints_reach import RuleConstraintsReach
-
+from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.cut_off.tc import TC
 from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
@@ -26,9 +26,10 @@ class RuleConstraintMIQPReach(RuleConstraintsReach):
                  tc_object: TC,
                  rule_monitor: STLRuleMonitor,
                  veh_config: PlanningConfigurationVehicle,
-                 initial_trajectory: Trajectory
+                 initial_trajectory: Trajectory,
+                 config_repair: RepairerConfiguration
                  ):
-        super().__init__(tc_object, rule_monitor, veh_config, initial_trajectory)
+        super().__init__(tc_object, rule_monitor, veh_config, initial_trajectory, config_repair)
         self.longitudinal_constraints = None
         self.lateral_constraints = None
         self.safe_distance_modes = None

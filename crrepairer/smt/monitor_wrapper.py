@@ -407,13 +407,21 @@ class STLRuleMonitor:
                         if "g0" not in all_prop_names[tuple([i, j])]:
                             if pred.name in all_prop_names[tuple([i, j])]:
                                 # Add the missing values (latest_value, mpr_gradient)
-                                pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                if all_pre_rob_grad[i] is not np.nan:
+                                    pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                else:
+                                    pred.latest_value = None
+                                    pred.mpr_gradient = None
                                 self._prop_nodes[prop_index].children.append(pred)
                         else:
                             # Handle case when "g0" is present in the prop_name
                             other_props = np.delete(all_prop_names[i], j, 0)
                             if not any([pred.name in p_name for p_name in other_props if p_name]):
-                                pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                if all_pre_rob_grad[i] is not np.nan:
+                                    pred.latest_value, pred.mpr_gradient = all_pre_rob_grad[i][pred.name]
+                                else:
+                                    pred.latest_value = None
+                                    pred.mpr_gradient = None
                                 self._prop_nodes[prop_index].children.append(pred)
                 else:
                     raise IndexError(f"prop_index {prop_index} exceeds the number of propositional nodes.")
@@ -766,7 +774,10 @@ class STLRuleMonitor:
 
             # Calculate TV for each vehicle for this rule
             for veh, props_tv in all_id_all_props_tv[rule].items():
-                tv = min(parsed_nnf_formula.compute_tv_list(props_tv)) # min: globally
+                if len(parsed_nnf_formula.compute_tv_list(props_tv)) == 0:
+                    tv = math.inf
+                else:
+                    tv = min(parsed_nnf_formula.compute_tv_list(props_tv)) # min: globally
 
                 # Replace tv with inf if it's equal to start_time_step
                 tv = math.inf if tv == self._start_time_step else tv
