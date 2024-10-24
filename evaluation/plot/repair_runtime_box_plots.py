@@ -37,8 +37,35 @@ ax.grid(True, which='both', axis='x')
 ax.grid(True, which='both', axis='y')
 plt.ylabel('')  # Remove y-axis label
 
+# Print the mean computation times for each type in the console
+mean_times = df_combined[['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']].mean()
+print(mean_times)
+
+# Function to remove outliers based on 1.5*IQR rule
+def remove_outliers(df, column):
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    return df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+
+# Remove outliers for each time type
+df_no_outliers = df_combined.copy()
+for col in ['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']:
+    df_no_outliers = remove_outliers(df_no_outliers, col)
+
+# Compute the mean values without outliers
+mean_no_outliers = df_no_outliers[['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']].mean()
+print(mean_no_outliers)
+
+median_times = df_combined[['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']].median()
+print("Median:", median_times)
 # Final plot adjustments
 plt.tight_layout()
+# Calculate the percentage of rows where 'total_time' is less than 200 ms
+total_time_less_than_200 = (df_combined['total_time'] < 200).mean() * 100
 
+print(total_time_less_than_200)
 # Show the plot
 plt.show()
