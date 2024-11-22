@@ -63,6 +63,51 @@ df_inD_combined = pd.concat([df_repair, df_micp, df_sampling])
 # Combine both inD and highD datasets
 df_all = pd.concat([df_hd_combined, df_inD_combined])
 
+# Calculate standard deviation for each combination of 'R_IN' and 'case'
+deviations = df_all.groupby(['R_IN', 'case'])['Value'].std().reset_index()
+deviations.rename(columns={'Value': 'Standard Deviation (ms)'}, inplace=True)
+
+# Print the deviations
+print(deviations)
+# Filter the standard deviations for Sampling and Repair
+sampling_sd = deviations[deviations['case'] == 'Sampling'].set_index('R_IN')['Standard Deviation (ms)']
+repair_sd = deviations[deviations['case'] == 'Repair'].set_index('R_IN')['Standard Deviation (ms)']
+
+# Compute the ratio of Sampling to Repair
+ratios = sampling_sd / repair_sd
+
+# Calculate the average multiplier
+average_multiplier = ratios.mean()
+
+print(f"On average, Sampling is {average_multiplier:.2f} times higher in standard deviation than Repair.")
+
+# Calculate the average runtime for each combination of 'R_IN' and 'case'
+average_runtimes = df_all.groupby(['R_IN', 'case'])['Value'].mean().reset_index()
+average_runtimes.rename(columns={'Value': 'Average Runtime (ms)'}, inplace=True)
+
+# Print the average runtimes
+print(average_runtimes)
+
+# Filter the average runtimes for MICP and Repair
+micp_runtime = average_runtimes[average_runtimes['case'] == 'MICP'].set_index('R_IN')['Average Runtime (ms)']
+repair_runtime = average_runtimes[average_runtimes['case'] == 'Repair'].set_index('R_IN')['Average Runtime (ms)']
+
+# Compute the ratio of MICP to Repair
+micp_to_repair_ratios = micp_runtime / repair_runtime
+
+# Calculate the average multiplier for MICP vs. Repair
+micp_to_repair_avg_multiplier = micp_to_repair_ratios.mean()
+
+print(f"On average, MICP has a runtime {micp_to_repair_avg_multiplier:.2f} times higher than Repair.")
+
+# Compute the percentage by which Repair is lower than MICP
+percentage_lower = (micp_runtime - repair_runtime) / micp_runtime * 100
+
+# Calculate the average percentage difference
+average_percentage_lower = percentage_lower.mean()
+
+print(f"On average, Repair is {average_percentage_lower:.2f}% faster (lower runtime) than MICP.")
+
 # Set style for the plot
 sns.set(style="whitegrid")
 
