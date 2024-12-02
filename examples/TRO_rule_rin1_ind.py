@@ -6,6 +6,8 @@ from crrepairer.utils.repair import retrieve_ego_vehicle
 
 from commonroad.visualization.mp_renderer import MPRenderer
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
 
 from commonroad.scenario.obstacle import ObstacleType
 import math
@@ -23,7 +25,7 @@ if __name__ == "__main__":
     config.repair.ego_id = 10108
     config.repair.N_r = 20
 
-    # # config.miqp_planner.slack_lat = False
+    # config.miqp_planner.slack_lat = False
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()
     # rnd.draw_params.dynamic_obstacle.show_label = True
@@ -59,18 +61,23 @@ if __name__ == "__main__":
             if config.debug.show_plots:
                 # ============= Visualization =============
                 # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
-                visualize_scenario_once(config.scenario,
-                                        ego_initial,
-                                        ego_repaired,
-                                        repairer.tc,  # Assuming time_end is the current time_step for visualization
-                                        None,
-                                        config.debug.plot_limits,
-                                        config.repair.t_f,
-                                        repairer.tc,
-                                        repairer.tv,
-                                        repairer.target_vehicle,
-                                        traffic_rule_monitor.world,
-                                        marksize=10,
-                                        lanewidth=5,
-                                        marker_linewidth=2,
-                                        flag_repair=True)
+                config.scenario.remove_obstacle(config.scenario.obstacle_by_id(ego_initial.obstacle_id))
+                for i in range(ego_initial.prediction.trajectory.final_state.time_step + 1):
+
+                    visualize_scenario_once(config.scenario,
+                                            ego_initial,
+                                            ego_repaired,
+                                            i,  # Assuming time_end is the current time_step for visualization
+                                            './img/rin1',
+                                            config.debug.plot_limits,
+                                            config.repair.t_f,
+                                            repairer.tc,
+                                            repairer.tv,
+                                            None,
+                                            traffic_rule_monitor.world,
+                                            flag_repair=False, # or False
+                                            background_file='rin1',
+                                            lanewidth=5,
+                                            marksize=10,
+                                            marker_linewidth=2,
+                                            )
