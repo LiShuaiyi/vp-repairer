@@ -5,6 +5,7 @@ from shapely.geometry.polygon import Polygon
 
 # third party
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import numpy as np
 
 # commonroad-io
@@ -442,6 +443,7 @@ def visualize_scenario_once(
     marksize=5,
     lanewidth=1.5,
     marker_linewidth=1.5,
+    background_file=None
 ):
     """
     Function to visualize the repairing result given time step
@@ -458,6 +460,7 @@ def visualize_scenario_once(
     :param world: world state
     :param flag_repair: if True, plot ego_repaired instead of ego_initial
     """
+
     fig, ax = plt.subplots(1, 1, figsize=(20, 10))
     rnd = MPRenderer(ax=ax, plot_limits=plot_limits)
 
@@ -465,6 +468,7 @@ def visualize_scenario_once(
     rnd.draw_params.time_begin = time_step
     if end_time:
         rnd.draw_params.time_end = end_time
+
     rnd.draw_params.trajectory.draw_trajectory = False
     rnd.draw_params.lanelet_network.lanelet.fill_lanelet = False
     rnd.draw_params.occupancy.draw_occupancies = False
@@ -488,6 +492,7 @@ def visualize_scenario_once(
         TUMColor.TUMblack.value
     )
     rnd.draw_params.lanelet_network.lanelet.draw_stop_line = True
+
     scenario.draw(rnd)
 
     rnd.draw_params.dynamic_obstacle.vehicle_shape.occupancy.draw_occupancies = False
@@ -506,6 +511,11 @@ def visualize_scenario_once(
 
     # render scenario and ego vehicle
     rnd.render()
+
+    # Plot the background image first
+    if background_file is not None:
+        background_image = mpimg.imread(f'img/{background_file}.png')
+        ax.imshow(background_image, extent=plot_limits, aspect='auto', zorder=0)
 
     # Extract positions for the selected ego trajectory
     if ego_to_plot.prediction.initial_time_step == ego_to_plot.initial_state.time_step:
@@ -614,14 +624,25 @@ def visualize_scenario_once(
     if plot_limits:
         ax.set_xlim([plot_limits[0], plot_limits[1]])
         ax.set_ylim([plot_limits[2], plot_limits[3]])
-
+    ax.set_aspect('equal')
     if save_path is not None:
-        plt.savefig(
-            f"{save_path}/{str(scenario.scenario_id)}_{time_step}_once.svg",
-            format="svg",
-            dpi=300,
-            bbox_inches="tight",
-        )
+        # Format the time_step to always have at least two digits
+        formatted_time_step = str(time_step).zfill(2)  # Adds leading zero if time_step < 10
+
+        if flag_repair:
+            plt.savefig(
+                f"{save_path}/{str(scenario.scenario_id)}_{formatted_time_step}_repaired.svg",
+                format="svg",
+                dpi=300,
+                bbox_inches="tight",
+            )
+        else:
+            plt.savefig(
+                f"{save_path}/{str(scenario.scenario_id)}_{formatted_time_step}_violated.svg",
+                format="svg",
+                dpi=300,
+                bbox_inches="tight",
+            )
     else:
         plt.show(block=True)
     plt.close(fig)

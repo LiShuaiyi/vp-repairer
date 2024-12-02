@@ -44,18 +44,23 @@ if __name__ == "__main__":
             )
             if config.debug.show_plots:
                 # ============= Visualization =============
-                visualize_v_profile_tc_all(repairer, ego_initial, ego_repaired, config.repair.t_0, config.repair.t_f,
-                                           figsize=(6, 1.5), ylim=[20, 45], velocity_limit=43)
+                # visualize_v_profile_tc_all(repairer, ego_initial, ego_repaired, config.repair.t_0, config.repair.t_f,
+                #                            figsize=(6, 1.5), ylim=[20, 45], velocity_limit=43)
                 # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
-                # visualize_scenario_once(config.scenario,
-                #                         ego_initial,
-                #                         ego_repaired,
-                #                         repairer.tc,  # Assuming time_end is the current time_step for visualization
-                #                         None,
-                #                         config.debug.plot_limits,
-                #                         config.repair.t_f,
-                #                         repairer.tc,
-                #                         repairer.tv,
-                #                         repairer.target_vehicle,
-                #                         traffic_rule_monitor.world,
-                #                         flag_repair=True)
+
+                config.scenario.remove_obstacle(config.scenario.obstacle_by_id(ego_initial.obstacle_id))
+                for i in range(ego_initial.prediction.trajectory.final_state.time_step + 1):
+
+                    visualize_scenario_once(config.scenario,
+                                            ego_initial,
+                                            ego_repaired,
+                                            i,  # Assuming time_end is the current time_step for visualization
+                                            './img/rg13',
+                                            config.debug.plot_limits,
+                                            config.repair.t_f,
+                                            repairer.tc,
+                                            repairer.tv,
+                                            None,
+                                            traffic_rule_monitor.world,
+                                            flag_repair=True,
+                                            background_file='rg13')
