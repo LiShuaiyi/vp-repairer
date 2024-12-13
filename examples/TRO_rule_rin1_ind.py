@@ -37,9 +37,9 @@ if __name__ == "__main__":
 
     config.update()
 
-    config.repair.use_mpr = False
+    config.repair.use_mpr = True
     config.repair.use_mpr_derivative = False
-    config.debug.show_plots = True
+    config.debug.show_plots = False
     config.repair.planner = 2
     config.repair.constraint_mode = 2
     config.debug.plot_limits = [37, 54, -30, -12]
@@ -58,26 +58,3 @@ if __name__ == "__main__":
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
                 ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
             )
-            if config.debug.show_plots:
-                # ============= Visualization =============
-                # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
-                config.scenario.remove_obstacle(config.scenario.obstacle_by_id(ego_initial.obstacle_id))
-                for i in range(ego_initial.prediction.trajectory.final_state.time_step + 1):
-
-                    visualize_scenario_once(config.scenario,
-                                            ego_initial,
-                                            ego_repaired,
-                                            i,  # Assuming time_end is the current time_step for visualization
-                                            './img/rin1',
-                                            config.debug.plot_limits,
-                                            config.repair.t_f,
-                                            repairer.tc,
-                                            repairer.tv,
-                                            None,
-                                            traffic_rule_monitor.world,
-                                            flag_repair=False, # or False
-                                            background_file='rin1',
-                                            lanewidth=5,
-                                            marksize=10,
-                                            marker_linewidth=2,
-                                            )

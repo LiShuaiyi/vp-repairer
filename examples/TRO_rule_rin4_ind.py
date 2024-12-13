@@ -1,22 +1,41 @@
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-from crrepairer.utils.visualization import visualize_repaired_result
+from crrepairer.utils.visualization import visualize_repaired_result, visualize_scenario_once, visualize_v_profile_tc_all
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
 import math
 
-
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_Gar-1_1_T-1"
+    scenario_id = "DEU_AachenBendplatz-1_162280_T-2299"
 
     # Build configuration object
-    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
+    config = RepairerConfiguration()
+    config.general.set_path_scenario(scenario_id)
     config.update()
+    config.repair.scenario_type = "intersection"
+    config.repair.intersection_type = "dataset"
+    config.repair.rules = ["R_IN4"]
+    config.repair.ego_id = 10179
 
-    config.repair.rules = ["R_G1", "R_G3", "R_G3"]
+    config.repair.N_r = 20
 
+    config.debug.show_plots = False
+    config.repair.planner = 2
+    config.repair.constraint_mode = 2
+    config.repair.use_mpr = True
+    config.repair.use_mpr_derivative = False
+    config.debug.plot_limits = [40, 69, -45, -17]
+
+    # from commonroad.visualization.mp_renderer import MPRenderer
+    # rnd = MPRenderer()
+    # rnd.draw_params.dynamic_obstacle.show_label = True
+    # config.scenario.draw(rnd)
+    # config.planning_problem.draw(rnd)
+    # rnd.render()
+    # from matplotlib.pyplot import show
+    # show()
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)
 
@@ -31,6 +50,3 @@ if __name__ == "__main__":
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
                 ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
             )
-            if config.debug.show_plots:
-                # ============= Visualization =============
-                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)

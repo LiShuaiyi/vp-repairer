@@ -3,7 +3,8 @@ from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 from crrepairer.utils.visualization import visualize_repaired_result
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
-
+import matplotlib
+matplotlib.use('TkAgg')
 import math
 
 if __name__ == "__main__":
