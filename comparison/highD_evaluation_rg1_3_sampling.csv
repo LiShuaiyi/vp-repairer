@@ -1,5 +1,4 @@
 scenario_id,ego_id,rule,replanability,total_time
-scenario_id,ego_id,rule,replanability,total_time
 DEU_LocationALower-11_102_T-1,16,R_G3,yes,1.1364104747772217
 DEU_LocationALower-11_110_T-1,16,R_G3,yes,1.540405511856079
 DEU_LocationALower-11_131_T-1,18,R_G3,yes,1.5498590469360352
