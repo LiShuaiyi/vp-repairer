@@ -5,10 +5,6 @@ from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
 from commonroad.visualization.mp_renderer import MPRenderer
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
-
 from commonroad.scenario.obstacle import ObstacleType
 import math
 
