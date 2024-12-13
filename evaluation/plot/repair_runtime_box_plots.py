@@ -39,7 +39,7 @@ plt.ylabel('')  # Remove y-axis label
 
 # Print the mean computation times for each type in the console
 mean_times = df_combined[['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']].mean()
-print(mean_times)
+print('mean', mean_times)
 
 # Function to remove outliers based on 1.5*IQR rule
 def remove_outliers(df, column):
@@ -57,7 +57,7 @@ for col in ['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']:
 
 # Compute the mean values without outliers
 mean_no_outliers = df_no_outliers[['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']].mean()
-print(mean_no_outliers)
+print("mean", mean_no_outliers)
 
 median_times = df_combined[['SAT_time', 'TC_time', 'reach_time', 'other_time', 'total_time']].median()
 print("Median:", median_times)
