@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Load the CSV files
-df_repair_1 = pd.read_csv("inD_rin1_4_clean_repair.csv")
-df_repair_2 = pd.read_csv("highD_rg1_3_clean_repair.csv")
+df_repair_1 = pd.read_csv("inD_rin1_4_clean_repair_no_der.csv")
+df_repair_2 = pd.read_csv("highD_rg1_3_clean_repair_no_der.csv")
 
 # Combine the two dataframes
 df_combined = pd.concat([df_repair_1, df_repair_2])

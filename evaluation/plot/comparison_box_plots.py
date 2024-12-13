@@ -22,13 +22,29 @@ def load_csv(file_path):
         'Value': pd.to_numeric(last_column, errors='coerce') * 1000  # Convert to milliseconds
     })
 
+def load_csv_repair(file_path):
+    with open(file_path, "r") as f_r:
+        reader = csv.reader(f_r)
+        header = next(reader)
+        data = [row for row in reader]
+
+    # Get the third and last columns
+    third_column = [row[2] for row in data]
+    last_column = [row[-2] for row in data]
+
+    # Convert the last column from seconds to milliseconds
+    return pd.DataFrame({
+        'R_IN': third_column,
+        'Value': pd.to_numeric(last_column, errors='coerce') * 1000  # Convert to milliseconds
+    })
+
 # Load the three datasets for inD
-df_repair = load_csv("inD_rin1_4_clean_repair.csv")
+df_repair = load_csv_repair("inD_rin1_4_clean_repair_no_der.csv")
 df_micp = load_csv("inD_rin1_4_clean_micp.csv")
 df_sampling = load_csv("inD_rin1_4_clean_sampling.csv")
 
 # Load the three datasets for highD
-hd_repair = load_csv("highD_rg1_3_clean_repair.csv")
+hd_repair = load_csv_repair("highD_rg1_3_clean_repair_no_der.csv")
 hd_micp = load_csv("highD_rg1_3_clean_micp.csv")
 hd_sampling = load_csv("highD_rg1_3_clean_sampling.csv")
 
