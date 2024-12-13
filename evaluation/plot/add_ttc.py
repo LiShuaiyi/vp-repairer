@@ -6,8 +6,10 @@ from commonroad_crime.measure import TTC
 from commonroad_crime.data_structure.crime_interface import CriMeInterface
 
 # Define the path to the CSV file and scenario folder
-csv_path = "./highD_rg1_3_clean_sampling.csv"
-# csv_path = "./inD_rin1_4_clean_sampling.csv"
+# csv_path = "./highD_rg1_3_clean_sampling.csv"
+csv_path = "./inD_rin1_4_clean_sampling.csv"
+csv_path = "./inD_rin1_4_clean_repair.csv"
+csv_path = "./highD_rg1_3_clean_repair.csv"
 scenario_folder = "/home/liny/Documents/commonroad/highD-repair/"
 # scenario_folder = "/home/liny/Documents/commonroad/ind_scenarios_2024/"
 
@@ -45,8 +47,11 @@ df = pd.read_csv(csv_path)
 df["num_obstacles"] = df.apply(count_obstacles_in_scenario, axis=1)
 
 # Save the updated CSV with the new column
-output_path = "./highD_rg1_3_clean_sampling_updated.csv"
-# output_path = "./inD_rin1_4_clean_sampling_updated.csv"
+# output_path = "./highD_rg1_3_clean_sampling_updated.csv"
+# output_path = "./inD_rin1_4_clean_sampling_updated_ttc.csv"
+# output_path = "./inD_rin1_4_clean_repair_updated_ttc.csv"
+output_path = "./highD_rg1_3_clean_repair_updated_ttc.csv"
+
 df.to_csv(output_path, index=False)
 
 print(f"Updated CSV saved to {output_path}")

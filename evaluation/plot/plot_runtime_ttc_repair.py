@@ -6,7 +6,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.utils import resample
 
 # Load the CSV file
-csv_path = "highD_inD_ttc_sampling.csv"  # Replace with your CSV file path
+csv_path = "highD_inD_ttc_repair.csv"  # Replace with your CSV file path
 df = pd.read_csv(csv_path)
 
 # Drop rows with NaN values in `num_obstacles` or `total_time`
@@ -17,7 +17,7 @@ X = df["num_obstacles"].values.reshape(-1, 1)
 y = df["total_time"].values
 
 # Fit a polynomial regression model
-degree = 1  # Degree of the polynomial
+degree =2  # Degree of the polynomial
 poly = PolynomialFeatures(degree=degree)
 X_poly = poly.fit_transform(X)
 
