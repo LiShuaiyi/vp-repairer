@@ -20,12 +20,12 @@ if __name__ == "__main__":
         result_inD = [row for row in reader]  # Read all rows from the file
 
     # Prepare to write to result CSV files
-    with open("highD_evaluation_rg1_3_repair.csv", "w", newline="") as f_w:
+    with open("highD_evaluation_rg1_3_repair_no_mpr.csv", "w", newline="") as f_w:
         writer = csv.writer(f_w)
 
         # Write headers to the result file
         headers = ["scenario_id", "ego_id", "rule", "repairability", "model", "TV", "TC",
-                   "SAT_time", "TC_time", "reach_time", "total_time"]
+                   "SAT_time", "TC_time", "reach_time", "total_time", "number_of_obstacles"]
         writer.writerow(headers)
 
         for result in result_inD:
@@ -62,7 +62,7 @@ if __name__ == "__main__":
                 traffic_rule_monitor = STLRuleMonitor(config)
             except Exception as e:
                 print(f"Error: {e}")
-                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
+                writer.writerow([scenario_id, ego_id, rule, f"initialization fails with {e}", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
                 continue
 
             if traffic_rule_monitor.tv_time_step in (-math.inf, math.inf):
@@ -85,7 +85,8 @@ if __name__ == "__main__":
                                  repairer.sat_reasoning_time,
                                  getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
-                                 getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time])
+                                 getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time,
+                                 len(config.scenario.obstacles)])
                 continue
 
             # Writing result based on repairability
@@ -95,14 +96,16 @@ if __name__ == "__main__":
                                  repairer.sat_reasoning_time,
                                  getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
-                                 getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time])
+                                 getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time,
+                                 len(config.scenario.obstacles)])
             else:
                 nr_not_repairable += 1
                 writer.writerow([scenario_id, ego_id, rule, "not repairable", repairer.model, repairer.tv, repairer.tc,
                                  repairer.sat_reasoning_time,
                                  getattr(repairer.t_solver, 'tc_search_time', 'N/A'),
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
-                                 getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time])
+                                 getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time,
+                                 len(config.scenario.obstacles)])
 
         # Write the summary to the result file
         nr_total = nr_infeasible + nr_repairable + nr_not_repairable
