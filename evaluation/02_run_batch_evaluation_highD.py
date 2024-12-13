@@ -48,7 +48,7 @@ if __name__ == "__main__":
             config.repair.ego_id = ego_id
             config.repair.N_r = config.scenario.obstacle_by_id(ego_id).prediction.trajectory.final_state.time_step
 
-            config.repair.use_mpr = True
+            config.repair.use_mpr = False
             config.repair.use_mpr_derivative = False
             config.debug.show_plots = False
             config.repair.planner = 2
