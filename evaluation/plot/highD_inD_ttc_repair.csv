@@ -1,4 +1,4 @@
-scenario_id,ego_id,rule,repairability,model,TV,TC,maneuvers,SAT_time,TC_time,reach_time,total_time,num_obstacles
+scenario_id,ego_id,rule,repairability,model,TV,TC,maneuvers,SAT_time,TC_time,reach_time,total_time,ttc
 DEU_AachenBendplatz-1_152840_T-2859,10184,R_IN1,bingo,"{'b', '~a'}",3,1,3.07559967041016E-05,0.0203835964202881,0.0579936504364014,,0.100606918334961,0
 DEU_AachenBendplatz-1_152840_T-2859,10184,R_IN4,bingo,"{'~j', '~n'}",6,3,1.93119049072266E-05,0.0702614784240723,0.0479528903961182,,0.138309717178345,0
 DEU_AachenBendplatz-1_13940_T-959,10069,R_IN4,bingo,"{'~j', '~a', '~n', '~h'}",6,4,2.52723693847656E-05,0.0802385807037354,0.0522379875183106,,0.154667615890503,0

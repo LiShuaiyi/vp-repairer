@@ -6,14 +6,14 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.utils import resample
 
 # Load the CSV file
-csv_path = "highD_inD_ttc_sampling.csv"  # Replace with your CSV file path
+csv_path = "highD_inD_ttc_repair_np_der_common.csv"  # Replace with your CSV file path
 df = pd.read_csv(csv_path)
 
 # Drop rows with NaN values in `num_obstacles` or `total_time`
-df = df.dropna(subset=["num_obstacles", "total_time"])
+df = df.dropna(subset=["ttc", "total_time"])
 
 # Prepare data for regression
-X = df["num_obstacles"].values.reshape(-1, 1)
+X = df["ttc"].values.reshape(-1, 1)
 y = df["total_time"].values
 
 # Fit a polynomial regression model
@@ -44,10 +44,10 @@ ci_upper = np.percentile(predictions, 97.5, axis=0)
 
 # Plot
 plt.figure(figsize=(10, 6))
-plt.scatter(df["num_obstacles"], df["total_time"], alpha=0.6, label="Data Points")
+plt.scatter(df["ttc"], df["total_time"], alpha=0.6, label="Data Points")
 plt.plot(X_range, y_pred, label=f"Polynomial Regression (Degree {degree})", color="orange", linewidth=2)
 plt.fill_between(X_range.flatten(), ci_lower, ci_upper, color="orange", alpha=0.3, label="95% Confidence Region")
-plt.title("Total Time vs Number of Obstacles with Regression Curve")
+plt.title("Total Time vs ttc with Regression Curve")
 plt.xlabel("TTC")
 plt.ylabel("Total Time")
 plt.legend()
