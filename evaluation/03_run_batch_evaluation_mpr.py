@@ -37,7 +37,7 @@ if __name__ == "__main__":
                    "SAT_time", "TC_time", "reach_time", "total_time", "number_of_obstacles"]
         writer.writerow(headers)
 
-        for result in result_inD:
+        for result in result_inD[81:108]:
             torch.cuda.empty_cache()  # Releases any unused cached memory back to the system
 
             scenario_id = result[0]
