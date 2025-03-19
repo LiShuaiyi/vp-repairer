@@ -46,6 +46,9 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         # Runtime tracking variables
         self.sat_reasoning_time = 0
 
+        # number of iterations
+        self.nr_iter = 0
+
     @property
     def tv(self):
         return self._tv
@@ -73,6 +76,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         print("******** Trajectory Repairing starts! ********")
         start_time = time.time()
         while self.sat_solver.solve() == sat:
+            self.nr_iter += 1
             print("* {}. iteration...".format(nr))
             if self.rule_monitor.proposition_nodes is None:
                 return None
@@ -86,7 +90,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
                 print(f"----- Computation Time: {time.time() - start_time:.3f}s -----")
-                print("*****  Successfully Repaired! •ᴗ•  *****")
+                print(f"*****  Successfully Repaired in {self.nr_iter} iteration(s)! •ᴗ•  *****")
                 print(f"----- Time details ----- \n***** SAT: {self.sat_reasoning_time:.6f}s"
                       f"\n***** TC search: {self.t_solver.tc_search_time:.3f}s"
                       f"\n***** Reachset computation: {self.t_solver.reach_set_time:.3f}s"
