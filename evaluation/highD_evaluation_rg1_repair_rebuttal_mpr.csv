@@ -1,0 +1,2 @@
+scenario_id,ego_id,rule,repairability,model,TV,TC,SAT_time,TC_time,reach_time,total_time,number_of_obstacles,iterations
+DEU_LocationALower-11_102_T-1,16,R_G1,initial feasibility
