@@ -242,13 +242,13 @@ class TSolver:
             print(string)
         return compliant_maneuver
 
-    def search_tc(self):
+    def search_tc(self, use_dummy_tc: bool):
         """
         Searches the time-to-compliance.
         """
         if self._compliant_maneuvers is None:
             return -math.inf  # marked as not repairable
-        tc = self.tc_object.generate(self._compliant_maneuvers)
+        tc = self.tc_object.generate(self._compliant_maneuvers, use_dummy_tc)
         return tc
 
     def _optimization_based_repair(self):
@@ -283,7 +283,7 @@ class TSolver:
         return repaired_trajectory
 
     def check(
-        self, proposition: List[PropositionNode], model: list, use_mpr_derivative=False
+        self, proposition: List[PropositionNode], model: list, use_mpr_derivative=False, use_dummy_tc=False
     ) -> (bool, Trajectory):
         """
         Checks the T-consistency.
@@ -294,7 +294,7 @@ class TSolver:
         if self.compliant_maneuvers is None:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
             return self._repairability, repaired_traj
-        tc = self.search_tc()
+        tc = self.search_tc(use_dummy_tc)
         print(
             "* \t<Tsolver>: tc = {}, tv = {}".format(self._tc_obj.tc, self._tc_obj.tv)
         )

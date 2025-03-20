@@ -179,12 +179,16 @@ class TC(CutOffBase, ABC):
         else:
             print("Violated rule changed.")
 
-    def generate(self, cut_off_maneuvers: List[Maneuver]):
+    def generate(self, cut_off_maneuvers: List[Maneuver], flag_dummy: bool = False):
         """
         Computes the Time-to-Compliance (with traffic rules).
         :param cut_off_maneuvers: the given maneuvers of ego vehicle
+        :param flag_dummy: whether to use dummy TC
         :return: TC, corresponding maneuver
         """
+        if flag_dummy:
+            self._tc = 0
+            return 0
         if not cut_off_maneuvers:
             return -math.inf
         if self.tv == -math.inf:

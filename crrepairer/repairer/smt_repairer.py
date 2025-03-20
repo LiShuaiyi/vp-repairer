@@ -85,7 +85,10 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             self.sat_reasoning_time += time.time() - sat_start_time
             print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(self.sat_reasoning_time))
             repairability, repaired_traj = self.t_solver.check(
-                select_proposition, list(self._model), use_mpr_derivative=self.config.repair.use_mpr_derivative
+                select_proposition,
+                list(self._model),
+                use_mpr_derivative=self.config.repair.use_mpr_derivative,
+                use_dummy_tc=self.config.repair.use_dummy_tc
             )
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
