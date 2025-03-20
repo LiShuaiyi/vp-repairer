@@ -271,9 +271,12 @@ class RuleConstraintsReach:
                         if prop.alphabet[0] == '~':
                             # change the sign
                             semantic_prop = "!" + semantic_prop
+                        time_steps = [self._tc_obj.tv_time_step - self._tc_obj.tc_time_step,
+                                      self._tc_obj.N - self._tc_obj.tc_time_step]
+                        time_interval_int = "..".join(str(value) for value in time_steps)
 
                         self.repaired_rules.append(
-                            'LTL G(' + semantic_prop + ')')
+                            'LTL G[' + time_interval_int + '](' + semantic_prop + ')')
             print("* \t<TSolver>: activated rules", list(set(self.repaired_rules)))
             # self.reach_config.traffic_rule.activated_rules = list(set(repaired_rules))
             self.rule_interface.list_traffic_rules_activated = list(set(self.repaired_rules))
