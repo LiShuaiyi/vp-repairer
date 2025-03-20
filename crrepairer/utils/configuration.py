@@ -161,6 +161,7 @@ class RepairConfiguration(BaseConfiguration):
     use_mpr: bool = False
 
     use_mpr_derivative: bool = False
+    use_dummy_tc: bool = False
 
     def __post_init__(self):
         pass
