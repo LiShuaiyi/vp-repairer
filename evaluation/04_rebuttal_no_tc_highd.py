@@ -21,7 +21,7 @@ if __name__ == "__main__":
         result_inD = [row for row in reader]  # Read all rows from the file
 
     # Prepare to write to result CSV files
-    with open("highD_evaluation_rg1_no_tc.csv", "w", newline="") as f_w:
+    with open("highD_evaluation_rg1_3_no_tc.csv", "w", newline="") as f_w:
         writer = csv.writer(f_w)
 
         # Write headers to the result file
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
             config.repair.scenario_type = "interstate"
 
-            config.repair.rules = ["R_G1"]
+            config.repair.rules = ["R_G1", "R_G3"]
             config.repair.ego_id = ego_id
             config.repair.N_r = config.scenario.obstacle_by_id(ego_id).prediction.trajectory.final_state.time_step
 
