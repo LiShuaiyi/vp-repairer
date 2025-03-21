@@ -7,7 +7,7 @@ import csv
 import math
 # https://syncandshare.lrz.de/dl/fi6kDs4fC1UnUu5HBm3cot/highd_scenarios_2024_repaired.zip
 
-file_path = "/home/liny/Documents/commonroad/highd_scenarios_2024_repaired/"
+file_path = "/home/liny/highd_scenarios_2024_repaired/"
 
 if __name__ == "__main__":
     nr_infeasible = 0
