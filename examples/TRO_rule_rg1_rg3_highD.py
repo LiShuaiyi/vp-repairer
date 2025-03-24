@@ -19,9 +19,9 @@ if __name__ == "__main__":
     config.repair.rules = ["R_G1", "R_G3"]
     config.repair.ego_id = 11
     config.debug.show_plots = False
-    config.repair.planner = 2
+    config.repair.planner = 3
     config.repair.constraint_mode = 2
-    config.repair.use_mpr = True
+    config.repair.use_mpr = False
     config.repair.use_mpr_derivative = False
 
     ego_initial = retrieve_ego_vehicle(config)

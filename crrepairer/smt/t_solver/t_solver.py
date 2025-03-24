@@ -6,6 +6,7 @@ from typing import List, Optional
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
+from crrepairer.smt.t_solver.clrrt_planner_repair import CLRRTPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 from crrepairer.utils.configuration import RepairerConfiguration
 
@@ -45,14 +46,20 @@ class TSolver:
 
         # todo: same for QP
         if config.repair.planner == 1:
-            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = QPPlannerRepair(
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = QPPlannerRepair(
                 self._rule_monitor,
                 self._tc_obj,
                 self.config,
                 verbose=self.verbose,
             )
         elif config.repair.planner == 2:
-            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = MIQPPlannerRepair(
+                self._rule_monitor,
+                self._tc_obj,
+                self.config
+            )
+        elif config.repair.planner == 3:
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = CLRRTPlannerRepair(
                 self._rule_monitor,
                 self._tc_obj,
                 self.config
@@ -270,6 +277,11 @@ class TSolver:
                 print("* \t<TSolver>: the constraints are not properly constructed")
                 return
             print(f"* \t<TSolver>: MIQP planner is invoked")
+        elif self.config.repair.planner == 3:
+            self._planner.reset(tc_object=self.tc_object,
+                                rule_monitor=self._rule_monitor)
+            print(f"* \t<TSolver>: CLRRT planner is invoked")
+
         else:
             raise Exception("Invalid option for the planner provided")
         print(f"* \t<TSolver>: initialization time {self.reach_set_time:.3f}s")
@@ -277,8 +289,12 @@ class TSolver:
 
         repaired_trajectory = self._planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
-        self.reach_set_time = self._planner.reach_set_time
-        self.opti_plan_time = self._planner.opti_plan_time
+        if self.config.repair.planner in [1, 2]:
+            self.reach_set_time = self._planner.reach_set_time
+            self.opti_plan_time = self._planner.opti_plan_time
+        else:
+            self.reach_set_time = 0
+            self.opti_plan_time = self._planner.rrt_time
         print(f"* \t<TSolver>: solving time {time.time() - start_time:.3f}s")
         return repaired_trajectory
 
