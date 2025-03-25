@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings("ignore")
 warnings.filterwarnings("ignore", message="You have passed data through a FixedNoiseGaussianLikelihood")
 
-file_path = "/home/liny/Documents/commonroad/ind_scenarios_2024_repaired/"
+file_path = "/home/liny/ind_scenarios_2024_repaired/"
 # https://syncandshare.lrz.de/dl/fiNJgUz1NnK4XB9hZkqcPr/ind_scenarios_2024_repaired.zip
 
 if __name__ == "__main__":
