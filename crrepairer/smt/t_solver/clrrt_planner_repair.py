@@ -127,23 +127,27 @@ class CLRRTPlannerRepair:
         route_id = route.lanelet_ids[0]
         lane = self.config.scenario.lanelet_network.find_lanelet_by_id(route_id)
 
-        rg = ReferenceGenerator(
-            reference_path=lane.center_vertices,
-            scenario=self.config.scenario,
-            planning_problem=self.config.planning_problem,
-            first_violation_state=self._ego_vehicle.state_at_time(
-                self.tc_object.tv_time_step
-            ),
-            settings=settings,
+        self._monitor_ego_vehicle = self.rule_monitor.world.vehicle_by_id(
+            self._ego_vehicle.obstacle_id
         )
-        reference_path = rg.choose_optimal_trajectory(obstacle_position=None)
+        reference_path = self._monitor_ego_vehicle.ref_path_lane
+
+        # rg = ReferenceGenerator(
+        #     reference_path=reference_path.center_vertices,
+        #     scenario=self.config.scenario,
+        #     planning_problem=self.config.planning_problem,
+        #     first_violation_state=self._ego_vehicle.state_at_time(
+        #         self.tc_object.tv_time_step
+        #     ),
+        #     settings=settings,
+        # )
+        # reference_path = rg.choose_optimal_trajectory(obstacle_position=None)
         search_space = SearchSpace(
             self.config.scenario,
             self.config.planning_problem,
             SearchSpace.SampleMode.RP_GMM,
             gaussian_deviation=0.5,
             reference_path=reference_path,
-            reference_generator=rg,
         )
 
         rrt = RuleInformedCLRRT(
@@ -203,10 +207,12 @@ def update_goal_state(initial_state: InitialState,
     goal_orientation = AngleInterval(
         ini_final_state.orientation - 0.2, ini_final_state.orientation + 0.2
     )
+    goal_position = [ini_final_state.position[0] + 20 * np.cos(ini_final_state.orientation),
+                     ini_final_state.position[1] + 20 * np.sin(ini_final_state.orientation)]
     goal_velocity = Interval(ini_final_state.velocity, ini_final_state.velocity + 5.0)
     goal_time_step = Interval(0, len(initial_trajectory.state_list))
     goal_state = CustomState(
-        position=Rectangle(20, 5, ini_final_state.position),
+        position=Rectangle(20, 5, np.asarray(goal_position)),
         velocity=goal_velocity,
         orientation=goal_orientation,
         time_step=goal_time_step,
