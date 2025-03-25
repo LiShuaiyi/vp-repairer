@@ -5,16 +5,10 @@ from crrepairer.utils.repair import retrieve_ego_vehicle
 
 import csv
 import math
-import torch
 import logging
 import warnings
 from multiprocessing import Process, Queue
 import time
-
-# Reduce GPU memory usage
-logging.getLogger().setLevel(logging.CRITICAL)
-warnings.filterwarnings("ignore")
-warnings.filterwarnings("ignore", message="You have passed data through a FixedNoiseGaussianLikelihood")
 
 file_path = "/home/liny/ind_scenarios_2024_repaired/"
 
@@ -22,6 +16,7 @@ def evaluate_single_case(result, file_path, queue):
     try:
         scenario_id, ego_id, rule = result[0], int(result[1]), result[2]
         scenario_id_ext = scenario_id.replace('-1_', f'-{ego_id}_')
+        print(">>", rule, scenario_id, ego_id, flush=True)
         config = RepairerConfiguration()
         config.general.path_scenarios = file_path
         config.general.set_path_scenario(scenario_id_ext)
@@ -87,7 +82,6 @@ if __name__ == "__main__":
         writer.writerow(headers)
 
         for result in result_inD:
-            torch.cuda.empty_cache()
             q = Queue()
             p = Process(target=evaluate_single_case, args=(result, file_path, q))
             p.start()
