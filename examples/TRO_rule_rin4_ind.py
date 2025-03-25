@@ -22,9 +22,9 @@ if __name__ == "__main__":
     config.repair.N_r = 20
 
     config.debug.show_plots = False
-    config.repair.planner = 2
+    config.repair.planner = 3
     config.repair.constraint_mode = 2
-    config.repair.use_mpr = True
+    config.repair.use_mpr = False
     config.repair.use_mpr_derivative = False
     config.debug.plot_limits = [40, 69, -45, -17]
 

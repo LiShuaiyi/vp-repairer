@@ -33,11 +33,11 @@ if __name__ == "__main__":
 
     config.update()
 
-    config.repair.use_mpr = True
-    config.repair.use_mpr_derivative = False
-    config.debug.show_plots = False
-    config.repair.planner = 2
+    config.debug.show_plots = True
+    config.repair.planner = 3
     config.repair.constraint_mode = 2
+    config.repair.use_mpr = False
+    config.repair.use_mpr_derivative = False
     config.debug.plot_limits = [37, 54, -30, -12]
 
     # Retrieve the ego vehicle
@@ -54,3 +54,4 @@ if __name__ == "__main__":
             ego_repaired = repairer.convert_traj_to_ego_vehicle(
                 ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
             )
+            visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
