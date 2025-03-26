@@ -1,3 +1,5 @@
+import numpy as np
+
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 from crrepairer.utils.configuration import RepairerConfiguration
@@ -30,7 +32,7 @@ if __name__ == "__main__":
         result_inD = [row for row in reader]  # Read all rows from the file
 
     # Prepare to write to result CSV files
-    with open("inD_evaluation_rin1_4_no_tc.csv", "a", newline="") as f_w:
+    with open("inD_evaluation_rin1_4_no_tc_jerk.csv", "a", newline="") as f_w:
         writer = csv.writer(f_w)
 
         # Write headers to the result file
@@ -108,6 +110,11 @@ if __name__ == "__main__":
             # Writing result based on repairability
             if repaired_traj is not None:
                 nr_repairable += 1
+                acc_list = [state.acceleration for state in repaired_traj.state_list]
+                dt = config.scenario.dt
+                jerk_list = [(acc_list[i + 1] - acc_list[i]) / dt for i in range(len(acc_list) - 1)]
+                jerk_magnitudes = [np.linalg.norm(jerk) for jerk in jerk_list]
+                jerk_cost = sum(jerk_magnitudes)
                 writer.writerow([scenario_id, ego_id, rule, "bingo", repairer.model, repairer.tv, repairer.tc,
                                  repairer.t_solver.compliant_maneuvers,
                                  repairer.sat_reasoning_time,
@@ -115,7 +122,7 @@ if __name__ == "__main__":
                                  getattr(repairer.t_solver, 'reach_set_time', 'N/A'),
                                  getattr(repairer.t_solver, 'total_runtime', 0) + repairer.sat_reasoning_time,
                                  len(config.scenario.obstacles),
-                                 repairer.nr_iter])
+                                 repairer.nr_iter, jerk_cost])
             else:
                 nr_not_repairable += 1
                 writer.writerow([scenario_id, ego_id, rule, "not repairable", repairer.model, repairer.tv, repairer.tc,
