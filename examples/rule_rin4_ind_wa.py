@@ -7,6 +7,7 @@ from crrepairer.utils.repair import retrieve_ego_vehicle
 import math
 
 if __name__ == "__main__":
+    # THIS IS INVALID, ORIGINAL REPAIRER FAILED
     # ========== Scenario and Configuration =========
     scenario_id = "DEU_AachenBendplatz-1_163800_T-3819"
 
@@ -21,7 +22,7 @@ if __name__ == "__main__":
 
     config.debug.show_plots = True
     config.repair.planner = 2
-    config.repair.constraint_mode = 2
+    config.repair.constraint_mode = 1
 
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()
@@ -47,3 +48,10 @@ if __name__ == "__main__":
             if config.debug.show_plots:
                 # ============= Visualization =============
                 visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+        print(repairer.t_solver._planner._constraints.longitudinal_constraints)
+        print(f"repairer.t_solver._sel_prop:{repairer.t_solver._sel_prop}")
+        # print(f"repairer.t_solver._sel_prop:{repairer.t_solver._prop_full}")
+        # for proposition in repairer.t_solver._prop_full:
+        #     predicate = proposition.children[0]
+        #     print(f"predicate: {len(proposition.children)}")
+        #     print(f"predicate: {predicate.name}, {vars(predicate)}")

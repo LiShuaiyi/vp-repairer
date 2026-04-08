@@ -335,8 +335,20 @@ class GurobiSolver:
         """
         for k in range(len(safe_distance_modes) - 1):
             if safe_distance_modes[k]:
+                pred_time_step = k + tc
+                if (
+                    pred_time_step > pred_veh.end_time
+                    or not pred_veh.is_valid(pred_time_step)
+                    or pred_time_step not in pred_veh.lanelet_assignment
+                ):
+                    continue
+
                 param_dict = {}
-                pred_veh_state = pred_veh.get_lon_state(k + tc)
+                pred_veh_state = pred_veh.get_lon_state(pred_time_step)
+                pred_veh_rear_s = pred_veh.rear_s(pred_time_step)
+                if pred_veh_state is None or pred_veh_rear_s is None:
+                    continue
+
                 for i in range(len(velocity_samples)):
                     safe_dis_0 = calculate_safe_distance(
                         velocity_samples[i],
@@ -354,7 +366,7 @@ class GurobiSolver:
                     ]
                     param_dict["constants"] = [
                         -(
-                            pred_veh.rear_s(k + tc)
+                            pred_veh_rear_s
                             - ti_cons.length / 2
                             - ti_cons.wheelbase / 2
                             - safe_dis_0

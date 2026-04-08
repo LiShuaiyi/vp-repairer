@@ -85,6 +85,7 @@ class RuleConstraintsManual:
         self._prec_veh = None
         self._foll_veh = None
         # whether safe distance needs to be obeyed
+        print(f"tc_object.tc_time_step: {self._tc_obj.tc_time_step}")
         self._safe_dis_mode = [
             False for _ in range(self._tc_obj.N - self._tc_obj.tc_time_step + 1)
         ]
@@ -185,7 +186,7 @@ class RuleConstraintsManual:
     def add(self):
         """
         add rule constraints. Since QP planner is used for longitudinal and lateral motions separately,
-        we can only first obtain the numerical values for then longitudinal motion and the lane constraints
+        we can only first obtain the numerical values for the longitudinal motion and the lane constraints
         for the lateral motion.
             longitudinal motion: s, v, a
             lateral motion: lane

@@ -19,7 +19,7 @@ if __name__ == "__main__":
     config.repair.rules = ["R_G1", "R_G3"]
     config.repair.ego_id = 11
     config.debug.show_plots = True
-    config.repair.planner = 2
+    config.repair.planner = 1
     config.repair.constraint_mode = 2
     config.repair.use_mpr = False
 
@@ -46,21 +46,21 @@ if __name__ == "__main__":
                 # ============= Visualization =============
                 # visualize_v_profile_tc_all(repairer, ego_initial, ego_repaired, config.repair.t_0, config.repair.t_f,
                 #                            figsize=(6, 1.5), ylim=[20, 45], velocity_limit=43)
-                # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+                visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
 
-                config.scenario.remove_obstacle(config.scenario.obstacle_by_id(ego_initial.obstacle_id))
-                for i in range(ego_initial.prediction.trajectory.final_state.time_step + 1):
+                # config.scenario.remove_obstacle(config.scenario.obstacle_by_id(ego_initial.obstacle_id))
+                # for i in range(ego_initial.prediction.trajectory.final_state.time_step + 1):
 
-                    visualize_scenario_once(config.scenario,
-                                            ego_initial,
-                                            ego_repaired,
-                                            i,  # Assuming time_end is the current time_step for visualization
-                                            './img/rg13',
-                                            config.debug.plot_limits,
-                                            config.repair.t_f,
-                                            repairer.tc,
-                                            repairer.tv,
-                                            None,
-                                            traffic_rule_monitor.world,
-                                            flag_repair=True,
-                                            background_file='rg13')
+                #     visualize_scenario_once(config.scenario,
+                #                             ego_initial,
+                #                             ego_repaired,
+                #                             i,  # Assuming time_end is the current time_step for visualization
+                #                             './img/rg13',
+                #                             config.debug.plot_limits,
+                #                             config.repair.t_f,
+                #                             repairer.tc,
+                #                             repairer.tv,
+                #                             None,
+                #                             traffic_rule_monitor.world,
+                #                             flag_repair=True,
+                #                             background_file='rg13')

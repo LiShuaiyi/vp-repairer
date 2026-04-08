@@ -22,6 +22,7 @@ from crrepairer.smt.monitor_wrapper import PropositionNode
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.cut_off.tc import TC
 from crrepairer.utils.configuration import RepairerConfiguration, IntersectionType
+from crrepairer.utils.shape import shape_dimensions
 from crrepairer.smt.t_solver.qp_planner_repair import update_goal_state_extension, update_goal_state
 
 from commonroad.scenario.trajectory import Trajectory
@@ -35,6 +36,7 @@ from commonroad.geometry.shape import Rectangle
 from typing import List, Optional
 import yaml
 import os
+import sys
 
 
 class MIQPPlannerRepair(MIQPPlanner):
@@ -187,7 +189,7 @@ class MIQPPlannerRepair(MIQPPlanner):
                 velocity=self._cut_off_state.velocity,
                 orientation=self._cut_off_state.orientation,
                 time_step=self._cut_off_state.time_step,
-                acceleration=self._cut_off_state.acceleration,
+                acceleration=getattr(self._cut_off_state, "acceleration", 0.0),
                 # not needed but mandatory field
                 yaw_rate=0,
                 slip_angle=0,
@@ -225,10 +227,9 @@ class MIQPPlannerRepair(MIQPPlanner):
             # update the config from the qp planner
             self.config.vehicle.qp_veh_config = self._vehicle_configuration
             # update the vehicle shape
-            self._vehicle_configuration.width = self.time_invariant_constraints.width = (
-                self._ego_vehicle.obstacle_shape.width)
-            self._vehicle_configuration.length = self.time_invariant_constraints.length = (
-                self._ego_vehicle.obstacle_shape.length)
+            ego_length, ego_width = shape_dimensions(self._ego_vehicle.obstacle_shape)
+            self._vehicle_configuration.width = self.time_invariant_constraints.width = ego_width
+            self._vehicle_configuration.length = self.time_invariant_constraints.length = ego_length
 
             # update the initial state accordingly
             self.initial_state = compute_initial_state(
@@ -393,7 +394,7 @@ class MIQPPlannerRepair(MIQPPlanner):
                 position=state.position,
                 velocity=state.velocity,
                 orientation=state.orientation,
-                acceleration=state.acceleration,
+                acceleration=getattr(state, "acceleration", 0.0),
             )
             for state in remaining_states + cr_traj_repaired.state_list
         ]
@@ -431,5 +432,3 @@ class MIQPPlannerRepair(MIQPPlanner):
             ] = settings["vehicle_settings"].pop(1)
         settings["scenario_type"] = config.repair.scenario_type
         return settings
-
-

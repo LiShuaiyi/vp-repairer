@@ -1,0 +1,11 @@
+\ Model _copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+\ Signature: 0xf1dc94bea0529e9e
+Minimize
+ 
+Subject To
+ in_front_of_lb_t1: - x_long_0_1 <= -348.238233768858
+ collision_free_cons_ub_at_time_1: x_long_0_1 <= 340.1927662311419
+Bounds
+ x_long_0_1 free
+End

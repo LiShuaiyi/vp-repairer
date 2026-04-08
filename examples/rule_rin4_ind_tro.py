@@ -23,8 +23,8 @@ if __name__ == "__main__":
     config.repair.N_r = 20
 
     config.debug.show_plots = True
-    config.repair.planner = 2
-    config.repair.constraint_mode = 2
+    config.repair.planner = 1
+    config.repair.constraint_mode = 1
 
     # from commonroad.visualization.mp_renderer import MPRenderer
     # rnd = MPRenderer()

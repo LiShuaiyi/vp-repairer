@@ -11,6 +11,7 @@ from commonroad.scenario.obstacle import ObstacleType
 import math
 
 if __name__ == "__main__":
+    # THIS IS INVALID, ORIGINAL REPAIRER FAILED
     # ========== Scenario and Configuration =========
     scenario_id = "DEU_AachenBendplatz-1_111180_T-1199"
 

@@ -15,8 +15,8 @@ if __name__ == "__main__":
     config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
     config.update()
     config.debug.show_plots = True
-    config.repair.planner = 2
-    config.repair.constraint_mode = 2
+    config.repair.planner = 1  # 1: qp planner 2: miqp
+    config.repair.constraint_mode = 2   # 1: Manual, 2: Reach
     config.repair.use_mpr = False
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)

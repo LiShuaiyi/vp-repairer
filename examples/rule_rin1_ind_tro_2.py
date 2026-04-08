@@ -40,7 +40,7 @@ if __name__ == "__main__":
     config.repair.use_mpr_derivative = False
     config.debug.show_plots = True
     config.repair.planner = 2
-    config.repair.constraint_mode = 2
+    config.repair.constraint_mode = 1
     config.debug.plot_limits = [37, 54, -30, -12]
 
     # Retrieve the ego vehicle
@@ -53,25 +53,32 @@ if __name__ == "__main__":
     if traffic_rule_monitor.tv_time_step is not math.inf:
         repairer = SMTTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
         repaired_traj = repairer.repair()
-        if repaired_traj is not None and config.debug.show_plots:
-            ego_repaired = repairer.convert_traj_to_ego_vehicle(
-                ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
-            )
-            if config.debug.show_plots:
-                # ============= Visualization =============
-                # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
-                visualize_scenario_once(config.scenario,
-                                        ego_initial,
-                                        ego_repaired,
-                                        repairer.tc,  # Assuming time_end is the current time_step for visualization
-                                        None,
-                                        config.debug.plot_limits,
-                                        config.repair.t_f,
-                                        repairer.tc,
-                                        repairer.tv,
-                                        repairer.target_vehicle,
-                                        traffic_rule_monitor.world,
-                                        marksize=10,
-                                        lanewidth=5,
-                                        marker_linewidth=2,
-                                        flag_repair=True)
+        # if repaired_traj is not None and config.debug.show_plots:
+        #     ego_repaired = repairer.convert_traj_to_ego_vehicle(
+        #         ego_initial.obstacle_shape, ego_initial.initial_state, repaired_traj
+        #     )
+        #     if config.debug.show_plots:
+        #         # ============= Visualization =============
+        #         # visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+        #         visualize_scenario_once(config.scenario,
+        #                                 ego_initial,
+        #                                 ego_repaired,
+        #                                 repairer.tc,  # Assuming time_end is the current time_step for visualization
+        #                                 None,
+        #                                 config.debug.plot_limits,
+        #                                 config.repair.t_f,
+        #                                 repairer.tc,
+        #                                 repairer.tv,
+        #                                 repairer.target_vehicle,
+        #                                 traffic_rule_monitor.world,
+        #                                 marksize=10,
+        #                                 lanewidth=5,
+        #                                 marker_linewidth=2,
+        #                                 flag_repair=True)
+        print(repairer.t_solver._planner._constraints.longitudinal_constraints)
+        print(f"repairer.t_solver._sel_prop:{repairer.t_solver._sel_prop}")
+        # print(f"repairer.t_solver._sel_prop:{repairer.t_solver._prop_full}")
+        for proposition in repairer.t_solver._prop_full:
+            predicate = proposition.children[0]
+            print(f"predicate: {len(proposition.children)}")
+            print(f"predicate: {predicate.name}, {vars(predicate)}")

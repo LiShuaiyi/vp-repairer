@@ -102,7 +102,7 @@ class CLRRTPlannerRepair:
                 velocity=self._cut_off_state.velocity,
                 orientation=self._cut_off_state.orientation,
                 time_step=self._cut_off_state.time_step,
-                acceleration=self._cut_off_state.acceleration,
+                acceleration=getattr(self._cut_off_state, "acceleration", 0.0),
                 # not needed but mandatory field
                 yaw_rate=0,
                 slip_angle=0,
@@ -178,7 +178,7 @@ class CLRRTPlannerRepair:
                 position=state.position,
                 velocity=state.velocity,
                 orientation=state.orientation,
-                acceleration=state.acceleration,
+                acceleration=getattr(state, "acceleration", 0.0),
             )
             for state in remaining_states + final_path
         ]

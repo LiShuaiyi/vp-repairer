@@ -104,6 +104,8 @@ class TC(CutOffBase, ABC):
 
     @property
     def tv(self):
+        if math.isinf(self._tv_time_step):
+            return self._tv_time_step
         return int_round(self._tv_time_step * self.dT, self.round_tolerance)
 
     @property
@@ -124,6 +126,7 @@ class TC(CutOffBase, ABC):
 
     @property
     def tc_time_step(self) -> Union[int, float]:
+        # print(f"tc_time_step called, self._tc: {self._tc}")
         if self._tc == -math.inf:
             return self._tc
         return int(self._tc / self.dT)

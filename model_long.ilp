@@ -1,0 +1,94 @@
+\ Model _copy
+\ LP format - for model browsing. Use MPS format to capture full model detail.
+\ Signature: 0x75a27381244a1243
+Minimize
+ 
+Subject To
+ state_trans0_at_time-1: x_long_0_0 = 122.8652041927775
+ state_trans1_at_time-1: x_long_1_0 = 17.30826394727491
+ state_trans2_at_time-1: x_long_2_0 = 0
+ state_trans3_at_time-1: x_long_3_0 = 0
+ state_trans0_at_time0: - x_long_0_0 + x_long_0_1 - 0.2 x_long_1_0
+   - 0.02 x_long_2_0 - 0.00133333333333333 x_long_3_0
+   - 6.66667e-05 u_long_0 = 0
+ state_trans2_at_time0: - x_long_2_0 + x_long_2_1 - 0.2 x_long_3_0
+   - 0.02 u_long_0 = 0
+ state_trans3_at_time0: - x_long_3_0 + x_long_3_1 - 0.2 u_long_0 = 0
+ state_trans0_at_time1: - x_long_0_1 + x_long_0_2 - 0.2 x_long_1_1
+   - 0.02 x_long_2_1 - 0.00133333333333333 x_long_3_1
+   - 6.66667e-05 u_long_1 = 0
+ state_trans2_at_time1: - x_long_2_1 + x_long_2_2 - 0.2 x_long_3_1
+   - 0.02 u_long_1 = 0
+ state_trans3_at_time1: - x_long_3_1 + x_long_3_2 - 0.2 u_long_1 = 0
+ state_trans0_at_time2: - x_long_0_2 + x_long_0_3 - 0.2 x_long_1_2
+   - 0.02 x_long_2_2 - 0.00133333333333333 x_long_3_2
+   - 6.66667e-05 u_long_2 = 0
+ state_trans2_at_time2: - x_long_2_2 + x_long_2_3 - 0.2 x_long_3_2
+   - 0.02 u_long_2 = 0
+ state_trans3_at_time2: - x_long_3_2 + x_long_3_3 - 0.2 u_long_2 = 0
+ state_trans0_at_time3: - x_long_0_3 + x_long_0_4 - 0.2 x_long_1_3
+   - 0.02 x_long_2_3 - 0.00133333333333333 x_long_3_3
+   - 6.66667e-05 u_long_3 = 0
+ state_trans2_at_time3: - x_long_2_3 + x_long_2_4 - 0.2 x_long_3_3
+   - 0.02 u_long_3 = 0
+ state_trans3_at_time3: - x_long_3_3 + x_long_3_4 - 0.2 u_long_3 = 0
+ state_trans0_at_time4: - x_long_0_4 + x_long_0_5 - 0.2 x_long_1_4
+   - 0.02 x_long_2_4 - 0.00133333333333333 x_long_3_4
+   - 6.66667e-05 u_long_4 = 0
+ state_trans2_at_time4: - x_long_2_4 + x_long_2_5 - 0.2 x_long_3_4
+   - 0.02 u_long_4 = 0
+ state_trans3_at_time4: - x_long_3_4 + x_long_3_5 - 0.2 u_long_4 = 0
+ state_trans0_at_time5: - x_long_0_5 + x_long_0_6 - 0.2 x_long_1_5
+   - 0.02 x_long_2_5 - 0.00133333333333333 x_long_3_5
+   - 6.66667e-05 u_long_5 = 0
+ state_trans2_at_time5: - x_long_2_5 + x_long_2_6 - 0.2 x_long_3_5
+   - 0.02 u_long_5 = 0
+ state_trans3_at_time5: - x_long_3_5 + x_long_3_6 - 0.2 u_long_5 = 0
+ state_trans0_at_time6: - x_long_0_6 + x_long_0_7 - 0.2 x_long_1_6
+   - 0.02 x_long_2_6 - 0.00133333333333333 x_long_3_6
+   - 6.66667e-05 u_long_6 = 0
+ state_trans3_at_time6: - x_long_3_6 + x_long_3_7 - 0.2 u_long_6 = 0
+ state_trans0_at_time7: - x_long_0_7 + x_long_0_8 - 0.2 x_long_1_7
+   - 0.02 x_long_2_7 - 0.00133333333333333 x_long_3_7
+   - 6.66667e-05 u_long_7 = 0
+ state_trans1_at_time7: - x_long_1_7 + x_long_1_8 - 0.2 x_long_2_7
+   - 0.02 x_long_3_7 - 0.00133333333333333 u_long_7 = 0
+ state_trans3_at_time7: - x_long_3_7 + x_long_3_8 - 0.2 u_long_7 = 0
+ safe_dis_v_0_t_7: x_long_0_8 + 0.4 x_long_1_8 <= 107.493866062898
+Bounds
+ x_long_0_0 free
+ x_long_0_1 free
+ x_long_0_2 free
+ x_long_0_3 free
+ x_long_0_4 free
+ x_long_0_5 free
+ x_long_0_6 free
+ x_long_0_7 free
+ x_long_0_8 free
+ x_long_1_0 free
+ x_long_2_0 free
+ x_long_2_1 >= -15
+ x_long_2_2 free
+ x_long_2_3 >= -15
+ x_long_2_4 >= -15
+ x_long_2_5 free
+ x_long_2_6 >= -15
+ x_long_2_7 free
+ x_long_3_0 free
+ x_long_3_1 free
+ x_long_3_2 free
+ x_long_3_3 free
+ x_long_3_4 free
+ x_long_3_5 free
+ x_long_3_6 free
+ x_long_3_7 free
+ -infinity <= x_long_3_8 <= 1000
+ u_long_0 free
+ u_long_1 free
+ u_long_2 free
+ u_long_3 free
+ -infinity <= u_long_4 <= 5000
+ -infinity <= u_long_5 <= 5000
+ u_long_6 free
+ u_long_7 free
+End

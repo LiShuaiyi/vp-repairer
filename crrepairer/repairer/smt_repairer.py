@@ -82,6 +82,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 return None
             sat_start_time = time.time()
             select_proposition, self._model = self.sat_solver.model()
+            print(f'selected proposition: {select_proposition}')
             self.sat_reasoning_time += time.time() - sat_start_time
             print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(self.sat_reasoning_time))
             repairability, repaired_traj = self.t_solver.check(
@@ -110,7 +111,7 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 #     print("*** Reparable but Solver Failed ಠ_ಠ  ***")
             self.sat_solver.update_formula()
             nr += 1
-        print("*******   Repairing Failed ಠ_ಠ   *******")
+        print(f"*******   Repairing Failed ಠ_ಠ with {nr} iteration(s)  *******")
         return None
 
     @staticmethod

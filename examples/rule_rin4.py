@@ -13,6 +13,8 @@ if __name__ == "__main__":
     # Build configuration object
     config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
     config.update()
+    config.repair.planner = 2
+    config.repair.constraint_mode = 2
 
     # Retrieve the ego vehicle
     ego_initial = retrieve_ego_vehicle(config)
@@ -31,3 +33,16 @@ if __name__ == "__main__":
             if config.debug.show_plots:
                 # ============= Visualization =============
                 visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+
+        lon_constr = repairer.t_solver._planner._constraints.longitudinal_constraints
+        rule_constr_dict = lon_constr.rule_constraints
+        collision_constr = lon_constr.collision_free_constraints
+        for key,val in rule_constr_dict.items():
+            print(f"rule: {key}, constr: {vars(val)}")
+        print(f"collision_constr: {vars(collision_constr)}")
+        # print(f"repairer.t_solver._sel_prop:{repairer.t_solver._sel_prop}")
+        # print(f"repairer.t_solver._sel_prop:{repairer.t_solver._prop_full}")
+        for proposition in repairer.t_solver._prop_full:
+            predicate = proposition.children[0]
+            # print(f"predicate: {len(proposition.children)}")
+            # print(f"predicate: {predicate.name}, {vars(predicate)}")

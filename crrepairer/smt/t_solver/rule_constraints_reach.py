@@ -2,9 +2,13 @@ import os
 import re
 import time
 from fractions import Fraction
+from types import SimpleNamespace
 from typing import List
+import numpy as np
 
 from commonroad.scenario.obstacle import ObstacleType
+from commonroad.geometry.shape import Rectangle
+from commonroad_dc.geometry.geometry import CurvilinearCoordinateSystem
 from mpmath.libmp.libelefun import machin
 
 from commonroad_qp_planner.configuration import (
@@ -46,6 +50,7 @@ from commonroad_reach_semantic.data_structure.reach.semantic_reach_interface imp
 
 from commonroad_reach.data_structure.reach.driving_corridor_extractor import DrivingCorridorExtractor
 from commonroad_reach.data_structure.reach.reach_interface import ReachableSetInterface
+from commonroad_reach.utility.configuration import compute_initial_state_cvln
 import commonroad_reach_semantic.utility.visualization as util_visual_semantic
 from commonroad_reach_semantic.data_structure.environment_model.semantic_model import (
     SemanticModel,
@@ -71,6 +76,137 @@ from crmonitor.predicates.position import (
 )
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
+from crrepairer.utils.shape import shape_dimensions
+
+
+def _build_route_stub(reference_path, lanelet_ids):
+    reference_path = np.asarray(reference_path, dtype=float)
+    if len(reference_path) == 0:
+        return SimpleNamespace(
+            lanelet_ids=list(lanelet_ids) if lanelet_ids else [],
+            reference_path=reference_path,
+            path_length_per_point=np.array([]),
+            path_orientation=np.array([]),
+        )
+
+    if len(reference_path) == 1:
+        path_length_per_point = np.array([0.0])
+        path_orientation = np.array([0.0])
+    else:
+        deltas = np.diff(reference_path, axis=0)
+        segment_lengths = np.linalg.norm(deltas, axis=1)
+        path_length_per_point = np.concatenate(([0.0], np.cumsum(segment_lengths)))
+        segment_orientation = np.arctan2(deltas[:, 1], deltas[:, 0])
+        path_orientation = np.concatenate((segment_orientation, [segment_orientation[-1]]))
+
+    return SimpleNamespace(
+        lanelet_ids=list(lanelet_ids) if lanelet_ids else [],
+        reference_path=reference_path,
+        path_length_per_point=path_length_per_point,
+        path_orientation=path_orientation,
+    )
+
+
+def _normalize_obstacle_shapes(scenario):
+    for obstacle in scenario.obstacles:
+        shape = obstacle.obstacle_shape
+        radius = getattr(shape, "radius", None)
+        if radius is None or hasattr(shape, "length"):
+            continue
+
+        diameter = 2.0 * float(radius)
+        obstacle.obstacle_shape = Rectangle(length=diameter, width=diameter)
+        if getattr(obstacle, "prediction", None) is not None:
+            obstacle.prediction.shape = obstacle.obstacle_shape
+
+
+def _select_fallback_reference_lane_world(ego_vehicle_world):
+    ref_lane = getattr(ego_vehicle_world, "ref_path_lane", None)
+    if ref_lane is not None and getattr(ref_lane, "clcs", None) is not None:
+        return ref_lane
+
+    candidate_times = []
+    start_time = getattr(ego_vehicle_world, "start_time", None)
+    end_time = getattr(ego_vehicle_world, "end_time", None)
+    if start_time is not None:
+        candidate_times.append(start_time)
+    if end_time is not None and end_time not in candidate_times:
+        candidate_times.append(end_time)
+    if start_time is not None and end_time is not None:
+        candidate_times.extend(
+            time_step
+            for time_step in range(start_time, end_time + 1)
+            if time_step not in candidate_times
+        )
+
+    for time_step in candidate_times:
+        try:
+            candidate_lanes = list(ego_vehicle_world.lanes_at_state(time_step))
+        except Exception:
+            candidate_lanes = []
+
+        best_lane = None
+        best_lon_v = -np.inf
+        for lane in candidate_lanes:
+            if lane is None or getattr(lane, "clcs", None) is None:
+                continue
+            try:
+                lon_state = ego_vehicle_world.get_lon_state(time_step, lane)
+                lon_v = getattr(lon_state, "v", -np.inf) if lon_state is not None else -np.inf
+            except Exception:
+                lon_v = -np.inf
+            if lon_v > best_lon_v:
+                best_lon_v = lon_v
+                best_lane = lane
+
+        if best_lane is not None and best_lon_v >= 0.0:
+            return best_lane
+        if best_lane is not None and getattr(best_lane, "clcs", None) is not None:
+            return best_lane
+
+    return None
+
+
+def _align_clcs_with_ego_direction(ego_vehicle_world, ref_lane):
+    ego_clcs = ref_lane.clcs
+    start_time = getattr(ego_vehicle_world, "start_time", None)
+    if start_time is None:
+        return ego_clcs
+
+    try:
+        lon_state = ego_vehicle_world.get_lon_state(start_time, ref_lane)
+        lon_v = getattr(lon_state, "v", None) if lon_state is not None else None
+    except Exception:
+        lon_v = None
+
+    if lon_v is None or lon_v >= -1e-3:
+        return ego_clcs
+
+    ref_path = np.array(ego_clcs.reference_path())[::-1]
+    return CurvilinearCoordinateSystem(ref_path, 20, 0.1, 5.0)
+
+
+def _ensure_lat_velocity_bounds(reach_config, margin: float = 1.0, cap: float = 20.0):
+    """
+    CommonRoad-Reach defaults to a narrow ego lateral velocity interval [-4, 4].
+    HighD intersection scenarios can start with a much larger projected v_lat due to
+    reference-path geometry, which makes reach initialization fail before planning.
+    Widen the interval just enough to contain the current initial state.
+    """
+    current_min = getattr(reach_config.vehicle.ego, "v_lat_min", -4.0)
+    current_max = getattr(reach_config.vehicle.ego, "v_lat_max", 4.0)
+    reach_config.vehicle.ego.v_lat_min = min(current_min, -cap)
+    reach_config.vehicle.ego.v_lat_max = max(current_max, cap)
+
+    try:
+        _, v_initial = compute_initial_state_cvln(reach_config)
+        v_lat_initial = float(v_initial[1])
+    except Exception:
+        return
+
+    needed = min(cap, max(abs(v_lat_initial) + margin, 4.0))
+    reach_config.vehicle.ego.v_lat_min = min(reach_config.vehicle.ego.v_lat_min, -needed)
+    reach_config.vehicle.ego.v_lat_max = max(reach_config.vehicle.ego.v_lat_max, needed)
 
 
 class RuleConstraintsReach:
@@ -126,8 +262,9 @@ class RuleConstraintsReach:
         ).build_configuration(str(self._world_state.scenario.scenario_id))
 
         # update the time step and nr of computation
-        self.reach_config.vehicle.ego.width = self._ego_vehicle_cr.obstacle_shape.width
-        self.reach_config.vehicle.ego.length = self._ego_vehicle_cr.obstacle_shape.length
+        ego_length, ego_width = shape_dimensions(self._ego_vehicle_cr.obstacle_shape)
+        self.reach_config.vehicle.ego.width = ego_width
+        self.reach_config.vehicle.ego.length = ego_length
         self.reach_config.planning.dt = self._world_state.dt
 
         # update the path
@@ -143,7 +280,29 @@ class RuleConstraintsReach:
 
         self.corridor = None
 
-        self.reach_config.update()
+        ref_lane = _select_fallback_reference_lane_world(self._ego_vehicle_world)
+        if ref_lane is None:
+            raise RuntimeError(
+                "RuleConstraintsReach could not derive a fallback reference lane "
+                "from the monitor world"
+            )
+        ego_clcs = _align_clcs_with_ego_direction(self._ego_vehicle_world, ref_lane)
+        ego_lanelet_ids = getattr(ref_lane, "contained_lanelets", None)
+        if self.reach_config.planning.route is None and ego_lanelet_ids:
+            self.reach_config.planning.route = _build_route_stub(
+                ego_clcs.reference_path(),
+                ego_lanelet_ids,
+            )
+        self.reach_config.planning.reference_point = "REAR"
+        self.reach_config.planning_problem = config_repair.planning_problem
+        _ensure_lat_velocity_bounds(self.reach_config)
+        self.reach_config.update(
+            scenario=self._world_state.scenario,
+            planning_problem=config_repair.planning_problem,
+            CLCS=ego_clcs,
+            list_ids_lanelets=ego_lanelet_ids,
+        )
+        _normalize_obstacle_shapes(self.reach_config.scenario)
         # # remove non-car obstacles
         # for obs in self.reach_config.scenario.obstacles:
         #     if obs.obstacle_type != ObstacleType.CAR:
@@ -156,7 +315,10 @@ class RuleConstraintsReach:
 
         # update params
         self.reach_config.vehicle.ego.t_react = 0.4
-        self.reach_config.reachable_set.mode_computation = 8
+        # Use the Python OTF backend here because the C++ semantic binding still
+        # assumes rectangular obstacle shapes and crashes on Circle obstacles in
+        # dataset scenarios.
+        self.reach_config.reachable_set.mode_computation = 7
         self.reach_config.vehicle.ego.a_lon_min = -10
         self.reach_config.vehicle.ego.v_max = 50
         if "R_IN4" in rule_monitor._rules:
@@ -168,9 +330,9 @@ class RuleConstraintsReach:
         if "R_G2" in rule_monitor._rules:
             self.reach_config.vehicle.other.a_lon_min = -2
 
-        self.reach_config.planning.reference_point = "REAR"
-        self.reach_config.vehicle.other.width = self._target_vehicle.shape.width
-        self.reach_config.vehicle.other.length = self._target_vehicle.shape.length
+        target_length, target_width = shape_dimensions(self._target_vehicle.shape)
+        self.reach_config.vehicle.other.width = target_width
+        self.reach_config.vehicle.other.length = target_length
 
         if self.reach_config.reachable_set.mode_computation in [7, 8]:
             self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model,
@@ -307,10 +469,11 @@ class RuleConstraintsReach:
             yaw_rate=0.0,
             slip_angle=0,
             time_step=cut_off_state.time_step,
-            acceleration=cut_off_state.acceleration
+            acceleration=getattr(cut_off_state, "acceleration", 0.0),
         )
 
         # planning_problem has to be there!!!!
+        _ensure_lat_velocity_bounds(self.reach_config)
         self.reach_config.update(
             planning_problem=self.reach_config.planning_problem,
             scenario=self._tc_obj.scenario,  # with the target vehicle removed!!
@@ -389,7 +552,7 @@ class RuleConstraintsReach:
             dc_extractor = DrivingCorridorExtractor(self.reach_interface.reachable_set, self.reach_config)
             try:
                 driving_corridors = dc_extractor.extract()
-                self.corridor = driving_corridors[0]
+                self.corridor = driving_corridors[0] if driving_corridors else None
             except Exception as e:
                 print(f"Error in extracting the driving corridor: {e}")
                 self.corridor = None

@@ -9,17 +9,17 @@ import math
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    scenario_id = "DEU_LocationAUpper-54_67_T-1" # id=9
-    scenario_id = "DEU_LocationELower-18_22_T-1" # id=11
-    # scenario_id = "DEU_LocationALower-26_189_T-1" # id=19
+    # scenario_id = "DEU_LocationAUpper-54_67_T-1" # id=9
+    # scenario_id = "DEU_LocationELower-18_22_T-1" # id=14
+    scenario_id = "DEU_LocationALower-26_189_T-1" # id=19
     # Build configuration object
     config = RepairerConfiguration()
     config.general.set_path_scenario(scenario_id)
     config.update()
     config.repair.rules = ["R_G1"]
-    config.repair.ego_id = 14
+    config.repair.ego_id = 19
     config.debug.show_plots = True
-    config.repair.planner = 2
+    config.repair.planner = 1
     config.repair.constraint_mode = 2
     config.repair.use_mpr = False
     # Retrieve the ego vehicle

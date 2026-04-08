@@ -1,0 +1,1119 @@
+scenario_id,ego_id,sat_solver_mode,success,iterations,tv,tc,updated_tv,domain_dict_size,domain_dict_time,sat_time,constraint_extraction_time,constraint_conversion_time,lp_time,trajectory_build_time,compliance_check_time,core_total_time,wall_time,error
+DEU_LocationALower-41_27_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.138300895690918,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_27_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0185699462890625,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-42_5_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.654696702957153,invalid initial tv: inf
+DEU_LocationALower-42_5_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.545074462890625,invalid initial tv: inf
+DEU_LocationAUpper-31_26_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.678921222686768,invalid initial tv: inf
+DEU_LocationAUpper-31_26_T-1,29,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0321040153503418,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-31_26_T-1,30,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0317003726959229,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-16_40_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00621390342712402,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-47_37_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0140929222106934,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_5_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.597534894943237,invalid initial tv: inf
+DEU_LocationAUpper-45_5_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.504329442977905,invalid initial tv: inf
+DEU_LocationAUpper-45_5_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.590083599090576,invalid initial tv: inf
+DEU_LocationAUpper-14_1_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.505736589431763,cannot unpack non-iterable float object
+DEU_LocationALower-44_47_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.72639799118042,invalid initial tv: inf
+DEU_LocationALower-44_47_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.710713624954224,invalid initial tv: inf
+DEU_LocationALower-44_47_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.742840051651001,invalid initial tv: inf
+DEU_LocationAUpper-52_30_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.546514511108398,invalid initial tv: inf
+DEU_LocationAUpper-52_30_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0151627063751221,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_30_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0147554874420166,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_30_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0145516395568848,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_30_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0151443481445313,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-35_51_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601792335510254,invalid initial tv: inf
+DEU_LocationAUpper-48_8_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.565860509872437,invalid initial tv: inf
+DEU_LocationAUpper-48_8_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.018873929977417,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-26_47_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.08374786376953E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_47_T-1.xml'
+DEU_LocationAUpper-42_24_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0230574607849121,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_22_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.772178173065186,invalid initial tv: inf
+DEU_LocationALower-41_22_T-1,17,domain_dpll,True,1,7,1,inf,1,0.011756420135498,2.38418579101563E-05,0.000227928161621094,0.000261783599853516,0.00911688804626465,0.000231742858886719,0,0.0216186046600342,1.10853481292725,
+DEU_LocationALower-41_22_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.679083347320557,invalid initial tv: inf
+DEU_LocationALower-41_22_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0328502655029297,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_22_T-1,28,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0318160057067871,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-14_9_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.586156845092773,invalid initial tv: inf
+DEU_LocationALower-14_9_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.637656450271606,invalid initial tv: inf
+DEU_LocationALower-14_9_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.757306814193726,invalid initial tv: inf
+DEU_LocationALower-14_9_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0295619964599609,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-14_9_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0281538963317871,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-47_35_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.745229959487915,invalid initial tv: inf
+DEU_LocationAUpper-47_35_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.701091766357422,invalid initial tv: inf
+DEU_LocationAUpper-47_35_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.721721172332764,invalid initial tv: inf
+DEU_LocationCUpper-6_9_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.532543659210205,invalid initial tv: inf
+DEU_LocationBUpper-2_46_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.438217878341675,invalid initial tv: inf
+DEU_LocationBUpper-2_46_T-1,10,domain_dpll,True,1,9,1,inf,1,0.00956606864929199,2.38418579101563E-05,0.000242233276367188,0.000278472900390625,0.00110602378845215,0.000156164169311523,0,0.0113728046417236,0.588038682937622,
+DEU_LocationBUpper-2_46_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0201423168182373,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationBUpper-2_46_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.133686542510986,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_26_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.594274520874023,invalid initial tv: inf
+DEU_LocationAUpper-27_26_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.608963489532471,invalid initial tv: inf
+DEU_LocationALower-30_11_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.664511442184448,invalid initial tv: inf
+DEU_LocationDUpper-9_22_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0104284286499023,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-21_47_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0089256763458252,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCLower-4_22_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00665783882141113,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-47_43_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.63135552406311,invalid initial tv: inf
+DEU_LocationAUpper-47_43_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.579673051834106,invalid initial tv: inf
+DEU_LocationAUpper-47_43_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.59475564956665,invalid initial tv: inf
+DEU_LocationAUpper-47_43_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0215060710906982,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-35_38_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.607639074325562,invalid initial tv: inf
+DEU_LocationAUpper-35_38_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.648904800415039,invalid initial tv: inf
+DEU_LocationAUpper-35_38_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.631976127624512,invalid initial tv: inf
+DEU_LocationAUpper-35_38_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.724584341049194,invalid initial tv: inf
+DEU_LocationAUpper-41_16_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.510640382766724,invalid initial tv: inf
+DEU_LocationAUpper-41_16_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0139777660369873,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-35_23_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601605892181397,invalid initial tv: inf
+DEU_LocationAUpper-42_6_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.782719135284424,invalid initial tv: inf
+DEU_LocationAUpper-27_15_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.624138116836548,invalid initial tv: inf
+DEU_LocationELower-23_45_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.377025842666626,invalid initial tv: inf
+DEU_LocationFUpper-60_33_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.682818174362183,invalid initial tv: inf
+DEU_LocationFUpper-60_33_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.727225542068481,invalid initial tv: inf
+DEU_LocationFUpper-60_33_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.769392728805542,invalid initial tv: inf
+DEU_LocationCLower-4_17_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.51006817817688,cannot unpack non-iterable float object
+DEU_LocationCLower-4_17_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0126523971557617,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-19_47_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.381572246551514,invalid initial tv: inf
+DEU_LocationALower-30_50_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.579934358596802,invalid initial tv: inf
+DEU_LocationALower-32_6_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.571069955825806,invalid initial tv: inf
+DEU_LocationALower-32_6_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0183601379394531,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationBLower-2_22_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.416428089141846,invalid initial tv: inf
+DEU_LocationAUpper-31_51_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.691737651824951,invalid initial tv: inf
+DEU_LocationAUpper-31_51_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.592042207717896,invalid initial tv: inf
+DEU_LocationALower-31_7_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0193955898284912,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_7_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0185954570770264,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-38_18_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.652825593948364,invalid initial tv: inf
+DEU_LocationAUpper-48_38_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.573965787887573,invalid initial tv: inf
+DEU_LocationAUpper-48_38_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.71779465675354,invalid initial tv: inf
+DEU_LocationELower-22_26_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00519180297851563,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-38_57_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.020505428314209,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-58_15_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.774020910263062,invalid initial tv: inf
+DEU_LocationFUpper-58_15_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.785328149795532,invalid initial tv: inf
+DEU_LocationAUpper-28_14_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.616922616958618,invalid initial tv: inf
+DEU_LocationAUpper-25_21_T-1,33,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000107288360595703,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_21_T-1.xml'
+DEU_LocationALower-50_36_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.491750001907349,invalid initial tv: inf
+DEU_LocationALower-50_36_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.639683485031128,invalid initial tv: inf
+DEU_LocationALower-50_36_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0128352642059326,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-18_12_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00644087791442871,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-30_30_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.725528955459595,invalid initial tv: inf
+DEU_LocationALower-37_25_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.602977275848389,invalid initial tv: inf
+DEU_LocationALower-25_15_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.697183132171631,invalid initial tv: inf
+DEU_LocationBUpper-2_42_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.363996982574463,cannot unpack non-iterable float object
+DEU_LocationBUpper-2_42_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.374331951141357,invalid initial tv: inf
+DEU_LocationCLower-4_36_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00925493240356445,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-17_30_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.372686147689819,invalid initial tv: inf
+DEU_LocationAUpper-11_14_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.535681247711182,invalid initial tv: inf
+DEU_LocationAUpper-11_14_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.782810211181641,invalid initial tv: inf
+DEU_LocationAUpper-25_43_T-1,30,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000120878219604492,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_43_T-1.xml'
+DEU_LocationAUpper-38_43_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0163991451263428,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_58_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.682853221893311,cannot unpack non-iterable float object
+DEU_LocationAUpper-36_58_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.685224294662476,cannot unpack non-iterable float object
+DEU_LocationAUpper-36_58_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.819769382476807,invalid initial tv: inf
+DEU_LocationAUpper-33_43_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.592446804046631,invalid initial tv: inf
+DEU_LocationAUpper-33_43_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.610475301742554,invalid initial tv: inf
+DEU_LocationAUpper-33_43_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.021742582321167,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-12_21_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.513985872268677,invalid initial tv: inf
+DEU_LocationALower-12_21_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.596146821975708,invalid initial tv: inf
+DEU_LocationALower-12_21_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.593904495239258,invalid initial tv: inf
+DEU_LocationALower-12_21_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.594602584838867,invalid initial tv: inf
+DEU_LocationAUpper-49_15_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.55954384803772,invalid initial tv: inf
+DEU_LocationAUpper-48_26_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.736615657806397,invalid initial tv: inf
+DEU_LocationAUpper-42_18_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.653598308563232,invalid initial tv: inf
+DEU_LocationAUpper-42_18_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0299520492553711,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-51_38_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.455276250839233,invalid initial tv: inf
+DEU_LocationDUpper-9_37_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0103087425231934,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-23_39_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.607587337493897,invalid initial tv: inf
+DEU_LocationALower-25_2_T-1,33,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.48905944824219E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-25_2_T-1.xml'
+DEU_LocationALower-25_2_T-1,36,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.17096710205078E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-25_2_T-1.xml'
+DEU_LocationAUpper-14_55_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.583458185195923,invalid initial tv: inf
+DEU_LocationALower-34_34_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0178351402282715,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-53_8_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.565799236297607,invalid initial tv: inf
+DEU_LocationAUpper-35_30_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00922155380249023,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-35_30_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00923538208007813,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDLower-7_28_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.561019659042358,invalid initial tv: inf
+DEU_LocationAUpper-13_34_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.813879489898682,invalid initial tv: inf
+DEU_LocationAUpper-13_34_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.812069892883301,invalid initial tv: inf
+DEU_LocationALower-51_21_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0139305591583252,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-51_21_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0135784149169922,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-24_38_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00547242164611816,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-51_12_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.610589981079102,invalid initial tv: inf
+DEU_LocationALower-56_10_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.59445595741272,invalid initial tv: inf
+DEU_LocationALower-56_10_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.596103668212891,invalid initial tv: inf
+DEU_LocationALower-26_55_T-1,29,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.038372278213501,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-26_55_T-1,34,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0375044345855713,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-50_32_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.557949781417847,invalid initial tv: inf
+DEU_LocationAUpper-50_32_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.169707298278809,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-16_7_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.349743127822876,invalid initial tv: inf
+DEU_LocationALower-35_26_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0280725955963135,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-25_52_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000100851058959961,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_52_T-1.xml'
+DEU_LocationAUpper-25_52_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.83718109130859E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_52_T-1.xml'
+DEU_LocationAUpper-25_52_T-1,33,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.52723693847656E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_52_T-1.xml'
+DEU_LocationAUpper-25_52_T-1,43,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.62260437011719E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_52_T-1.xml'
+DEU_LocationAUpper-29_34_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0135815143585205,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_35_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0167102813720703,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_35_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0163967609405518,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_9_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.843765020370483,3
+DEU_LocationALower-33_9_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.574322700500488,invalid initial tv: inf
+DEU_LocationEUpper-17_10_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.353623390197754,invalid initial tv: inf
+DEU_LocationBUpper-1_21_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.369030475616455,invalid initial tv: inf
+DEU_LocationBUpper-1_21_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0104665756225586,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationBUpper-1_21_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00995373725891113,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationBUpper-1_21_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.010122537612915,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-37_31_T-1,12,domain_dpll,True,4,2,1,inf,0,0.00991225242614746,8.46385955810547E-05,0.000482797622680664,0.00558042526245117,0.00111222267150879,0.000152111053466797,0,0.0173244476318359,0.854455947875977,
+DEU_LocationALower-43_37_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601275444030762,invalid initial tv: inf
+DEU_LocationALower-43_37_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.608370780944824,cannot unpack non-iterable float object
+DEU_LocationALower-53_34_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.650570392608643,invalid initial tv: inf
+DEU_LocationAUpper-31_47_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.614614725112915,invalid initial tv: inf
+DEU_LocationALower-28_18_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.687985181808472,invalid initial tv: inf
+DEU_LocationCUpper-6_17_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00696206092834473,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-50_16_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.616698503494263,invalid initial tv: inf
+DEU_LocationAUpper-44_33_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.697982311248779,invalid initial tv: inf
+DEU_LocationALower-54_21_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.954957008361816,invalid initial tv: inf
+DEU_LocationALower-54_21_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.684486865997315,cannot unpack non-iterable float object
+DEU_LocationDLower-8_30_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0138669013977051,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-17_46_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.82284545898438E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-17_46_T-1.xml'
+DEU_LocationALower-35_31_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.64249324798584,invalid initial tv: inf
+DEU_LocationAUpper-27_19_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.48433780670166,invalid initial tv: inf
+DEU_LocationAUpper-27_19_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00802850723266602,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_19_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00791645050048828,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-11_4_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.632648229598999,cannot unpack non-iterable float object
+DEU_LocationEUpper-24_48_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.516262531280518,invalid initial tv: inf
+DEU_LocationAUpper-52_16_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.734388589859009,invalid initial tv: inf
+DEU_LocationAUpper-52_16_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.831495761871338,cannot unpack non-iterable float object
+DEU_LocationAUpper-52_16_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.786952972412109,invalid initial tv: inf
+DEU_LocationAUpper-53_48_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0143370628356934,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-53_48_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0139997005462646,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-44_12_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0104033946990967,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDLower-9_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.615153312683106,invalid initial tv: inf
+DEU_LocationFLower-59_19_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.619193315505981,invalid initial tv: inf
+DEU_LocationCUpper-5_40_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.509721040725708,invalid initial tv: inf
+DEU_LocationCUpper-5_40_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.532159328460693,invalid initial tv: inf
+DEU_LocationCUpper-5_8_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00649404525756836,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCUpper-5_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00610899925231934,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-56_40_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.522564649581909,invalid initial tv: inf
+DEU_LocationAUpper-56_40_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0123653411865234,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-46_37_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.198095083236694,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-40_43_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.529698848724365,invalid initial tv: inf
+DEU_LocationAUpper-49_20_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.718594551086426,invalid initial tv: inf
+DEU_LocationAUpper-49_20_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0310628414154053,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCLower-5_26_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.465497732162476,invalid initial tv: inf
+DEU_LocationELower-16_11_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.408119678497314,invalid initial tv: inf
+DEU_LocationFLower-58_14_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.592474699020386,invalid initial tv: inf
+DEU_LocationFLower-58_14_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.607067346572876,invalid initial tv: inf
+DEU_LocationAUpper-26_49_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.63211059570313E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_49_T-1.xml'
+DEU_LocationALower-46_41_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.679387092590332,invalid initial tv: inf
+DEU_LocationALower-46_41_T-1,28,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0335164070129395,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-7_29_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.616867542266846,invalid initial tv: inf
+DEU_LocationALower-37_35_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.61418080329895,invalid initial tv: inf
+DEU_LocationAUpper-26_29_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000104188919067383,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-26_29_T-1,29,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,4.33921813964844E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-26_29_T-1,32,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.814697265625E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-26_29_T-1,33,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.83718109130859E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-52_12_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.678572177886963,invalid initial tv: inf
+DEU_LocationAUpper-48_28_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.759642362594605,invalid initial tv: inf
+DEU_LocationBUpper-2_32_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.41564154624939,invalid initial tv: inf
+DEU_LocationAUpper-49_5_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0254395008087158,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_44_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.662463188171387,invalid initial tv: inf
+DEU_LocationALower-44_22_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.745920896530151,invalid initial tv: inf
+DEU_LocationALower-42_39_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.581983804702759,invalid initial tv: inf
+DEU_LocationALower-42_39_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.587465763092041,invalid initial tv: inf
+DEU_LocationALower-14_36_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.667110919952393,invalid initial tv: inf
+DEU_LocationALower-27_33_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.759924650192261,invalid initial tv: inf
+DEU_LocationALower-48_34_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.593740940093994,invalid initial tv: inf
+DEU_LocationALower-38_53_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.676675319671631,invalid initial tv: inf
+DEU_LocationAUpper-56_36_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.598433017730713,invalid initial tv: inf
+DEU_LocationAUpper-56_36_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.615854263305664,invalid initial tv: inf
+DEU_LocationAUpper-56_36_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.623289823532105,invalid initial tv: inf
+DEU_LocationAUpper-51_9_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.528795480728149,invalid initial tv: inf
+DEU_LocationAUpper-51_9_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0175518989562988,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_35_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.596805572509766,invalid initial tv: inf
+DEU_LocationALower-41_35_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.609954357147217,invalid initial tv: inf
+DEU_LocationALower-41_35_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0223715305328369,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-37_39_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.515357494354248,invalid initial tv: inf
+DEU_LocationALower-39_33_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.575565099716187,invalid initial tv: inf
+DEU_LocationALower-39_33_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.565520286560059,invalid initial tv: inf
+DEU_LocationELower-18_27_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.419218301773071,invalid initial tv: inf
+DEU_LocationALower-11_25_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.962481260299683,invalid initial tv: inf
+DEU_LocationALower-29_8_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.670753717422485,invalid initial tv: inf
+DEU_LocationALower-29_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.576175689697266,invalid initial tv: inf
+DEU_LocationALower-29_8_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.691499710083008,invalid initial tv: inf
+DEU_LocationALower-37_26_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.549215793609619,invalid initial tv: inf
+DEU_LocationEUpper-24_11_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00702953338623047,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-9_35_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00790238380432129,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-9_35_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00777959823608398,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-48_36_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.550437211990356,invalid initial tv: inf
+DEU_LocationALower-31_16_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.519392013549805,invalid initial tv: inf
+DEU_LocationEUpper-23_4_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.36540412902832,invalid initial tv: inf
+DEU_LocationAUpper-31_9_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.551817893981934,invalid initial tv: inf
+DEU_LocationDUpper-10_6_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.524119377136231,invalid initial tv: inf
+DEU_LocationALower-46_44_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.52918553352356,invalid initial tv: inf
+DEU_LocationALower-44_25_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.05768513679504,13
+DEU_LocationALower-44_25_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.705895900726318,invalid initial tv: inf
+DEU_LocationAUpper-45_48_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.665711164474487,invalid initial tv: inf
+DEU_LocationBUpper-2_15_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.452523946762085,invalid initial tv: inf
+DEU_LocationBUpper-2_15_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.451133489608765,invalid initial tv: inf
+DEU_LocationCLower-5_35_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.235426425933838,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-27_51_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.775523662567139,invalid initial tv: inf
+DEU_LocationAUpper-51_56_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.566229581832886,invalid initial tv: inf
+DEU_LocationAUpper-51_56_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.603837251663208,invalid initial tv: inf
+DEU_LocationELower-18_28_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.482137203216553,invalid initial tv: inf
+DEU_LocationAUpper-54_38_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.595860481262207,invalid initial tv: inf
+DEU_LocationALower-28_35_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.545097589492798,invalid initial tv: inf
+DEU_LocationELower-19_46_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.381301879882813,invalid initial tv: inf
+DEU_LocationAUpper-39_31_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.66122841835022,invalid initial tv: inf
+DEU_LocationAUpper-39_31_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.647974729537964,invalid initial tv: inf
+DEU_LocationCUpper-6_48_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.580163955688477,cannot unpack non-iterable float object
+DEU_LocationAUpper-54_13_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0301303863525391,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-29_9_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.59306812286377,invalid initial tv: inf
+DEU_LocationAUpper-29_9_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.586143016815186,invalid initial tv: inf
+DEU_LocationALower-50_32_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.622983694076538,invalid initial tv: inf
+DEU_LocationDUpper-8_48_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00925326347351074,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-19_12_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.5367431640625E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-19_12_T-1.xml'
+DEU_LocationEUpper-19_12_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.95639038085938E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-19_12_T-1.xml'
+DEU_LocationAUpper-44_53_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.611596584320068,invalid initial tv: inf
+DEU_LocationAUpper-48_30_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.613570690155029,invalid initial tv: inf
+DEU_LocationAUpper-48_30_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.02526783943176,invalid initial tv: inf
+DEU_LocationCLower-6_29_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0115728378295898,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-13_17_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.894858837127686,invalid initial tv: inf
+DEU_LocationAUpper-13_17_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.846851587295532,invalid initial tv: inf
+DEU_LocationAUpper-13_17_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.83718729019165,invalid initial tv: inf
+DEU_LocationDUpper-9_25_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.480614900588989,invalid initial tv: inf
+DEU_LocationALower-25_29_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.766086578369141,invalid initial tv: inf
+DEU_LocationALower-25_29_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.800055265426636,invalid initial tv: inf
+DEU_LocationAUpper-31_23_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.644925117492676,invalid initial tv: inf
+DEU_LocationAUpper-31_23_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.655887126922607,invalid initial tv: inf
+DEU_LocationALower-45_39_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.614309787750244,invalid initial tv: inf
+DEU_LocationALower-45_39_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.616562128067017,invalid initial tv: inf
+DEU_LocationEUpper-18_7_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.339831829071045,invalid initial tv: inf
+DEU_LocationALower-41_17_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.490103006362915,invalid initial tv: inf
+DEU_LocationEUpper-18_29_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.357552528381348,invalid initial tv: inf
+DEU_LocationBLower-3_46_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.231620311737061,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-14_7_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.650973320007324,invalid initial tv: inf
+DEU_LocationALower-14_7_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.631995916366577,invalid initial tv: inf
+DEU_LocationALower-14_7_T-1,14,domain_dpll,True,1,12,1,inf,1,0.00950169563293457,2.83718109130859E-05,0.000254154205322266,0.000298500061035156,0.00108146667480469,0.000149965286254883,0,0.0113141536712646,1.09478807449341,
+DEU_LocationAUpper-12_35_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000104665756225586,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-12_35_T-1.xml'
+DEU_LocationALower-52_7_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.539393424987793,cannot unpack non-iterable float object
+DEU_LocationALower-52_7_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.549861192703247,invalid initial tv: inf
+DEU_LocationALower-26_18_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000109195709228516,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_18_T-1.xml'
+DEU_LocationALower-12_29_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.750431299209595,invalid initial tv: inf
+DEU_LocationALower-12_29_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.731171607971191,invalid initial tv: inf
+DEU_LocationALower-12_29_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.764584064483643,invalid initial tv: inf
+DEU_LocationAUpper-46_53_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.609825849533081,invalid initial tv: inf
+DEU_LocationALower-38_32_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.637560844421387,invalid initial tv: inf
+DEU_LocationALower-38_32_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.645859479904175,invalid initial tv: inf
+DEU_LocationAUpper-45_11_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.666958093643189,invalid initial tv: inf
+DEU_LocationAUpper-45_11_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.658226728439331,invalid initial tv: inf
+DEU_LocationAUpper-45_11_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.657655000686646,invalid initial tv: inf
+DEU_LocationELower-17_8_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0109634399414063,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-48_56_T-1,21,domain_dpll,True,1,16,1,inf,1,0.00965595245361328,2.21729278564453E-05,0.000273466110229492,0.00029301643371582,0.0413885116577148,0.000744819641113281,0,0.0523779392242432,1.37681674957275,
+DEU_LocationAUpper-48_56_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0312588214874268,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_5_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.622442722320557,invalid initial tv: inf
+DEU_LocationALower-33_5_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0264129638671875,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_5_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0255618095397949,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_5_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0255818367004395,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-28_61_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.53148627281189,invalid initial tv: inf
+DEU_LocationALower-46_53_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601075649261475,invalid initial tv: inf
+DEU_LocationALower-46_59_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.767796516418457,invalid initial tv: inf
+DEU_LocationALower-31_48_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.547374486923218,invalid initial tv: inf
+DEU_LocationALower-31_48_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0164670944213867,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_48_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0164713859558105,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_48_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0162994861602783,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-11_19_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.749409675598145,invalid initial tv: inf
+DEU_LocationAUpper-44_24_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.659300088882446,invalid initial tv: inf
+DEU_LocationAUpper-51_3_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.695732116699219,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.716719388961792,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.956078767776489,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.773439168930054,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.713871955871582,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.751462697982788,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.716054439544678,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,32,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0391888618469238,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-48_27_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.669438362121582,invalid initial tv: inf
+DEU_LocationAUpper-35_53_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.59890079498291,invalid initial tv: inf
+DEU_LocationAUpper-35_53_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.61455225944519,invalid initial tv: inf
+DEU_LocationAUpper-30_2_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.69511342048645,invalid initial tv: inf
+DEU_LocationAUpper-30_2_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.726056337356567,invalid initial tv: inf
+DEU_LocationAUpper-44_7_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.61180305480957,invalid initial tv: inf
+DEU_LocationAUpper-44_7_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.614069938659668,invalid initial tv: inf
+DEU_LocationAUpper-44_7_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0274794101715088,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-47_21_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.844644069671631,invalid initial tv: inf
+DEU_LocationALower-47_21_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601363658905029,invalid initial tv: inf
+DEU_LocationALower-47_21_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0265278816223145,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_8_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.680858135223389,invalid initial tv: inf
+DEU_LocationELower-16_4_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.393908739089966,invalid initial tv: inf
+DEU_LocationEUpper-16_18_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.353114366531372,invalid initial tv: inf
+DEU_LocationEUpper-16_18_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.368267059326172,invalid initial tv: inf
+DEU_LocationEUpper-17_6_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.384152173995972,invalid initial tv: inf
+DEU_LocationALower-51_35_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.704402208328247,invalid initial tv: inf
+DEU_LocationAUpper-45_34_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.628531217575073,invalid initial tv: inf
+DEU_LocationAUpper-45_34_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0271444320678711,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_24_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0192241668701172,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-26_45_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000118017196655273,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_45_T-1.xml'
+DEU_LocationALower-26_45_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.88486480712891E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_45_T-1.xml'
+DEU_LocationALower-26_45_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.45571136474609E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_45_T-1.xml'
+DEU_LocationAUpper-34_13_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.548237800598145,invalid initial tv: inf
+DEU_LocationAUpper-34_13_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0172512531280518,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-34_13_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0162925720214844,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_28_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.677758693695068,invalid initial tv: inf
+DEU_LocationALower-31_28_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0282495021820068,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_28_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0280389785766602,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-41_2_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.637330293655396,invalid initial tv: inf
+DEU_LocationALower-28_51_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0179028511047363,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFLower-59_20_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0166573524475098,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-13_7_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.8172767162323,invalid initial tv: inf
+DEU_LocationAUpper-46_43_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.687705278396606,invalid initial tv: inf
+DEU_LocationAUpper-46_43_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.690643072128296,invalid initial tv: inf
+DEU_LocationAUpper-46_43_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.027310848236084,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-46_50_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.93553614616394,invalid initial tv: inf
+DEU_LocationALower-46_50_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.706278562545776,invalid initial tv: inf
+DEU_LocationAUpper-33_37_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.713172197341919,invalid initial tv: inf
+DEU_LocationALower-47_34_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.720877170562744,invalid initial tv: inf
+DEU_LocationAUpper-45_20_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.582087755203247,invalid initial tv: inf
+DEU_LocationAUpper-45_20_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0185122489929199,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_20_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0181457996368408,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-40_14_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.619674444198608,invalid initial tv: inf
+DEU_LocationALower-14_49_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.54803204536438,invalid initial tv: inf
+DEU_LocationALower-14_49_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.754362344741821,invalid initial tv: inf
+DEU_LocationALower-50_20_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.546523809432983,invalid initial tv: inf
+DEU_LocationALower-50_20_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.6194007396698,invalid initial tv: inf
+DEU_LocationAUpper-55_3_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.635271072387695,invalid initial tv: inf
+DEU_LocationAUpper-26_16_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000126123428344727,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_16_T-1.xml'
+DEU_LocationELower-16_45_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.359126567840576,invalid initial tv: inf
+DEU_LocationALower-25_35_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0257577896118164,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-13_43_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.593419313430786,invalid initial tv: inf
+DEU_LocationALower-13_43_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.621043205261231,invalid initial tv: inf
+DEU_LocationAUpper-35_42_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0115909576416016,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-51_8_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.588377237319946,invalid initial tv: inf
+DEU_LocationALower-51_8_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.87825345993042,invalid initial tv: inf
+DEU_LocationAUpper-39_45_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0116722583770752,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-39_45_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0110201835632324,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-39_30_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.649309635162354,invalid initial tv: inf
+DEU_LocationAUpper-39_30_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.647510051727295,invalid initial tv: inf
+DEU_LocationAUpper-12_28_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.822741270065308,invalid initial tv: inf
+DEU_LocationAUpper-12_28_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.817899703979492,invalid initial tv: inf
+DEU_LocationAUpper-39_7_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0176353454589844,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_28_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.622745513916016,invalid initial tv: inf
+DEU_LocationAUpper-52_28_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.627021074295044,invalid initial tv: inf
+DEU_LocationAUpper-52_28_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.608389139175415,invalid initial tv: inf
+DEU_LocationAUpper-52_28_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.633796215057373,invalid initial tv: inf
+DEU_LocationCLower-4_32_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.522170543670654,invalid initial tv: inf
+DEU_LocationALower-30_53_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.643467426300049,invalid initial tv: inf
+DEU_LocationALower-30_53_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.658810138702393,invalid initial tv: inf
+DEU_LocationALower-31_12_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.662308692932129,invalid initial tv: inf
+DEU_LocationALower-31_12_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.677951574325562,invalid initial tv: inf
+DEU_LocationELower-20_20_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.38666033744812,invalid initial tv: inf
+DEU_LocationELower-20_20_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.727260112762451,invalid initial tv: inf
+DEU_LocationAUpper-11_1_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.664919137954712,invalid initial tv: inf
+DEU_LocationEUpper-16_15_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.366793155670166,invalid initial tv: inf
+DEU_LocationAUpper-13_35_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.78977108001709,cannot unpack non-iterable float object
+DEU_LocationAUpper-13_35_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.776991844177246,invalid initial tv: inf
+DEU_LocationAUpper-36_18_T-1,28,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0174407958984375,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_18_T-1,29,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.016322135925293,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-20_48_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00905942916870117,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-12_3_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.760114669799805,invalid initial tv: inf
+DEU_LocationAUpper-49_13_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0122189521789551,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-28_44_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.555601358413696,invalid initial tv: inf
+DEU_LocationAUpper-28_44_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.678467273712158,invalid initial tv: inf
+DEU_LocationALower-35_52_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.589990854263306,invalid initial tv: inf
+DEU_LocationAUpper-48_27_T-1,17,domain_dpll,True,1,1,1,0.2,1,0.00965404510498047,2.74181365966797E-05,0.000288009643554688,0.000287055969238281,0.0010833740234375,0.000155448913574219,0,0.0114953517913818,1.34020805358887,
+DEU_LocationAUpper-57_45_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.593840837478638,invalid initial tv: inf
+DEU_LocationALower-33_37_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.568809986114502,invalid initial tv: inf
+DEU_LocationALower-33_37_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.573288202285767,invalid initial tv: inf
+DEU_LocationCUpper-6_30_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0218806266784668,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-8_4_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.602086544036865,invalid initial tv: inf
+DEU_LocationALower-39_15_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.556203603744507,invalid initial tv: inf
+DEU_LocationAUpper-41_3_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.930202722549439,invalid initial tv: inf
+DEU_LocationALower-47_28_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.747997045516968,invalid initial tv: inf
+DEU_LocationALower-26_1_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000111103057861328,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_1_T-1.xml'
+DEU_LocationALower-27_47_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.71932983398438E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.62260437011719E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.6702880859375E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.62260437011719E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.33650207519531E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationEUpper-15_18_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.417631149291992,invalid initial tv: inf
+DEU_LocationEUpper-15_18_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.401763200759888,invalid initial tv: inf
+DEU_LocationEUpper-15_18_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.415194749832153,invalid initial tv: inf
+DEU_LocationALower-38_8_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0257656574249268,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-18_14_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.362212896347046,invalid initial tv: inf
+DEU_LocationELower-18_14_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.358913421630859,invalid initial tv: inf
+DEU_LocationALower-33_39_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0203943252563477,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-43_47_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.552953958511353,invalid initial tv: inf
+DEU_LocationAUpper-43_47_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.637572288513184,invalid initial tv: inf
+DEU_LocationAUpper-53_38_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.682990312576294,invalid initial tv: inf
+DEU_LocationAUpper-53_38_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.688848972320557,invalid initial tv: inf
+DEU_LocationALower-45_30_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0186519622802734,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_59_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.012406587600708,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_10_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.746537208557129,invalid initial tv: inf
+DEU_LocationAUpper-51_52_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601435899734497,invalid initial tv: inf
+DEU_LocationELower-17_39_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.42956805229187,invalid initial tv: inf
+DEU_LocationELower-17_39_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0208799839019775,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-43_16_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.558561086654663,invalid initial tv: inf
+DEU_LocationEUpper-17_18_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.350693225860596,invalid initial tv: inf
+DEU_LocationAUpper-31_16_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.523737192153931,invalid initial tv: inf
+DEU_LocationAUpper-47_19_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.610583066940308,invalid initial tv: inf
+DEU_LocationAUpper-47_19_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.70453667640686,invalid initial tv: inf
+DEU_LocationAUpper-47_19_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.01292324066162,invalid initial tv: inf
+DEU_LocationAUpper-29_56_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0186529159545898,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCLower-4_53_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.600431442260742,invalid initial tv: inf
+DEU_LocationELower-19_15_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.06786108016968,20
+DEU_LocationELower-19_15_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.405433416366577,invalid initial tv: inf
+DEU_LocationAUpper-50_55_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.612170457839966,invalid initial tv: inf
+DEU_LocationAUpper-50_55_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0226700305938721,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-28_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.6646888256073,invalid initial tv: inf
+DEU_LocationAUpper-28_8_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.678588390350342,invalid initial tv: inf
+DEU_LocationAUpper-32_15_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.695229530334473,invalid initial tv: inf
+DEU_LocationALower-45_52_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.748035907745361,invalid initial tv: inf
+DEU_LocationALower-29_43_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.641715049743652,invalid initial tv: inf
+DEU_LocationALower-29_43_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0271980762481689,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_42_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.685546159744263,invalid initial tv: inf
+DEU_LocationFUpper-60_42_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.67758059501648,invalid initial tv: inf
+DEU_LocationALower-44_44_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.679242134094238,invalid initial tv: inf
+DEU_LocationALower-13_28_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.701606273651123,invalid initial tv: inf
+DEU_LocationALower-13_28_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0303514003753662,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-13_28_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0285511016845703,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-55_28_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.815953969955444,cannot unpack non-iterable float object
+DEU_LocationALower-11_24_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.04257583618164,invalid initial tv: inf
+DEU_LocationAUpper-40_48_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.627712249755859,invalid initial tv: inf
+DEU_LocationAUpper-40_48_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0189034938812256,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-51_6_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.793003797531128,invalid initial tv: inf
+DEU_LocationAUpper-12_10_T-1,34,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000111103057861328,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-12_10_T-1.xml'
+DEU_LocationEUpper-19_46_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00770115852355957,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-57_35_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.631283283233643,invalid initial tv: inf
+DEU_LocationELower-15_33_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.510712146759033,invalid initial tv: inf
+DEU_LocationELower-15_33_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.52881383895874,invalid initial tv: inf
+DEU_LocationFUpper-59_3_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.741225957870483,invalid initial tv: inf
+DEU_LocationFUpper-59_3_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.760123729705811,invalid initial tv: inf
+DEU_LocationAUpper-14_3_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.731563568115234,invalid initial tv: inf
+DEU_LocationAUpper-25_7_T-1,55,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000105142593383789,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_7_T-1.xml'
+DEU_LocationAUpper-27_11_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.670467615127564,invalid initial tv: inf
+DEU_LocationALower-12_31_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.626201391220093,invalid initial tv: inf
+DEU_LocationALower-12_31_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.827849388122559,invalid initial tv: inf
+DEU_LocationAUpper-27_45_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.614756584167481,invalid initial tv: inf
+DEU_LocationALower-33_50_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.681602001190186,invalid initial tv: inf
+DEU_LocationALower-33_50_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0262229442596436,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-32_16_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.683390617370606,invalid initial tv: inf
+DEU_LocationALower-30_18_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.765164136886597,invalid initial tv: inf
+DEU_LocationALower-26_34_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000118494033813477,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_34_T-1.xml'
+DEU_LocationALower-26_34_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.50475311279297E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_34_T-1.xml'
+DEU_LocationAUpper-57_48_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.912960052490234,invalid initial tv: inf
+DEU_LocationEUpper-15_36_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.370845317840576,invalid initial tv: inf
+DEU_LocationEUpper-15_36_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.384286165237427,invalid initial tv: inf
+DEU_LocationEUpper-15_36_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.011749267578125,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-16_33_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.387067556381226,invalid initial tv: inf
+DEU_LocationELower-16_33_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00771570205688477,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCLower-4_30_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.548564910888672,cannot unpack non-iterable float object
+DEU_LocationDUpper-7_10_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.580282926559448,invalid initial tv: inf
+DEU_LocationDUpper-7_10_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0164794921875,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-53_26_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.568174839019775,invalid initial tv: inf
+DEU_LocationAUpper-53_26_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.53766942024231,invalid initial tv: inf
+DEU_LocationAUpper-57_26_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.540867567062378,invalid initial tv: inf
+DEU_LocationALower-34_22_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.705749988555908,invalid initial tv: inf
+DEU_LocationALower-34_22_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.680235385894775,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.521985530853272,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.697269916534424,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.657584667205811,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.030296802520752,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-33_56_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.571787595748901,invalid initial tv: inf
+DEU_LocationEUpper-17_7_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000091552734375,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-17_7_T-1.xml'
+DEU_LocationEUpper-17_7_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.21865081787109E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-17_7_T-1.xml'
+DEU_LocationAUpper-36_17_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.637538433074951,invalid initial tv: inf
+DEU_LocationAUpper-36_17_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0244345664978027,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_17_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0241603851318359,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.670509815216065,invalid initial tv: inf
+DEU_LocationFUpper-60_43_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0127658843994141,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0126354694366455,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0116479396820068,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0124585628509521,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0123519897460938,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-13_48_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.719659566879273,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.710275650024414,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.959575653076172,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.7259681224823,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.707155227661133,invalid initial tv: inf
+DEU_LocationAUpper-51_31_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.599982738494873,invalid initial tv: inf
+DEU_LocationAUpper-51_31_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0219228267669678,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-46_57_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0097348690032959,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-46_57_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00937056541442871,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-14_11_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.710113525390625,invalid initial tv: inf
+DEU_LocationAUpper-14_11_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.710203886032105,invalid initial tv: inf
+DEU_LocationAUpper-14_11_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.702349424362183,invalid initial tv: inf
+DEU_LocationAUpper-50_51_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0147719383239746,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-53_29_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.01971435546875,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationBLower-2_18_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.378892660140991,invalid initial tv: inf
+DEU_LocationDLower-7_22_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.539875030517578,invalid initial tv: inf
+DEU_LocationEUpper-17_36_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.448720216751099,invalid initial tv: inf
+DEU_LocationEUpper-17_36_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.45014214515686,invalid initial tv: inf
+DEU_LocationBUpper-2_19_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00826048851013184,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-35_49_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.595865964889526,invalid initial tv: inf
+DEU_LocationALower-53_36_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.617358684539795,invalid initial tv: inf
+DEU_LocationAUpper-52_22_T-1,11,domain_dpll,True,1,3,1,inf,1,0.00968623161315918,2.02655792236328E-05,0.000309228897094727,0.000293493270874023,0.00108933448791504,0.000154256820678711,0,0.0115528106689453,1.32758402824402,
+DEU_LocationAUpper-52_22_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.535348653793335,invalid initial tv: inf
+DEU_LocationALower-45_35_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.663476705551148,invalid initial tv: inf
+DEU_LocationALower-51_9_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.523839712142944,invalid initial tv: inf
+DEU_LocationALower-51_9_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.52544379234314,invalid initial tv: inf
+DEU_LocationALower-36_48_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.948305130004883,cannot unpack non-iterable float object
+DEU_LocationELower-23_27_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00866889953613281,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-23_27_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0078585147857666,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_32_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.539562702178955,invalid initial tv: inf
+DEU_LocationALower-33_32_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0137758255004883,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-31_21_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0220530033111572,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_19_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00694680213928223,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_19_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00651669502258301,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_19_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00640702247619629,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-35_11_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.605823755264282,invalid initial tv: inf
+DEU_LocationALower-35_11_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.603879451751709,invalid initial tv: inf
+DEU_LocationALower-35_11_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0206601619720459,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-35_11_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0205049514770508,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-29_35_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0123805999755859,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-32_11_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.544573307037354,invalid initial tv: inf
+DEU_LocationAUpper-32_11_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.566042423248291,invalid initial tv: inf
+DEU_LocationAUpper-32_11_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.64216685295105,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.591769218444824,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.542522668838501,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.591946601867676,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0207870006561279,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-57_23_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0202360153198242,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-40_12_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.54453444480896,invalid initial tv: inf
+DEU_LocationAUpper-40_12_T-1,10,domain_dpll,False,4,11,1,,0,0.00989031791687012,8.22544097900391E-05,0.000717401504516602,0.00090336799621582,0,0,0,0.0115933418273926,1.30642628669739,repair returned None
+DEU_LocationAUpper-47_44_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.633066654205322,invalid initial tv: inf
+DEU_LocationAUpper-43_26_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.670753002166748,cannot unpack non-iterable float object
+DEU_LocationAUpper-43_26_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.70649266242981,invalid initial tv: inf
+DEU_LocationALower-45_56_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.595759868621826,invalid initial tv: inf
+DEU_LocationALower-30_59_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.638093948364258,invalid initial tv: inf
+DEU_LocationAUpper-52_13_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.844748258590698,invalid initial tv: inf
+DEU_LocationALower-47_27_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.776137113571167,invalid initial tv: inf
+DEU_LocationALower-35_49_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.609925985336304,invalid initial tv: inf
+DEU_LocationALower-35_49_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.688753843307495,invalid initial tv: inf
+DEU_LocationALower-35_49_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.671268463134766,invalid initial tv: inf
+DEU_LocationALower-42_14_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.621802091598511,invalid initial tv: inf
+DEU_LocationALower-42_14_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.023491382598877,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-26_48_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000113248825073242,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_48_T-1.xml'
+DEU_LocationELower-19_3_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.358606338500977,invalid initial tv: inf
+DEU_LocationELower-19_3_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00929665565490723,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-25_32_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.702075004577637,invalid initial tv: inf
+DEU_LocationALower-25_32_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.665519237518311,invalid initial tv: inf
+DEU_LocationALower-25_32_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.781012296676636,invalid initial tv: inf
+DEU_LocationALower-50_11_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.611317157745361,invalid initial tv: inf
+DEU_LocationALower-27_5_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.728775262832642,invalid initial tv: inf
+DEU_LocationELower-23_28_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0105750560760498,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-23_28_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00953507423400879,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-23_28_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0101108551025391,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_25_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0163965225219727,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_25_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0162603855133057,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_35_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.859599351882935,invalid initial tv: inf
+DEU_LocationAUpper-31_27_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.711443662643433,invalid initial tv: inf
+DEU_LocationALower-36_26_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.726386785507202,invalid initial tv: inf
+DEU_LocationAUpper-32_7_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0123305320739746,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-32_7_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.011641263961792,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_2_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.659114599227905,invalid initial tv: inf
+DEU_LocationAUpper-27_2_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.661216020584106,invalid initial tv: inf
+DEU_LocationBUpper-1_14_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.43215799331665,invalid initial tv: inf
+DEU_LocationBUpper-1_14_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.428479194641113,invalid initial tv: inf
+DEU_LocationAUpper-42_49_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.586375713348389,invalid initial tv: inf
+DEU_LocationALower-51_55_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.515203952789307,invalid initial tv: inf
+DEU_LocationDLower-8_41_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00958061218261719,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-14_5_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.584458351135254,invalid initial tv: inf
+DEU_LocationAUpper-43_29_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.584784030914307,invalid initial tv: inf
+DEU_LocationAUpper-43_29_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.581438779830933,invalid initial tv: inf
+DEU_LocationAUpper-43_29_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.5943763256073,invalid initial tv: inf
+DEU_LocationALower-36_33_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.676114559173584,invalid initial tv: inf
+DEU_LocationALower-36_33_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.665235280990601,invalid initial tv: inf
+DEU_LocationAUpper-40_35_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0262703895568848,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_32_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.789878845214844,invalid initial tv: inf
+DEU_LocationFUpper-60_32_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.80823540687561,invalid initial tv: inf
+DEU_LocationFUpper-60_32_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.05812811851501,invalid initial tv: inf
+DEU_LocationAUpper-29_36_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00937628746032715,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-29_7_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.614569425582886,invalid initial tv: inf
+DEU_LocationALower-53_20_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0221476554870605,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_54_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0162339210510254,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-24_40_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.77516174316406E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-24_40_T-1.xml'
+DEU_LocationALower-48_12_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.55708646774292,invalid initial tv: inf
+DEU_LocationALower-48_12_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.583580017089844,invalid initial tv: inf
+DEU_LocationALower-14_45_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.790115118026733,invalid initial tv: inf
+DEU_LocationAUpper-52_8_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.643205881118774,invalid initial tv: inf
+DEU_LocationAUpper-31_26_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.035935640335083,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-31_26_T-1,28,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0345935821533203,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-34_11_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.011516809463501,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_8_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.606842994689941,invalid initial tv: inf
+DEU_LocationAUpper-36_8_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.58979558944702,20
+DEU_LocationAUpper-36_8_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.589522838592529,invalid initial tv: inf
+DEU_LocationAUpper-36_8_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.697825193405151,invalid initial tv: inf
+DEU_LocationELower-21_34_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.439626216888428,invalid initial tv: inf
+DEU_LocationALower-26_48_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000116348266601563,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_48_T-1.xml'
+DEU_LocationALower-26_48_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.14712524414063E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_48_T-1.xml'
+DEU_LocationEUpper-24_48_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.550293922424316,invalid initial tv: inf
+DEU_LocationAUpper-52_16_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.756568431854248,invalid initial tv: inf
+DEU_LocationAUpper-52_16_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.09185647964478,cannot unpack non-iterable float object
+DEU_LocationAUpper-52_16_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.801251173019409,invalid initial tv: inf
+DEU_LocationAUpper-53_48_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0151231288909912,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-53_48_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0144548416137695,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-44_12_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.01090407371521,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDLower-9_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.593762874603272,invalid initial tv: inf
+DEU_LocationFLower-59_19_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.613051891326904,invalid initial tv: inf
+DEU_LocationCUpper-5_40_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.519663095474243,invalid initial tv: inf
+DEU_LocationCUpper-5_40_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.517174005508423,invalid initial tv: inf
+DEU_LocationCUpper-5_8_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00640749931335449,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCUpper-5_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0064849853515625,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-56_40_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.529719352722168,invalid initial tv: inf
+DEU_LocationAUpper-56_40_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0129337310791016,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-46_37_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0194799900054932,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-40_43_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.537167549133301,invalid initial tv: inf
+DEU_LocationAUpper-49_20_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.702134370803833,invalid initial tv: inf
+DEU_LocationAUpper-49_20_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0342471599578857,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCLower-5_26_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.471981048583984,invalid initial tv: inf
+DEU_LocationELower-16_11_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.415992498397827,invalid initial tv: inf
+DEU_LocationFLower-58_14_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.629327058792114,invalid initial tv: inf
+DEU_LocationFLower-58_14_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.64000415802002,invalid initial tv: inf
+DEU_LocationAUpper-26_49_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.51290130615234E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_49_T-1.xml'
+DEU_LocationALower-46_41_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.69709062576294,invalid initial tv: inf
+DEU_LocationALower-46_41_T-1,28,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0362353324890137,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-7_29_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.893447160720825,invalid initial tv: inf
+DEU_LocationALower-37_35_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.636898279190064,invalid initial tv: inf
+DEU_LocationAUpper-26_29_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,8.79764556884766E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-26_29_T-1,29,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,5.55515289306641E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-26_29_T-1,32,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.83718109130859E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-26_29_T-1,33,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.00407409667969E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_29_T-1.xml'
+DEU_LocationAUpper-52_12_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.701095819473267,invalid initial tv: inf
+DEU_LocationAUpper-48_28_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.777523994445801,invalid initial tv: inf
+DEU_LocationBUpper-2_32_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.433452606201172,invalid initial tv: inf
+DEU_LocationAUpper-49_5_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0280232429504395,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_44_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.677661180496216,invalid initial tv: inf
+DEU_LocationALower-44_22_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.564764022827148,invalid initial tv: inf
+DEU_LocationALower-42_39_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.60097599029541,invalid initial tv: inf
+DEU_LocationALower-42_39_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.594299793243408,invalid initial tv: inf
+DEU_LocationALower-14_36_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.667958736419678,invalid initial tv: inf
+DEU_LocationALower-27_33_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.780141592025757,invalid initial tv: inf
+DEU_LocationALower-48_34_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.645585060119629,invalid initial tv: inf
+DEU_LocationALower-38_53_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.694454908370972,invalid initial tv: inf
+DEU_LocationAUpper-56_36_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.608513593673706,invalid initial tv: inf
+DEU_LocationAUpper-56_36_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.633747577667236,invalid initial tv: inf
+DEU_LocationAUpper-56_36_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.915286302566528,invalid initial tv: inf
+DEU_LocationAUpper-51_9_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.537215709686279,invalid initial tv: inf
+DEU_LocationAUpper-51_9_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0186803340911865,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_35_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.614588737487793,invalid initial tv: inf
+DEU_LocationALower-41_35_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.607659101486206,invalid initial tv: inf
+DEU_LocationALower-41_35_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0241281986236572,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-37_39_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.522909879684448,invalid initial tv: inf
+DEU_LocationALower-39_33_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.599284172058106,invalid initial tv: inf
+DEU_LocationALower-39_33_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.586609363555908,invalid initial tv: inf
+DEU_LocationELower-18_27_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.42558217048645,invalid initial tv: inf
+DEU_LocationALower-11_25_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.76900577545166,invalid initial tv: inf
+DEU_LocationALower-29_8_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.685543537139893,invalid initial tv: inf
+DEU_LocationALower-29_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.580531358718872,invalid initial tv: inf
+DEU_LocationALower-29_8_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.693874835968018,invalid initial tv: inf
+DEU_LocationALower-37_26_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.537132501602173,invalid initial tv: inf
+DEU_LocationEUpper-24_11_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00750255584716797,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-9_35_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00787758827209473,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-9_35_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00871777534484863,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-48_36_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.563222408294678,invalid initial tv: inf
+DEU_LocationALower-31_16_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.529185771942139,invalid initial tv: inf
+DEU_LocationEUpper-23_4_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.367049217224121,invalid initial tv: inf
+DEU_LocationAUpper-31_9_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.583443403244019,invalid initial tv: inf
+DEU_LocationDUpper-10_6_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.530236005783081,invalid initial tv: inf
+DEU_LocationALower-46_44_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.787511825561523,invalid initial tv: inf
+DEU_LocationALower-44_25_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.57830548286438,13
+DEU_LocationALower-44_25_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.731388092041016,invalid initial tv: inf
+DEU_LocationAUpper-45_48_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.683012008666992,invalid initial tv: inf
+DEU_LocationBUpper-2_15_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.464988470077515,invalid initial tv: inf
+DEU_LocationBUpper-2_15_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.464802503585815,invalid initial tv: inf
+DEU_LocationCLower-5_35_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0231690406799316,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-27_51_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.794528245925903,invalid initial tv: inf
+DEU_LocationAUpper-51_56_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.577141523361206,invalid initial tv: inf
+DEU_LocationAUpper-51_56_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.604445695877075,invalid initial tv: inf
+DEU_LocationELower-18_28_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.48985767364502,invalid initial tv: inf
+DEU_LocationAUpper-54_38_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.603341579437256,invalid initial tv: inf
+DEU_LocationALower-28_35_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.546438217163086,invalid initial tv: inf
+DEU_LocationELower-19_46_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.386184215545654,invalid initial tv: inf
+DEU_LocationAUpper-39_31_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.688656568527222,invalid initial tv: inf
+DEU_LocationAUpper-39_31_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.656213760375977,invalid initial tv: inf
+DEU_LocationCUpper-6_48_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.588470935821533,cannot unpack non-iterable float object
+DEU_LocationAUpper-54_13_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0318675041198731,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-29_9_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.867326974868774,invalid initial tv: inf
+DEU_LocationAUpper-29_9_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.594874620437622,invalid initial tv: inf
+DEU_LocationALower-50_32_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.632467985153198,invalid initial tv: inf
+DEU_LocationDUpper-8_48_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0103528499603271,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-19_12_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000125885009765625,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-19_12_T-1.xml'
+DEU_LocationEUpper-19_12_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,4.10079956054688E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-19_12_T-1.xml'
+DEU_LocationAUpper-44_53_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.628207445144653,invalid initial tv: inf
+DEU_LocationAUpper-48_30_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.63022255897522,invalid initial tv: inf
+DEU_LocationAUpper-48_30_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.804761409759522,invalid initial tv: inf
+DEU_LocationCLower-6_29_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0120890140533447,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-13_17_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.888604640960693,invalid initial tv: inf
+DEU_LocationAUpper-13_17_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.855189085006714,invalid initial tv: inf
+DEU_LocationAUpper-13_17_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.844952344894409,invalid initial tv: inf
+DEU_LocationDUpper-9_25_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.476028919219971,invalid initial tv: inf
+DEU_LocationALower-25_29_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.758488416671753,invalid initial tv: inf
+DEU_LocationALower-25_29_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.792200803756714,invalid initial tv: inf
+DEU_LocationAUpper-31_23_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.923007011413574,invalid initial tv: inf
+DEU_LocationAUpper-31_23_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.646469354629517,invalid initial tv: inf
+DEU_LocationALower-45_39_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.593581914901733,invalid initial tv: inf
+DEU_LocationALower-45_39_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.610275268554688,invalid initial tv: inf
+DEU_LocationEUpper-18_7_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.338173866271973,invalid initial tv: inf
+DEU_LocationALower-41_17_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.483929872512817,invalid initial tv: inf
+DEU_LocationEUpper-18_29_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.365803718566895,invalid initial tv: inf
+DEU_LocationBLower-3_46_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00719547271728516,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-14_7_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.646376609802246,invalid initial tv: inf
+DEU_LocationALower-14_7_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.628072023391724,invalid initial tv: inf
+DEU_LocationALower-14_7_T-1,14,domain_dpll,True,1,12,1,inf,1,0.00970149040222168,2.90870666503906E-05,0.000268220901489258,0.000302791595458984,0.00107383728027344,0.000160932540893555,0,0.0115363597869873,1.6172890663147,
+DEU_LocationAUpper-12_35_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,8.91685485839844E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-12_35_T-1.xml'
+DEU_LocationALower-52_7_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.545003175735474,cannot unpack non-iterable float object
+DEU_LocationALower-52_7_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.548993587493897,invalid initial tv: inf
+DEU_LocationALower-26_18_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000113964080810547,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_18_T-1.xml'
+DEU_LocationALower-12_29_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.783334732055664,invalid initial tv: inf
+DEU_LocationALower-12_29_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.734256744384766,invalid initial tv: inf
+DEU_LocationALower-12_29_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.749197721481323,invalid initial tv: inf
+DEU_LocationAUpper-46_53_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.612490653991699,invalid initial tv: inf
+DEU_LocationALower-38_32_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.624033451080322,invalid initial tv: inf
+DEU_LocationALower-38_32_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.622313261032105,invalid initial tv: inf
+DEU_LocationAUpper-45_11_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.91642951965332,invalid initial tv: inf
+DEU_LocationAUpper-45_11_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.657944202423096,invalid initial tv: inf
+DEU_LocationAUpper-45_11_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.647716522216797,invalid initial tv: inf
+DEU_LocationELower-17_8_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0107443332672119,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-48_56_T-1,21,domain_dpll,True,1,16,1,inf,1,0.00980377197265625,3.24249267578125E-05,0.000256538391113281,0.000282526016235352,0.00112128257751465,0.000159263610839844,0,0.0116558074951172,1.6292827129364,
+DEU_LocationAUpper-48_56_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0299334526062012,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_5_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.623873472213745,invalid initial tv: inf
+DEU_LocationALower-33_5_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0257465839385986,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_5_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0256147384643555,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_5_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0254955291748047,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-28_61_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.546840190887451,invalid initial tv: inf
+DEU_LocationALower-46_53_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.624751329421997,invalid initial tv: inf
+DEU_LocationALower-46_59_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.781945466995239,invalid initial tv: inf
+DEU_LocationALower-31_48_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.590685606002808,invalid initial tv: inf
+DEU_LocationALower-31_48_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0177805423736572,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_48_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0166208744049072,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_48_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0169825553894043,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-11_19_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.792216300964356,invalid initial tv: inf
+DEU_LocationAUpper-44_24_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.674347162246704,invalid initial tv: inf
+DEU_LocationAUpper-51_3_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.710021734237671,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.07317733764648,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.799833297729492,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.787883281707764,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.748950719833374,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.805026292800903,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.760876417160034,invalid initial tv: inf
+DEU_LocationALower-12_8_T-1,32,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0409340858459473,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-48_27_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.69794225692749,invalid initial tv: inf
+DEU_LocationAUpper-35_53_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.616942405700684,invalid initial tv: inf
+DEU_LocationAUpper-35_53_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.649154663085938,invalid initial tv: inf
+DEU_LocationAUpper-30_2_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.71906590461731,invalid initial tv: inf
+DEU_LocationAUpper-30_2_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.748443126678467,invalid initial tv: inf
+DEU_LocationAUpper-44_7_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.637284278869629,invalid initial tv: inf
+DEU_LocationAUpper-44_7_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.952980279922485,invalid initial tv: inf
+DEU_LocationAUpper-44_7_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0296132564544678,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-47_21_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.623356819152832,invalid initial tv: inf
+DEU_LocationALower-47_21_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.621583938598633,invalid initial tv: inf
+DEU_LocationALower-47_21_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0286645889282227,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_8_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.582504987716675,invalid initial tv: inf
+DEU_LocationAUpper-36_8_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.75198149681091,20
+DEU_LocationAUpper-36_8_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.561982393264771,invalid initial tv: inf
+DEU_LocationAUpper-36_8_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.684931516647339,invalid initial tv: inf
+DEU_LocationAUpper-36_8_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.683703422546387,invalid initial tv: inf
+DEU_LocationELower-16_4_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.392275094985962,invalid initial tv: inf
+DEU_LocationEUpper-16_18_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.339701652526855,invalid initial tv: inf
+DEU_LocationEUpper-16_18_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.342904567718506,invalid initial tv: inf
+DEU_LocationEUpper-17_6_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.353701114654541,invalid initial tv: inf
+DEU_LocationALower-51_35_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.703152894973755,invalid initial tv: inf
+DEU_LocationAUpper-45_34_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.62686038017273,invalid initial tv: inf
+DEU_LocationAUpper-45_34_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0280866622924805,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_24_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.019350528717041,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-26_45_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.65595245361328E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_45_T-1.xml'
+DEU_LocationALower-26_45_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.00407409667969E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_45_T-1.xml'
+DEU_LocationALower-26_45_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.57492065429688E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_45_T-1.xml'
+DEU_LocationAUpper-34_13_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.544794321060181,invalid initial tv: inf
+DEU_LocationAUpper-34_13_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.018110990524292,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-34_13_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0169742107391357,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_28_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.973983764648438,invalid initial tv: inf
+DEU_LocationALower-31_28_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0303845405578613,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_28_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0289380550384522,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-41_2_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.642052412033081,invalid initial tv: inf
+DEU_LocationALower-28_51_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0186553001403809,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFLower-59_20_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0165219306945801,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-13_7_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.826612234115601,invalid initial tv: inf
+DEU_LocationAUpper-46_43_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.670091867446899,invalid initial tv: inf
+DEU_LocationAUpper-46_43_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.64896035194397,invalid initial tv: inf
+DEU_LocationAUpper-46_43_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.029566764831543,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-46_50_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.659132719039917,invalid initial tv: inf
+DEU_LocationALower-46_50_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.698386430740356,invalid initial tv: inf
+DEU_LocationAUpper-33_37_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.694147348403931,invalid initial tv: inf
+DEU_LocationALower-47_34_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.741644620895386,invalid initial tv: inf
+DEU_LocationAUpper-45_20_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.590377569198608,invalid initial tv: inf
+DEU_LocationAUpper-45_20_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.019237756729126,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_20_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0180213451385498,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-40_14_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.635027885437012,invalid initial tv: inf
+DEU_LocationALower-14_49_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.570257425308228,invalid initial tv: inf
+DEU_LocationALower-14_49_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.803966760635376,invalid initial tv: inf
+DEU_LocationALower-50_20_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.901403665542603,invalid initial tv: inf
+DEU_LocationALower-50_20_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.651329278945923,invalid initial tv: inf
+DEU_LocationAUpper-55_3_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.642984867095947,invalid initial tv: inf
+DEU_LocationAUpper-26_16_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000101327896118164,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-26_16_T-1.xml'
+DEU_LocationELower-16_45_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.358644962310791,invalid initial tv: inf
+DEU_LocationALower-25_35_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0283215045928955,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-13_43_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.605727195739746,invalid initial tv: inf
+DEU_LocationALower-13_43_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.681164026260376,invalid initial tv: inf
+DEU_LocationAUpper-35_42_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0143749713897705,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-51_8_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.668072700500488,invalid initial tv: inf
+DEU_LocationALower-51_8_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.603167772293091,invalid initial tv: inf
+DEU_LocationAUpper-39_45_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0121333599090576,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-39_45_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0114667415618896,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-39_30_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.723225116729736,invalid initial tv: inf
+DEU_LocationAUpper-39_30_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.693777561187744,invalid initial tv: inf
+DEU_LocationAUpper-12_28_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.856572866439819,invalid initial tv: inf
+DEU_LocationAUpper-12_28_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.841664552688599,invalid initial tv: inf
+DEU_LocationAUpper-39_7_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0184051990509033,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_28_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.651899814605713,invalid initial tv: inf
+DEU_LocationAUpper-52_28_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.6717209815979,invalid initial tv: inf
+DEU_LocationAUpper-52_28_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.638552188873291,invalid initial tv: inf
+DEU_LocationAUpper-52_28_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.647874116897583,invalid initial tv: inf
+DEU_LocationCLower-4_32_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.533156871795654,invalid initial tv: inf
+DEU_LocationALower-30_53_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.960514068603516,invalid initial tv: inf
+DEU_LocationALower-30_53_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.690394878387451,invalid initial tv: inf
+DEU_LocationALower-31_12_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.734478235244751,invalid initial tv: inf
+DEU_LocationALower-31_12_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.698585510253906,invalid initial tv: inf
+DEU_LocationELower-20_20_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.412072658538818,invalid initial tv: inf
+DEU_LocationELower-20_20_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.484236240386963,invalid initial tv: inf
+DEU_LocationAUpper-11_1_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.649640083312988,invalid initial tv: inf
+DEU_LocationEUpper-16_15_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.366065502166748,invalid initial tv: inf
+DEU_LocationAUpper-13_35_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.753566026687622,cannot unpack non-iterable float object
+DEU_LocationAUpper-13_35_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.798592567443848,invalid initial tv: inf
+DEU_LocationAUpper-36_18_T-1,28,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0167453289031982,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_18_T-1,29,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0164327621459961,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-20_48_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00879168510437012,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-12_3_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.777147054672241,invalid initial tv: inf
+DEU_LocationAUpper-49_13_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0118720531463623,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-28_44_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.562245607376099,invalid initial tv: inf
+DEU_LocationAUpper-28_44_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.690972566604614,invalid initial tv: inf
+DEU_LocationALower-35_52_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.600276470184326,invalid initial tv: inf
+DEU_LocationAUpper-48_27_T-1,17,domain_dpll,True,1,1,1,0.2,1,0.00986123085021973,2.16960906982422E-05,0.00028228759765625,0.000295877456665039,0.00112247467041016,0.000151395797729492,0,0.0117349624633789,2.23332118988037,
+DEU_LocationAUpper-57_45_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.629414081573486,invalid initial tv: inf
+DEU_LocationALower-33_37_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.594781875610352,invalid initial tv: inf
+DEU_LocationALower-33_37_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.607771873474121,invalid initial tv: inf
+DEU_LocationCUpper-6_30_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0250322818756104,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDUpper-8_4_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.651553630828857,invalid initial tv: inf
+DEU_LocationALower-39_15_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.588929653167725,invalid initial tv: inf
+DEU_LocationAUpper-41_3_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.715368509292603,invalid initial tv: inf
+DEU_LocationALower-47_28_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.798927545547485,invalid initial tv: inf
+DEU_LocationALower-26_1_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0001068115234375,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_1_T-1.xml'
+DEU_LocationALower-27_47_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.64780426025391E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.90870666503906E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.69412994384766E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.6702880859375E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationALower-27_47_T-1,27,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.59876251220703E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-27_47_T-1.xml'
+DEU_LocationEUpper-15_18_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.457733869552612,invalid initial tv: inf
+DEU_LocationEUpper-15_18_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.440239667892456,invalid initial tv: inf
+DEU_LocationEUpper-15_18_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.458430051803589,invalid initial tv: inf
+DEU_LocationALower-38_8_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0266644954681397,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-18_14_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.417016744613647,invalid initial tv: inf
+DEU_LocationELower-18_14_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.418639898300171,invalid initial tv: inf
+DEU_LocationALower-33_39_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0222840309143066,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-43_47_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.615211248397827,invalid initial tv: inf
+DEU_LocationAUpper-43_47_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.700789213180542,invalid initial tv: inf
+DEU_LocationAUpper-53_38_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.720461845397949,invalid initial tv: inf
+DEU_LocationAUpper-53_38_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.691909790039063,invalid initial tv: inf
+DEU_LocationALower-45_30_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0178630352020264,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_59_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0128583908081055,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_10_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.754605054855347,invalid initial tv: inf
+DEU_LocationAUpper-51_52_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.612358331680298,invalid initial tv: inf
+DEU_LocationELower-17_39_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.762241840362549,invalid initial tv: inf
+DEU_LocationELower-17_39_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0203583240509033,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-43_16_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.556482315063477,invalid initial tv: inf
+DEU_LocationEUpper-17_18_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.349572896957397,invalid initial tv: inf
+DEU_LocationAUpper-31_16_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.535584688186646,invalid initial tv: inf
+DEU_LocationAUpper-47_19_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.61925482749939,invalid initial tv: inf
+DEU_LocationAUpper-47_19_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.691391229629517,invalid initial tv: inf
+DEU_LocationAUpper-47_19_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.787910223007202,invalid initial tv: inf
+DEU_LocationAUpper-29_56_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.018498420715332,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCLower-4_53_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.580932855606079,invalid initial tv: inf
+DEU_LocationELower-19_15_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,1.60168075561523,20
+DEU_LocationELower-19_15_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.402186155319214,invalid initial tv: inf
+DEU_LocationAUpper-50_55_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.600420236587524,invalid initial tv: inf
+DEU_LocationAUpper-50_55_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0234987735748291,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-28_8_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.652271270751953,invalid initial tv: inf
+DEU_LocationAUpper-28_8_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.654891014099121,invalid initial tv: inf
+DEU_LocationAUpper-32_15_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.633417844772339,invalid initial tv: inf
+DEU_LocationALower-45_52_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.66928768157959,invalid initial tv: inf
+DEU_LocationALower-29_43_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.641045570373535,invalid initial tv: inf
+DEU_LocationALower-29_43_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.028501033782959,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_42_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.633210182189941,invalid initial tv: inf
+DEU_LocationFUpper-60_42_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.655531644821167,invalid initial tv: inf
+DEU_LocationALower-44_44_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.980874300003052,invalid initial tv: inf
+DEU_LocationALower-13_28_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.687098503112793,invalid initial tv: inf
+DEU_LocationALower-13_28_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0294842720031738,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-13_28_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.02838134765625,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-55_28_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.823449373245239,cannot unpack non-iterable float object
+DEU_LocationALower-11_24_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.752920866012573,invalid initial tv: inf
+DEU_LocationAUpper-40_48_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.600597143173218,invalid initial tv: inf
+DEU_LocationAUpper-40_48_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.019923210144043,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-51_6_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.804390668869019,invalid initial tv: inf
+DEU_LocationAUpper-12_10_T-1,34,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000114917755126953,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-12_10_T-1.xml'
+DEU_LocationEUpper-19_46_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00787115097045898,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-57_35_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.62598443031311,invalid initial tv: inf
+DEU_LocationELower-15_33_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.541537523269653,invalid initial tv: inf
+DEU_LocationELower-15_33_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.541320085525513,invalid initial tv: inf
+DEU_LocationFUpper-59_3_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.752891063690186,invalid initial tv: inf
+DEU_LocationFUpper-59_3_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.756166219711304,invalid initial tv: inf
+DEU_LocationAUpper-14_3_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.785887479782105,invalid initial tv: inf
+DEU_LocationAUpper-25_7_T-1,55,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000107288360595703,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_7_T-1.xml'
+DEU_LocationAUpper-27_11_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.705794811248779,invalid initial tv: inf
+DEU_LocationALower-12_31_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.666515350341797,invalid initial tv: inf
+DEU_LocationALower-12_31_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.761675119400024,invalid initial tv: inf
+DEU_LocationAUpper-27_45_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.542343616485596,invalid initial tv: inf
+DEU_LocationALower-33_50_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.923989057540894,invalid initial tv: inf
+DEU_LocationALower-33_50_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0270745754241943,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-32_16_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.653469085693359,invalid initial tv: inf
+DEU_LocationALower-30_18_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.709785461425781,invalid initial tv: inf
+DEU_LocationALower-26_34_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.87052917480469E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_34_T-1.xml'
+DEU_LocationALower-26_34_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.48091125488281E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_34_T-1.xml'
+DEU_LocationAUpper-57_48_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.540850639343262,invalid initial tv: inf
+DEU_LocationEUpper-15_36_T-1,5,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.345995903015137,invalid initial tv: inf
+DEU_LocationEUpper-15_36_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.397911787033081,invalid initial tv: inf
+DEU_LocationEUpper-15_36_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0141112804412842,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-16_33_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.369950294494629,invalid initial tv: inf
+DEU_LocationELower-16_33_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00816655158996582,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationCLower-4_30_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.539216756820679,cannot unpack non-iterable float object
+DEU_LocationDUpper-7_10_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.563927412033081,invalid initial tv: inf
+DEU_LocationDUpper-7_10_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0170142650604248,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-53_26_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.558935403823853,invalid initial tv: inf
+DEU_LocationAUpper-53_26_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.549878597259522,invalid initial tv: inf
+DEU_LocationAUpper-57_26_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.523442983627319,invalid initial tv: inf
+DEU_LocationALower-34_22_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.688246011734009,invalid initial tv: inf
+DEU_LocationALower-34_22_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.670864343643189,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.500994443893433,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.667397737503052,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.643079042434692,invalid initial tv: inf
+DEU_LocationALower-25_34_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0321576595306397,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-33_56_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.556493759155273,invalid initial tv: inf
+DEU_LocationEUpper-17_7_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,8.72611999511719E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-17_7_T-1.xml'
+DEU_LocationEUpper-17_7_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.45706939697266E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-17_7_T-1.xml'
+DEU_LocationAUpper-36_17_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.632943868637085,invalid initial tv: inf
+DEU_LocationAUpper-36_17_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0271511077880859,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-36_17_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0255188941955566,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.652838468551636,invalid initial tv: inf
+DEU_LocationFUpper-60_43_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.302860736846924,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0125861167907715,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0133402347564697,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0128700733184814,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_43_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0124433040618896,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-13_48_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.691110134124756,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.688151359558106,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.705645799636841,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.697185277938843,invalid initial tv: inf
+DEU_LocationAUpper-13_48_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.692544460296631,invalid initial tv: inf
+DEU_LocationAUpper-51_31_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.596562147140503,invalid initial tv: inf
+DEU_LocationAUpper-51_31_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0233726501464844,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-46_57_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0101580619812012,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-46_57_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00963592529296875,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-14_11_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.695023059844971,invalid initial tv: inf
+DEU_LocationAUpper-14_11_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.707968473434448,invalid initial tv: inf
+DEU_LocationAUpper-14_11_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.735094785690308,invalid initial tv: inf
+DEU_LocationAUpper-50_51_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0153920650482178,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-53_29_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0202009677886963,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationBLower-2_18_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.36044716835022,invalid initial tv: inf
+DEU_LocationDLower-7_22_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.514047384262085,invalid initial tv: inf
+DEU_LocationEUpper-17_36_T-1,4,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.430931329727173,invalid initial tv: inf
+DEU_LocationEUpper-17_36_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.429616928100586,invalid initial tv: inf
+DEU_LocationBUpper-2_19_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0091555118560791,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-21_34_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.701273918151856,invalid initial tv: inf
+DEU_LocationAUpper-35_49_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.564759254455566,invalid initial tv: inf
+DEU_LocationALower-53_36_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.584220886230469,invalid initial tv: inf
+DEU_LocationAUpper-52_22_T-1,11,domain_dpll,True,1,3,1,inf,1,0.00978970527648926,2.59876251220703E-05,0.000241518020629883,0.000298976898193359,0.00118374824523926,0.000180482864379883,0,0.0117204189300537,1.85656452178955,
+DEU_LocationAUpper-52_22_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.547336339950562,invalid initial tv: inf
+DEU_LocationALower-45_35_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.682718753814697,invalid initial tv: inf
+DEU_LocationALower-51_9_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.571459770202637,invalid initial tv: inf
+DEU_LocationALower-51_9_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.567766904830933,invalid initial tv: inf
+DEU_LocationALower-36_48_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.685250282287598,cannot unpack non-iterable float object
+DEU_LocationELower-23_27_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00809931755065918,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-23_27_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00814604759216309,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-33_32_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.551378011703491,invalid initial tv: inf
+DEU_LocationALower-33_32_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.014230489730835,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-31_21_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0227947235107422,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_19_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00708675384521484,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_19_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00672817230224609,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-54_19_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.00687551498413086,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-35_11_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.620546579360962,invalid initial tv: inf
+DEU_LocationALower-35_11_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.613379240036011,invalid initial tv: inf
+DEU_LocationALower-35_11_T-1,20,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0210287570953369,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-35_11_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0209493637084961,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-29_35_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0127050876617432,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-32_11_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.554848194122315,invalid initial tv: inf
+DEU_LocationAUpper-32_11_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.571591377258301,invalid initial tv: inf
+DEU_LocationAUpper-32_11_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.639653205871582,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.608975648880005,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.547903537750244,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601198673248291,invalid initial tv: inf
+DEU_LocationAUpper-57_23_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0219197273254395,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-57_23_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0213623046875,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-40_12_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.852270603179932,invalid initial tv: inf
+DEU_LocationAUpper-40_12_T-1,10,domain_dpll,False,4,11,1,,0,0.0100967884063721,8.82148742675781E-05,0.00139141082763672,0.00113391876220703,0,0,0,0.0127103328704834,1.8611204624176,repair returned None
+DEU_LocationAUpper-47_44_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.657903909683228,invalid initial tv: inf
+DEU_LocationAUpper-43_26_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.683460712432861,cannot unpack non-iterable float object
+DEU_LocationAUpper-43_26_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.731061458587647,invalid initial tv: inf
+DEU_LocationALower-45_56_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601248741149902,invalid initial tv: inf
+DEU_LocationALower-30_59_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.646786212921143,invalid initial tv: inf
+DEU_LocationAUpper-52_13_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.601053714752197,invalid initial tv: inf
+DEU_LocationALower-47_27_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.786638259887695,invalid initial tv: inf
+DEU_LocationALower-35_49_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.614725828170776,invalid initial tv: inf
+DEU_LocationALower-35_49_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.701348543167114,invalid initial tv: inf
+DEU_LocationALower-35_49_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.691256284713745,invalid initial tv: inf
+DEU_LocationALower-42_14_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.632135629653931,invalid initial tv: inf
+DEU_LocationALower-42_14_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0239884853363037,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-26_48_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.60826873779297E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_48_T-1.xml'
+DEU_LocationALower-26_48_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,3.12328338623047E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_48_T-1.xml'
+DEU_LocationALower-26_48_T-1,25,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,2.93254852294922E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-26_48_T-1.xml'
+DEU_LocationELower-19_3_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.38501763343811,invalid initial tv: inf
+DEU_LocationELower-19_3_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0105953216552734,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-25_32_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.743443727493286,invalid initial tv: inf
+DEU_LocationALower-25_32_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.967466115951538,invalid initial tv: inf
+DEU_LocationALower-25_32_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.79058313369751,invalid initial tv: inf
+DEU_LocationALower-50_11_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.626844882965088,invalid initial tv: inf
+DEU_LocationALower-27_5_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.752354145050049,invalid initial tv: inf
+DEU_LocationELower-23_28_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0104315280914307,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-23_28_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0111446380615234,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationELower-23_28_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0118057727813721,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_25_T-1,15,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.018782377243042,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-45_25_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.016859769821167,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-52_35_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.628025531768799,invalid initial tv: inf
+DEU_LocationAUpper-31_27_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.743413686752319,invalid initial tv: inf
+DEU_LocationALower-36_26_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.772221565246582,invalid initial tv: inf
+DEU_LocationAUpper-32_7_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0121517181396484,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-32_7_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.011965274810791,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_2_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.662876129150391,invalid initial tv: inf
+DEU_LocationAUpper-27_2_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.668009996414185,invalid initial tv: inf
+DEU_LocationBUpper-1_14_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.43950343132019,invalid initial tv: inf
+DEU_LocationBUpper-1_14_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.43510627746582,invalid initial tv: inf
+DEU_LocationAUpper-42_49_T-1,6,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.580813407897949,invalid initial tv: inf
+DEU_LocationALower-51_55_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.508117198944092,invalid initial tv: inf
+DEU_LocationDLower-8_41_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0101673603057861,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-14_5_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.58107590675354,invalid initial tv: inf
+DEU_LocationAUpper-43_29_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.57105827331543,invalid initial tv: inf
+DEU_LocationAUpper-43_29_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.582043886184692,invalid initial tv: inf
+DEU_LocationAUpper-43_29_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.553589582443237,invalid initial tv: inf
+DEU_LocationALower-36_33_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.631572246551514,invalid initial tv: inf
+DEU_LocationALower-36_33_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.930684089660645,invalid initial tv: inf
+DEU_LocationAUpper-40_35_T-1,22,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0274033546447754,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationFUpper-60_32_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.773240089416504,invalid initial tv: inf
+DEU_LocationFUpper-60_32_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.752130031585693,invalid initial tv: inf
+DEU_LocationFUpper-60_32_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.789912223815918,invalid initial tv: inf
+DEU_LocationAUpper-29_36_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0101191997528076,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-29_7_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.591219425201416,invalid initial tv: inf
+DEU_LocationALower-53_20_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.023684024810791,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-27_54_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0169775485992432,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationEUpper-24_40_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,8.94069671630859E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationEUpper-24_40_T-1.xml'
+DEU_LocationALower-48_12_T-1,7,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.496400833129883,invalid initial tv: inf
+DEU_LocationALower-48_12_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.560798406600952,invalid initial tv: inf
+DEU_LocationALower-14_45_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.74247407913208,invalid initial tv: inf
+DEU_LocationAUpper-52_8_T-1,16,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.630722522735596,invalid initial tv: inf
+DEU_LocationALower-42_9_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.626720428466797,invalid initial tv: inf
+DEU_LocationALower-31_47_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0202364921569824,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_47_T-1,21,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0193793773651123,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-31_47_T-1,26,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0196237564086914,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-37_51_T-1,17,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.638339996337891,invalid initial tv: inf
+DEU_LocationAUpper-47_9_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.66266942024231,invalid initial tv: inf
+DEU_LocationAUpper-47_9_T-1,12,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.66205358505249,invalid initial tv: inf
+DEU_LocationAUpper-47_9_T-1,23,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.942295789718628,invalid initial tv: inf
+DEU_LocationAUpper-31_2_T-1,10,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.594051122665405,invalid initial tv: inf
+DEU_LocationAUpper-31_2_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.609689235687256,invalid initial tv: inf
+DEU_LocationAUpper-25_17_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.000118017196655273,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationAUpper-25_17_T-1.xml'
+DEU_LocationAUpper-54_30_T-1,19,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0202341079711914,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-33_54_T-1,11,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0107893943786621,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationAUpper-33_54_T-1,13,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0102226734161377,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_46_T-1,18,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0199854373931885,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_46_T-1,24,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0200552940368652,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationALower-41_46_T-1,29,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.0202717781066895,'NoneType' object has no attribute 'state_at_time'
+DEU_LocationDLower-9_51_T-1,9,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.514872074127197,invalid initial tv: inf
+DEU_LocationAUpper-57_39_T-1,14,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,0.600051879882813,invalid initial tv: inf
+DEU_LocationELower-17_11_T-1,8,domain_dpll,False,0,,,,0,0,0,0,0,0,0,0,0,9.44137573242188E-05,[Errno 2] No such file or directory: '/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationELower-17_11_T-1.xml'

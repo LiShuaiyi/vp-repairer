@@ -112,11 +112,10 @@ def lateral_position_constraints(lateral_driving_corridor: DrivingCorridor,
     d_min_reference, d_max_reference = d_reference[:, 0], d_reference[:, 1]
     d_min_front, d_max_front = d_constraints_front
     d_min_rear_or_center, d_max_rear_or_center = d_constraints_rear_or_center
-
     # create d_min/d_max arrays with lateral constraints for all three circles
     d_min = np.array((d_min_reference[1:], d_min_rear_or_center[1:], d_min_front[1:])).transpose()
     d_max = np.array((d_max_reference[1:], d_max_rear_or_center[1:], d_max_front[1:])).transpose()
-
+    
     return d_min, d_max
 
 
@@ -211,7 +210,6 @@ def _lateral_position_constraints_other_circles(longitudinal_driving_corridor: D
                                                                        cc,
                                                                        (d_constraints_reference_point[time_step][0],
                                                                         d_constraints_reference_point[time_step][1])))
-
         # determine lateral constraints for front circle
         d_constraints_front.append(_find_admissible_intervals(cartesian_position_front, normal, cc,
                                                               (d_constraints_reference_point[time_step][0],

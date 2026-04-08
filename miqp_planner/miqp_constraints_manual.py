@@ -503,7 +503,8 @@ class RuleConstraint:
 
     def add_collision_free_interstate(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
-            if k in self._target_lanes:
+            self._prec_veh, self._foll_veh = None, None
+            if k in self._target_lanes and None not in self._target_lanes[k]:
                 self._prec_veh, self._foll_veh = self._determine_related_veh(
                     k, self._target_lanes[k]
                 )
@@ -606,6 +607,8 @@ class RuleConstraint:
         dist_post = -np.inf
         vehicle_ids = set()
         for lane in lanes:
+            if lane is None or getattr(lane, "lanelet", None) is None:
+                continue
             vehicle_ids.update(lane.lanelet.dynamic_obstacle_by_time_step(time_step))
         vehicle_ids.discard(self._ego_id)
         ego_front_s = self._ego_vehicle.front_s(
@@ -790,8 +793,10 @@ class RuleConstraint:
                 - self._veh_config.wheelbase / 2
             )
             rear_constr = self.s_circle_center_rear
+            print(f"time step {time_step}: conflict area constraint is added, front_constr: {front_constr}, rear_constr: {rear_constr}")
             return front_constr, rear_constr
         else:
+            print(f"time step {time_step}: conflict area constraint is not added")
             return math.inf, -math.inf
 
     def create_conflict_area_parameter(self):

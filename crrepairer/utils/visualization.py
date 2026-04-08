@@ -99,6 +99,18 @@ def plot_velocity_acceleration_profile(
         label=label
     )
 
+
+def _state_value_or_nan(obstacle: DynamicObstacle, time_step: int, attr: str) -> float:
+    state = obstacle.state_at_time(time_step)
+    if state is None:
+        return np.nan
+    value = getattr(state, attr, np.nan)
+    return value if value is not None else np.nan
+
+
+def _velocity_profile(obstacle: DynamicObstacle, time_start: int, time_end: int) -> List[float]:
+    return [_state_value_or_nan(obstacle, t, "velocity") for t in range(time_start, time_end)]
+
 def visualize_v_profile_tc_all(
     repairer: SMTTrajectoryRepairer,
     ego_initial: DynamicObstacle,
@@ -113,8 +125,8 @@ def visualize_v_profile_tc_all(
     tv = repairer.tv
     tc = repairer.tc
     time_list = [time_step - time_start for time_step in range(time_start, time_end)]
-    ego_ini_vel = [ego_initial.state_at_time(t).velocity for t in range(time_start, time_end)]
-    ego_rep_vel = [ego_repaired.state_at_time(t).velocity for t in range(time_start, time_end)]
+    ego_ini_vel = _velocity_profile(ego_initial, time_start, time_end)
+    ego_rep_vel = _velocity_profile(ego_repaired, time_start, time_end)
     if velocity_limit:
         plt.axhline(y=velocity_limit, linestyle="--", linewidth=1.0)
     plot_velocity_acceleration_profile(time_list, ego_ini_vel, TUMColor.TUMblue.value, "Initial", marker="x")
@@ -148,8 +160,8 @@ def visualize_v_profile(
 ):
     plt.figure(figsize=(6, 2.4))
     time_list = [time_step - time_start for time_step in range(time_start, time_end)]
-    ego_ini_vel = [ego_initial.state_at_time(t).velocity for t in range(time_start, time_end)]
-    ego_rep_vel = [ego_repaired.state_at_time(t).velocity for t in range(time_start, time_end)]
+    ego_ini_vel = _velocity_profile(ego_initial, time_start, time_end)
+    ego_rep_vel = _velocity_profile(ego_repaired, time_start, time_end)
 
     plt.axhline(y=0, linestyle="--", linewidth=1.0)
     plot_velocity_acceleration_profile(time_list, ego_ini_vel, TUMColor.TUMblue.value, "Initial")
@@ -164,10 +176,15 @@ def visualize_v_profile(
 
 
 def calculate_acceleration(obstacle: DynamicObstacle, time_step: int, dt: float) -> float:
-    if hasattr(obstacle.state_at_time(time_step), "acceleration"):
-        return obstacle.state_at_time(time_step).acceleration
-    else:
-        return (obstacle.state_at_time(time_step + 1).velocity - obstacle.state_at_time(time_step).velocity) / dt
+    state = obstacle.state_at_time(time_step)
+    if state is None:
+        return np.nan
+    if hasattr(state, "acceleration") and state.acceleration is not None:
+        return state.acceleration
+    next_state = obstacle.state_at_time(time_step + 1)
+    if next_state is None or getattr(state, "velocity", None) is None or getattr(next_state, "velocity", None) is None:
+        return np.nan
+    return (next_state.velocity - state.velocity) / dt
 
 
 def visualize_a_profile(

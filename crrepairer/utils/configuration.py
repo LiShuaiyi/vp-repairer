@@ -162,6 +162,7 @@ class RepairConfiguration(BaseConfiguration):
 
     use_mpr_derivative: bool = False
     use_dummy_tc: bool = False
+    sat_solver_mode: str = "dpll"
 
     def __post_init__(self):
         pass

@@ -95,6 +95,7 @@ class DPLL:
             self._assign_false.remove(i)
 
     def _solve(self, cnf):
+        cnf = [clause.replace("~~", "") for clause in cnf]
         units = [i for i in cnf if len(i) < 3]
         units = list(set(units))
         self._new_true = []
@@ -102,7 +103,7 @@ class DPLL:
         self._assign_true = set(self._assign_true)
         self._assign_false = set(self._assign_false)
         if len(units):
-            cnf = [clause.replace("~~", "") for clause in cnf]
+            # cnf = [clause.replace("~~", "") for clause in cnf]
             cnf = self.unit_propagation(cnf, units)
         if len(cnf) == 0:
             # if \phi is a consistent set of literals
@@ -114,6 +115,7 @@ class DPLL:
         literals = self.get_literal(cnf, self._prop_nodes, self._tv_time_step)
         lit = self.choose_literal(literals)
         # print('<DPLL>: literal ({}) is selected'.format(lit))
+
         if self._solve(deepcopy(cnf) + [lit]) == sat:
             return sat
         elif self._solve(deepcopy(cnf) + ["~" + lit]) == sat:

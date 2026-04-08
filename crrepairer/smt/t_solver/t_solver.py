@@ -2,11 +2,15 @@ import math
 import time
 import torch
 from typing import List, Optional
+try:
+    from gurobipy import GurobiError
+except Exception:  # pragma: no cover - optional dependency at runtime
+    GurobiError = Exception
 
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.t_solver.qp_planner_repair import QPPlannerRepair
 from crrepairer.smt.t_solver.miqp_planner_repair import MIQPPlannerRepair
-from crrepairer.smt.t_solver.clrrt_planner_repair import CLRRTPlannerRepair
+# from crrepairer.smt.t_solver.clrrt_planner_repair import CLRRTPlannerRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 from crrepairer.utils.configuration import RepairerConfiguration
 
@@ -46,24 +50,36 @@ class TSolver:
 
         # todo: same for QP
         if config.repair.planner == 1:
-            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = QPPlannerRepair(
+            # self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = QPPlannerRepair(
+            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = QPPlannerRepair(
                 self._rule_monitor,
                 self._tc_obj,
                 self.config,
                 verbose=self.verbose,
             )
         elif config.repair.planner == 2:
-            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = MIQPPlannerRepair(
-                self._rule_monitor,
-                self._tc_obj,
-                self.config
-            )
-        elif config.repair.planner == 3:
-            self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = CLRRTPlannerRepair(
-                self._rule_monitor,
-                self._tc_obj,
-                self.config
-            )
+            # self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = MIQPPlannerRepair(
+            try:
+                self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair] = MIQPPlannerRepair(
+                    self._rule_monitor,
+                    self._tc_obj,
+                    self.config
+                )
+            except GurobiError as err:
+                print(f"* \t<TSolver>: MIQP planner is unavailable ({err}); falling back to QP planner.")
+                self.config.repair.planner = 1
+                self._planner = QPPlannerRepair(
+                    self._rule_monitor,
+                    self._tc_obj,
+                    self.config,
+                    verbose=self.verbose,
+                )
+        # elif config.repair.planner == 3:
+        #     self._planner: Optional[MIQPPlannerRepair, QPPlannerRepair, CLRRTPlannerRepair] = CLRRTPlannerRepair(
+        #         self._rule_monitor,
+        #         self._tc_obj,
+        #         self.config
+        #     )
         else:
             assert AssertionError("the given planner type is not supported")
 
@@ -268,6 +284,7 @@ class TSolver:
                                 tc_object=self.tc_object,
                                 sel_proposition=self._sel_prop,
                                 full_proposition=self._prop_full)
+            self._planner.construct_constraints(self._sel_prop, self._prop_full)
             print("* \t<TSolver>: QP planner is invoked")
         elif self.config.repair.planner == 2:
             self._planner.reset(tc_object=self.tc_object,
@@ -277,10 +294,10 @@ class TSolver:
                 print("* \t<TSolver>: the constraints are not properly constructed")
                 return
             print(f"* \t<TSolver>: MIQP planner is invoked")
-        elif self.config.repair.planner == 3:
-            self._planner.reset(tc_object=self.tc_object,
-                                rule_monitor=self._rule_monitor)
-            print(f"* \t<TSolver>: CLRRT planner is invoked")
+        # elif self.config.repair.planner == 3:
+        #     self._planner.reset(tc_object=self.tc_object,
+        #                         rule_monitor=self._rule_monitor)
+        #     print(f"* \t<TSolver>: CLRRT planner is invoked")
 
         else:
             raise Exception("Invalid option for the planner provided")
@@ -289,7 +306,8 @@ class TSolver:
 
         repaired_trajectory = self._planner.plan()
         # repaired_trajectory = self._miqp_planner.plan()
-        if self.config.repair.planner in [1, 2]:
+        if self.config.repair.planner == 2 or self.config.repair.planner == 1:
+        # if self.config.repair.planner in [1, 2]:
             self.reach_set_time = self._planner.reach_set_time
             self.opti_plan_time = self._planner.opti_plan_time
         else:
@@ -309,6 +327,9 @@ class TSolver:
         self.assign_proposition(proposition, model, use_mpr_derivative)
         if self.compliant_maneuvers is None:
             print("* \t<Tsolver>: tc = {}, tv = {}".format(-math.inf, -math.inf))
+            return self._repairability, repaired_traj
+        if self.tc_object.tv_time_step == math.inf:
+            print("* \t<Tsolver>: tc = inf, tv = inf")
             return self._repairability, repaired_traj
         tc = self.search_tc(use_dummy_tc)
         print(

@@ -1,4 +1,5 @@
 from crrepairer.smt.sat_solver.dpll import DPLL
+from crrepairer.smt.sat_solver.dpll_domain import DomainDPLL
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.smt import construct_cnf
@@ -12,12 +13,21 @@ class SATSolver:
         self._prop_nodes = rule_monitor.proposition_nodes
         self._prop_robust_all = rule_monitor.rob_abstraction
         self._init_assign = list()
-        self._dpll_solver = DPLL(
-            self._formula, self._prop_nodes, rule_monitor.tv_time_step
-        )
-        self._dpll_model = None
 
         self._config = config
+        self._solver_mode = getattr(config.repair, "sat_solver_mode", "dpll")
+        self._domain_dict = {}
+        self._dpll_solver = self._build_solver(rule_monitor.tv_time_step)
+        self._dpll_model = None
+
+    def _build_solver(self, tv_time_step):
+        if self._solver_mode == "domain_dpll":
+            return DomainDPLL(
+                self._formula,
+                self._prop_nodes,
+                tv_time_step,
+            )
+        return DPLL(self._formula, self._prop_nodes, tv_time_step)
 
     @property
     def formula(self):
@@ -27,13 +37,29 @@ class SATSolver:
     def initial_assignment(self):
         return self._init_assign
 
+    @property
+    def solver_mode(self):
+        return self._solver_mode
+
+    @property
+    def domain_dict(self):
+        return self._domain_dict
+
+    def set_domain_dict(self, domain_dict):
+        self._domain_dict = dict(domain_dict) if domain_dict is not None else {}
+
     def solve(self):
         """
         SAT Solver.
         There are multiple choices for the SAT solver. *Pysat* supports the DIMACS CNF as inputs, *z3*: a theorem solver
         from Microsoft Research. Here we use *sympy* for its easy-to-use interface
         """
-        self._dpll_solver.update_cnf(self._formula)
+        if self._solver_mode == "domain_dpll":
+            if self._dpll_solver.domains != self._domain_dict:
+                self._dpll_solver.set_domains(self._domain_dict)
+            self._dpll_solver.update_cnf(self._formula)
+        else:
+            self._dpll_solver.update_cnf(self._formula)
         sat_result = self._dpll_solver.solve()
         return sat_result
 
