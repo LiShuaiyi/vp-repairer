@@ -208,13 +208,16 @@ class VPTrajectoryRepairer(
             all_states,
             trajectory_clcs,
         )
-        if "R_G3" not in self.config.repair.rules or not self._initial_conditions_within_bounds(
-            s0,
-            v0,
-            est_s_min,
-            est_s_max,
-            est_v_min,
-            est_v_max,
+        if not (
+            self.config.repair.rules == ["R_G3"]
+            and self._initial_conditions_within_bounds(
+                s0,
+                v0,
+                est_s_min,
+                est_s_max,
+                est_v_min,
+                est_v_max,
+            )
         ):
             s0, v0 = None, None
 

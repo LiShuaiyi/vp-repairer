@@ -293,10 +293,16 @@ def run_case(
 
         if repaired_traj is not None:
             result["success"] = True
-            tv_updated, _ = repairer.t_solver.tc_object.calc_tv_updated(
-                repaired_traj.state_list,
-                repairer.t_solver.tc_object.tc,
-            )
+            if repairer_type == "vp":
+                tv_updated, _ = repairer.calc_tv_updated(
+                    repaired_traj.state_list,
+                    repairer.tc,
+                )
+            else:
+                tv_updated, _ = repairer.t_solver.tc_object.calc_tv_updated(
+                    repaired_traj.state_list,
+                    repairer.t_solver.tc_object.tc,
+                )
             result["updated_tv"] = tv_updated
         else:
             result["error"] = "repair returned None"

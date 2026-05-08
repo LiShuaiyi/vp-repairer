@@ -125,9 +125,10 @@ def run_case(
             result["core_total_time"] = sum(repairer.runtime_breakdown.values())
         else:
             result["sat_time"] = getattr(repairer, "sat_reasoning_time", 0.0)
-            result["tc_search_time"] = getattr(repairer.t_solver, "tc_search_time", 0.0)
-            result["reach_set_time"] = getattr(repairer.t_solver, "reach_set_time", 0.0)
-            result["optimization_time"] = getattr(repairer.t_solver, "opti_plan_time", 0.0)
+            t_solver = getattr(repairer, "t_solver", None)
+            result["tc_search_time"] = getattr(t_solver, "tc_search_time", 0.0)
+            result["reach_set_time"] = getattr(t_solver, "reach_set_time", 0.0)
+            result["optimization_time"] = getattr(t_solver, "opti_plan_time", 0.0)
             result["core_total_time"] = (
                 result["sat_time"]
                 + result["tc_search_time"]
@@ -137,10 +138,16 @@ def run_case(
 
         if repaired_traj is not None:
             result["success"] = True
-            tv_updated, _ = repairer.t_solver.tc_object.calc_tv_updated(
-                repaired_traj.state_list,
-                repairer.t_solver.tc_object.tc,
-            )
+            if repairer_type == "vp":
+                tv_updated, _ = repairer.calc_tv_updated(
+                    repaired_traj.state_list,
+                    repairer.tc,
+                )
+            else:
+                tv_updated, _ = repairer.t_solver.tc_object.calc_tv_updated(
+                    repaired_traj.state_list,
+                    repairer.t_solver.tc_object.tc,
+                )
             result["updated_tv"] = tv_updated
         else:
             result["error"] = "repair returned None"
