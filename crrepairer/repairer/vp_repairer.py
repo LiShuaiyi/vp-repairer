@@ -19,12 +19,12 @@ from crrepairer.repairer.vp.utils import VPUtils
 
 
 class VPTrajectoryRepairer(
-    VPPredicateEstimation,
-    VPOptimization,
-    VPConstraintExtraction,
-    VPTrajectoryContext,
-    VPUtils,
-    TrajectoryRepair,
+    VPPredicateEstimation,  # Estimates predicate domains for DomainDPLL SAT pruning.
+    VPOptimization,  # Solves the VP linear program and builds repaired trajectories.
+    VPConstraintExtraction,  # Converts selected propositions into VP bounds.
+    VPTrajectoryContext,  # Provides ego trajectory, CLCS, and planner context helpers.
+    VPUtils,  # Holds shared repair utilities such as proposition selection and tv re-checking.
+    TrajectoryRepair,  # Common repair base class storing the current trajectory.
 ):
     """
     Trajectory repairer that uses SAT to select violated propositions and velocity planning
@@ -40,14 +40,13 @@ class VPTrajectoryRepairer(
         super().__init__(ego_vehicle.prediction.trajectory)
         self.rule_monitor = rule_monitor
         self._model = None
-        self._tc = -math.inf
+        self._tc = 0
         self._tv = -math.inf
         self.sat_solver = SATSolver(self.rule_monitor, config)
         self.config = config
         self.ego_vehicle = ego_vehicle
         self._sel_prop = None
         self._prop_full = None
-        self._vp_tc_time_step = 0
         self.sat_reasoning_time = 0
         self.nr_iter = 0
         self.domain_dict_time = 0.0
@@ -155,103 +154,35 @@ class VPTrajectoryRepairer(
         return None
 
     def _repair_with_velocity_planning(self) -> Trajectory:
-        if self._uses_in_series_processing():
-            return self._repair_with_velocity_planning_in_series()
-
-        self._prepare_fixed_cutoff_time()
         all_states = self._get_states_with_initial()
         lanelet_clcs, dt = self._get_lanelet_clcs_and_dt()
         trajectory_clcs, ref_path = self._build_trajectory_clcs(all_states)
         cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
 
         constraint_extraction_start_time = time.time()
+        trajectory_s_max_cap = None
         if self.config.repair.constraint_mode == 2:
             s_min, s_max, v_min, v_max = self._extract_constraints_from_corridor()
         elif self.config.repair.constraint_mode == 1:
-            s_min, s_max, v_min, v_max = self._extract_constraints_manually(
-                all_states,
-                lanelet_clcs,
-            )
+            if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4")):
+                s_min, s_max, v_min, v_max, trajectory_s_max_cap = (
+                    self._extract_intersection_constraints_manually(
+                        all_states,
+                        lanelet_clcs,
+                        trajectory_clcs,
+                        cl_trajectory_before,
+                        ref_path,
+                    )
+                )
+            else:
+                s_min, s_max, v_min, v_max = self._extract_constraints_manually(
+                    all_states,
+                    lanelet_clcs,
+                )
         else:
             raise ValueError(
                 f"Unsupported constraint_mode: {self.config.repair.constraint_mode}"
             )
-        self.runtime_breakdown["constraint_extraction"] += time.time() - constraint_extraction_start_time
-
-        constraint_conversion_start_time = time.time()
-        est_s_min, est_s_max, est_v_min, est_v_max = (
-            self._convert_lanelet_constraints_to_trajectory_constraints(
-                s_min,
-                s_max,
-                v_min,
-                v_max,
-                all_states,
-                ref_path,
-                lanelet_clcs,
-                trajectory_clcs,
-                cl_trajectory_before,
-            )
-        )
-        self.runtime_breakdown["constraint_conversion"] += time.time() - constraint_conversion_start_time
-
-        s_hat = self._build_reference_longitudinal_positions(all_states, trajectory_clcs)
-        amin, amax, jmin, jmax = self._get_longitudinal_planning_limits()
-        s0, v0 = self._maybe_get_velocity_planning_initial_conditions(
-            all_states,
-            trajectory_clcs,
-        )
-
-        lp_start_time = time.time()
-
-        sol = self._solve_velocity_planning_lp(
-            dt=dt,
-            s_hat=s_hat,
-            vmin=np.asarray(est_v_min),
-            vmax=np.asarray(est_v_max),
-            smin=np.asarray(est_s_min),
-            smax=np.asarray(est_s_max),
-            amin=amin,
-            amax=amax,
-            jmin=jmin,
-            jmax=jmax,
-            time_offset=int(self._tc) + 1,
-            # s0=s0,
-            # v0=v0,
-        )
-
-        self.runtime_breakdown["lp"] += time.time() - lp_start_time
-
-        trajectory_build_start_time = time.time()
-        repaired_trajectory = self._build_repaired_trajectory(
-            all_states,
-            trajectory_clcs,
-            sol["s"],
-            sol["v"],
-            dt,
-        )
-        self.runtime_breakdown["trajectory_build"] += time.time() - trajectory_build_start_time
-        return repaired_trajectory
-
-    def _repair_with_velocity_planning_in_series(self) -> Trajectory:
-        if self.config.repair.constraint_mode != 1:
-            raise NotImplementedError(
-                "IN-series VP repair currently supports constraint_mode == 1 only."
-            )
-
-        self._prepare_fixed_cutoff_time()
-        all_states = self._get_states_with_initial()
-        lanelet_clcs, dt = self._get_lanelet_clcs_and_dt()
-        trajectory_clcs, ref_path = self._build_trajectory_clcs(all_states)
-        cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
-
-        constraint_extraction_start_time = time.time()
-        s_min, s_max, v_min, v_max, trajectory_s_max_cap = self._extract_constraints_manually_in_series(
-            all_states,
-            lanelet_clcs,
-            trajectory_clcs,
-            cl_trajectory_before,
-            ref_path,
-        )
         self.runtime_breakdown["constraint_extraction"] += time.time() - constraint_extraction_start_time
 
         constraint_conversion_start_time = time.time()
@@ -273,12 +204,22 @@ class VPTrajectoryRepairer(
 
         s_hat = self._build_reference_longitudinal_positions(all_states, trajectory_clcs)
         amin, amax, jmin, jmax = self._get_longitudinal_planning_limits()
-        s0, v0 = self._maybe_get_velocity_planning_initial_conditions(
+        s0, v0 = self._get_velocity_planning_initial_conditions(
             all_states,
             trajectory_clcs,
         )
+        if "R_G3" not in self.config.repair.rules or not self._initial_conditions_within_bounds(
+            s0,
+            v0,
+            est_s_min,
+            est_s_max,
+            est_v_min,
+            est_v_max,
+        ):
+            s0, v0 = None, None
 
         lp_start_time = time.time()
+
         sol = self._solve_velocity_planning_lp(
             dt=dt,
             s_hat=s_hat,
@@ -294,6 +235,7 @@ class VPTrajectoryRepairer(
             s0=s0,
             v0=v0,
         )
+
         self.runtime_breakdown["lp"] += time.time() - lp_start_time
 
         trajectory_build_start_time = time.time()

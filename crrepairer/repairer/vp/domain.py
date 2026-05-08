@@ -9,7 +9,10 @@ from shapely import affinity
 
 
 class VPPredicateEstimation:
+    """Builds predicate-value domains used to prune SAT models in DomainDPLL mode."""
+
     def ensure_domain_dict_initialized(self):
+        """Build and cache SAT domain information when DomainDPLL is enabled."""
         if self.sat_solver.solver_mode != "domain_dpll":
             return self.domain_dict
         if self._domain_dict_initialized:
@@ -36,7 +39,8 @@ class VPPredicateEstimation:
         return self.domain_dict
 
     def _build_domain_dict_for_sat(self):
-        if self._uses_in_series_processing():
+        """Estimate possible truth values for SAT proposition nodes from VP reachability."""
+        if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4")):
             return self._build_domain_dict_for_sat_in_series()
         if self._tv in (-math.inf, math.inf):
             self.domain_dict_breakdown = {}

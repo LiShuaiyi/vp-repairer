@@ -13,19 +13,14 @@ from commonroad_clcs.config import CLCSParams, ProcessingOption, ResamplingOptio
 
 
 class VPTrajectoryContext:
-    def _uses_in_series_processing(self) -> bool:
-        return any(rule.startswith("R_IN") for rule in self.config.repair.rules)
+    """Provides trajectory, CLCS, and mode-selection helpers shared by VP steps."""
 
-    def _uses_rg3_specific_second_lp(self) -> bool:
-        return "R_G3" in self.config.repair.rules
-
-    def _should_pin_velocity_planning_initial_conditions(self) -> bool:
-        return "R_G3" in self.config.repair.rules
-
-    def _prepare_fixed_cutoff_time(self):
-        self._tc = self._vp_tc_time_step
+    def _set_fixed_cutoff_time(self, time_step: int = 0):
+        """Set the fixed VP cutoff time step when the default tc=0 should change."""
+        self._tc = int(time_step)
 
     def _get_states_with_initial(self) -> List[CustomState]:
+        """Return the ego initial state followed by predicted trajectory states."""
         states = [self.ego_vehicle.initial_state] + list(
             self.ego_vehicle.prediction.trajectory.state_list
         )
@@ -53,7 +48,7 @@ class VPTrajectoryContext:
             return ref_path_lane.clcs
 
         candidate_times = [
-            self._vp_tc_time_step,
+            self._tc,
             getattr(world_ego, "start_time", None),
             getattr(world_ego, "end_time", None),
         ]
@@ -78,6 +73,7 @@ class VPTrajectoryContext:
         cr_trajectory: Trajectory,
         vehicle_id: int = 0,
     ) -> DynamicObstacle:
+        """Wrap a repaired CommonRoad trajectory as a DynamicObstacle for visualization."""
         return DynamicObstacle(
             obstacle_id=vehicle_id,
             obstacle_type=ObstacleType.CAR,
@@ -92,6 +88,7 @@ class VPTrajectoryContext:
         resampling_factor: int = 10,
         num_extend_pts: int = 10,
     ) -> Tuple[CurvilinearCoordinateSystem, np.ndarray]:
+        """Build a trajectory-aligned CLCS used by the VP longitudinal planner."""
         ref_path = []
         for i in range(len(all_states) - 1):
             pos = np.asarray(all_states[i].position, dtype=float).reshape(-1)

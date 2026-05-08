@@ -13,11 +13,14 @@ from commonroad_clcs.clcs import CurvilinearCoordinateSystem
 
 
 class VPOptimization:
+    """Solves the velocity-planning optimization problem and reconstructs trajectories."""
+
     def _build_reference_longitudinal_positions(
         self,
         all_states: List[CustomState],
         trajectory_clcs: CurvilinearCoordinateSystem,
     ) -> np.ndarray:
+        """Project the original ego trajectory to longitudinal reference positions."""
         s_hat = np.zeros(all_states[-1].time_step - int(self._tc))
         for time_step in range(int(self._tc) + 1, all_states[-1].time_step + 1):
             state = all_states[time_step - all_states[0].time_step]
@@ -44,21 +47,16 @@ class VPOptimization:
         v0 = state.velocity
         return s0, v0
 
-    def _maybe_get_velocity_planning_initial_conditions(
-        self,
-        all_states: List[CustomState],
-        trajectory_clcs: CurvilinearCoordinateSystem,
-    ):
-        if not self._should_pin_velocity_planning_initial_conditions():
-            return None, None
-        return self._get_velocity_planning_initial_conditions(all_states, trajectory_clcs)
-
-    def _build_rg3_second_pass_vmax(self, all_states: List[CustomState], est_v_max):
-        refined_vmax = np.asarray(est_v_max, dtype=float).copy()
-        first_plan_idx = int(self._tc - all_states[0].time_step) + 1
-        for i in range(first_plan_idx, len(all_states)):
-            refined_vmax[i - first_plan_idx] = all_states[i].velocity
-        return refined_vmax
+    @staticmethod
+    def _initial_conditions_within_bounds(s0, v0, smin, smax, vmin, vmax) -> bool:
+        if s0 is None or v0 is None:
+            return False
+        if len(smin) == 0 or len(vmin) == 0:
+            return False
+        return (
+            float(smin[0]) <= float(s0) <= float(smax[0])
+            and float(vmin[0]) <= float(v0) <= float(vmax[0])
+        )
 
     def _get_longitudinal_planning_limits(self):
         qp_veh_config = self.config.vehicle.qp_veh_config
@@ -93,6 +91,7 @@ class VPOptimization:
         v0=None,
         time_offset=0,
     ):
+        """Solve the longitudinal LP under position, velocity, acceleration, and jerk bounds."""
         s_hat = np.asarray(s_hat, dtype=float)
         vmin = np.asarray(vmin, dtype=float)
         vmax = np.asarray(vmax, dtype=float)

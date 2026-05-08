@@ -9,7 +9,10 @@ from crrepairer.cut_off.utils import update_ego_vehicle
 
 
 class VPUtils:
+    """Small shared utilities used by the VP repair loop and example checks."""
+
     def _assign_proposition(self, propositions, model):
+        """Select violated propositions from the SAT model for constraint extraction."""
         self._prop_full = propositions
         self._sel_prop = []
         for prop in propositions:
@@ -24,6 +27,7 @@ class VPUtils:
                     )
 
     def calc_tv_updated(self, updated_states, cut_off_time=None):
+        """Re-evaluate the repaired trajectory and return the updated violation time."""
         monitor = copy.copy(self.rule_monitor)
         world = copy.deepcopy(self.rule_monitor.world)
         monitor._world = world

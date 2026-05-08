@@ -16,11 +16,14 @@ from crmonitor.common.world import World
 
 
 class VPConstraintExtraction:
+    """Extracts longitudinal position and velocity constraints for VP repair."""
+
     def _extract_constraints_manually(
         self,
         all_states: List[CustomState],
         lanelet_clcs: CurvilinearCoordinateSystem,
     ):
+        """Build VP bounds directly from selected traffic-rule propositions."""
         start_idx = int(self._tc - all_states[0].time_step)
         horizon = len(all_states) - start_idx - 1
         if horizon <= 0:
@@ -114,7 +117,7 @@ class VPConstraintExtraction:
 
         return s_min, s_max, v_min, v_max
 
-    def _extract_constraints_manually_in_series(
+    def _extract_intersection_constraints_manually(
         self,
         all_states: List[CustomState],
         lanelet_clcs: CurvilinearCoordinateSystem,
@@ -124,7 +127,7 @@ class VPConstraintExtraction:
     ):
         if "R_IN4" not in self.config.repair.rules and "R_IN1" not in self.config.repair.rules:
             raise NotImplementedError(
-                "IN-series VP repair currently supports R_IN1 and R_IN4 only."
+                "Intersection VP constraints currently support R_IN1 and R_IN4 only."
             )
 
         start_idx = int(self._tc - all_states[0].time_step)
