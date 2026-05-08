@@ -4,10 +4,13 @@ from typing import List, Tuple
 
 import numpy as np
 
+from commonroad.scenario.obstacle import DynamicObstacle, ObstacleType, TrajectoryPrediction
 from commonroad.scenario.state import CustomState
+from commonroad.scenario.trajectory import Trajectory
 
 from commonroad_clcs.clcs import CurvilinearCoordinateSystem
 from commonroad_clcs.config import CLCSParams, ProcessingOption, ResamplingOption
+
 
 class VPTrajectoryContext:
     def _uses_in_series_processing(self) -> bool:
@@ -67,6 +70,21 @@ class VPTrajectoryContext:
 
     def _get_dt(self) -> float:
         return self._get_lanelet_clcs_and_dt()[1]
+
+    @staticmethod
+    def convert_traj_to_ego_vehicle(
+        shape,
+        initial_state,
+        cr_trajectory: Trajectory,
+        vehicle_id: int = 0,
+    ) -> DynamicObstacle:
+        return DynamicObstacle(
+            obstacle_id=vehicle_id,
+            obstacle_type=ObstacleType.CAR,
+            prediction=TrajectoryPrediction(cr_trajectory, shape),
+            obstacle_shape=shape,
+            initial_state=initial_state,
+        )
 
     def _build_trajectory_clcs(
         self,
