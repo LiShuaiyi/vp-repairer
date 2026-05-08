@@ -47,240 +47,6 @@ class PropositionNode:
 
 
 class STLRuleMonitor:
-    @staticmethod
-    def _is_mona_scenario(config: RepairerConfiguration) -> bool:
-        scenario_id = str(getattr(config.scenario, "scenario_id", ""))
-        scenario_source = str(getattr(config.scenario, "source", ""))
-        scenario_path = str(getattr(config.general, "path_scenario", ""))
-        mona_markers = (scenario_id, scenario_source, scenario_path)
-        return any("MONA" in marker or "mona" in marker for marker in mona_markers)
-
-    @staticmethod
-    def _prepare_mona_scenario_for_interstate(config: RepairerConfiguration):
-        scenario = copy.deepcopy(config.scenario)
-        lanelet_network = scenario.lanelet_network
-        # Force Mona maps down the interstate pipeline by removing explicit
-        # intersection objects and stripping intersection lanelet types.
-        if hasattr(lanelet_network, "_intersections"):
-            lanelet_network._intersections = {}
-        elif hasattr(lanelet_network, "intersections"):
-            try:
-                lanelet_network.intersections = {}
-            except AttributeError:
-                pass
-
-        for lanelet in lanelet_network.lanelets:
-            lanelet_types = getattr(lanelet, "lanelet_type", None)
-            if lanelet_types is None:
-                continue
-            lanelet.lanelet_type = {
-                lanelet_type
-                for lanelet_type in lanelet_types
-                if lanelet_type != "intersection"
-                and getattr(lanelet_type, "value", lanelet_type) != "intersection"
-            }
-
-        for obstacle in scenario.dynamic_obstacles:
-            prediction = getattr(obstacle, "prediction", None)
-            if prediction is None:
-                continue
-            trajectory = getattr(prediction, "trajectory", None)
-
-            initial_shape_lanelet_ids = getattr(
-                obstacle, "initial_shape_lanelet_ids", None
-            )
-            if initial_shape_lanelet_ids is None:
-                initial_shape_lanelet_ids = set()
-            elif not isinstance(initial_shape_lanelet_ids, set):
-                initial_shape_lanelet_ids = set(initial_shape_lanelet_ids)
-            obstacle.initial_shape_lanelet_ids = initial_shape_lanelet_ids
-
-            shape_lanelet_assignment = getattr(
-                prediction, "shape_lanelet_assignment", None
-            )
-            if isinstance(shape_lanelet_assignment, dict):
-                normalized_assignment = {
-                    int(time_step): set(lanelet_ids)
-                    for time_step, lanelet_ids in shape_lanelet_assignment.items()
-                }
-            else:
-                normalized_assignment = {}
-                all_states = [obstacle.initial_state]
-                if trajectory is not None and getattr(trajectory, "state_list", None) is not None:
-                    all_states.extend(list(trajectory.state_list))
-                for state in all_states:
-                    position = getattr(state, "position", None)
-                    orientation = getattr(state, "orientation", None)
-                    time_step = getattr(state, "time_step", None)
-                    if position is None or orientation is None or time_step is None:
-                        continue
-                    try:
-                        obstacle_at_state = obstacle.obstacle_shape.rotate_translate_local(
-                            position, orientation
-                        )
-                        lanelet_ids = lanelet_network.find_lanelet_by_shape(
-                            obstacle_at_state
-                        )
-                    except Exception:
-                        lanelet_ids = []
-                    if not lanelet_ids:
-                        try:
-                            lanelet_ids = lanelet_network.find_lanelet_by_position(
-                                [position]
-                            )[0]
-                        except Exception:
-                            lanelet_ids = []
-                    normalized_assignment[int(time_step)] = set(lanelet_ids)
-
-            prediction.shape_lanelet_assignment = normalized_assignment
-
-            center_lanelet_assignment = getattr(
-                prediction, "center_lanelet_assignment", None
-            )
-            if isinstance(center_lanelet_assignment, dict):
-                prediction.center_lanelet_assignment = {
-                    int(time_step): set(lanelet_ids)
-                    for time_step, lanelet_ids in center_lanelet_assignment.items()
-                }
-            elif center_lanelet_assignment is not None:
-                prediction.center_lanelet_assignment = {
-                    int(time_step): set(lanelet_ids)
-                    for time_step, lanelet_ids in normalized_assignment.items()
-                }
-            elif not isinstance(center_lanelet_assignment, dict):
-                prediction.center_lanelet_assignment = {
-                    int(time_step): set(lanelet_ids)
-                    for time_step, lanelet_ids in normalized_assignment.items()
-                }
-
-        return scenario
-
-    @staticmethod
-    def _validate_mona_lanelet_assignments(scenario) -> None:
-        for obstacle in scenario.dynamic_obstacles:
-            prediction = getattr(obstacle, "prediction", None)
-            if prediction is None:
-                continue
-            shape_lanelet_assignment = getattr(
-                prediction, "shape_lanelet_assignment", None
-            )
-            if shape_lanelet_assignment is not None and not isinstance(
-                shape_lanelet_assignment, dict
-            ):
-                raise TypeError(
-                    f"MONA normalization failed for obstacle {obstacle.obstacle_id}: "
-                    f"shape_lanelet_assignment is {type(shape_lanelet_assignment).__name__}"
-                )
-
-    @staticmethod
-    def _patch_mona_large_step_clcs(world: World) -> None:
-        for lane in getattr(world.road_network, "lanes", []):
-            if not hasattr(lane, "clcs_large_step"):
-                lane.clcs_large_step = lane.clcs
-            if not hasattr(lane, "clcs_left_large_step"):
-                lane.clcs_left_large_step = lane.clcs_left
-            if not hasattr(lane, "clcs_right_large_step"):
-                lane.clcs_right_large_step = lane.clcs_right
-
-    @staticmethod
-    def _extract_monitor_propositions(monitor_node, preferred_id=None):
-        if monitor_node is None:
-            return {}
-        if hasattr(monitor_node, "monitor"):
-            return getattr(monitor_node.monitor, "_propositions", {})
-        if hasattr(monitor_node, "monitors"):
-            candidate = None
-            if preferred_id is not None and preferred_id in monitor_node.monitors:
-                candidate = monitor_node.monitors[preferred_id]
-            elif getattr(monitor_node, "last_selected", None) in monitor_node.monitors:
-                candidate = monitor_node.monitors[getattr(monitor_node, "last_selected")]
-            elif len(monitor_node.monitors) > 0:
-                candidate = next(iter(monitor_node.monitors.values()))
-            elif getattr(monitor_node, "children", None):
-                candidate = monitor_node.children[0]
-            return STLRuleMonitor._extract_monitor_propositions(
-                candidate, preferred_id
-            )
-        if getattr(monitor_node, "children", None):
-            return STLRuleMonitor._extract_monitor_propositions(
-                monitor_node.children[0], preferred_id
-            )
-        return {}
-
-    def _safe_get_propositions_all(self, evaluator):
-        transformed_all_props_all_ids = {}
-
-        if not evaluator._eval_visitor.all_props_all_ids:
-            veh_id = evaluator.ego_vehicle.id
-            vehicle_props = self._extract_monitor_propositions(
-                evaluator._monitor, preferred_id=veh_id
-            )
-            for prop_name, robustness_value in vehicle_props.items():
-                if prop_name not in transformed_all_props_all_ids:
-                    transformed_all_props_all_ids[prop_name] = {}
-                transformed_all_props_all_ids[prop_name][veh_id] = robustness_value
-        else:
-            for v_id, props in evaluator._eval_visitor.all_props_all_ids.items():
-                for prop_name, value in props.items():
-                    if prop_name not in transformed_all_props_all_ids:
-                        transformed_all_props_all_ids[prop_name] = {}
-                    transformed_all_props_all_ids[prop_name][v_id] = value
-
-        other_id = (
-            evaluator._eval_visitor.other_ids[-1]
-            if evaluator._eval_visitor.other_ids
-            else evaluator.ego_vehicle.id
-        )
-
-        if other_id == evaluator.ego_vehicle.id:
-            other_id_props = self._extract_monitor_propositions(
-                evaluator._monitor, preferred_id=evaluator.ego_vehicle.id
-            )
-        else:
-            other_id_props = {
-                prop_name: robustness_value.get(other_id, None)
-                for prop_name, robustness_value in transformed_all_props_all_ids.items()
-                if isinstance(robustness_value, dict)
-            }
-
-        return (
-            transformed_all_props_all_ids,
-            other_id_props,
-            evaluator._eval_visitor.all_values_all_ids,
-            evaluator._last_evaluation_time_step,
-        )
-
-    @staticmethod
-    def _resolve_rule_other_id(rule: str, raw_other_id, ego_id: int):
-        if raw_other_id in (None, (), []):
-            return None if rule == "R_G3" else ego_id
-        try:
-            return raw_other_id[0]
-        except (TypeError, IndexError, KeyError):
-            return raw_other_id
-
-    @staticmethod
-    def _safe_prop_sequence(prop_eval_by_vehicle, other_id, ego_id):
-        if other_id in prop_eval_by_vehicle:
-            return prop_eval_by_vehicle[other_id]
-        if ego_id in prop_eval_by_vehicle:
-            return prop_eval_by_vehicle[ego_id]
-        if None in prop_eval_by_vehicle:
-            return prop_eval_by_vehicle[None]
-        if prop_eval_by_vehicle:
-            return next(iter(prop_eval_by_vehicle.values()))
-        return []
-
-    @classmethod
-    def _create_world_for_config(cls, config: RepairerConfiguration, world_config: Dict):
-        if cls._is_mona_scenario(config):
-            mona_scenario = cls._prepare_mona_scenario_for_interstate(config)
-            cls._validate_mona_lanelet_assignments(mona_scenario)
-            world = World.create_from_scenario(mona_scenario, config=world_config)
-            cls._patch_mona_large_step_clcs(world)
-            return world
-        return World.create_from_scenario(config.scenario, config=world_config)
-
     def __init__(
         self,
         config: RepairerConfiguration,
@@ -299,7 +65,9 @@ class STLRuleMonitor:
             ] = config.repair.intersection_type
         traffic_rules_config["traffic_rules_param"]["use_mpr"] = config.repair.use_mpr
 
-        self._world: World = self._create_world_for_config(config, world_config)
+        self._world: World = World.create_from_scenario(
+            config.scenario, config=world_config
+        )
         self._vehicle_id = config.repair.ego_id
         self.multiproc = config.repair.multiproc
         self.mpr = config.repair.use_mpr
@@ -504,8 +272,6 @@ class STLRuleMonitor:
     @property
     @functools.lru_cache(128)
     def prop_robust_ttv(self):
-        if self._tv == -math.inf:
-            return self.rob_abstraction[self.min_rule_idx][0]
         return self.rob_abstraction[self.min_rule_idx][self._tv - self._start_time_step]
 
     @staticmethod
@@ -580,8 +346,6 @@ class STLRuleMonitor:
 
             # all_pre_rob_grad should have the same length as all_prop_names.shape[0]
             rob_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
-            if self.rule_to_tv[self._rules[i]] == -math.inf:
-                rob_index = 0
             if 0 <= rob_index < len(self.rob_predicate[i]):
                 all_pre_rob_grad[i] = self.rob_predicate[i][rob_index]
                 # print out the gradient of the predicate
@@ -596,10 +360,7 @@ class STLRuleMonitor:
                     # Get the property name and sequence
                     prop_name = all_prop_names[i, j]
                     other_id = self.rule_to_other_id[self._rules[i]]
-                    prop_eval_by_vehicle = self.all_props_all_ids_all[i].get(prop_name, {})
-                    seq = self._safe_prop_sequence(
-                        prop_eval_by_vehicle, other_id, self._vehicle_id
-                    )
+                    seq = self.all_props_all_ids_all[i][prop_name][other_id]
 
                     index = str(self.sat_formula).find(self._prop_nodes[prop_index].alphabet)
                     sign = '~' if index > 0 and str(self.sat_formula)[index - 1] == '~' else None
@@ -608,14 +369,11 @@ class STLRuleMonitor:
                         future_index = self._future_time_step
                     else:
                         future_index = 0
-                    tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
-                    if self.rule_to_tv[self._rules[i]] == -math.inf:
-                        tv_index = 0
-                    if seq and tv_index < len(seq):
+                    if seq and (self._tv - self._start_time_step) < len(seq):
                         # Safely slice the sequence from the desired index to the end
                         # Calculate the relevant subsequence
 
-                        subseq = seq[tv_index + future_index:]
+                        subseq = seq[self._tv - self._start_time_step + future_index:]
 
                         # Assign to all_prop_robs based on the presence of a negation sign
                         # G(a) and G(not a) are handled differently
@@ -630,8 +388,6 @@ class STLRuleMonitor:
 
                     # Calculate the index for tv_prop_robs safely
                     tv_index = self.rule_to_tv[self._rules[i]] - self._start_time_step
-                    if self.rule_to_tv[self._rules[i]] == -math.inf:
-                        tv_index = 0
                     if 0 <= tv_index + future_index < len(seq):  # Ensure tv_index is within valid range
                         tv_prop_robs[i, j] = seq[tv_index + future_index]
                     else:
@@ -744,7 +500,7 @@ class STLRuleMonitor:
                 ):
                     rule_rob.append(evaluator.update())
                     other_ids.append(evaluator.other_ids)
-                    prop, other_id_props, all_rules_all_pre, _ = self._safe_get_propositions_all(evaluator)
+                    prop, other_id_props, all_rules_all_pre, _ = evaluator.get_propositions_all()
                     # Combine processing of prop and all_values_all_ids
                     for prop_name, vehicle_dict in prop.items():
                         if prop_name not in all_props_all_ids:
@@ -838,7 +594,7 @@ class STLRuleMonitor:
             rule_rob.append(evaluator.update())
             other_ids.append(evaluator.other_ids)
 
-            prop, other_id_props, all_rules_all_pre, _ = self._safe_get_propositions_all(evaluator)
+            prop, other_id_props, all_rules_all_pre, _ = evaluator.get_propositions_all()
             # Combine processing of prop and all_values_all_ids
             for prop_name, vehicle_dict in prop.items():
                 if prop_name not in all_props_all_ids:
@@ -916,24 +672,7 @@ class STLRuleMonitor:
     def _cal_tv_def(self):
         # Check if there is an immediate violation at the first time step
         if np.any(self.rob_rule[:, 0] < 0):
-            violated_rules = []
-            rule_to_tv = {}
-            rule_to_other_id = {}
-
-            for idx, rule in enumerate(self._rules):
-                if self.rob_rule[idx, 0] < 0:
-                    violated_rules.append(rule)
-                    rule_to_tv[rule] = -math.inf
-                    raw_other_id = self.other_ids[idx][0] if self.other_ids[idx] else None
-                    rule_to_other_id[rule] = self._resolve_rule_other_id(
-                        rule, raw_other_id, self._vehicle_id
-                    )
-                else:
-                    rule_to_tv[rule] = math.inf
-                    rule_to_other_id[rule] = None
-
-            min_rule_idx = self._rules.index(violated_rules[0]) if violated_rules else -1
-            return violated_rules, min_rule_idx, -math.inf, rule_to_tv, rule_to_other_id
+            return -math.inf
         all_id_all_props_tv = dict()
         #
         # for rule_idx in range(len(self._rules)):
@@ -980,13 +719,11 @@ class STLRuleMonitor:
                     if value > 0 or value == float('inf'):
                         tv_satisfaction.append(float('inf'))
                         tv_violation.append(
-                            idx - start_index
-                        )  # relative time-to-violation
+                            idx - start_index - self._start_time_step)  # Violation: positive values get adjusted index
                     else:
                         # Handle satisfaction for negative values
                         tv_satisfaction.append(
-                            idx - start_index
-                        )  # relative time-to-satisfaction
+                            idx - start_index - self._start_time_step)  # Satisfaction: negative values get adjusted index
                         tv_violation.append(float('inf'))  # Violation: negative values get inf
 
                 # todo: more complicated version
@@ -1044,7 +781,6 @@ class STLRuleMonitor:
 
                 # Replace tv with inf if it's equal to start_time_step
                 tv = math.inf if tv == self._start_time_step else tv
-                # tv = math.inf if tv < 0 else tv
 
                 tv_list.append(tv)
                 tv_by_veh[veh] = tv
@@ -1052,10 +788,7 @@ class STLRuleMonitor:
             # Find the minimum TV and the corresponding vehicle
             min_tv = min(tv_list)
             rule_to_tv[rule] = min_tv
-            rule_to_other_id[rule] = next(
-                (veh for veh, tv in tv_by_veh.items() if tv == min_tv),
-                None,
-            )
+            rule_to_other_id[rule] = next(veh for veh, tv in tv_by_veh.items() if tv == min_tv)
 
             # If the rule has a valid TV (i.e., finite), it is considered violated
             if min_tv != math.inf:

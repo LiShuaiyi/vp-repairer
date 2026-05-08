@@ -1,6 +1,6 @@
 # standard imports
 from enum import Enum
-from typing import List, Union, Optional
+from typing import Any, List, Union, Optional
 from shapely.geometry.polygon import Polygon
 
 # third party
@@ -18,8 +18,6 @@ from commonroad_qp_planner.utils import calculate_safe_distance
 from crmonitor.common.world import World
 
 from crrepairer.utils.configuration import RepairerConfiguration
-from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
-
 
 class TUMColor(List, Enum):
     TUMblue = [0, 101 / 255, 189 / 255]
@@ -39,7 +37,7 @@ def visualize_repaired_result(
         config: RepairerConfiguration,
         ego_initial: DynamicObstacle,
         ego_repaired: DynamicObstacle,
-        repairer: SMTTrajectoryRepairer,
+        repairer: Any,
         plot_velocity: bool = True,
         plot_acceleration: bool = True,
 ):
@@ -112,7 +110,7 @@ def _velocity_profile(obstacle: DynamicObstacle, time_start: int, time_end: int)
     return [_state_value_or_nan(obstacle, t, "velocity") for t in range(time_start, time_end)]
 
 def visualize_v_profile_tc_all(
-    repairer: SMTTrajectoryRepairer,
+    repairer: Any,
     ego_initial: DynamicObstacle,
     ego_repaired: DynamicObstacle,
     time_start: int,
@@ -133,7 +131,7 @@ def visualize_v_profile_tc_all(
     plot_velocity_acceleration_profile(time_list[tv - time_start:], ego_ini_vel[tv - time_start:], "red", "Violation", marker="x")
     plot_velocity_acceleration_profile(time_list[tc - time_start:], ego_rep_vel[tc - time_start:], TUMColor.TUMgreen.value, "Repaired")
 
-    for state_list in repairer.t_solver.tc_object.state_list_set:
+    for state_list in getattr(repairer, "state_list_set", []):
         plt.plot(
             [state.time_step - time_start for state in state_list],
             [state.velocity for state in state_list],

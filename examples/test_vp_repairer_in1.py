@@ -88,9 +88,9 @@ def main():
         print(f"VP repair failed after {total_time:.3f}s")
         return
 
-    tv_updated, other_id = repairer.t_solver.tc_object.calc_tv_updated(
+    tv_updated, other_id = repairer.calc_tv_updated(
         repaired_traj.state_list,
-        repairer.t_solver.tc_object.tc,
+        repairer.tc,
     )
     print(f"VP repair finished in {total_time:.3f}s")
     print(f"Repair started from tv={repairer.tv}, internal tc={repairer.tc}")
