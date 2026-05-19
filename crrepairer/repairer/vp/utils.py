@@ -5,7 +5,12 @@ import math
 
 import numpy as np
 
-from crrepairer.cut_off.utils import update_ego_vehicle
+# from crrepairer.cut_off.utils import update_ego_vehicle
+from crmonitor.common.road_network import RoadNetwork
+from crmonitor.common.vehicle import Vehicle, CurvilinearStateManager
+from typing import List
+from collections import defaultdict
+from commonroad.scenario.state import CustomState
 
 
 class VPUtils:
@@ -33,7 +38,7 @@ class VPUtils:
         monitor._world = world
 
         world_ego = world.vehicle_by_id(self.ego_vehicle.obstacle_id)
-        update_ego_vehicle(world.road_network, world_ego, updated_states, 0, world.dt)
+        self.update_ego_vehicle(world.road_network, world_ego, updated_states, 0, world.dt)
 
         rule_rob, other_ids = monitor.evaluate_consecutively(world, monitor.start_time_step)
         if not all(len(arr) == len(rule_rob[0]) for arr in rule_rob):
@@ -59,3 +64,27 @@ class VPUtils:
 
         print("Violated rule changed.")
         return min_tv * world.dt, None
+    
+    def update_ego_vehicle(
+            self,
+            road_network: RoadNetwork,
+            ego_vehicle: Vehicle,
+            updated_ego_states: List[CustomState],
+            cut_off_time: int,
+            dt,
+        ):
+        """
+        Update the ego vehicle based on the new given trajectory
+        """
+        for state in updated_ego_states[cut_off_time:]:
+            ego_vehicle.states_cr[state.time_step] = state
+            ego_shape = ego_vehicle.shape.rotate_translate_local(
+                state.position, state.orientation
+            )
+            ego_vehicle.ccosy_cache = CurvilinearStateManager(road_network)
+            # use the shape lanelet assignment
+            ego_vehicle.lanelet_assignment[state.time_step] = set(
+                road_network.lanelet_network.find_lanelet_by_shape(ego_shape)
+            )
+            ego_vehicle.predicate_cache.cache[state.time_step] = defaultdict()
+        pass

@@ -41,7 +41,7 @@ class VPPredicateEstimation:
     def _build_domain_dict_for_sat(self):
         """Estimate possible truth values for SAT proposition nodes from VP reachability."""
         if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4")):
-            return self._build_domain_dict_for_sat_in_series()
+            return self._build_domain_dict_for_sat_direct()
         if self._tv in (-math.inf, math.inf):
             self.domain_dict_breakdown = {}
             return {}
@@ -88,36 +88,37 @@ class VPPredicateEstimation:
         breakdown["apply_once_operator"] = time.time() - start
 
         start = time.time()
-        domain_dict = self._infer_domain_dict_from_predicate_values(
+        domain_dict = self._domain_dict_construct_general(
             predicate_values, self.sat_solver._prop_nodes
         )
         breakdown["infer_domain_dict"] = time.time() - start
         self.domain_dict_breakdown = breakdown
         return domain_dict
 
-    def _build_domain_dict_for_sat_in_series(self):
+    def _build_domain_dict_for_sat_direct(self):
+        '''Extract domain dict for propositions directly from original trajectory's stored robustness values. Currently supports R_IN1 and R_IN4.'''
         self.domain_dict_breakdown = {}
         if "R_IN4" in self.config.repair.rules:
-            pred_dict = self._evaluate_turning_priority_domains(
+            pred_dict = self._eval_turning_priority(
                 0,
                 len(self.ego_vehicle.prediction.trajectory.state_list),
             )
-            return self._infer_domain_dict_from_in4_priority(
+            return self._domain_dict_construct_turning_priority(
                 pred_dict, self.sat_solver._prop_nodes
             )
         if "R_IN1" in self.config.repair.rules:
-            pred_dict = self._evaluate_stop_line_domains(
+            pred_dict = self._eval_stop_line(
                 0,
                 len(self.ego_vehicle.prediction.trajectory.state_list),
             )
-            return self._infer_domain_dict_from_in1_stop_line(
+            return self._domain_dict_construct_stop_line(
                 pred_dict, self.sat_solver._prop_nodes
             )
         raise NotImplementedError(
-            "IN-series DomainDPLL support currently supports R_IN1 and R_IN4 only."
+            "Direct extraction of domain dict for DomainDPLL support currently supports R_IN1 and R_IN4 only."
         )
 
-    def _evaluate_stop_line_domains(self, t_start: int, t_end: int) -> dict:
+    def _eval_stop_line(self, t_start: int, t_end: int) -> dict:
         pred_dict = {}
         for t in range(t_start, t_end):
             if t >= len(self.rule_monitor.rob_predicate[0]):
@@ -130,7 +131,7 @@ class VPPredicateEstimation:
                     pred_dict[key].add(0)
         return pred_dict
 
-    def _infer_domain_dict_from_in1_stop_line(self, pred_dict, prop_nodes):
+    def _domain_dict_construct_stop_line(self, pred_dict, prop_nodes):
         domain_dict = {}
         for prop_node in prop_nodes:
             prop_name = prop_node.name
@@ -140,7 +141,7 @@ class VPPredicateEstimation:
                     break
         return domain_dict
 
-    def _evaluate_turning_priority_domains(self, t_start: int, t_end: int) -> dict:
+    def _eval_turning_priority(self, t_start: int, t_end: int) -> dict:
         pred_dict = {}
         for t in range(t_start, t_end):
             if t >= len(self.rule_monitor.rob_predicate[0]):
@@ -175,7 +176,7 @@ class VPPredicateEstimation:
             return None
         return name[start : end + len(suffix)]
 
-    def _infer_domain_dict_from_in4_priority(self, pred_dict, prop_nodes):
+    def _domain_dict_construct_turning_priority(self, pred_dict, prop_nodes):
         prop_name_to_alphabet = {}
         for prop_node in prop_nodes:
             prop_name = prop_node.name
@@ -283,7 +284,7 @@ class VPPredicateEstimation:
         other_id = self.rule_monitor.other_id
         world = self.rule_monitor.world
         road_network = world.road_network
-        follow_vehicle = self.ego_vehicle
+        follow_vehicle = world.vehicle_by_id(self.ego_vehicle.obstacle_id)
         other_vehicle = world.vehicle_by_id(other_id)
         safe_dist = []
         in_same_lane = []
@@ -294,6 +295,12 @@ class VPPredicateEstimation:
         fov_speed = []
         brake_speed = []
         speed_limits = self._extract_speed_limit_values()
+        follow_width = follow_vehicle.shape.width
+        follow_length = follow_vehicle.shape.length
+        follow_cos_theta = np.cos(max_theta)
+        follow_sin_theta = np.sin(max_theta)
+        a_min_follow = follow_vehicle.vehicle_param.get("a_min")
+        t_react_follow = follow_vehicle.vehicle_param.get("t_react")
         predicate_timing = {
             "safe_dist": 0.0,
             "in_same_lane": 0.0,
@@ -319,6 +326,12 @@ class VPPredicateEstimation:
                 follow_cart_pos=cart_reach[t][1],
                 follow_velocity=cl_reach[t][3],
                 follow_theta=max_theta,
+                follow_width=follow_width,
+                follow_length=follow_length,
+                follow_cos_theta=follow_cos_theta,
+                follow_sin_theta=follow_sin_theta,
+                a_min_follow=a_min_follow,
+                t_react_follow=t_react_follow,
             )
             safe_dist_max, in_front_of_max = self._evaluate_longitudinal_predicates(
                 follow_vehicle=follow_vehicle,
@@ -327,6 +340,12 @@ class VPPredicateEstimation:
                 follow_cart_pos=cart_reach[t][2],
                 follow_velocity=cl_reach[t][4],
                 follow_theta=max_theta,
+                follow_width=follow_width,
+                follow_length=follow_length,
+                follow_cos_theta=follow_cos_theta,
+                follow_sin_theta=follow_sin_theta,
+                a_min_follow=a_min_follow,
+                t_react_follow=t_react_follow,
             )
             safe_dist.append((abs_time_step, 2 if safe_dist_min != safe_dist_max else int(safe_dist_min)))
             predicate_timing["safe_dist"] += time.time() - start
@@ -377,20 +396,20 @@ class VPPredicateEstimation:
             v_max = cl_reach[t][4]
             start = time.time()
             if speed_limits["lane"] is not None:
-                lane_speed_min = self._keep_speed_limit_eval(world, abs_time_step, v_min, speed_limits["lane"])
-                lane_speed_max = self._keep_speed_limit_eval(world, abs_time_step, v_max, speed_limits["lane"])
+                lane_speed_min = self._keep_speed_limit_eval(v_min, speed_limits["lane"])
+                lane_speed_max = self._keep_speed_limit_eval(v_max, speed_limits["lane"])
                 lane_speed.append((abs_time_step, 2 if lane_speed_min != lane_speed_max else int(lane_speed_min)))
             if speed_limits["type"] is not None:
-                type_speed_min = self._keep_speed_limit_eval(world, abs_time_step, v_min, speed_limits["type"])
-                type_speed_max = self._keep_speed_limit_eval(world, abs_time_step, v_max, speed_limits["type"])
+                type_speed_min = self._keep_speed_limit_eval(v_min, speed_limits["type"])
+                type_speed_max = self._keep_speed_limit_eval(v_max, speed_limits["type"])
                 type_speed.append((abs_time_step, 2 if type_speed_min != type_speed_max else int(type_speed_min)))
             if speed_limits["fov"] is not None:
-                fov_speed_min = self._keep_speed_limit_eval(world, abs_time_step, v_min, speed_limits["fov"])
-                fov_speed_max = self._keep_speed_limit_eval(world, abs_time_step, v_max, speed_limits["fov"])
+                fov_speed_min = self._keep_speed_limit_eval(v_min, speed_limits["fov"])
+                fov_speed_max = self._keep_speed_limit_eval(v_max, speed_limits["fov"])
                 fov_speed.append((abs_time_step, 2 if fov_speed_min != fov_speed_max else int(fov_speed_min)))
             if speed_limits["brake"] is not None:
-                brake_speed_min = self._keep_speed_limit_eval(world, abs_time_step, v_min, speed_limits["brake"])
-                brake_speed_max = self._keep_speed_limit_eval(world, abs_time_step, v_max, speed_limits["brake"])
+                brake_speed_min = self._keep_speed_limit_eval(v_min, speed_limits["brake"])
+                brake_speed_max = self._keep_speed_limit_eval(v_max, speed_limits["brake"])
                 brake_speed.append((abs_time_step, 2 if brake_speed_min != brake_speed_max else int(brake_speed_min)))
             predicate_timing["speed_limits"] += time.time() - start
 
@@ -432,46 +451,15 @@ class VPPredicateEstimation:
                     speed_limits["brake"] = speed_limit 
         return speed_limits
 
-    def _collect_prop_tuples(self, predicate_values):
-        prop_tuples = set()
-        safe_dist = predicate_values["safe_dist"]
-        in_same_lane = predicate_values["in_same_lane"]
-        in_front_of = predicate_values["in_front_of"]
-        cut_in = predicate_values["cut_in"]
-        for t in range(len(safe_dist)):
-            prop_tuples.add(
-                (
-                    safe_dist[t][1],
-                    in_same_lane[t][1],
-                    in_front_of[t][1],
-                    cut_in[t][1],
-                )
-            )
-        return prop_tuples
-
-    def _infer_domain_dict_from_prop_tuples(self, prop_tuples, prop_nodes):
-        domain_options = {}
-        for prop_node in prop_nodes:
-            domain_options[prop_node.alphabet] = set()
-            for prop_tuple in prop_tuples:
-                possible_values = self._possible_values_for_prop(prop_node.name, prop_tuple)
-                domain_options[prop_node.alphabet].update(possible_values)
-
-        domain_dict = {}
-        for alphabet, possible_values in domain_options.items():
-            if possible_values == {0} or possible_values == {1}:
-                domain_dict[alphabet[-1]] = set(possible_values)
-        return domain_dict
-
-    def _infer_domain_dict_from_predicate_values(self, predicate_values, prop_nodes):
+    def _domain_dict_construct_general(self, predicate_values, prop_nodes):
         domain_dict = {}
         for prop_node in prop_nodes:
-            possible_values = self._possible_values_for_prop_from_sequences(prop_node.name, predicate_values)
-            if possible_values == {0} or possible_values == {1}:
-                domain_dict[prop_node.alphabet[-1]] = set(possible_values)
+            predicate_values_key = self._prop_node_name_to_predicate_values_key(prop_node.name, predicate_values)
+            if predicate_values_key == {0} or predicate_values_key == {1}:
+                domain_dict[prop_node.alphabet[-1]] = set(predicate_values_key)
         return domain_dict
 
-    def _possible_values_for_prop_from_sequences(self, prop_name, predicate_values):
+    def _prop_node_name_to_predicate_values_key(self, prop_name, predicate_values):
         key = None
         if "distance" in prop_name:
             key = "safe_dist"
@@ -500,19 +488,6 @@ class VPPredicateEstimation:
             else:
                 possible_values.add(int(value))
         return possible_values
-
-    def _possible_values_for_prop(self, prop_name, prop_tuple):
-        if "distance" in prop_name:
-            value = prop_tuple[0]
-        elif "lane" in prop_name:
-            value = prop_tuple[1]
-        elif "front" in prop_name:
-            value = prop_tuple[2]
-        elif "cut_in" in prop_name:
-            value = prop_tuple[3]
-        else:
-            return {0, 1}
-        return {0, 1} if value == 2 else {int(value)}
 
     def _apply_once_operator(self, cut_in):
         for prop_node in self.sat_solver._prop_nodes:
@@ -566,14 +541,6 @@ class VPPredicateEstimation:
             + v_follow * t_react_follow
         )
 
-    def _calc_s(self, s, w, l, theta):
-        rot_mat_factors = np.array([[1.0, 1.0, -1.0, -1.0], [1.0, -1.0, 1.0, -1.0]])
-        return (
-            rot_mat_factors[0] * l / 2.0 * np.cos(theta)
-            - rot_mat_factors[1] * w / 2 * np.sin(theta)
-            + s
-        )
-
     def _build_other_vehicle_predicate_context(self, road_network, other_vehicle, time_step):
         context = {
             "time_step": time_step,
@@ -606,18 +573,48 @@ class VPPredicateEstimation:
         return context
 
     def _compute_follow_front_s(self, follow_vehicle, time_step, follow_cart_pos, follow_theta):
+        return self._compute_follow_front_s_fast(
+            follow_vehicle=follow_vehicle,
+            time_step=time_step,
+            follow_cart_pos=follow_cart_pos,
+            follow_theta=follow_theta,
+        )
+
+    def _compute_follow_front_s_fast(
+        self,
+        follow_vehicle,
+        time_step,
+        follow_cart_pos,
+        follow_theta,
+        follow_width=None,
+        follow_length=None,
+        follow_cos_theta=None,
+        follow_sin_theta=None,
+    ):
         if not self._vehicle_has_valid_time_step(follow_vehicle, time_step):
             return None
         lane_follow = follow_vehicle.get_lane(time_step)
         if lane_follow is None:
             return None
-        follow_width = follow_vehicle.shape.width
-        follow_length = follow_vehicle.shape.length
+        if follow_width is None:
+            follow_width = follow_vehicle.shape.width
+        if follow_length is None:
+            follow_length = follow_vehicle.shape.length
+        if follow_cos_theta is None:
+            follow_cos_theta = np.cos(follow_theta)
+        if follow_sin_theta is None:
+            follow_sin_theta = np.sin(follow_theta)
         follow_curvi_pos = lane_follow.clcs.convert_to_curvilinear_coords(
             follow_cart_pos[0], follow_cart_pos[1]
         )
-        return np.max(
-            self._calc_s(follow_curvi_pos[0], follow_width, follow_length, follow_theta)
+
+        long_offset = follow_length * 0.5 * follow_cos_theta
+        lat_offset = follow_width * 0.5 * follow_sin_theta
+        return follow_curvi_pos[0] + max(
+            long_offset - lat_offset,
+            long_offset + lat_offset,
+            -long_offset - lat_offset,
+            -long_offset + lat_offset,
         )
 
     def _ego_lanelets_for_predicate_eval(
@@ -661,12 +658,22 @@ class VPPredicateEstimation:
         follow_velocity,
         follow_theta,
         max_lon_dist=200.0,
+        follow_width=None,
+        follow_length=None,
+        follow_cos_theta=None,
+        follow_sin_theta=None,
+        a_min_follow=None,
+        t_react_follow=None,
     ):
-        front_s = self._compute_follow_front_s(
+        front_s = self._compute_follow_front_s_fast(
             follow_vehicle=follow_vehicle,
             time_step=time_step,
             follow_cart_pos=follow_cart_pos,
             follow_theta=follow_theta,
+            follow_width=follow_width,
+            follow_length=follow_length,
+            follow_cos_theta=follow_cos_theta,
+            follow_sin_theta=follow_sin_theta,
         )
         if front_s is None:
             return True, True
@@ -676,6 +683,66 @@ class VPPredicateEstimation:
         delta_s = other_context["rear_s"] - front_s
         in_front_of = np.clip(delta_s / max_lon_dist, -1.0, 1.0) > 0.0
 
+        safe_distance = self._calculate_safe_distance(
+            follow_velocity,
+            other_context["velocity"],
+            other_context["vehicle"].vehicle_param.get("a_min"),
+            follow_vehicle.vehicle_param.get("a_min") if a_min_follow is None else a_min_follow,
+            follow_vehicle.vehicle_param.get("t_react") if t_react_follow is None else t_react_follow,
+        )
+        keep_safe_distance = (
+            np.clip((delta_s - safe_distance) / max_lon_dist, -1.0, 1.0) > 0.0
+        )
+        return keep_safe_distance, in_front_of
+    
+    def _in_front_of_eval(
+        self,
+        follow_vehicle,
+        other_context,
+        time_step,
+        follow_cart_pos,
+        follow_theta,
+        max_lon_dist=200.0,
+    ):
+        front_s = self._compute_follow_front_s(
+            follow_vehicle=follow_vehicle,
+            time_step=time_step,
+            follow_cart_pos=follow_cart_pos,
+            follow_theta=follow_theta,
+        )
+        if front_s is None:
+            return True
+        if not other_context["valid"] or other_context["rear_s"] is None:
+            return True
+
+        delta_s = other_context["rear_s"] - front_s
+        in_front_of = np.clip(delta_s / max_lon_dist, -1.0, 1.0) > 0.0
+
+        return in_front_of
+    
+    def _keep_safe_distance_eval(
+        self,
+        follow_vehicle,
+        other_context,
+        time_step,
+        follow_cart_pos,
+        follow_velocity,
+        follow_theta,
+        max_lon_dist=200.0,
+    ):
+        front_s = self._compute_follow_front_s(
+            follow_vehicle=follow_vehicle,
+            time_step=time_step,
+            follow_cart_pos=follow_cart_pos,
+            follow_theta=follow_theta,
+        )
+        if front_s is None:
+            return True
+        if not other_context["valid"] or other_context["rear_s"] is None:
+            return True
+
+        delta_s = other_context["rear_s"] - front_s
+        
         a_min_follow = follow_vehicle.vehicle_param.get("a_min")
         a_min_lead = other_context["vehicle"].vehicle_param.get("a_min")
         t_react_follow = follow_vehicle.vehicle_param.get("t_react")
@@ -689,37 +756,37 @@ class VPPredicateEstimation:
         keep_safe_distance = (
             np.clip((delta_s - safe_distance) / max_lon_dist, -1.0, 1.0) > 0.0
         )
-        return keep_safe_distance, in_front_of
-
-    def _keep_safe_distance_eval(
-        self,
-        world,
-        time_step,
-        lead_id,
-        follow_id,
-        follow_cart_pos,
-        follow_velocity,
-        follow_theta,
-        max_lon_dist=200.0,
-    ):
-        follow_vehicle = world.vehicle_by_id(follow_id)
-        other_context = self._build_other_vehicle_predicate_context(
-            road_network=world.road_network,
-            other_vehicle=world.vehicle_by_id(lead_id),
-            time_step=time_step,
-        )
-        keep_safe_distance, _ = self._evaluate_longitudinal_predicates(
-            follow_vehicle=follow_vehicle,
-            other_context=other_context,
-            time_step=time_step,
-            follow_cart_pos=follow_cart_pos,
-            follow_velocity=follow_velocity,
-            follow_theta=follow_theta,
-            max_lon_dist=max_lon_dist,
-        )
         return keep_safe_distance
 
-    def _keep_speed_limit_eval(self, world, time_step, ego_velocity, speed_limit, max_speed=250.0 / 3.6, eps=1e-5):
+    # def _keep_safe_distance_eval(
+    #     self,
+    #     world,
+    #     time_step,
+    #     lead_id,
+    #     follow_id,
+    #     follow_cart_pos,
+    #     follow_velocity,
+    #     follow_theta,
+    #     max_lon_dist=200.0,
+    # ):
+    #     follow_vehicle = world.vehicle_by_id(follow_id)
+    #     other_context = self._build_other_vehicle_predicate_context(
+    #         road_network=world.road_network,
+    #         other_vehicle=world.vehicle_by_id(lead_id),
+    #         time_step=time_step,
+    #     )
+    #     keep_safe_distance, _ = self._evaluate_longitudinal_predicates(
+    #         follow_vehicle=follow_vehicle,
+    #         other_context=other_context,
+    #         time_step=time_step,
+    #         follow_cart_pos=follow_cart_pos,
+    #         follow_velocity=follow_velocity,
+    #         follow_theta=follow_theta,
+    #         max_lon_dist=max_lon_dist,
+    #     )
+    #     return keep_safe_distance
+
+    def _keep_speed_limit_eval(self, ego_velocity, speed_limit, max_speed=250.0 / 3.6, eps=1e-5):
         if speed_limit is None:
             robustness = math.inf
         else:
@@ -768,20 +835,20 @@ class VPPredicateEstimation:
         other_orient = other_context["lat_theta"]
         return (other_d < ego_d and other_orient > eps) or (other_d > ego_d and other_orient < -eps)
 
-    def _in_front_of_eval(self, world, time_step, lead_id, follow_id, follow_cart_pos, follow_theta, max_lon_dist=200.0):
-        follow_vehicle = world.vehicle_by_id(follow_id)
-        other_context = self._build_other_vehicle_predicate_context(
-            road_network=world.road_network,
-            other_vehicle=world.vehicle_by_id(lead_id),
-            time_step=time_step,
-        )
-        _, in_front_of = self._evaluate_longitudinal_predicates(
-            follow_vehicle=follow_vehicle,
-            other_context=other_context,
-            time_step=time_step,
-            follow_cart_pos=follow_cart_pos,
-            follow_velocity=getattr(follow_vehicle.states_cr.get(time_step), "velocity", 0.0),
-            follow_theta=follow_theta,
-            max_lon_dist=max_lon_dist,
-        )
-        return in_front_of
+    # def _in_front_of_eval(self, world, time_step, lead_id, follow_id, follow_cart_pos, follow_theta, max_lon_dist=200.0):
+    #     follow_vehicle = world.vehicle_by_id(follow_id)
+    #     other_context = self._build_other_vehicle_predicate_context(
+    #         road_network=world.road_network,
+    #         other_vehicle=world.vehicle_by_id(lead_id),
+    #         time_step=time_step,
+    #     )
+    #     _, in_front_of = self._evaluate_longitudinal_predicates(
+    #         follow_vehicle=follow_vehicle,
+    #         other_context=other_context,
+    #         time_step=time_step,
+    #         follow_cart_pos=follow_cart_pos,
+    #         follow_velocity=getattr(follow_vehicle.states_cr.get(time_step), "velocity", 0.0),
+    #         follow_theta=follow_theta,
+    #         max_lon_dist=max_lon_dist,
+    #     )
+    #     return in_front_of

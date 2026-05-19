@@ -148,6 +148,18 @@ class VPTrajectoryRepairer(
                 return repaired_traj
 
             self.sat_solver.update_formula()
+            if self.sat_solver.solver_mode == "domain_dpll":
+                domain_solver = getattr(self.sat_solver, "_dpll_solver", None)
+                relaxed_domains = domain_solver.relax_domains_for_model(
+                    self.model
+                ) if domain_solver is not None else []
+                if relaxed_domains:
+                    self.domain_dict = dict(domain_solver.domains)
+                    self.sat_solver.set_domain_dict(self.domain_dict)
+                    print(
+                        "* \t<VPRepairer>: relaxed DomainDPLL domains after failed model: "
+                        f"{relaxed_domains}"
+                    )
             nr += 1
 
         print(f"*******   Repairing Failed ಠ_ಠ with {nr} iteration(s)  *******")
@@ -174,10 +186,14 @@ class VPTrajectoryRepairer(
                         ref_path,
                     )
                 )
-            else:
-                s_min, s_max, v_min, v_max = self._extract_constraints_manually(
+            elif any(rule in self.config.repair.rules for rule in ("R_G1", "R_G3")):
+                s_min, s_max, v_min, v_max = self._extract_interstate_constraints_manually(
                     all_states,
                     lanelet_clcs,
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported rules for constraint extraction: {self.config.repair.rules}"
                 )
         else:
             raise ValueError(

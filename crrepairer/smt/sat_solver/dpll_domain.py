@@ -126,6 +126,29 @@ class DomainDPLL:
         self._domains = dict(domains) if domains is not None else {}
         self._rebuild_cnf()
 
+    def relax_domains_for_model(self, model=None):
+        """
+        Remove domain restrictions for variables in a failed SAT model.
+
+        Domains are pruning hints. If a repair attempt rejects a model, keeping
+        a unit domain for variables in that model may block the updated CNF from
+        exploring alternative repair choices.
+        """
+        model = self.model if model is None else model
+        if not self._domains or not model:
+            return []
+
+        relaxed = []
+        for literal in model:
+            var = literal[-1]
+            if var in self._domains:
+                self._domains.pop(var)
+                relaxed.append(var)
+
+        if relaxed:
+            self._rebuild_cnf()
+        return sorted(set(relaxed))
+
     def update_cnf(self, cnf, domains=None):
         """
         cnf: sympy CNF string

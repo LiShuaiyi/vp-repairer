@@ -18,7 +18,7 @@ from crmonitor.common.world import World
 class VPConstraintExtraction:
     """Extracts longitudinal position and velocity constraints for VP repair."""
 
-    def _extract_constraints_manually(
+    def _extract_interstate_constraints_manually(
         self,
         all_states: List[CustomState],
         lanelet_clcs: CurvilinearCoordinateSystem,
