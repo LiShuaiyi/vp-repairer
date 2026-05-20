@@ -207,6 +207,11 @@ class STLRuleMonitor:
             )
         return {}
 
+    @staticmethod
+    def _is_invalid_robustness_value(value):
+        # NaN is not equal to itself; treat None/NaN as missing robustness.
+        return value is None or value != value
+
     def _safe_get_propositions_all(self, evaluator):
         transformed_all_props_all_ids = {}
 
@@ -236,12 +241,36 @@ class STLRuleMonitor:
             other_id_props = self._extract_monitor_propositions(
                 evaluator._monitor, preferred_id=evaluator.ego_vehicle.id
             )
+            other_id_props = dict(other_id_props)
+            # RG2-style ego-centric propositions can be evaluated correctly in
+            # all_props_all_ids while monitor._propositions still exposes NaN.
+            # Fill only missing/NaN values from the ego entry; keep any valid
+            # monitor-provided robustness unchanged.
+            for prop_name, vehicle_values in transformed_all_props_all_ids.items():
+                if not isinstance(vehicle_values, dict):
+                    continue
+                fallback_value = vehicle_values.get(evaluator.ego_vehicle.id)
+                if self._is_invalid_robustness_value(fallback_value):
+                    continue
+                if self._is_invalid_robustness_value(other_id_props.get(prop_name)):
+                    other_id_props[prop_name] = fallback_value
         else:
             other_id_props = {
                 prop_name: robustness_value.get(other_id, None)
                 for prop_name, robustness_value in transformed_all_props_all_ids.items()
                 if isinstance(robustness_value, dict)
             }
+            # Some aggregate rules report a selected other_id but store their
+            # proposition robustness under the ego vehicle. Use that ego value
+            # only as a fallback when the selected-other value is missing/NaN.
+            for prop_name, vehicle_values in transformed_all_props_all_ids.items():
+                if not isinstance(vehicle_values, dict):
+                    continue
+                fallback_value = vehicle_values.get(evaluator.ego_vehicle.id)
+                if self._is_invalid_robustness_value(fallback_value):
+                    continue
+                if self._is_invalid_robustness_value(other_id_props.get(prop_name)):
+                    other_id_props[prop_name] = fallback_value
 
         return (
             transformed_all_props_all_ids,

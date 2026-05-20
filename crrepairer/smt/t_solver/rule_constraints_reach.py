@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import warnings
 from fractions import Fraction
 from types import SimpleNamespace
 from typing import List
@@ -67,6 +68,8 @@ from commonroad_reach_semantic.data_structure.rule.proposition import (
 from commonroad_reach_semantic.data_structure.rule.traffic_rule_interface import (
     TrafficRuleInterface,
 )
+import commonroad_reach_semantic.data_structure.reach.predicates as semantic_predicates
+from commonroad_reach_semantic.data_structure.reach.predicates.predicate import Predicate
 
 from crmonitor.common.vehicle import Vehicle
 from crmonitor.predicates.position import (
@@ -77,6 +80,129 @@ from crmonitor.predicates.position import (
 from crrepairer.cut_off.tc import TC
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor, PropositionNode
 from crrepairer.utils.shape import shape_dimensions
+
+
+class SafeDistanceToObstaclePredicate(Predicate):
+    """Python backend support for SafeDistance_V propositions."""
+
+    NUM_SUPPORT_POINTS = 5
+
+    def __init__(self, obstacle_id: int, negated: bool):
+        super().__init__(negated)
+        self.obstacle_id = obstacle_id
+
+    def to_proposition(self) -> str:
+        return f"SafeDistance_V{self.obstacle_id}"
+
+    def _restrict_reach_node_mandatory(self, step, reach_node, semantic_model, _node_lanelet_ids=None):
+        other_state = self._get_other_position_and_velocity(step, semantic_model)
+        if other_state is None:
+            warnings.warn(
+                f"No prediction for {self.obstacle_id} at step {step}; "
+                "leaving safe-distance reach node unrestricted."
+            )
+            return [reach_node]
+
+        other_position, other_velocity = other_state
+        for ego_velocity in self._support_velocities(reach_node):
+            safe_position = self._safe_position(
+                ego_velocity, other_position, other_velocity, semantic_model
+            )
+            slope = self._safe_position_slope(ego_velocity, semantic_model)
+            if not self._intersect_lon_halfspace(
+                reach_node, 1.0, -slope, safe_position - slope * ego_velocity
+            ):
+                break
+        return [reach_node]
+
+    def _restrict_reach_node_forbidden(self, step, reach_node, semantic_model, _node_lanelet_ids=None):
+        other_state = self._get_other_position_and_velocity(step, semantic_model)
+        if other_state is None:
+            warnings.warn(
+                f"No prediction for {self.obstacle_id} at step {step}; "
+                "safe-distance violation is treated as impossible."
+            )
+            return []
+
+        other_position, other_velocity = other_state
+        support_velocities = self._support_velocities(reach_node)
+        if len(support_velocities) < 2:
+            support_velocities = [reach_node.v_lon_min, reach_node.v_lon_max]
+
+        nodes = []
+        for lower_support, upper_support in zip(support_velocities[:-1], support_velocities[1:]):
+            lower_safe_position = self._safe_position(
+                lower_support, other_position, other_velocity, semantic_model
+            )
+            upper_safe_position = self._safe_position(
+                upper_support, other_position, other_velocity, semantic_model
+            )
+            if upper_support == lower_support:
+                slope = self._safe_position_slope(lower_support, semantic_model)
+            else:
+                slope = (upper_safe_position - lower_safe_position) / (upper_support - lower_support)
+
+            node = reach_node.clone()
+            c = lower_safe_position - slope * lower_support
+            if self._intersect_lon_halfspace(node, -1.0, slope, -c):
+                nodes.append(node)
+        return nodes
+
+    def _support_velocities(self, reach_node):
+        if reach_node.v_lon_max == reach_node.v_lon_min:
+            return [reach_node.v_lon_min]
+        return np.linspace(reach_node.v_lon_min, reach_node.v_lon_max, self.NUM_SUPPORT_POINTS)
+
+    def _get_other_position_and_velocity(self, step, semantic_model):
+        vehicle = semantic_model.vehicle_model.find_vehicle_by_id(self.obstacle_id)
+        if vehicle is None:
+            raise RuntimeError(f"Vehicle {self.obstacle_id} not found")
+        if not vehicle.has_ref_prediction(step):
+            return None
+        return vehicle.rear_s_ref(step), vehicle.v_lon_ref(step)
+
+    @staticmethod
+    def _safe_position(ego_velocity, other_position, other_velocity, semantic_model):
+        ego = semantic_model.config.vehicle.ego
+        other = semantic_model.config.vehicle.other
+        ego_deceleration = abs(ego.a_lon_min)
+        other_deceleration = abs(other.a_lon_min)
+        safe_distance = (
+            other_velocity * other_velocity / (-2.0 * other_deceleration)
+            - ego_velocity * ego_velocity / (-2.0 * ego_deceleration)
+            + ego_velocity * ego.t_react
+        )
+        return other_position - safe_distance - ego.length / 2.0
+
+    @staticmethod
+    def _safe_position_slope(ego_velocity, semantic_model):
+        ego = semantic_model.config.vehicle.ego
+        return -(ego_velocity / abs(ego.a_lon_min) + ego.t_react)
+
+    @staticmethod
+    def _intersect_lon_halfspace(reach_node, a, b, c):
+        polygon = reach_node.polygon_lon.intersect_halfspace(a, b, c)
+        reach_node._polygon_lon = polygon
+        reach_node._bounds_lon = polygon.bounds if polygon is not None else None
+        if reach_node.is_empty:
+            return False
+        reach_node.update_position_rectangle()
+        return True
+
+
+def _install_safe_distance_predicate_patch():
+    base_from_proposition = semantic_predicates.from_proposition
+
+    def from_proposition_with_safe_distance(proposition: str, negated: bool):
+        match = re.fullmatch(r"(?:SafeDistance_V|SafeFollowingDistanceTo_?V?)(\d+)", proposition)
+        if match:
+            return SafeDistanceToObstaclePredicate(int(match.group(1)), negated)
+        return base_from_proposition(proposition, negated)
+
+    semantic_predicates.from_proposition = from_proposition_with_safe_distance
+
+
+_install_safe_distance_predicate_patch()
 
 
 def _build_route_stub(reference_path, lanelet_ids):

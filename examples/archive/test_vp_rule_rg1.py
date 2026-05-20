@@ -325,14 +325,14 @@ def solve_velocity_planning_lp(
 
 if __name__ == "__main__":
     # ========== Scenario and Configuration =========
-    # scenario_id = "DEU_Gar-1_1_T-1"
-    # # Build configuration object
-    # config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
-    # config.update()
-    # config.debug.show_plots = True
-    # config.repair.planner = 1  # 1: qp planner 2: miqp
-    # config.repair.constraint_mode = 1   # 1: Manual, 2: Reach
-    # config.repair.use_mpr = False
+    scenario_id = "DEU_Gar-1_1_T-1"
+    # Build configuration object
+    config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
+    config.update()
+    config.debug.show_plots = True
+    config.repair.planner = 1  # 1: qp planner 2: miqp
+    config.repair.constraint_mode = 2   # 1: Manual, 2: Reach
+    config.repair.use_mpr = False
 
     # scenario_id = "DEU_LocationDLower-8_154_T-1"
     # # Build configuration object
@@ -360,17 +360,17 @@ if __name__ == "__main__":
     # config.repair.constraint_mode = 1
     # config.repair.use_mpr = False
 
-    scenario_id = "DEU_LocationALower-34_37_T-1" 
-    config = RepairerConfiguration()
-    config.general.path_scenarios = '/data_linux/Lab/highD-cr-scenarios/highD-repair/'
-    config.general.set_path_scenario(scenario_id)
-    config.update()
-    config.repair.rules = ["R_G1"]
-    config.repair.ego_id = 9
-    config.debug.show_plots = True
-    config.repair.planner = 1
-    config.repair.constraint_mode = 2
-    config.repair.use_mpr = False
+    # scenario_id = "DEU_LocationALower-34_37_T-1" 
+    # config = RepairerConfiguration()
+    # config.general.path_scenarios = '/data_linux/Lab/highD-cr-scenarios/highD-repair/'
+    # config.general.set_path_scenario(scenario_id)
+    # config.update()
+    # config.repair.rules = ["R_G1"]
+    # config.repair.ego_id = 9
+    # config.debug.show_plots = True
+    # config.repair.planner = 1
+    # config.repair.constraint_mode = 2
+    # config.repair.use_mpr = False
 
 
     ego_initial = retrieve_ego_vehicle(config)
