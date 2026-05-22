@@ -22,7 +22,8 @@ if __name__ == "__main__":
     final_time_step = initial_time_step + 20
 
     config.repair.planner = 2
-    config.repair.constraint_mode = 2
+    config.repair.constraint_mode = 1
+    config.repair.rules = ["R_G1", "R_G2"]
 
     # # change the time horizon
     for veh in config.scenario.obstacles:
@@ -61,3 +62,8 @@ if __name__ == "__main__":
             if config.debug.show_plots:
                 # ============= Visualization =============
                 visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+        
+    # tv_original, _ = repairer.t_solver.tc_object.calc_tv_updated(
+    #                 repaired_traj.state_list, repairer.tc
+    #             )
+    # print("Original TV: ", tv_original)

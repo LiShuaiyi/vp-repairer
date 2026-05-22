@@ -793,10 +793,10 @@ class RuleConstraint:
                 - self._veh_config.wheelbase / 2
             )
             rear_constr = self.s_circle_center_rear
-            print(f"time step {time_step}: conflict area constraint is added, front_constr: {front_constr}, rear_constr: {rear_constr}")
+            # print(f"time step {time_step}: conflict area constraint is added, front_constr: {front_constr}, rear_constr: {rear_constr}")
             return front_constr, rear_constr
         else:
-            print(f"time step {time_step}: conflict area constraint is not added")
+            # print(f"time step {time_step}: conflict area constraint is not added")
             return math.inf, -math.inf
 
     def create_conflict_area_parameter(self):

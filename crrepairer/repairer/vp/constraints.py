@@ -172,19 +172,26 @@ class VPConstraintExtraction:
 
                 if "in_intersection_conflict_area" in prop.name:
                     prop_assignment = -1 if prop.alphabet.startswith("~") else 1
-                    rear_constr_ct = self._constraint_in_intersection_conflict_area_rear_ct(
+                    _, rear_constr = self._constraint_in_intersection_conflict_area(
                         time_step=time_step,
                         prop_assignment=prop_assignment,
                         lanelet_clcs=lanelet_clcs,
-                        trajectory_clcs=trajectory_clcs,
+                        cart=True,
                     )
-                    if rear_constr_ct is not None and np.isfinite(rear_constr_ct):
+                    rear_constr = np.asarray(rear_constr, dtype=float)
+                    if rear_constr.shape != (2,) or not np.isfinite(rear_constr).all():
+                        continue
+                    rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
+                        float(rear_constr[0]),
+                        float(rear_constr[1]),
+                    )[0]
+                    if np.isfinite(rear_constr_ct):
                         trajectory_s_max_cap[idx] = min(
                             trajectory_s_max_cap[idx],
                             rear_constr_ct - wheelbase / 2,
                         )
                 else:
-                    front_constr, _ = self._constraint_in_intersection_conflict_area_ego(
+                    front_constr, _ = self._constraint_in_intersection_conflict_area(
                         time_step=time_step,
                         prop_assignment=-1,
                         lanelet_clcs=lanelet_clcs,
@@ -244,15 +251,15 @@ class VPConstraintExtraction:
         world: World,
         ego_vehicle,
         wheelbase: float,
-        clcs: CurvilinearCoordinateSystem,
+        lanelet_clcs: CurvilinearCoordinateSystem,
     ) -> float:
         upper_bound = np.inf
         for lanelet_id in ego_vehicle.lanelets_dir:
             lanelet = world.road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
             if lanelet.stop_line is not None:
                 stop_line_s = min(
-                    clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0],
-                    clcs.convert_to_curvilinear_coords(*lanelet.stop_line.end)[0],
+                    lanelet_clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0],
+                    lanelet_clcs.convert_to_curvilinear_coords(*lanelet.stop_line.end)[0],
                 )
                 upper_bound = min(
                     upper_bound,
@@ -506,7 +513,7 @@ class VPConstraintExtraction:
         s_circle_center_center = np.sort(s_circle_center_center)
         return s_circle_center_center[0], s_circle_center_center[1]
 
-    def _constraint_in_intersection_conflict_area_ego(
+    def _constraint_in_intersection_conflict_area(
         self,
         time_step: int,
         prop_assignment: float,
@@ -539,24 +546,3 @@ class VPConstraintExtraction:
         )
         rear_constr = s_circle_center_rear
         return front_constr, rear_constr
-
-    def _constraint_in_intersection_conflict_area_rear_ct(
-        self,
-        time_step: int,
-        prop_assignment: float,
-        lanelet_clcs: CurvilinearCoordinateSystem,
-        trajectory_clcs: CurvilinearCoordinateSystem,
-    ):
-        front_constr, rear_constr = self._constraint_in_intersection_conflict_area_ego(
-            time_step=time_step,
-            prop_assignment=prop_assignment,
-            lanelet_clcs=lanelet_clcs,
-            cart=True,
-        )
-        if not np.isfinite(np.asarray(rear_constr, dtype=float)).all():
-            return None
-        rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
-            float(rear_constr[0]),
-            float(rear_constr[1]),
-        )[0]
-        return rear_constr_ct

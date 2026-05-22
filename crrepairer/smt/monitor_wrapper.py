@@ -212,6 +212,10 @@ class STLRuleMonitor:
         # NaN is not equal to itself; treat None/NaN as missing robustness.
         return value is None or value != value
 
+    @staticmethod
+    def _is_valid_prop_name(prop_name):
+        return isinstance(prop_name, str) and prop_name != ""
+
     def _safe_get_propositions_all(self, evaluator):
         transformed_all_props_all_ids = {}
 
@@ -557,12 +561,11 @@ class STLRuleMonitor:
         prop_nodes = []
         alphabet_gen = self.infinite_alphabet()  # Initialize the infinite alphabet generator
 
-        # Get the indices of non-empty proposition names
-        non_empty_indices = np.transpose(all_prop_names.nonzero())
-
         # Loop through each index of `all_prop_names` to create proposition nodes
-        for idx in non_empty_indices:
+        for idx in np.ndindex(all_prop_names.shape):
             prop_name = all_prop_names[tuple(idx)]  # Access the valid proposition name
+            if not self._is_valid_prop_name(prop_name):
+                continue
 
             # Get the next available alphabet character/sequence
             prop_alphabet = next(alphabet_gen)
@@ -619,11 +622,13 @@ class STLRuleMonitor:
 
             print("=====================================")
             for j in range(all_prop_names.shape[1]):  # Iterate over columns
+                prop_name = all_prop_names[i, j]
+                if not self._is_valid_prop_name(prop_name):
+                    continue
 
                 if prop_index < len(self._prop_nodes):  # Ensure prop_index does not exceed the number of prop_nodes
                     # tv is now self.rule_to_tv[self._rules[i]]
                     # Get the property name and sequence
-                    prop_name = all_prop_names[i, j]
                     other_id = self.rule_to_other_id[self._rules[i]]
                     prop_eval_by_vehicle = self.all_props_all_ids_all[i].get(prop_name, {})
                     seq = self._safe_prop_sequence(
