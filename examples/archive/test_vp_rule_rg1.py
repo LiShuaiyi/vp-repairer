@@ -331,7 +331,7 @@ if __name__ == "__main__":
     config.update()
     config.debug.show_plots = True
     config.repair.planner = 1  # 1: qp planner 2: miqp
-    config.repair.constraint_mode = 2   # 1: Manual, 2: Reach
+    config.repair.constraint_mode = 1   # 1: Manual, 2: Reach
     config.repair.use_mpr = False
 
     # scenario_id = "DEU_LocationDLower-8_154_T-1"

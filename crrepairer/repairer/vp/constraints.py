@@ -97,6 +97,8 @@ class VPConstraintExtraction:
                     v_max_list.append(speed_limits["fov"] - 0.01)
                 elif "brake" in prop.name and "speed" in prop.name and speed_limits["brake"] is not None:
                     v_max_list.append(speed_limits["brake"] - 0.01)
+                elif "brakes_abruptly" in prop.name:
+                    self._constraint_not_break_abruptly(prop)
                 else:
                     s_up, v_up = self._constraint_keep_safe_distance(
                         world=self.rule_monitor.world,
@@ -116,6 +118,17 @@ class VPConstraintExtraction:
             s_min[idx] = max(s_min_list) if s_min_list else min(lane_start, lane_end)
 
         return s_min, s_max, v_min, v_max
+
+    def _constraint_not_break_abruptly(self, prop):
+        for predicate in prop.children:
+            if "abrupt" not in getattr(predicate, "base_name", ""):
+                continue
+            a_abrupt = predicate.evaluator.config.get("a_abrupt")
+            if a_abrupt is None:
+                continue
+            qp_veh_config = self.config.vehicle.qp_veh_config
+            qp_veh_config.a_lon_min = max(qp_veh_config.a_lon_min, a_abrupt)
+            return
 
     def _extract_intersection_constraints_manually(
         self,
@@ -178,14 +191,14 @@ class VPConstraintExtraction:
                         lanelet_clcs=lanelet_clcs,
                         cart=True,
                     )
-                    rear_constr = np.asarray(rear_constr, dtype=float)
-                    if rear_constr.shape != (2,) or not np.isfinite(rear_constr).all():
-                        continue
-                    rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
-                        float(rear_constr[0]),
-                        float(rear_constr[1]),
-                    )[0]
-                    if np.isfinite(rear_constr_ct):
+                    if not np.isfinite(np.asarray(rear_constr, dtype=float)).all():
+                        rear_constr_ct = None
+                    else:
+                        rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
+                            float(rear_constr[0]),
+                            float(rear_constr[1]),
+                        )[0]
+                    if rear_constr_ct is not None and np.isfinite(rear_constr_ct):
                         trajectory_s_max_cap[idx] = min(
                             trajectory_s_max_cap[idx],
                             rear_constr_ct - wheelbase / 2,
@@ -546,3 +559,24 @@ class VPConstraintExtraction:
         )
         rear_constr = s_circle_center_rear
         return front_constr, rear_constr
+
+    def _constraint_in_intersection_conflict_area_rear_ct(
+        self,
+        time_step: int,
+        prop_assignment: float,
+        lanelet_clcs: CurvilinearCoordinateSystem,
+        trajectory_clcs: CurvilinearCoordinateSystem,
+    ):
+        front_constr, rear_constr = self._constraint_in_intersection_conflict_area(
+            time_step=time_step,
+            prop_assignment=prop_assignment,
+            lanelet_clcs=lanelet_clcs,
+            cart=True,
+        )
+        if not np.isfinite(np.asarray(rear_constr, dtype=float)).all():
+            return None
+        rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
+            float(rear_constr[0]),
+            float(rear_constr[1]),
+        )[0]
+        return rear_constr_ct

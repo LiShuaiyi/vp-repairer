@@ -1,5 +1,9 @@
 import math
 import time
+from pathlib import Path
+
+from commonroad.prediction.prediction import Trajectory
+from commonroad.scenario.state import InitialState
 
 from crrepairer.repairer.vp_repairer import VPTrajectoryRepairer
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
@@ -8,55 +12,54 @@ from crrepairer.utils.repair import retrieve_ego_vehicle
 from crrepairer.utils.visualization import visualize_repaired_result
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def trim_scenario_horizon(config, initial_time_step: int, horizon: int):
+    """Align the scenario to the short RG2 horizon used by the SMT example."""
+    final_time_step = initial_time_step + horizon
+    for obstacle in config.scenario.obstacles:
+        original_states = obstacle.prediction.trajectory.state_list
+        updated_initial_state = original_states[initial_time_step - 1]
+
+        shifted_states = original_states[initial_time_step:final_time_step]
+        for state in shifted_states:
+            state.time_step -= initial_time_step
+
+        obstacle.initial_state = InitialState(
+            time_step=0,
+            yaw_rate=0,
+            slip_angle=0,
+            position=updated_initial_state.position,
+            velocity=updated_initial_state.velocity,
+            orientation=updated_initial_state.orientation,
+        )
+        obstacle.prediction.trajectory = Trajectory(1, shifted_states)
+
+
+def populate_ego_acceleration(ego_vehicle, dt: float):
+    for i in range(ego_vehicle.prediction.trajectory.final_state.time_step):
+        ego_vehicle.state_at_time(i).acceleration = (
+            ego_vehicle.state_at_time(i + 1).velocity
+            - ego_vehicle.state_at_time(i).velocity
+        ) / dt
+
+
 def build_config():
-    scenario_id = "DEU_AachenBendplatz-1_152460_T-2479"
-    config = RepairerConfiguration()
-    config.general.set_path_scenario(scenario_id)
+    scenario_id = "ZAM_Zip-1_56_T-1"
+    config = RepairerConfiguration.load(REPO_ROOT / "config" / f"{scenario_id}.yaml", scenario_id)
     config.update()
-    config.repair.scenario_type = "intersection"
-    config.repair.rules = ["R_IN1"]
-    config.repair.ego_id = 10161
-    config.repair.N_r = 20
-    config.update()
-    config.repair.use_mpr = False
-    config.debug.show_plots = True
+
+    initial_time_step = 50
+    repair_horizon = 20
+    trim_scenario_horizon(config, initial_time_step, repair_horizon)
+
+    config.repair.rules = ["R_G2"]
     config.repair.planner = 2
     config.repair.constraint_mode = 1
     config.repair.sat_solver_mode = "domain_dpll"
-    config.debug.plot_limits = [40, 69, -45, -17]
-
-    # scenario_id = "DEU_AachenBendplatz-1_151520_T-1539"
-    # config = RepairerConfiguration()
-    # config.general.set_path_scenario(scenario_id)
-    # config.update()
-    # config.repair.scenario_type = "intersection"
-    # config.repair.rules = ["R_IN1"]
-    # config.repair.ego_id = 10108
-    # config.repair.N_r = 20
-    # config.update()
-    # config.debug.show_plots = True
-    # config.repair.planner = 2
-    # config.repair.constraint_mode = 1
-    # config.repair.use_mpr = False
-    # config.repair.use_mpr_derivative = False
-    # config.debug.plot_limits = [37, 54, -30, -12]
-
-    # scenario_id = "DEU_AachenBendplatz-1_75140_T-5159"
-    # config = RepairerConfiguration()
-    # config.general.set_path_scenario(scenario_id)
-    # config.update()
-    # config.repair.scenario_type = "intersection"
-    # config.repair.rules = ["R_IN1"]
-    # config.repair.ego_id = 10203
-    # config.repair.N_r = 20
-    # config.update()
-    # config.repair.use_mpr = False
-    # config.repair.use_mpr_derivative = False
-    # config.debug.show_plots = True
-    # config.repair.planner = 2
-    # config.repair.constraint_mode = 1
-    # config.repair.sat_solver_mode = "domain_dpll"
-    # config.debug.plot_limits = [53, 62, -30, -20]
+    config.repair.use_mpr = False
+    config.repair.N_r = repair_horizon
 
     return scenario_id, config
 
@@ -64,6 +67,7 @@ def build_config():
 def main():
     scenario_id, config = build_config()
     ego_initial = retrieve_ego_vehicle(config)
+    populate_ego_acceleration(ego_initial, config.scenario.dt)
     traffic_rule_monitor = STLRuleMonitor(config)
 
     print(f"Scenario: {scenario_id}")

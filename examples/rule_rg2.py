@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     config.repair.planner = 2
     config.repair.constraint_mode = 1
-    config.repair.rules = ["R_G1", "R_G2"]
+    config.repair.rules = ["R_G2"]
 
     # # change the time horizon
     for veh in config.scenario.obstacles:

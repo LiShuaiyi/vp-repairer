@@ -40,7 +40,7 @@ class VPPredicateEstimation:
 
     def _build_domain_dict_for_sat(self):
         """Estimate possible truth values for SAT proposition nodes from VP reachability."""
-        if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4")):
+        if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4", "R_G2")):
             return self._build_domain_dict_for_sat_direct()
         if self._tv in (-math.inf, math.inf):
             self.domain_dict_breakdown = {}
@@ -96,7 +96,7 @@ class VPPredicateEstimation:
         return domain_dict
 
     def _build_domain_dict_for_sat_direct(self):
-        '''Extract domain dict for propositions directly from original trajectory's stored robustness values. Currently supports R_IN1 and R_IN4.'''
+        '''Extract domain dict for propositions directly from original trajectory's stored robustness values. Currently supports R_IN1, R_IN4 and R_G2.'''
         self.domain_dict_breakdown = {}
         if "R_IN4" in self.config.repair.rules:
             pred_dict = self._eval_turning_priority(
@@ -114,9 +114,48 @@ class VPPredicateEstimation:
             return self._domain_dict_construct_stop_line(
                 pred_dict, self.sat_solver._prop_nodes
             )
+        if "R_G2" in self.config.repair.rules:
+            pred_dict = self._eval_abrupt_brake(
+                0,
+                len(self.ego_vehicle.prediction.trajectory.state_list),
+            )
+            return self._domain_dict_construct_abrupt_brake(
+                pred_dict, self.sat_solver._prop_nodes
+            )
         raise NotImplementedError(
-            "Direct extraction of domain dict for DomainDPLL support currently supports R_IN1 and R_IN4 only."
+            "Direct extraction of domain dict for DomainDPLL support currently supports R_IN1, R_IN4 and R_G2 only."
         )
+
+    def _eval_abrupt_brake(self, t_start: int, t_end: int) -> dict:
+        pred_dict = {}
+        for t in range(t_start, t_end):
+            if t >= len(self.rule_monitor.rob_abstraction[0]):
+                continue
+            for idx, key in enumerate(self.rule_monitor.abstraction_names[0][t]):
+                if not key or "brakes_abruptly" in key:
+                    continue
+                value = self.rule_monitor.rob_abstraction[0][t][idx]
+                pred_dict.setdefault(key, set())
+                if value > 0:
+                    pred_dict[key].add(1)
+                else:
+                    pred_dict[key].add(0)
+        return pred_dict
+    
+    def _domain_dict_construct_abrupt_brake(self, pred_dict, prop_nodes):
+        domain_dict = {}
+        for prop_node in prop_nodes:
+            prop_name = prop_node.name
+            if prop_name == "g1":
+                domain_dict[prop_node.alphabet[-1]] = {0}
+                continue
+            if "brakes_abruptly" in prop_name:
+                continue
+            for key, value in pred_dict.items():
+                if key in prop_name and len(value) == 1:
+                    domain_dict[prop_node.alphabet[-1]] = set(value)
+                    break
+        return domain_dict
 
     def _eval_stop_line(self, t_start: int, t_end: int) -> dict:
         pred_dict = {}

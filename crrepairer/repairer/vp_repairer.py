@@ -186,7 +186,7 @@ class VPTrajectoryRepairer(
                         ref_path,
                     )
                 )
-            elif any(rule in self.config.repair.rules for rule in ("R_G1", "R_G3")):
+            elif any(rule in self.config.repair.rules for rule in ("R_G1", "R_G3", "R_G2")):
                 s_min, s_max, v_min, v_max = self._extract_interstate_constraints_manually(
                     all_states,
                     lanelet_clcs,
