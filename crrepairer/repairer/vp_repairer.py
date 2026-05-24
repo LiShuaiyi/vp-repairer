@@ -172,12 +172,20 @@ class VPTrajectoryRepairer(
         cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
 
         constraint_extraction_start_time = time.time()
+        trajectory_s_min_cap = None
         trajectory_s_max_cap = None
         if self.config.repair.constraint_mode == 2:
             s_min, s_max, v_min, v_max = self._extract_constraints_from_corridor()
         elif self.config.repair.constraint_mode == 1:
             if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4", "R_IN3_hand_draft", "R_IN5")):
-                s_min, s_max, v_min, v_max, trajectory_s_max_cap = (
+                (
+                    s_min,
+                    s_max,
+                    v_min,
+                    v_max,
+                    trajectory_s_min_cap,
+                    trajectory_s_max_cap,
+                ) = (
                     self._extract_intersection_constraints_manually(
                         all_states,
                         lanelet_clcs,
@@ -213,6 +221,7 @@ class VPTrajectoryRepairer(
                 lanelet_clcs,
                 trajectory_clcs,
                 cl_trajectory_before,
+                trajectory_s_min_cap=trajectory_s_min_cap,
                 trajectory_s_max_cap=trajectory_s_max_cap,
             )
         )

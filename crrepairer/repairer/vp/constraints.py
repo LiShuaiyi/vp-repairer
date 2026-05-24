@@ -155,10 +155,15 @@ class VPConstraintExtraction:
         v_min = np.zeros(horizon)
         v_max = np.ones(horizon) * math.inf
 
+        ct_s_min = trajectory_clcs.convert_to_curvilinear_coords(
+            float(ref_path[0][0]),
+            float(ref_path[0][1]),
+        )[0]
         ct_s_max = trajectory_clcs.convert_to_curvilinear_coords(
             float(ref_path[-1][0]),
             float(ref_path[-1][1]),
         )[0]
+        trajectory_s_min_cap = np.ones(horizon) * ct_s_min
         trajectory_s_max_cap = np.ones(horizon) * ct_s_max
 
         wheelbase = self._get_planner_wheelbase()
@@ -185,6 +190,62 @@ class VPConstraintExtraction:
 
                 if "in_intersection_conflict_area" in prop.name:
                     prop_assignment = -1 if prop.alphabet.startswith("~") else 1
+                    if "R_IN5" in self.config.repair.rules or "R_IN3_hand_draft" in self.config.repair.rules:
+                        if prop_assignment > 0:
+                            continue
+                        front_constr, rear_constr = self._constraint_in_intersection_conflict_area(
+                            time_step=time_step,
+                            prop_assignment=prop_assignment,
+                            lanelet_clcs=lanelet_clcs,
+                            cart=True,
+                        )
+                        if (
+                            not np.isfinite(np.asarray(front_constr, dtype=float)).all()
+                            or not np.isfinite(np.asarray(rear_constr, dtype=float)).all()
+                        ):
+                            continue
+                        front_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
+                            float(front_constr[0]),
+                            float(front_constr[1]),
+                        )[0]
+                        rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
+                            float(rear_constr[0]),
+                            float(rear_constr[1]),
+                        )[0]
+                        start_plan_idx = min(start_idx + 1, len(all_states) - 1)
+                        start_state = all_states[start_plan_idx]
+                        start_s = trajectory_clcs.convert_to_curvilinear_coords(
+                            float(start_state.position[0]),
+                            float(start_state.position[1]),
+                        )[0]
+                        lower_interval_upper = min(front_constr_ct, rear_constr_ct)
+                        if "R_IN3_hand_draft" in self.config.repair.rules:
+                            lower_interval_upper -= (
+                                wheelbase / 2 + self.ego_vehicle.obstacle_shape.length / 3
+                            )
+                        upper_interval_lower = max(front_constr_ct, rear_constr_ct)
+                        if start_s <= lower_interval_upper:
+                            trajectory_s_max_cap[idx] = min(
+                                trajectory_s_max_cap[idx],
+                                lower_interval_upper,
+                            )
+                        elif start_s >= upper_interval_lower:
+                            trajectory_s_min_cap[idx] = max(
+                                trajectory_s_min_cap[idx],
+                                upper_interval_lower,
+                            )
+                        elif start_s - lower_interval_upper <= upper_interval_lower - start_s:
+                            trajectory_s_max_cap[idx] = min(
+                                trajectory_s_max_cap[idx],
+                                lower_interval_upper,
+                            )
+                        else:
+                            trajectory_s_min_cap[idx] = max(
+                                trajectory_s_min_cap[idx],
+                                upper_interval_lower,
+                            )
+                        continue
+
                     _, rear_constr = self._constraint_in_intersection_conflict_area(
                         time_step=time_step,
                         prop_assignment=prop_assignment,
@@ -216,7 +277,7 @@ class VPConstraintExtraction:
                         f"for unsupported predicate {prop.name}."
                     )
 
-        return s_min, s_max, v_min, v_max, trajectory_s_max_cap
+        return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
 
     def _constraint_in_same_lane(
         self,
@@ -385,6 +446,7 @@ class VPConstraintExtraction:
         lanelet_clcs,
         trajectory_clcs,
         cl_trajectory_before,
+        trajectory_s_min_cap=None,
         trajectory_s_max_cap=None,
     ):
         estimated_s_min = []
@@ -443,7 +505,10 @@ class VPConstraintExtraction:
             except Exception:
                 max_cart_to_traj = ct_s_max
 
-            estimated_s_min.append(min_cart_to_traj)
+            s_min_traj = min_cart_to_traj
+            if trajectory_s_min_cap is not None:
+                s_min_traj = max(s_min_traj, trajectory_s_min_cap[i])
+            estimated_s_min.append(s_min_traj)
             s_max_traj = max_cart_to_traj
             if trajectory_s_max_cap is not None:
                 s_max_traj = min(s_max_traj, trajectory_s_max_cap[i])
@@ -560,23 +625,4 @@ class VPConstraintExtraction:
         rear_constr = s_circle_center_rear
         return front_constr, rear_constr
 
-    def _constraint_in_intersection_conflict_area_rear_ct(
-        self,
-        time_step: int,
-        prop_assignment: float,
-        lanelet_clcs: CurvilinearCoordinateSystem,
-        trajectory_clcs: CurvilinearCoordinateSystem,
-    ):
-        front_constr, rear_constr = self._constraint_in_intersection_conflict_area(
-            time_step=time_step,
-            prop_assignment=prop_assignment,
-            lanelet_clcs=lanelet_clcs,
-            cart=True,
-        )
-        if not np.isfinite(np.asarray(rear_constr, dtype=float)).all():
-            return None
-        rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
-            float(rear_constr[0]),
-            float(rear_constr[1]),
-        )[0]
-        return rear_constr_ct
+   

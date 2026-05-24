@@ -247,11 +247,11 @@ class VPOptimization:
             v_i = float(v[i])
             cart_pos = trajectory_clcs.convert_to_cartesian_coords(s_i, 0.0)
             prev_state = repaired_state_list[-1]
-            delta = np.asarray(cart_pos) - np.asarray(prev_state.position)
-            if np.linalg.norm(delta) > 1e-9:
-                orientation = math.atan2(delta[1], delta[0])
-            else:
-                orientation = getattr(prev_state, "orientation", 0.0)
+            orientation = self._orientation_from_trajectory_clcs(
+                trajectory_clcs,
+                s_i,
+                fallback=getattr(prev_state, "orientation", 0.0),
+            )
 
             if len(v) == 1:
                 acceleration = 0.0
@@ -272,6 +272,29 @@ class VPOptimization:
 
         return Trajectory(all_states[0].time_step, repaired_state_list)
 
+    @staticmethod
+    def _orientation_from_trajectory_clcs(
+        trajectory_clcs: CurvilinearCoordinateSystem,
+        s: float,
+        fallback: float = 0.0,
+    ) -> float:
+        ds_candidates = (0.25, 0.1, 0.05)
+        for ds in ds_candidates:
+            try:
+                p_prev = np.asarray(
+                    trajectory_clcs.convert_to_cartesian_coords(s - ds, 0.0),
+                    dtype=float,
+                )
+                p_next = np.asarray(
+                    trajectory_clcs.convert_to_cartesian_coords(s + ds, 0.0),
+                    dtype=float,
+                )
+            except Exception:
+                continue
+            delta = p_next - p_prev
+            if np.linalg.norm(delta) > 1e-6:
+                return math.atan2(delta[1], delta[0])
+        return fallback
 
     def _copy_state(self, state) -> CustomState:
         return CustomState(

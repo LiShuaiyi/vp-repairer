@@ -12,6 +12,8 @@ if __name__ == "__main__":
 
     # Build configuration object
     config = RepairerConfiguration.load(f"../config/{scenario_id}.yaml", scenario_id)
+    config.repair.planner = 2
+    config.repair.constraint_mode = 1
     config.update()
 
     # Retrieve the ego vehicle
@@ -31,3 +33,7 @@ if __name__ == "__main__":
             if config.debug.show_plots:
                 # ============= Visualization =============
                 visualize_repaired_result(config, ego_initial, ego_repaired, repairer)
+    # tv_original, _ = repairer.t_solver.tc_object.calc_tv_updated(
+    #                 repaired_traj.state_list, repairer.tc
+    #             )
+    # print("Original TV: ", tv_original)
