@@ -40,7 +40,7 @@ class VPPredicateEstimation:
 
     def _build_domain_dict_for_sat(self):
         """Estimate possible truth values for SAT proposition nodes from VP reachability."""
-        if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4", "R_G2")):
+        if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4", "R_G2", "R_IN3_hand_draft", "R_IN5")):
             return self._build_domain_dict_for_sat_direct()
         if self._tv in (-math.inf, math.inf):
             self.domain_dict_breakdown = {}
@@ -96,7 +96,7 @@ class VPPredicateEstimation:
         return domain_dict
 
     def _build_domain_dict_for_sat_direct(self):
-        '''Extract domain dict for propositions directly from original trajectory's stored robustness values. Currently supports R_IN1, R_IN4 and R_G2.'''
+        '''Extract domain dict for propositions directly from original trajectory's stored robustness values. Currently supports R_IN1, R_IN4, R_G2 and R_IN3_hand_draft and R_IN5.'''
         self.domain_dict_breakdown = {}
         if "R_IN4" in self.config.repair.rules:
             pred_dict = self._eval_turning_priority(

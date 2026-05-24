@@ -138,9 +138,9 @@ class VPConstraintExtraction:
         cl_trajectory_before: List[np.ndarray],
         ref_path: np.ndarray,
     ):
-        if "R_IN4" not in self.config.repair.rules and "R_IN1" not in self.config.repair.rules:
+        if "R_IN4" not in self.config.repair.rules and "R_IN1" not in self.config.repair.rules and "R_IN3_hand_draft" not in self.config.repair.rules and "R_IN5" not in self.config.repair.rules:
             raise NotImplementedError(
-                "Intersection VP constraints currently support R_IN1 and R_IN4 only."
+                "Intersection VP constraints currently support R_IN1, R_IN4, R_IN3_hand_draft and R_IN5 only."
             )
 
         start_idx = int(self._tc - all_states[0].time_step)
