@@ -18,6 +18,7 @@ crconvert highd /home/liny/Documents/commonroad/highD-dataset-v1.0 /home/liny/Do
 version 2023.2
 crconvert  --num-time-steps 100 --num-processes 4 --downsample 5 --keep-ego --obstacles-start-at-zero /home/liny/Documents/commonroad/13_inD/ /home/liny/Documents/commonroad/inD-repair/ ind
 
+crconvert --routability-check nocheck --num-processes 16 --keep-ego --num-time-steps 100  --downsample 5  --keep-ego --output-type xml --obstacles-start-at-zero inD-dataset-v1.0 scenarios0 ind
 
 crconvert  --num-time-steps 100 --num-processes 4 --downsample 5 --keep-ego --obstacles-start-at-zero /home/liny/Documents/commonroad/13_inD/ /home/liny/Documents/commonroad/inD-repair/ ind
 DEU_AachenBendplatz-1_151360_T-1379 10097
@@ -59,7 +60,7 @@ from crmonitor.common.world import World, get_world_config
 if __name__ == "__main__":
     # the highD-cr scenario directory
     # file_path = "../../highD-dataset/highD-cr-scenarios/"
-    file_path = "/home/liny/scenarios/ind_scenarios_2024/"
+    file_path = "/data_linux/Lab/highD-cr-scenarios/ind_scenarios_2024/"
 
     # file_path = "../../commonroad-scenarios-master-scenarios/scenarios/cooperative"
     # highD_scenario_dir = "/home/yuanfei/commonroad/highD-dataset/sebastian_evaluation/"

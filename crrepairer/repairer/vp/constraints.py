@@ -276,7 +276,8 @@ class VPConstraintExtraction:
                         f"* \t<VPRepairer>: IN-series manual extraction reuses conflict-area upper bound "
                         f"for unsupported predicate {prop.name}."
                     )
-
+        
+        # trajectory_s_min_cap is actually not used in practice
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
 
     def _constraint_in_same_lane(

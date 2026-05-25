@@ -80,3 +80,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # crconvert --routability-check nocheck --num-processes 16 --keep-ego --num-time-steps 2500 --output-type xml --obstacles-start-at-zero raw scenarios ind
+    # crconvert --routability-check nocheck --num-processes 16 --keep-ego --num-time-steps 30 --output-type xml --obstacles-start-at-zero inD-dataset-v1.0 scenarios0 ind 
+    # maximum step is num-time-steps/downsample --downsample 5 downsample only works for highd scenarios

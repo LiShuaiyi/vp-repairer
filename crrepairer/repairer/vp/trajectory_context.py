@@ -89,32 +89,32 @@ class VPTrajectoryContext:
         num_extend_pts: int = 10,
     ) -> Tuple[CurvilinearCoordinateSystem, np.ndarray]:
         """Build a trajectory-aligned CLCS used by the VP longitudinal planner."""
-        ref_path = []
-        for i in range(len(all_states) - 1):
-            pos = np.asarray(all_states[i].position, dtype=float).reshape(-1)
-            next_pos = np.asarray(all_states[i + 1].position, dtype=float).reshape(-1)
+        source_path = []
+        duplicate_tol = 1e-6
+        for i, state in enumerate(all_states):
+            pos = np.asarray(state.position, dtype=float).reshape(-1)
             if pos.size < 2:
                 raise ValueError(
                     f"Invalid ref_path source position at state index {i}, "
-                    f"time_step={all_states[i].time_step}: position={all_states[i].position!r}"
-                )
-            if next_pos.size < 2:
-                raise ValueError(
-                    f"Invalid ref_path source position at state index {i + 1}, "
-                    f"time_step={all_states[i + 1].time_step}: position={all_states[i + 1].position!r}"
+                    f"time_step={state.time_step}: position={state.position!r}"
                 )
             pos = pos[:2]
-            next_pos = next_pos[:2]
+            if source_path and np.linalg.norm(pos - source_path[-1]) <= duplicate_tol:
+                continue
+            source_path.append(pos)
+
+        if len(source_path) < 2:
+            raise ValueError("Cannot build VP trajectory CLCS from fewer than two distinct positions.")
+
+        ref_path = []
+        source_path = np.asarray(source_path, dtype=float)
+        for i in range(len(source_path) - 1):
+            pos = source_path[i]
+            next_pos = source_path[i + 1]
             delta = (next_pos - pos) / resampling_factor
             for j in range(resampling_factor):
                 ref_path.append(pos + j * delta)
-        last_pos = np.asarray(all_states[-1].position, dtype=float).reshape(-1)
-        if last_pos.size < 2:
-            raise ValueError(
-                f"Invalid ref_path source position at final state index {len(all_states) - 1}, "
-                f"time_step={all_states[-1].time_step}: position={all_states[-1].position!r}"
-            )
-        ref_path.append(last_pos[:2])
+        ref_path.append(source_path[-1])
         ref_path = np.asarray(ref_path, dtype=float)
 
         params = CLCSParams()
