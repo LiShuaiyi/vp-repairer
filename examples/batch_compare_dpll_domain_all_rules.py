@@ -243,6 +243,66 @@ def disable_batch_visualization(repairer):
             tc_object._save_state_lists = False
 
 
+def plain_dpll_unsupported_vp_predicate(repairer):
+    if repairer.sat_solver.solver_mode != "dpll":
+        return None
+    if repairer.config.repair.constraint_mode != 1:
+        return None
+    if not any(
+        rule in repairer.config.repair.rules
+        for rule in ("R_IN1", "R_IN4", "R_IN3_hand_draft", "R_IN5")
+    ):
+        return None
+
+    selected_props = [prop for prop in (getattr(repairer, "_sel_prop", []) or []) if prop is not None]
+    if not selected_props:
+        return "empty"
+
+    for prop in selected_props:
+        if prop is None:
+            continue
+        if "R_IN1" in repairer.config.repair.rules:
+            if "stop_line" not in prop.name:
+                return prop
+            continue
+        if "in_intersection_conflict_area" not in prop.name:
+            return prop
+    return None
+
+
+def reject_plain_dpll_unsupported_vp_predicates(repairer):
+    original_repair_with_vp = repairer._repair_with_velocity_planning
+
+    def wrapped_repair_with_vp(*args, **kwargs):
+        unsupported_prop = plain_dpll_unsupported_vp_predicate(repairer)
+        if unsupported_prop is not None:
+            if unsupported_prop == "empty":
+                raise RuntimeError("plain DPLL selected no VP-repairable predicates")
+            raise RuntimeError(
+                "plain DPLL selected unsupported VP predicate: "
+                f"{unsupported_prop.name}"
+            )
+        return original_repair_with_vp(*args, **kwargs)
+
+    repairer._repair_with_velocity_planning = wrapped_repair_with_vp
+
+
+def include_dpll_solve_time_in_batch_breakdown(repairer):
+    original_solve = repairer.sat_solver.solve
+
+    def timed_solve(*args, **kwargs):
+        solve_start = time.time()
+        result = original_solve(*args, **kwargs)
+        solve_elapsed = time.time() - solve_start
+        runtime_breakdown = getattr(repairer, "runtime_breakdown", None)
+        if runtime_breakdown is not None and "sat" in runtime_breakdown:
+            runtime_breakdown["sat"] += solve_elapsed
+            repairer.sat_reasoning_time += solve_elapsed
+        return result
+
+    repairer.sat_solver.solve = timed_solve
+
+
 def run_case(
     spec,
     scenario_id: str,
@@ -292,6 +352,8 @@ def run_case(
 
         repairer = VPTrajectoryRepairer(traffic_rule_monitor, ego_initial, config)
         disable_batch_visualization(repairer)
+        include_dpll_solve_time_in_batch_breakdown(repairer)
+        reject_plain_dpll_unsupported_vp_predicates(repairer)
 
         repair_start = time.time()
         repaired_traj = repairer.repair()

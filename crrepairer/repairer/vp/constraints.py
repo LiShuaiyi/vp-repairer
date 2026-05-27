@@ -245,7 +245,7 @@ class VPConstraintExtraction:
                                 upper_interval_lower,
                             )
                         continue
-
+                    
                     _, rear_constr = self._constraint_in_intersection_conflict_area(
                         time_step=time_step,
                         prop_assignment=prop_assignment,
@@ -262,7 +262,7 @@ class VPConstraintExtraction:
                     if rear_constr_ct is not None and np.isfinite(rear_constr_ct):
                         trajectory_s_max_cap[idx] = min(
                             trajectory_s_max_cap[idx],
-                            rear_constr_ct - wheelbase / 2,
+                            rear_constr_ct - wheelbase / 2 - self.ego_vehicle.obstacle_shape.length / 3,
                         )
                 else:
                     front_constr, _ = self._constraint_in_intersection_conflict_area(
@@ -276,6 +276,7 @@ class VPConstraintExtraction:
                         f"* \t<VPRepairer>: IN-series manual extraction reuses conflict-area upper bound "
                         f"for unsupported predicate {prop.name}."
                     )
+                    continue
         
         # trajectory_s_min_cap is actually not used in practice
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap

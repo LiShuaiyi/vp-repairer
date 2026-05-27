@@ -122,6 +122,22 @@ class VPPredicateEstimation:
             return self._domain_dict_construct_abrupt_brake(
                 pred_dict, self.sat_solver._prop_nodes
             )
+        if "R_IN3_hand_draft" in self.config.repair.rules:
+            pred_dict = self._eval_same_priority(
+                0,
+                len(self.ego_vehicle.prediction.trajectory.state_list),
+            )
+            return self._domain_dict_construct_same_priority(
+                pred_dict, self.sat_solver._prop_nodes
+            )
+        if "R_IN5" in self.config.repair.rules:
+            pred_dict = self._eval_has_priority_oncoming(
+                0,
+                len(self.ego_vehicle.prediction.trajectory.state_list),
+            )
+            return self._domain_dict_construct_has_priority_oncoming(
+                pred_dict, self.sat_solver._prop_nodes
+            )
         raise NotImplementedError(
             "Direct extraction of domain dict for DomainDPLL support currently supports R_IN1, R_IN4 and R_G2 only."
         )
@@ -222,6 +238,114 @@ class VPPredicateEstimation:
             if "has_priority" not in prop_name:
                 continue
             atomic_name = self._extract_in4_priority_atom(prop_name)
+            if atomic_name is not None:
+                prop_name_to_alphabet[atomic_name] = prop_node.alphabet[-1]
+
+        domain_dict = {}
+        for atomic_name, value in pred_dict.items():
+            if len(value) != 1:
+                continue
+            alphabet = prop_name_to_alphabet.get(atomic_name)
+            if alphabet is not None:
+                domain_dict[alphabet] = set(value)
+        return domain_dict
+
+    def _eval_same_priority(self, t_start: int, t_end: int) -> dict:
+        pred_dict = {}
+        for t in range(t_start, t_end):
+            if t >= len(self.rule_monitor.rob_predicate[0]):
+                continue
+            for key, value in self.rule_monitor.rob_predicate[0][t].items():
+                if "same_priority" not in key:
+                    continue
+                pred_dict.setdefault(key, set())
+                if value[0] > 0:
+                    pred_dict[key].add(1)
+                else:
+                    pred_dict[key].add(0)
+        return pred_dict
+
+    def _extract_in3_same_priority_atom(self, name: str):
+        atom_prefixes = (
+            "turning_right_ego_",
+            "turning_left_ego_",
+            "going_straight_ego_",
+        )
+        start = -1
+        for prefix in atom_prefixes:
+            start = name.find(prefix)
+            if start != -1:
+                break
+        if start == -1:
+            return None
+
+        suffix = "__0_1"
+        end = name.find(suffix, start)
+        if end == -1:
+            return None
+        return name[start : end + len(suffix)]
+
+    def _domain_dict_construct_same_priority(self, pred_dict, prop_nodes):
+        prop_name_to_alphabet = {}
+        for prop_node in prop_nodes:
+            prop_name = prop_node.name
+            if "same_priority" not in prop_name:
+                continue
+            atomic_name = self._extract_in3_same_priority_atom(prop_name)
+            if atomic_name is not None:
+                prop_name_to_alphabet[atomic_name] = prop_node.alphabet[-1]
+
+        domain_dict = {}
+        for atomic_name, value in pred_dict.items():
+            if len(value) != 1:
+                continue
+            alphabet = prop_name_to_alphabet.get(atomic_name)
+            if alphabet is not None:
+                domain_dict[alphabet] = set(value)
+        return domain_dict
+
+    def _eval_has_priority_oncoming(self, t_start: int, t_end: int) -> dict:
+        pred_dict = {}
+        for t in range(t_start, t_end):
+            if t >= len(self.rule_monitor.rob_predicate[0]):
+                continue
+            for key, value in self.rule_monitor.rob_predicate[0][t].items():
+                if "has_priority_oncoming" not in key:
+                    continue
+                pred_dict.setdefault(key, set())
+                if value[0] > 0:
+                    pred_dict[key].add(1)
+                else:
+                    pred_dict[key].add(0)
+        return pred_dict
+
+    def _extract_in5_priority_oncoming_atom(self, name: str):
+        atom_prefixes = (
+            "turning_right_target_",
+            "going_straight_target_",
+            "turning_left_target_",
+        )
+        start = -1
+        for prefix in atom_prefixes:
+            start = name.find(prefix)
+            if start != -1:
+                break
+        if start == -1:
+            return None
+
+        suffix = "__0_1"
+        end = name.find(suffix, start)
+        if end == -1:
+            return None
+        return name[start : end + len(suffix)]
+
+    def _domain_dict_construct_has_priority_oncoming(self, pred_dict, prop_nodes):
+        prop_name_to_alphabet = {}
+        for prop_node in prop_nodes:
+            prop_name = prop_node.name
+            if "has_priority_oncoming" not in prop_name:
+                continue
+            atomic_name = self._extract_in5_priority_oncoming_atom(prop_name)
             if atomic_name is not None:
                 prop_name_to_alphabet[atomic_name] = prop_node.alphabet[-1]
 

@@ -118,19 +118,6 @@ class VPTrajectoryRepairer(
                 print(f"* \t<VPRepairer>: VP repair failed for current SAT model: {exc}")
                 repaired_traj = None
             if repaired_traj is not None:
-                # if check_flag:
-                #     compliance_check_start_time = time.time()
-                #     tv_updated, _ = self.calc_tv_updated(
-                #         repaired_traj.state_list,
-                #         self.tc,
-                #     )
-                #     self.runtime_breakdown["compliance_check"] += time.time() - compliance_check_start_time
-                #     if tv_updated != math.inf:
-                #         print("* \t<VPRepairer>: repaired trajectory still violates the rule")
-                #         self.sat_solver.update_formula()
-                #         nr += 1
-                #         continue
-
                 core_total_time = sum(self.runtime_breakdown.values())
                 print(f"----- Computation Time: {time.time() - start_time:.3f}s -----")
                 print(f"*****  Successfully Repaired in {self.nr_iter} iteration(s)! •ᴗ•  *****")
