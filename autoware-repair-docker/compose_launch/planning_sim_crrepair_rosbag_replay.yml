@@ -1,0 +1,50 @@
+version: '3.6'
+services:
+  planning:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/planning:humble-${architecture}-${planning_repair_autoware}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - ${map_path}:/home/tum/map
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+      - "../../:/crrepair/commonroad-repairer"
+      - "${dfg_car_path}:/autoware/src/universe/autoware.universe/planning/tum_commonroad_planning/dfg-car"
+      - "${gurobi_WLS_license_path}:/opt/gurobi/gurobi.lic"
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: ros2 bag play /crrepair/commonroad-repairer/output/rosbag/2024-12-01_18-13-01_46 --clock
+    depends_on:
+      rviz:
+        condition: service_healthy
+  rviz:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/rviz:humble-${architecture}-${rviz}
+    volumes:
+      - /dev/shm:/dev/shm
+      - $XAUTHORITY:/root/.Xauthority   # provide authority information to X server
+      - /tmp/.X11-unix:/tmp/.X11-unix   # mount the X11 socket
+      - "./config/dds/:/dev_ws/config/dds/"
+      - "../rviz/autoware.rviz:/autoware/install/autoware_launch/share/autoware_launch/rviz/autoware.rviz"
+    network_mode: "host"
+    ipc: host
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - DISPLAY=$DISPLAY
+      - XAUTHORITY=/run/user/1000/gdm/Xauthority
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - TF_BUFFER_LENGTH=30
+      - TF_MESSAGE_FILTER_QUEUE_SIZE=100
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    runtime: nvidia
+    privileged: true
+    user: tum
+    command: ros2 launch tum_tier4_rviz_launch tier4_rviz_component.launch.xml run_tf2_frame_broadcaster:=false use_sim_time:=${use_sim_time} run_api:=false vehicle_model:=edgar_vehicle sensor_model:=edgar_sensor_kit message_filter_queue_size:=100
+    healthcheck:
+      test: ["CMD-SHELL", "sleep 1"]
+      interval: 1s
+      timeout: 5s
+      retries: 2

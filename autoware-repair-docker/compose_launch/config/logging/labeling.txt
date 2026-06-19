@@ -1,0 +1,14 @@
+/sensing/lidar/concatenated/pointcloud
+/sensing/vehicle_velocity_converter/twist_with_covariance
+/sensing/gnss/fixed
+/sensing/gnss/pose
+/sensing/gnss/pose_with_covariance
+/sensing/camera/frontcenter/camera_info
+/sensing/camera/frontcenter/image_raw
+/vehicle/sensor/imu1
+/sensing/camera/frontcenter/camera_info
+/sensing/camera/frontcenter/image_raw
+/sensing/camera/rearcenter/camera_info
+/sensing/camera/rearcenter/image_raw
+/tf
+/tf_static

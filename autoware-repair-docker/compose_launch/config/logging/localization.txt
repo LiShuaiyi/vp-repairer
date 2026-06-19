@@ -1,0 +1,10 @@
+/localization/pose_estimator/initial_pose_with_covariance
+/localization/pose_estimator/pose_with_covariance
+/localization/pose_twist_fusion_filter/biased_pose_with_covariance
+/localization/pose_twist_fusion_filter/pose
+/localization/pose_twist_fusion_filter/twist_with_covariance
+/localization/pose_with_covariance
+/localization/twist_estimator/twist_with_covariance
+/localization/twist_estimator/twist_with_covariance_raw
+/localization/acceleration
+/localization/kinematic_state

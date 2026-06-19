@@ -1,0 +1,107 @@
+# docker login gitlab.lrz.de:5005 (login required before pulling the containers)
+version: '2.4'
+services:
+
+## Vehicle
+  state_pub:
+    image: gitlab.lrz.de:5005/av2.0/edgar/state_pub:${state_pub}
+    network_mode: "host"
+    volumes:
+      - "../config/edgar/edgar_state_publisher/edgar.description.states.urdf:/dev_ws/install/edgar_state_publisher/share/edgar_state_publisher/urdf/edgar.description.states.urdf"
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: bash -c "ros2 launch edgar_state_publisher states.launch.py"
+
+## Sensor drivers
+  lidar_ouster:
+    image: gitlab.lrz.de:5005/av2.0/edgar/lidar_ouster:${lidar_ouster}
+    network_mode: "host"
+    volumes:
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    cpuset: "15"
+    command: bash -c "ros2 launch ros2_ouster ouster_launch.py"
+
+  lidar_innovusion:
+    image: gitlab.lrz.de:5005/av2.0/edgar/lidar_innovusion:${lidar_innovusion}
+    network_mode: "host"
+    volumes:
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    cpuset: "15"
+    command: bash -c "ros2 launch innovusion falcon_launch.py"
+
+  camera_basler:
+    image: gitlab.lrz.de:5005/av2.0/edgar/camera_basler:${camera_basler}
+    network_mode: "host"
+    volumes:
+      - "../config/edgar/camera_basler/config/basler.yaml:/dev_ws/install/pylon_ros2_camera_wrapper/share/pylon_ros2_camera_wrapper/config/basler.yaml"
+      - "../config/edgar/camera_basler/calibration/:/dev_ws/install/pylon_ros2_camera_wrapper/share/pylon_ros2_camera_wrapper/calibration/"
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command:
+    - bash
+    - -c
+    - >
+       if [ -z "$cameras" ];
+       then ros2 launch pylon_ros2_camera_wrapper cameras.launch.py;
+       else ros2 launch pylon_ros2_camera_wrapper cameras.launch.py camera_names:="$cameras";
+       fi
+
+  gps_novatel:
+    image: gitlab.lrz.de:5005/av2.0/edgar/gps_novatel:${gps_novatel}
+    network_mode: "host"
+    volumes:
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    cpuset: "15"
+    command: bash -c "ros2 launch novatel_oem7_driver novatel_launch.py"
+
+  edgar_can_decoder:
+    image: gitlab.lrz.de:5005/av2.0/edgar/edgar_can_decoder:${edgar_can_decoder}
+    network_mode: "host"
+    volumes:
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: bash -c "ros2 launch can2ros_decoder edgar_can2ros.launch.py"
+
+  edgar_actuator_interface:
+    image: gitlab.lrz.de:5005/av2.0/edgar/edgar_actuator_interface:${edgar_actuator_interface}
+    network_mode: "host"
+    volumes:
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: bash -c "ros2 launch edgar_interfaces_cpp edgar_interfaces.launch.py" # customer_can_interface:=vcan0 vehicle_can_interface:=vcan1
+
+## EDGAR_AW_Bridge
+  edgar_aw_bridge:
+    image: gitlab.lrz.de:5005/av2.0/edgar/edgar_aw_bridge:${edgar_aw_bridge}
+    network_mode: "host"
+    volumes:
+      - "/dev/shm:/dev/shm"
+      - "../config/dds/:/dev_ws/config/dds/"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: bash -c "ros2 launch edgar_aw_bridge edgar_aw_bridge_launch.xml bridge_can:=true bridge_novatel_imu:=true"

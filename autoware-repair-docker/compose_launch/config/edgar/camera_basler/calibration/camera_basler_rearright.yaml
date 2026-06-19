@@ -1,0 +1,26 @@
+image_width: 960
+image_height: 600
+camera_name: rr
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [810.24246,   0.     , 948.48251,
+           0.     , 809.68175, 612.08242,
+           0.     ,   0.     ,   1.     ]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.120239, 0.033371, -0.000730, -0.000212, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [733.0332 ,   0.     , 948.58125,   0.     ,
+           0.     , 758.81409, 611.74639,   0.     ,
+           0.     ,   0.     ,   1.     ,   0.     ]

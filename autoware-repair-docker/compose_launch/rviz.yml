@@ -1,0 +1,25 @@
+version: '2.4'
+services:
+  rviz:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/rviz:humble-${architecture}-${rviz}
+    volumes:
+      - /dev/shm:/dev/shm
+      - $XAUTHORITY:/root/.Xauthority   # provide authority information to X server
+      - /tmp/.X11-unix:/tmp/.X11-unix   # mount the X11 socket
+      - "./config/dds/:/dev_ws/config/dds/"
+      - "../rviz/autoware.rviz:/autoware/install/autoware_launch/share/autoware_launch/rviz/autoware.rviz"
+    network_mode: "host"
+    ipc: host
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - DISPLAY=$DISPLAY
+      - XAUTHORITY=/run/user/1000/gdm/Xauthority
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    runtime: nvidia
+    privileged: true
+    user: tum
+    command: ros2 launch tum_tier4_rviz_launch tier4_rviz_component.launch.xml run_tf2_frame_broadcaster:=false use_sim_time:=${use_sim_time} run_api:=false vehicle_model:=edgar_vehicle sensor_model:=edgar_sensor_kit

@@ -1,0 +1,72 @@
+version: '2.4'
+services:  
+# Logging
+  logging-can:
+    image: gitlab.lrz.de:5005/av2.0/edgar/base:${base_image}
+    network_mode: "host"
+    user: "tum"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    volumes:
+      - ../../config/logging:/dev_ws/config/logging
+      - "/media/edgar/QT:/data"
+      - "/dev/shm:/dev/shm"
+      - "../../config/dds/:/dev_ws/config/dds/"
+    command: bash -c "cd /data && ros2 bag record -o /data/rosbag2_$$(date +%Y_%m_%d-%H-%M)/$$(date +%Y_%m_%d-%H-%M)_can `cat /dev_ws/config/logging/can.txt` -s mcap -b 5000000000"
+
+  logging-localization:
+    image: gitlab.lrz.de:5005/av2.0/edgar/base:${base_image}
+    network_mode: "host"
+    user: "tum"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    volumes:
+      - ../../config/logging:/dev_ws/config/logging
+      - "/media/edgar/QT:/data"
+      - "/dev/shm:/dev/shm"
+      - "../../config/dds/:/dev_ws/config/dds/"
+    command: bash -c "cd /data && ros2 bag record -o /data/rosbag2_$$(date +%Y_%m_%d-%H-%M)/$$(date +%Y_%m_%d-%H-%M)_localization `cat /dev_ws/config/logging/localization.txt` -s mcap -b 5000000000"
+
+  logging-perception-prediction:
+    image: gitlab.lrz.de:5005/av2.0/edgar/base:${base_image}
+    network_mode: "host"
+    user: "tum"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    volumes:
+      - ../../config/logging:/dev_ws/config/logging
+      - "/media/edgar/QT:/data"
+      - "/dev/shm:/dev/shm"
+      - "../../config/dds/:/dev_ws/config/dds/"
+    command: bash -c "cd /data && ros2 bag record -o /data/rosbag2_$$(date +%Y_%m_%d-%H-%M)/$$(date +%Y_%m_%d-%H-%M)_perception `cat /dev_ws/config/logging/perception.txt` -s mcap -b 5000000000"
+
+  logging-planning-control:
+    image: gitlab.lrz.de:5005/av2.0/edgar/base:${base_image}
+    network_mode: "host"
+    user: "tum"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    volumes:
+      - ../../config/logging:/dev_ws/config/logging
+      - "/media/edgar/QT:/data"
+      - "/dev/shm:/dev/shm"
+      - "../../config/dds/:/dev_ws/config/dds/"
+    command: bash -c "cd /data && ros2 bag record -o /data/rosbag2_$$(date +%Y_%m_%d-%H-%M)/$$(date +%Y_%m_%d-%H-%M)_planning `cat /dev_ws/config/logging/planning.txt` -s mcap -b 5000000000"
+
+  logging-sensing:
+    image: gitlab.lrz.de:5005/av2.0/edgar/base:${base_image}
+    network_mode: "host"
+    user: "tum"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    volumes:
+      - ../../config/logging:/dev_ws/config/logging
+      - "/media/edgar/QT:/data"
+      - "/dev/shm:/dev/shm"
+      - "../../config/dds/:/dev_ws/config/dds/"
+    command: bash -c "cd /data && ros2 bag record -o /data/rosbag2_$$(date +%Y_%m_%d-%H-%M)/$$(date +%Y_%m_%d-%H-%M)_sensing `cat /dev_ws/config/logging/sensing.txt` -s mcap -b 5000000000"

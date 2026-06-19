@@ -1,0 +1,10 @@
+/edgar/sensor/camera/basler/frontcenter/image_raw
+/edgar/sensor/camera/basler/frontright/image_raw
+/edgar/sensor/camera/basler/frontleft/image_raw
+/edgar/sensor/camera/basler/rearcenter/image_raw
+/edgar/sensor/camera/basler/rearright/image_raw
+/edgar/sensor/camera/basler/rearleft/image_raw
+/edgar/can/gateway_states
+/edgar/can/steering_vw
+/edgar/can/powertrain1
+/edgar/can/motion_vw

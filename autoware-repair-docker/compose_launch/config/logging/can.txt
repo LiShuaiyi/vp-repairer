@@ -1,0 +1,7 @@
+/edgar/can/gps_vw
+/edgar/can/heading_vw
+/edgar/can/steering_vw
+/edgar/can/wheelspeed_vw
+/edgar/can/gateway_states
+/edgar/can/powertrain1
+/edgar/can/motion_vw

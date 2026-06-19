@@ -1,0 +1,9 @@
+
+name: cr-py38
+
+channels:
+  - defaults
+  
+dependencies:
+  - python=3.8
+  - pip=20.2.4

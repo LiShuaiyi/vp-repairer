@@ -1,0 +1,9 @@
+/perception/object_recognition/detection/centerpoint/objects
+/perception/object_recognition/detection/centerpoint/validation/objects
+/perception/object_recognition/detection/clustering/objects
+/perception/object_recognition/detection/objects
+/perception/object_recognition/objects
+/perception/traffic_light_recognition/traffic_signals
+/perception/object_recognition/tracking/objects
+/perception/object_recognition/prediction/objects
+/perception/object_recognition/prediction/maneuver

@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Essential parameters -->
+  <arg name="map_path" default="/autoware_map" description="point cloud and lanelet2 map directory path"/>
+  <arg name="vehicle_model" default="edgar_vehicle" description="vehicle model name"/>
+  <arg name="sensor_model" default="edgar_sensor_kit" description="sensor model name"/>
+  <arg name="pointcloud_container_name" default="pointcloud_container"/>
+  <arg name="data_path" default="$(env HOME)/autoware_data" description="packages data and artifacts directory path"/>
+
+  <!-- launch module preset -->
+  <arg name="planning_module_preset" default="default" description="planning module preset"/>
+
+  <!-- Global parameters -->
+  <arg name="use_sim_time" default="false" description="use_sim_time"/>
+  <!-- Vehicle -->
+  <arg name="vehicle_id" default="$(env VEHICLE_ID default)" description="vehicle specific ID"/>
+  <arg name="launch_vehicle_interface" default="true" description="launch vehicle interface"/>
+  <!-- Control -->
+  <arg name="check_external_emergency_heartbeat" default="false"/>
+  <!-- Map -->
+  <arg name="lanelet2_map_file" default="lanelet2_map.osm" description="lanelet2 map file name"/>
+  <arg name="pointcloud_map_file" default="pointcloud_map.pcd" description="pointcloud map file name"/>
+  <!-- System -->
+  <arg name="system_run_mode" default="online" description="run mode in system"/>
+  <arg name="launch_system_monitor" default="true" description="launch system monitor"/>
+  <arg name="launch_dummy_diag_publisher" default="false" description="launch dummy diag publisher"/>
+  <arg name="system_error_monitor_param_path" default="$(find-pkg-share autoware_launch)/config/system/system_error_monitor/system_error_monitor.param.yaml"/>
+  <!-- Tools -->
+  <arg name="rviz" default="true" description="launch rviz"/>
+  <arg name="rviz_config" default="$(find-pkg-share autoware_launch)/rviz/autoware.rviz" description="rviz config"/>
+  <arg name="rviz_respawn" default="true"/>
+  <!-- Perception -->
+  <arg name="perception_mode" default="lidar" description="select perception mode. camera_lidar_radar_fusion, camera_lidar_fusion, lidar_radar_fusion, lidar, radar"/>
+  <arg name="traffic_light_recognition/enable_fine_detection" default="true" description="enable traffic light fine detection"/>
+  <!-- Auto mode setting-->
+  <arg name="enable_all_modules_auto_mode" default="false" description="enable all module's auto mode"/>
+  <arg name="is_simulation" default="false" description="Autoware's behavior will change depending on whether this is a simulation or not."/>
+
+  <!-- Global parameters -->
+  <group scoped="false">
+    <include file="$(find-pkg-share global_parameter_loader)/launch/global_params.launch.py">
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+    </include>
+  </group>
+
+    <!-- Pointcloud container -->
+  <include file="$(find-pkg-share autoware_launch)/launch/pointcloud_container.launch.py">
+    <arg name="use_multithread" value="true"/>
+    <arg name="container_name" value="$(var pointcloud_container_name)"/>
+  </include>
+
+  <let name="loc_config_path" value="$(find-pkg-share autoware_launch)/config/localization"/>
+  <arg name="pose_source" default="ndt" description="select pose_estimator: ndt, yabloc, eagleye"/>
+  <arg name="twist_source" default="gyro_odom" description="select twist_estimator. gyro_odom, eagleye"/>
+  <arg name="input_pointcloud" default="/sensing/lidar/concatenated/pointcloud" description="The topic will be used in the localization util module"/>
+  <arg name="localization_pointcloud_container_name" default="/pointcloud_container" description="The target container to which pointcloud preprocessing nodes in localization be attached"/>
+  <arg name="initial_pose" default="[]" description="initial pose (x, y, z, quat_x, quat_y, quat_z, quat_w)"/>
+
+  <group>
+    <include file="$(find-pkg-share tier4_localization_launch)/launch/localization.launch.xml">
+      <arg name="pose_source" value="$(var pose_source)"/>
+      <arg name="twist_source" value="$(var twist_source)"/>
+      <arg name="system_run_mode" value="$(var system_run_mode)"/>
+      <arg name="input_pointcloud" value="$(var input_pointcloud)"/>
+      <arg name="localization_pointcloud_container_name" value="$(var localization_pointcloud_container_name)"/>
+      <arg name="initial_pose" value="$(var initial_pose)"/>
+
+      <!-- parameter paths for common -->
+      <arg name="localization_error_monitor_param_path" value="$(var loc_config_path)/localization_error_monitor.param.yaml"/>
+      <arg name="ekf_localizer_param_path" value="$(var loc_config_path)/ekf_localizer.param.yaml"/>
+      <arg name="pose_initializer_param_path" value="$(var loc_config_path)/pose_initializer.param.yaml"/>
+      <arg name="twist2accel_param_path" value="$(var loc_config_path)/twist2accel.param.yaml"/>
+
+      <!-- parameter paths for ndt -->
+      <arg name="ndt_scan_matcher/ndt_scan_matcher_param_path" value="$(var loc_config_path)/ndt_scan_matcher/ndt_scan_matcher.param.yaml"/>
+      <arg
+        name="ndt_scan_matcher/pointcloud_preprocessor/crop_box_filter_measurement_range_param_path"
+        value="$(var loc_config_path)/ndt_scan_matcher/pointcloud_preprocessor/crop_box_filter_measurement_range.param.yaml"
+      />
+      <arg
+        name="ndt_scan_matcher/pointcloud_preprocessor/voxel_grid_downsample_filter_param_path"
+        value="$(var loc_config_path)/ndt_scan_matcher/pointcloud_preprocessor/voxel_grid_filter.param.yaml"
+      />
+      <arg
+        name="ndt_scan_matcher/pointcloud_preprocessor/random_downsample_filter_param_path"
+        value="$(var loc_config_path)/ndt_scan_matcher/pointcloud_preprocessor/random_downsample_filter.param.yaml"
+      />
+
+      <!-- parameter paths for yabloc -->
+      <arg name="camera_pose_initializer_param_path" value="$(var loc_config_path)/yabloc/camera_pose_initializer.param.yaml"/>
+      <arg name="camera_particle_corrector_param_path" value="$(var loc_config_path)/yabloc/camera_particle_corrector.param.yaml"/>
+      <arg name="gnss_particle_corrector_param_path" value="$(var loc_config_path)/yabloc/gnss_particle_corrector.param.yaml"/>
+      <arg name="predictor_param_path" value="$(var loc_config_path)/yabloc/predictor.param.yaml"/>
+      <arg name="graph_segment_param_path" value="$(var loc_config_path)/yabloc/graph_segment.param.yaml"/>
+      <arg name="segment_filter_param_path" value="$(var loc_config_path)/yabloc/segment_filter.param.yaml"/>
+      <arg name="undistort_param_path" value="$(var loc_config_path)/yabloc/undistort.param.yaml"/>
+      <arg name="ground_server_param_path" value="$(var loc_config_path)/yabloc/ground_server.param.yaml"/>
+      <arg name="ll2_decomposer_param_path" value="$(var loc_config_path)/yabloc/ll2_decomposer.param.yaml"/>
+
+      <!-- parameter paths for eagleye -->
+      <arg name="eagleye_param_path" value="$(find-pkg-share autoware_launch)/config/localization/eagleye_config.param.yaml"/>
+
+      <!-- parameter path for ar_tag_based_localizer -->
+      <arg name="ar_tag_based_localizer_param_path" value="$(var loc_config_path)/ar_tag_based_localizer.param.yaml"/>
+    </include>
+  </group>
+</launch>

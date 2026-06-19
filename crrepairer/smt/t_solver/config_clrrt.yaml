@@ -1,0 +1,25 @@
+
+scenario_settings:
+    scenario_path: &scenario_path ../../../scenarios/
+    scenario_name: &scenario_name DEU_LocationDLower-8_154_T-1
+    number: 1
+    plot_limits: [50, 100, -2, 5.5]
+
+general_settings:
+    flag_make_mp4: False
+    # (predicted) time length of trajectory [s]
+    T: 4.0
+
+vehicles:
+  # id of vehicle. 1: FORD_ESCORT, 2: BMW_320i, 3: VW_VANAGON
+  veh_type_id: 2
+
+reference_path_settings:
+  flag_draw: False
+  cost_function: DefaultCostFunctionRepair
+  # margin of collision checker
+  margin: 0.0
+  d_min: -1
+  d_max: 4
+
+

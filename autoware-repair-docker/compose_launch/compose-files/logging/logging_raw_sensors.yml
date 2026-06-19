@@ -1,0 +1,16 @@
+version: '2.4'
+services:  
+# Logging
+  logging-raw:
+    image: gitlab.lrz.de:5005/av2.0/edgar/base:${base_image}
+    network_mode: "host"
+    user: "tum"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    volumes:
+      - ../../config/logging:/dev_ws/config/logging
+      - "/media/edgar/QT:/data"
+      - "/dev/shm:/dev/shm"
+      - "../../config/dds/:/dev_ws/config/dds/"
+    command: bash -c "cd /data && ros2 bag record `cat /dev_ws/config/logging/sensors.txt` -s mcap -b 5000000000"

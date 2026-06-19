@@ -1,0 +1,202 @@
+<?xml version="1.0"?>
+<robot name="EDGAR">
+
+  <!--Base frame-->
+  <link name="axle_edgar_rearcenterground">
+  </link>
+
+  <!--Links-->
+  <link name="base_link"/>
+  <link name="rack_edgar_rearcenter"/>
+  <link name="axle_edgar_rearcenter"/>
+
+  <link name="antenna_novatel_left"/>
+  <link name="antenna_novatel_right"/>
+
+  <link name="imu_novatel_center"/>
+  <link name="gnss_novatel_center"/>
+
+  <link name="imu_ouster_frontleft"/>
+  <link name="imu_ouster_frontright"/>
+
+  <link name="lidar_ouster_frontleft"/>
+  <link name="lidar_ouster_frontright"/>
+  <link name="lidar_innovusion_frontcenter"/>
+  <link name="lidar_innovusion_rearcenter"/>
+
+  <link name="camera_basler_frontleft"/>
+  <link name="camera_basler_frontright"/>
+  <link name="camera_basler_frontcenter"/>
+  <link name="camera_basler_rearleft"/>
+  <link name="camera_basler_rearright"/>
+  <link name="camera_basler_rearcenter"/>
+
+  <link name="camera_basler_frontcenterleft"/>
+  <link name="camera_basler_frontcenterright"/>
+
+  <link name="antenna_panorama_left"/>
+  <link name="antenna_panorama_right"/>
+  <link name="antenna_panorama_center"/>
+
+
+  <!--Base link joint-->
+  <joint name="axle_edgar_rearcenterground_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="axle_edgar_rearcenterground"/>
+    <origin xyz="0.0 0.0 0.0"/>
+  </joint>
+
+  <!--Rack joint-->
+  <joint name="rack_edgar_rearcenter_joint" type="fixed">
+    <parent link="axle_edgar_rearcenterground"/>
+    <child link="rack_edgar_rearcenter"/>
+    <origin xyz="-0.502 0.0 1.97" />
+  </joint>
+
+  <!--Reference joint-->
+  <joint name="axle_edgar_rearcenter_joint" type="fixed">
+    <parent link="axle_edgar_rearcenterground"/>
+    <child link="axle_edgar_rearcenter"/>
+    <origin xyz="0.0 0.0 0.338" />
+  </joint>
+
+
+  <!--GNSS antenna joints-->
+  <joint name="antenna_novatel_left_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="antenna_novatel_left"/>
+    <origin xyz="1.475 0.545 1.714"/>
+  </joint>
+
+  <joint name="antenna_novatel_right_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="antenna_novatel_right"/>
+    <origin xyz="1.475 -0.545 1.714"/>
+  </joint>
+
+  <!--GNSS joint-->
+  <joint name="gnss_novatel_center_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="gnss_novatel_center"/>
+    <origin xyz="0.321 -0.007 0.208" rpy="0.0 0.0 1.5708"/>
+  </joint>
+
+
+  <!--IMU joint-->
+  <joint name="imu_novatel_center_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="imu_novatel_center"/>
+    <origin xyz="0.321 -0.007 0.208" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <joint name="imu_ouster_frontleft_joint" type="fixed">
+    <parent link="lidar_ouster_frontleft"/>
+    <child link="imu_ouster_frontleft"/>
+    <origin xyz="-0.006 0.012 -0.029" rpy="0.0 0.0 3.142"/>
+  </joint>
+
+  <joint name="imu_ouster_frontright_joint" type="fixed">
+    <parent link="lidar_ouster_frontright"/>
+    <child link="imu_ouster_frontright"/>
+    <origin xyz="-0.006 0.012 -0.029" rpy="0.0 0.0 3.142"/>
+  </joint>
+
+
+  <!--LiDAR joints-->
+  <joint name="lidar_ouster_frontleft_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="lidar_ouster_frontleft"/>
+    <origin xyz="2.312053 0.581505 1.610277" rpy="-0.3461248 0.0165291 -0.0162606"/>
+  </joint>
+
+  <joint name="lidar_ouster_frontright_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="lidar_ouster_frontright"/>
+    <origin xyz="2.311906 -0.664888 1.612698" rpy="0.3551248 0.0165291 0.0061281"/>
+  </joint>
+
+  <joint name="lidar_innovusion_frontcenter_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="lidar_innovusion_frontcenter"/>
+    <origin xyz="2.259 0.0 1.600" rpy="3.14159265 -1.369065 0.0"/>
+  </joint>
+
+  <joint name="lidar_innovusion_rearcenter_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="lidar_innovusion_rearcenter"/>
+    <origin xyz="-0.3987347 0.002735673 1.760425312" rpy="0.0000291 -1.7552732 0"/>
+  </joint>
+
+
+  <!--Camera SR joints-->
+  <joint name="camera_basler_frontleft_joint" type="fixed">
+    <parent link="lidar_ouster_frontleft"/>
+    <child link="camera_basler_frontleft"/>
+    <origin xyz="-0.04426 0.03683 0.11894" rpy="-1.49130077 0.2840286 -0.75821117"/>
+  </joint>
+
+  <joint name="camera_basler_frontright_joint" type="fixed">
+    <parent link="lidar_ouster_frontright"/>
+    <child link="camera_basler_frontright"/>
+    <origin xyz="0.01477 0.02652 0.12120" rpy="-1.50206631 -0.32925375 -2.45009512"/>
+  </joint>
+  
+  <joint name="camera_basler_frontcenter_joint" type="fixed">
+    <parent link="lidar_innovusion_frontcenter"/>
+    <child link="camera_basler_frontcenter"/>
+    <origin xyz="0.17217 0.00830 0.10242" rpy="-0.01306798 -0.01235135 1.56602337"/>
+  </joint>
+
+  <joint name="camera_basler_rearleft_joint" type="fixed">
+    <parent link="lidar_innovusion_rearcenter"/>
+    <child link="camera_basler_rearleft"/>
+    <origin xyz="-0.02216 0.85016 -0.03938" rpy="0.24728924 1.05107428 1.93298793"/>
+  </joint>
+
+  <joint name="camera_basler_rearright_joint" type="fixed">
+    <parent link="lidar_innovusion_rearcenter"/>
+    <child link="camera_basler_rearright"/>
+    <origin xyz="-0.01137 -0.65154 -0.00656" rpy="-0.09417622 -0.93148048 1.40893048"/>
+  </joint>
+
+  <joint name="camera_basler_rearcenter_joint" type="fixed">
+    <parent link="lidar_innovusion_rearcenter"/>
+    <child link="camera_basler_rearcenter"/>
+    <origin xyz="0.08173 -0.08121 0.27614" rpy="0.08378889 0.00332415 1.55765627"/>
+  </joint>
+
+
+  <!--Camera LR joints-->
+  <joint name="camera_basler_frontcenterleft_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="camera_basler_frontcenterleft"/>
+    <origin xyz="2.163 0.385 1.705" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <joint name="camera_basler_frontcenterright_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="camera_basler_frontcenterright"/>
+    <origin xyz="2.163 -0.385 1.705" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+
+  <!--MIMO joints-->
+  <joint name="antenna_panorama_left_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="antenna_panorama_left"/>
+    <origin xyz="0.23 0.547 1.737" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <joint name="antenna_panorama_right_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="antenna_panorama_right"/>
+    <origin xyz="0.231 -0.548 1.737" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <joint name="antenna_panorama_center_joint" type="fixed">
+    <parent link="axle_edgar_rearcenter"/>
+    <child link="antenna_panorama_center"/>
+    <origin xyz="0.851 0.0 1.729" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+</robot>

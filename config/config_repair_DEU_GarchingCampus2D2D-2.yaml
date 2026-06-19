@@ -1,0 +1,17 @@
+repair:
+  planner: 2                      # miqp
+  scenario_type: "intersection"
+  intersection_type: "hand_draft"
+  rules: [ "R_IN1" ]
+  ego_id: 1981
+  t_0: 0             # initial time step
+  N_r: 51            # number of time steps
+  constraint_mode: 1
+  sat_solver_mode: "dpll"
+  use_mpr: false
+debug:
+  show_plots: true
+# miqp_planner:
+#  slack_long: False
+#  weight_long: [100, 10.4, 1, 2, 0.1, 1000000] # s, v, a, j, u, slack
+#  weight_lat: [0.05, 15.1, 40.0, 20.0, 1.0, 0.1] # d, theta, kappa, kappa_dot, u, robust

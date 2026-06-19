@@ -1,0 +1,144 @@
+version: '3.6'
+services:
+  planning:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/planning:humble-${architecture}-${planning}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - ${map_path}:/home/tum/map
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    # command: ros2 launch tum_tier4_planning_launch tier4_planning_component.launch.xml use_pointcloud_container:=false
+    command: ros2 launch tum_planning_launch tum_planning_component.launch.xml use_pointcloud_container:=false map_path:=/home/tum/map vehicle_model:=${vehicle_model} use_sim_time:=${use_sim_time}
+    healthcheck:
+      test: ["CMD-SHELL", "sleep 3"]
+      interval: 1s
+      timeout: 5s
+      retries: 2
+  control:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/control:humble-${architecture}-${control}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: ros2 launch tum_tier4_control_launch tier4_control_component.launch.xml vehicle_model:=edgar_vehicle sensor_model:=edgar_sensor_kit
+    depends_on:
+      planning:
+        condition: service_healthy
+  system:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/system:humble-${architecture}-${system}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: ros2 launch tum_tier4_system_launch tier4_system_component.launch.xml system_run_mode:=planning_simulation
+    depends_on:
+      planning:
+        condition: service_healthy
+  vehicle:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/vehicle:humble-${architecture}-${vehicle}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: ros2 launch tum_tier4_vehicle_launch tier4_vehicle_component.launch.xml launch_vehicle:=true
+    depends_on:
+      planning:
+        condition: service_healthy
+  map:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/map:humble-${architecture}-${map}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - ${map_path}:/autoware_map
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: ros2 launch tum_tier4_map_launch tier4_map_component.launch.xml map_path:=/autoware_map
+    depends_on:
+      planning:
+        condition: service_healthy
+  simulator:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/simulator:cuda-humble-${architecture}-${simulator}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+      - ${traffic_light_classifier_onnx_data_path}:/autoware/install/traffic_light_classifier/share/traffic_light_classifier/data
+      - ${traffic_light_fine_detector_onnx_data_path}:/autoware/install/traffic_light_fine_detector/share/traffic_light_fine_detector/data/
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    runtime: nvidia
+    command: ros2 launch tum_tier4_simulator_launch tier4_simulator_component.launch.xml 
+    depends_on:
+      planning:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  prediction:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/prediction:cuda-humble-${architecture}-${prediction}
+    volumes:
+      - /dev/shm:/dev/shm
+      - "./config/dds/:/dev_ws/config/dds/"
+      - ${model_path}:/autoware/autoware_data
+      - ${map_path}:/autoware_map
+      - "../autoware_launch/autoware_launch/config:/autoware/install/autoware_launch/share/autoware_launch/config"
+    network_mode: "host"
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    command: ros2 launch tum_prediction_component_launch prediction_component.launch.xml use_sim_time:=${use_sim_time} use_vector_map:=true
+    depends_on:
+      planning:
+        condition: service_healthy
+  rviz:
+    image: gitlab.lrz.de:5005/av2.0/av_software/autoware/microservice/rviz:humble-${architecture}-${rviz}
+    volumes:
+      - /dev/shm:/dev/shm
+      - $XAUTHORITY:/root/.Xauthority   # provide authority information to X server
+      - /tmp/.X11-unix:/tmp/.X11-unix   # mount the X11 socket
+      - "./config/dds/:/dev_ws/config/dds/"
+    network_mode: "host"
+    ipc: host
+    environment:
+      - ROS_DOMAIN_ID=${ROS_Domain_ID}
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - DISPLAY=$DISPLAY
+      - XAUTHORITY=/run/user/1000/gdm/Xauthority
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - CYCLONEDDS_URI=file:///dev_ws/config/dds/${dds}.xml
+    runtime: nvidia
+    privileged: true
+    user: tum
+    command: ros2 launch tum_tier4_rviz_launch tier4_rviz_component.launch.xml run_tf2_frame_broadcaster:=false use_sim_time:=${use_sim_time} run_api:=false vehicle_model:=edgar_vehicle sensor_model:=edgar_sensor_kit
+    depends_on:
+      planning:
+        condition: service_healthy

@@ -1,0 +1,26 @@
+image_width: 1920
+image_height: 1200
+camera_name: fcr
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [2769.34197,    0.     ,  968.91057,
+            0.     , 2767.58992,  591.47674,
+            0.     ,    0.     ,    1.     ]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.227715, 0.293838, -0.000653, 0.000682, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [2701.25195,    0.     ,  969.51784,    0.     ,
+            0.     , 2736.87109,  590.55092,    0.     ,
+            0.     ,    0.     ,    1.     ,    0.     ]

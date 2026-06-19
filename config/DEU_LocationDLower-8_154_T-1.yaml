@@ -1,0 +1,6 @@
+miqp_planner:
+  slack_long: False
+  weight_long: [5.0, 1.2, 1., 10, 10.1, 1000000]
+debug:
+  show_plots: true
+  plot_limits: [158, 390, -32, -18.4]
