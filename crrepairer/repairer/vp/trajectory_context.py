@@ -118,8 +118,15 @@ class VPTrajectoryContext:
         ref_path = np.asarray(ref_path, dtype=float)
 
         params = CLCSParams()
-        params.processing_option = ProcessingOption.SPLINE_SMOOTHING
-        params.resampling.option = ResamplingOption.ADAPTIVE
+        # Curvature is evaluated on this CLCS for the lateral-acceleration
+        # speed bound.  The time-sampled trajectory can contain micrometre-long
+        # segments while the vehicle is nearly stationary; computing discrete
+        # curvature on those raw segments creates numerical spikes of several
+        # thousand 1/m.  Uniform spatial resampling preserves the fixed path
+        # geometry while keeping curvature estimation well-conditioned.
+        params.processing_option = ProcessingOption.RESAMPLE
+        params.resampling.option = ResamplingOption.FIXED
+        params.resampling.fixed_step = 0.1
 
         start_dir = ref_path[0] - ref_path[1]
         end_dir = ref_path[-1] - ref_path[-2]
@@ -136,7 +143,7 @@ class VPTrajectoryContext:
         trajectory_clcs = CurvilinearCoordinateSystem(
             reference_path=processed_ref_path,
             params=params,
-            preprocess_path=False,
+            preprocess_path=True,
         )
         return trajectory_clcs, ref_path
 

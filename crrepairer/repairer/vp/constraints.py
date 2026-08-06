@@ -518,8 +518,66 @@ class VPConstraintExtraction:
             estimated_v_max.append(v_max[i] * rmin)
             estimated_v_min.append(v_min[i] * rmax)
 
+        curvature_v_max = self._curvature_velocity_limits(
+            trajectory_clcs,
+            estimated_s_min,
+            estimated_s_max,
+            self.config.vehicle.qp_veh_config.a_lat_max,
+        )
+        estimated_v_max = np.minimum(
+            np.asarray(estimated_v_max, dtype=float),
+            curvature_v_max,
+        ).tolist()
+
         return estimated_s_min, estimated_s_max, estimated_v_min, estimated_v_max
 
+    @staticmethod
+    def _curvature_velocity_limits(
+        trajectory_clcs,
+        s_min,
+        s_max,
+        a_lat_max,
+        curvature_epsilon=1e-9,
+    ):
+        """Compute the conservative curvature speed limit for each time step.
+
+        The maximum absolute curvature over each feasible longitudinal interval
+        is used so that ``v <= sqrt(a_lat_max / kappa_max)`` remains linear.
+        """
+        if len(s_min) != len(s_max):
+            raise ValueError(
+                f"s_min and s_max must have equal lengths: {len(s_min)} != {len(s_max)}"
+            )
+        if not np.isfinite(a_lat_max) or a_lat_max <= 0:
+            raise ValueError(f"a_lat_max must be positive and finite, got {a_lat_max!r}")
+
+        path_length = float(trajectory_clcs.length())
+        if not np.isfinite(path_length) or path_length <= 0:
+            raise ValueError(f"Invalid trajectory CLCS length: {path_length!r}")
+        limits = np.full(len(s_min), math.inf, dtype=float)
+        for t, (lower, upper) in enumerate(zip(s_min, s_max)):
+            lower = float(lower)
+            upper = float(upper)
+            if not np.isfinite(lower) or not np.isfinite(upper):
+                lower, upper = 0.0, path_length
+            else:
+                lower, upper = min(lower, upper), max(lower, upper)
+                lower = min(max(lower, 0.0), path_length)
+                upper = min(max(upper, 0.0), path_length)
+
+            curvature_min, curvature_max = trajectory_clcs.curvature_range(
+                lower, upper
+            )
+            if not np.isfinite(curvature_min) or not np.isfinite(curvature_max):
+                raise ValueError(
+                    "Trajectory CLCS returned a non-finite curvature range at "
+                    f"t={t}: ({curvature_min}, {curvature_max})"
+                )
+            max_curvature = max(abs(float(curvature_min)), abs(float(curvature_max)))
+
+            if max_curvature > curvature_epsilon:
+                limits[t] = math.sqrt(float(a_lat_max) / max_curvature)
+        return limits
 
     def _find_conflict_points(
         self,
