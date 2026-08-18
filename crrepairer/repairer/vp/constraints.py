@@ -19,6 +19,10 @@ from crmonitor.common.world import World
 from crrepairer.repairer.vp.temporal import constraint_time_interval
 
 
+class UnsupportedVPCandidateError(RuntimeError):
+    """A SAT assignment that cannot be represented by VP constraints."""
+
+
 class VPConstraintExtraction:
     """Extracts longitudinal position and velocity constraints for VP repair."""
 
@@ -147,7 +151,7 @@ class VPConstraintExtraction:
                 elif "brakes_abruptly" in prop.name:
                     self._constraint_not_break_abruptly(prop)
                 else:
-                    raise RuntimeError(
+                    raise UnsupportedVPCandidateError(
                         "Unsupported RG predicate has no VP constraint: "
                         f"{prop.name} ({prop.alphabet})."
                     )
@@ -253,6 +257,30 @@ class VPConstraintExtraction:
                     trajectory_clcs=trajectory_clcs,
                     wheelbase=wheelbase,
                 )
+                # Failure of one geometric representation does not make the
+                # predicate unsupported.  Try the monitor-aligned geometry
+                # immediately; reject the SAT candidate only if neither
+                # representation can produce a VP interval.
+                if conflict_trajectory_interval is None:
+                    monitor_interval = self._monitor_conflict_interval_fallback(
+                        world=world,
+                        ego_vehicle=ego,
+                        target_vehicle=target,
+                        ref_path=ref_path,
+                        lanelet_clcs=lanelet_clcs,
+                        trajectory_clcs=trajectory_clcs,
+                    )
+                    if monitor_interval is not None:
+                        conflict_trajectory_interval = (
+                            monitor_interval[0],
+                            monitor_interval[1],
+                            "monitor",
+                        )
+
+        self._validate_intersection_candidate_support(
+            temporal_steps=temporal_steps,
+            conflict_trajectory_interval=conflict_trajectory_interval,
+        )
 
         for prop in self._sel_prop:
             prop_debug_recorded = False
@@ -289,9 +317,9 @@ class VPConstraintExtraction:
                             )
                             prop_debug_recorded = True
                     else:
-                        print(
-                            f"* \t<VPRepairer>: Unsupported predicate {prop.name} "
-                            f"for IN1 manual constraint extraction."
+                        raise UnsupportedVPCandidateError(
+                            "IN1 SAT candidate requires a non-stop-line predicate "
+                            f"that VP cannot constrain: {prop.name} ({prop.alphabet})."
                         )
                     continue
 
@@ -300,15 +328,10 @@ class VPConstraintExtraction:
                     if prop_assignment > 0:
                         continue
                     if conflict_trajectory_interval is None:
-                        if not prop_debug_recorded:
-                            self._last_extraction_debug.append(
-                                {
-                                    "proposition": prop.name,
-                                    "kind": "conflict_geometry_unavailable",
-                                }
-                            )
-                            prop_debug_recorded = True
-                        continue
+                        raise UnsupportedVPCandidateError(
+                            "Conflict geometry is unavailable for VP SAT candidate: "
+                            f"{prop.name} ({prop.alphabet})."
+                        )
 
                     before_upper, after_lower, interval_mode = (
                         conflict_trajectory_interval
@@ -394,6 +417,61 @@ class VPConstraintExtraction:
         
         # trajectory_s_min_cap is actually not used in practice
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
+
+    def _monitor_conflict_interval_fallback(self, **kwargs):
+        """Evaluate monitor geometry under its required geometry-mode flag."""
+        previous_geometry_mode = getattr(
+            self, "_use_monitor_conflict_geometry", False
+        )
+        self._use_monitor_conflict_geometry = True
+        try:
+            return self._monitor_conflict_interval_on_trajectory(**kwargs)
+        finally:
+            self._use_monitor_conflict_geometry = previous_geometry_mode
+
+    def _validate_intersection_candidate_support(
+        self,
+        temporal_steps,
+        conflict_trajectory_interval,
+    ):
+        """Reject selected SAT literals that cannot produce a VP constraint.
+
+        Fixed predicates are filtered by SAT hard domains.  This validation is
+        the final guard for genuinely unsupported selected literals, so the LP
+        is never solved with a silently missing constraint.
+        """
+        is_in1 = "R_IN1" in self.config.repair.rules
+        for prop in self._sel_prop:
+            interval = temporal_steps[id(prop)]
+            if interval.count == 0:
+                continue
+            if is_in1 and "stop_line" not in prop.name:
+                self._last_extraction_debug.append(
+                    {
+                        "proposition": prop.name,
+                        "kind": "unsupported_in1_non_stop_line",
+                    }
+                )
+                raise UnsupportedVPCandidateError(
+                    "IN1 SAT candidate requires a non-stop-line predicate "
+                    f"that VP cannot constrain: {prop.name} ({prop.alphabet})."
+                )
+            if (
+                not is_in1
+                and "in_intersection_conflict_area" in prop.name
+                and prop.alphabet.startswith("~")
+                and conflict_trajectory_interval is None
+            ):
+                self._last_extraction_debug.append(
+                    {
+                        "proposition": prop.name,
+                        "kind": "conflict_geometry_unavailable",
+                    }
+                )
+                raise UnsupportedVPCandidateError(
+                    "Conflict geometry is unavailable for VP SAT candidate: "
+                    f"{prop.name} ({prop.alphabet})."
+                )
 
     def _constraint_in_same_lane(
         self,

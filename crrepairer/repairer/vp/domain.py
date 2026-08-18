@@ -95,9 +95,33 @@ class VPPredicateEstimation:
         domain_dict = self._domain_dict_construct_general(
             predicate_values, self.sat_solver._prop_nodes
         )
+        fixed_rg_count = self._fix_uncontrollable_rg_predicates(
+            domain_dict,
+            self.sat_solver._prop_nodes,
+        )
         breakdown["infer_domain_dict"] = time.time() - start
+        breakdown["fixed_rg_predicate_count"] = fixed_rg_count
         self.domain_dict_breakdown = breakdown
         return domain_dict
+
+    def _fix_uncontrollable_rg_predicates(self, domain_dict, prop_nodes):
+        """Hard-fix RG facts that velocity planning cannot change.
+
+        A cut-in event is determined by the other vehicle's lateral motion and
+        is not an action available to the ego-only velocity planner.  Its SAT
+        value must therefore agree with the monitored trajectory instead of
+        being relaxed or sent to constraint extraction.
+        """
+        fixed_count = 0
+        for prop_node in prop_nodes:
+            if "cut_in" not in prop_node.name:
+                continue
+            alphabet = prop_node.alphabet[-1]
+            current_value = int(float(prop_node.ttv_value) > 0.0)
+            domain_dict[alphabet] = {current_value}
+            self._hard_domain_vars.add(alphabet)
+            fixed_count += 1
+        return fixed_count
 
     def _build_domain_dict_for_sat_direct(self):
         """Build hard domains and VP-action literals for directly handled rules.

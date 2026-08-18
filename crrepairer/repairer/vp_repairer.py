@@ -13,7 +13,10 @@ from crrepairer.repairer.base import TrajectoryRepair
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.smt.sat_solver.sat_solver import SATSolver
 from crrepairer.utils.configuration import RepairerConfiguration
-from crrepairer.repairer.vp.constraints import VPConstraintExtraction
+from crrepairer.repairer.vp.constraints import (
+    UnsupportedVPCandidateError,
+    VPConstraintExtraction,
+)
 from crrepairer.repairer.vp.domain import VPPredicateEstimation
 from crrepairer.repairer.vp.optimization import VPOptimization
 from crrepairer.repairer.vp.trajectory_context import VPTrajectoryContext
@@ -143,6 +146,16 @@ class VPTrajectoryRepairer(
             )
             try:
                 repaired_traj = self._repair_with_velocity_planning()
+            except UnsupportedVPCandidateError as exc:
+                print(f"* \t<VPRepairer>: rejecting unsupported SAT model: {exc}")
+                self.candidate_diagnostics.append(
+                    {
+                        "status": "unsupported_candidate",
+                        "selected": [prop.name for prop in self._sel_prop],
+                        "error": str(exc),
+                    }
+                )
+                repaired_traj = None
             except Exception as exc:
                 print(f"* \t<VPRepairer>: VP repair failed for current SAT model: {exc}")
                 if os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG"):
