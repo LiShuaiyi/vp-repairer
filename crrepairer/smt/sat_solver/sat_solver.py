@@ -17,6 +17,8 @@ class SATSolver:
         self._config = config
         self._solver_mode = getattr(config.repair, "sat_solver_mode", "dpll")
         self._domain_dict = {}
+        self._hard_domain_vars = set()
+        self._repair_literals = []
         self._dpll_solver = self._build_solver(rule_monitor.tv_time_step)
         self._dpll_model = None
 
@@ -45,8 +47,15 @@ class SATSolver:
     def domain_dict(self):
         return self._domain_dict
 
-    def set_domain_dict(self, domain_dict):
+    def set_domain_dict(
+        self,
+        domain_dict,
+        hard_domain_vars=None,
+        repair_literals=None,
+    ):
         self._domain_dict = dict(domain_dict) if domain_dict is not None else {}
+        self._hard_domain_vars = set(hard_domain_vars or ())
+        self._repair_literals = list(dict.fromkeys(repair_literals or ()))
 
     def solve(self):
         """
@@ -55,8 +64,16 @@ class SATSolver:
         from Microsoft Research. Here we use *sympy* for its easy-to-use interface
         """
         if self._solver_mode == "domain_dpll":
-            if self._dpll_solver.domains != self._domain_dict:
-                self._dpll_solver.set_domains(self._domain_dict)
+            if (
+                self._dpll_solver.domains != self._domain_dict
+                or self._dpll_solver.hard_domain_vars != self._hard_domain_vars
+                or self._dpll_solver.repair_literals != self._repair_literals
+            ):
+                self._dpll_solver.set_search_guidance(
+                    self._domain_dict,
+                    self._hard_domain_vars,
+                    self._repair_literals,
+                )
             self._dpll_solver.update_cnf(self._formula)
         else:
             self._dpll_solver.update_cnf(self._formula)

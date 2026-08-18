@@ -30,7 +30,11 @@ class VPPredicateEstimation:
         self.domain_dict_time = time.time() - domain_start_time
         self.runtime_breakdown["domain_dict"] = self.domain_dict_time
         self.domain_dict = dict(domain_dict)
-        self.sat_solver.set_domain_dict(domain_dict)
+        self.sat_solver.set_domain_dict(
+            domain_dict,
+            hard_domain_vars=self._hard_domain_vars,
+            repair_literals=self._repair_literals,
+        )
         self._domain_dict_initialized = True
         print(f"* \t<VPRepairer>: domain_dict construction time = {self.domain_dict_time:.6f}s")
         if self.domain_dict_breakdown:
@@ -96,8 +100,18 @@ class VPPredicateEstimation:
         return domain_dict
 
     def _build_domain_dict_for_sat_direct(self):
-        '''Extract domain dict for propositions directly from original trajectory's stored robustness values. Currently supports R_IN1, R_IN4, R_G2 and R_IN3_hand_draft and R_IN5.'''
+        """Build hard domains and VP-action literals for directly handled rules.
+
+        Propositions with a dedicated VP constraint remain searchable.  Every
+        other proposition is fixed to its current value because the velocity-
+        only repairer has no semantics-preserving way to change it.
+        """
         self.domain_dict_breakdown = {}
+        if any(
+            rule in self.config.repair.rules
+            for rule in ("R_IN1", "R_IN4", "R_IN3_hand_draft", "R_IN5")
+        ):
+            return self._build_constraint_guided_intersection_domains()
         if "R_IN4" in self.config.repair.rules:
             pred_dict = self._eval_turning_priority(
                 0,
@@ -141,6 +155,40 @@ class VPPredicateEstimation:
         raise NotImplementedError(
             "Direct extraction of domain dict for DomainDPLL support currently supports R_IN1, R_IN4 and R_G2 only."
         )
+
+    def _build_constraint_guided_intersection_domains(self):
+        """Keep only propositions backed by explicit VP constraints searchable."""
+        is_in1 = "R_IN1" in self.config.repair.rules
+        hard_domains = {}
+        repair_literals = []
+
+        for prop_node in self.sat_solver._prop_nodes:
+            alphabet = prop_node.alphabet[-1]
+            name = prop_node.name
+            current_value = float(prop_node.ttv_value) > 0.0
+            if is_in1:
+                extractable = "stop_line" in name
+            else:
+                # The current IN-series VP constraint can only make the ego
+                # stay out of its conflict area.  It cannot change the target
+                # trajectory (__1_0), nor can it force a currently-false
+                # conflict proposition to become true.
+                extractable = (
+                    "in_intersection_conflict_area__0_1" in name
+                    and current_value
+                )
+            if extractable:
+                repair_literals.append(f"~{alphabet}")
+            else:
+                hard_domains[alphabet] = {int(current_value)}
+
+        self._hard_domain_vars = set(hard_domains)
+        self._repair_literals = repair_literals
+        self.domain_dict_breakdown = {
+            "hard_domain_count": len(hard_domains),
+            "repair_literal_count": len(repair_literals),
+        }
+        return hard_domains
 
     def _eval_abrupt_brake(self, t_start: int, t_end: int) -> dict:
         pred_dict = {}

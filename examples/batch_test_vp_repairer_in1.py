@@ -9,6 +9,15 @@ import time
 import traceback
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+repo_root_str = str(REPO_ROOT)
+if sys.path[0] != repo_root_str:
+    try:
+        sys.path.remove(repo_root_str)
+    except ValueError:
+        pass
+    sys.path.insert(0, repo_root_str)
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -20,7 +29,6 @@ from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
 VIOLATION_CSV = REPO_ROOT / "evaluation" / "config" / "ind_in1.csv"
 RESULT_CSV = REPO_ROOT / "evaluation" / "config" / "vp_repairer_in1_batch_results.csv"
 RESULT_PREFIX = "__BATCH_RESULT__="
@@ -102,14 +110,16 @@ def run_case(
         "tv": "",
         "tc": "",
         "updated_tv": "",
+        "candidate_tvs": "",
+        "candidate_diagnostics": "",
         "domain_dict_size": 0,
         "domain_dict_time": 0.0,
         "sat_time": 0.0,
+        "clcs_time": 0.0,
         "constraint_extraction_time": 0.0,
         "constraint_conversion_time": 0.0,
         "lp_time": 0.0,
         "trajectory_build_time": 0.0,
-        "compliance_check_time": 0.0,
         "core_total_time": 0.0,
         "wall_time": 0.0,
         "error": "",
@@ -143,17 +153,21 @@ def run_case(
         result["iterations"] = repairer.nr_iter
         result["tv"] = repairer.tv
         result["tc"] = repairer.tc
+        result["candidate_tvs"] = repr(getattr(repairer, "candidate_tvs", []))
+        result["candidate_diagnostics"] = repr(
+            getattr(repairer, "candidate_diagnostics", [])
+        )
         result["domain_dict_size"] = len(getattr(repairer, "domain_dict", {}))
         result["domain_dict_time"] = getattr(repairer, "domain_dict_time", 0.0)
 
         if repairer_type == "vp" and getattr(repairer, "runtime_breakdown", None):
             result["sat_time"] = repairer.runtime_breakdown.get("sat", 0.0)
+            result["clcs_time"] = repairer.runtime_breakdown.get("clcs", 0.0)
             result["constraint_extraction_time"] = repairer.runtime_breakdown.get("constraint_extraction", 0.0)
             result["constraint_conversion_time"] = repairer.runtime_breakdown.get("constraint_conversion", 0.0)
             result["lp_time"] = repairer.runtime_breakdown.get("lp", 0.0)
             result["trajectory_build_time"] = repairer.runtime_breakdown.get("trajectory_build", 0.0)
-            result["compliance_check_time"] = repairer.runtime_breakdown.get("compliance_check", 0.0)
-            result["core_total_time"] = sum(repairer.runtime_breakdown.values())
+            result["core_total_time"] = repairer.core_runtime
         else:
             result["sat_time"] = getattr(repairer, "sat_reasoning_time", 0.0)
             result["core_total_time"] = repair_elapsed
@@ -270,12 +284,12 @@ def run_case_isolated(
         "updated_tv": "",
         "domain_dict_size": 0,
         "domain_dict_time": 0.0,
-        "sat_time": 0.0,
+            "sat_time": 0.0,
+            "clcs_time": 0.0,
         "constraint_extraction_time": 0.0,
         "constraint_conversion_time": 0.0,
         "lp_time": 0.0,
         "trajectory_build_time": 0.0,
-        "compliance_check_time": 0.0,
         "core_total_time": 0.0,
         "wall_time": 0.0,
         "error": f"isolated run failed to return result (exit={completed.returncode})",
@@ -299,11 +313,11 @@ def write_results(results, csv_path: Path):
         "domain_dict_size",
         "domain_dict_time",
         "sat_time",
+        "clcs_time",
         "constraint_extraction_time",
         "constraint_conversion_time",
         "lp_time",
         "trajectory_build_time",
-        "compliance_check_time",
         "core_total_time",
         "wall_time",
         "error",

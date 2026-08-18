@@ -10,6 +10,15 @@ import time
 import traceback
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+repo_root_str = str(REPO_ROOT)
+if sys.path[0] != repo_root_str:
+    try:
+        sys.path.remove(repo_root_str)
+    except ValueError:
+        pass
+    sys.path.insert(0, repo_root_str)
+
 from crrepairer.repairer.smt_repairer import SMTTrajectoryRepairer
 from crrepairer.repairer.vp_repairer import VPTrajectoryRepairer
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
@@ -17,7 +26,6 @@ from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
 VIOLATION_CSV = REPO_ROOT / "evaluation" / "config" / "highd_rg2.csv"
 RESULT_CSV = REPO_ROOT / "evaluation" / "config" / "vp_repairer_rg2_batch_results.csv"
 SMT_SUCCESS_CSV = REPO_ROOT / "evaluation" / "config" / "smt_repairer_rg2_success_cases.csv"
@@ -72,6 +80,7 @@ def collect_repairer_metrics(result, repairer):
     runtime_breakdown = getattr(repairer, "runtime_breakdown", None)
     if runtime_breakdown:
         result["sat_time"] = runtime_breakdown.get("sat", 0.0)
+        result["clcs_time"] = runtime_breakdown.get("clcs", 0.0)
         result["constraint_extraction_time"] = runtime_breakdown.get(
             "constraint_extraction", 0.0
         )
@@ -82,10 +91,7 @@ def collect_repairer_metrics(result, repairer):
         result["trajectory_build_time"] = runtime_breakdown.get(
             "trajectory_build", 0.0
         )
-        result["compliance_check_time"] = runtime_breakdown.get(
-            "compliance_check", 0.0
-        )
-        result["core_total_time"] = sum(runtime_breakdown.values())
+        result["core_total_time"] = repairer.core_runtime
         return
 
     result["sat_time"] = getattr(repairer, "sat_reasoning_time", 0.0)
@@ -120,11 +126,11 @@ def run_case(
         "domain_dict_size": 0,
         "domain_dict_time": 0.0,
         "sat_time": 0.0,
+        "clcs_time": 0.0,
         "constraint_extraction_time": 0.0,
         "constraint_conversion_time": 0.0,
         "lp_time": 0.0,
         "trajectory_build_time": 0.0,
-        "compliance_check_time": 0.0,
         "tc_search_time": 0.0,
         "reach_set_time": 0.0,
         "optimization_time": 0.0,
@@ -227,11 +233,11 @@ def run_case_isolated(
             "domain_dict_size": 0,
             "domain_dict_time": 0.0,
             "sat_time": 0.0,
+            "clcs_time": 0.0,
             "constraint_extraction_time": 0.0,
             "constraint_conversion_time": 0.0,
             "lp_time": 0.0,
             "trajectory_build_time": 0.0,
-            "compliance_check_time": 0.0,
             "tc_search_time": 0.0,
             "reach_set_time": 0.0,
             "optimization_time": 0.0,
@@ -257,11 +263,11 @@ def write_results(results, csv_path: Path):
         "domain_dict_size",
         "domain_dict_time",
         "sat_time",
+        "clcs_time",
         "constraint_extraction_time",
         "constraint_conversion_time",
         "lp_time",
         "trajectory_build_time",
-        "compliance_check_time",
         "tc_search_time",
         "reach_set_time",
         "optimization_time",

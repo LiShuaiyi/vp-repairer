@@ -87,10 +87,10 @@ class VPTrajectoryContext:
         all_states: List[CustomState],
         resampling_factor: int = 10,
         num_extend_pts: int = 10,
+        position_debounce: float = 1e-2,
     ) -> Tuple[CurvilinearCoordinateSystem, np.ndarray]:
         """Build a trajectory-aligned CLCS used by the VP longitudinal planner."""
         source_path = []
-        duplicate_tol = 1e-6
         for i, state in enumerate(all_states):
             pos = np.asarray(state.position, dtype=float).reshape(-1)
             if pos.size < 2:
@@ -99,8 +99,22 @@ class VPTrajectoryContext:
                     f"time_step={state.time_step}: position={state.position!r}"
                 )
             pos = pos[:2]
-            if source_path and np.linalg.norm(pos - source_path[-1]) <= duplicate_tol:
+            # Recorded trajectories often jitter by fractions of a millimetre
+            # after the vehicle has stopped.  Treat displacement relative to
+            # the last accepted point as accumulated motion: genuine slow
+            # travel eventually exceeds this threshold, while stop jitter
+            # cannot introduce tiny backwards segments into the CLCS path.
+            if (
+                source_path
+                and np.linalg.norm(pos - source_path[-1]) < position_debounce
+            ):
                 continue
+            if source_path:
+                displacement = pos - source_path[-1]
+                heading = float(getattr(state, "orientation", 0.0))
+                forward = np.array([np.cos(heading), np.sin(heading)])
+                if float(np.dot(displacement, forward)) <= 0.0:
+                    continue
             source_path.append(pos)
 
         if len(source_path) < 2:

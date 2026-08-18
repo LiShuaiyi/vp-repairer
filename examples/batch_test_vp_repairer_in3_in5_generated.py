@@ -70,11 +70,15 @@ def normalize_case(case, default_rule: str):
 
 
 def _rule_params(rule: str):
+    if rule == "R_IN1":
+        return None, 20, 2
     if rule == "R_IN3_hand_draft":
-        return "hand_draft", 50
+        return "hand_draft", 50, 2
+    if rule == "R_IN4":
+        return "dataset", 20, 1
     if rule == "R_IN5":
-        return "dataset", 149
-    raise ValueError(f"Unsupported generated rule: {rule}")
+        return "dataset", 149, 2
+    raise ValueError(f"Unsupported intersection rule: {rule}")
 
 
 def align_bound_to_sampling_period(bound: float, dt: float, mode: str = "ceil"):
@@ -162,7 +166,7 @@ def build_config(
     planner: int | None = None,
     constraint_mode: int | None = None,
 ):
-    intersection_type, n_r = _rule_params(rule)
+    intersection_type, n_r, default_planner = _rule_params(rule)
     config = RepairerConfiguration()
     if scenario_path:
         path = Path(scenario_path)
@@ -173,11 +177,12 @@ def build_config(
         config.general.set_path_scenario(scenario_id)
     config.update()
     config.repair.scenario_type = "intersection"
-    config.repair.intersection_type = intersection_type
+    if intersection_type is not None:
+        config.repair.intersection_type = intersection_type
     config.repair.rules = [rule]
     config.repair.ego_id = ego_id
     config.repair.N_r = n_r
-    config.repair.planner = planner if planner is not None else 2
+    config.repair.planner = planner if planner is not None else default_planner
     if constraint_mode is not None:
         config.repair.constraint_mode = constraint_mode
     elif repairer_type == "vp":
@@ -216,21 +221,23 @@ def empty_result(
         "ego_id": ego_id,
         "rule": rule,
         "repairer_type": repairer_type,
-        "planner": planner if planner is not None else 2,
+        "planner": planner if planner is not None else _rule_params(rule)[2],
         "sat_solver_mode": sat_solver_mode,
         "success": False,
         "iterations": 0,
         "tv": "",
         "tc": "",
         "updated_tv": "",
+        "candidate_tvs": "",
+        "candidate_diagnostics": "",
         "domain_dict_size": 0,
         "domain_dict_time": 0.0,
         "sat_time": 0.0,
+        "clcs_time": 0.0,
         "constraint_extraction_time": 0.0,
         "constraint_conversion_time": 0.0,
         "lp_time": 0.0,
         "trajectory_build_time": 0.0,
-        "compliance_check_time": 0.0,
         "core_total_time": 0.0,
         "wall_time": 0.0,
         "error": "",
@@ -290,17 +297,21 @@ def run_case(
         result["iterations"] = repairer.nr_iter
         result["tv"] = repairer.tv
         result["tc"] = repairer.tc
+        result["candidate_tvs"] = repr(getattr(repairer, "candidate_tvs", []))
+        result["candidate_diagnostics"] = repr(
+            getattr(repairer, "candidate_diagnostics", [])
+        )
         result["domain_dict_size"] = len(getattr(repairer, "domain_dict", {}))
         result["domain_dict_time"] = getattr(repairer, "domain_dict_time", 0.0)
 
         if repairer_type == "vp" and getattr(repairer, "runtime_breakdown", None):
             result["sat_time"] = repairer.runtime_breakdown.get("sat", 0.0)
+            result["clcs_time"] = repairer.runtime_breakdown.get("clcs", 0.0)
             result["constraint_extraction_time"] = repairer.runtime_breakdown.get("constraint_extraction", 0.0)
             result["constraint_conversion_time"] = repairer.runtime_breakdown.get("constraint_conversion", 0.0)
             result["lp_time"] = repairer.runtime_breakdown.get("lp", 0.0)
             result["trajectory_build_time"] = repairer.runtime_breakdown.get("trajectory_build", 0.0)
-            result["compliance_check_time"] = repairer.runtime_breakdown.get("compliance_check", 0.0)
-            result["core_total_time"] = sum(repairer.runtime_breakdown.values())
+            result["core_total_time"] = repairer.core_runtime
         else:
             result["sat_time"] = getattr(repairer, "sat_reasoning_time", 0.0)
             result["core_total_time"] = repair_elapsed
@@ -318,6 +329,12 @@ def run_case(
                     repairer.t_solver.tc_object.tc,
                 )
             result["updated_tv"] = tv_updated
+            result["success"] = math.isinf(tv_updated) and tv_updated > 0
+            if not result["success"]:
+                result["error"] = (
+                    "repaired trajectory remains non-compliant: "
+                    f"updated_tv={tv_updated}"
+                )
         else:
             result["error"] = "repair returned None"
 
@@ -380,19 +397,33 @@ def run_case_isolated(
         sat_solver_mode,
         repairer_type,
     ]
-    completed = subprocess.run(
-        cmd,
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
+    try:
+        completed = subprocess.run(
+            cmd,
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+    except subprocess.TimeoutExpired:
+        result = empty_result(
+            scenario_id,
+            scenario_path,
+            ego_id,
+            rule,
+            sat_solver_mode,
+            repairer_type,
+            None,
+        )
+        result["error"] = "isolated run timed out after 600s"
+        return result
+    for line in reversed(completed.stdout.splitlines()):
+        if line.startswith(RESULT_PREFIX):
+            return json.loads(line[len(RESULT_PREFIX):])
     if completed.stdout:
         print(completed.stdout, end="")
     if completed.stderr:
         print(completed.stderr, end="", file=sys.stderr)
-    for line in reversed(completed.stdout.splitlines()):
-        if line.startswith(RESULT_PREFIX):
-            return json.loads(line[len(RESULT_PREFIX):])
     result = empty_result(scenario_id, scenario_path, ego_id, rule, sat_solver_mode, repairer_type, None)
     result["error"] = f"isolated run failed to return result (exit={completed.returncode})"
     return result
@@ -413,14 +444,16 @@ def write_results(results, csv_path: Path):
         "tv",
         "tc",
         "updated_tv",
+        "candidate_tvs",
+        "candidate_diagnostics",
         "domain_dict_size",
         "domain_dict_time",
         "sat_time",
+        "clcs_time",
         "constraint_extraction_time",
         "constraint_conversion_time",
         "lp_time",
         "trajectory_build_time",
-        "compliance_check_time",
         "core_total_time",
         "wall_time",
         "error",
@@ -496,6 +529,14 @@ def main():
             idx, scenario_id, ego_id, rule, repairer_type = future_to_case[future]
             result = future.result()
             indexed_results[(idx, repairer_type)] = result
+            checkpoint_results = [
+                indexed_results[key]
+                for key in sorted(
+                    indexed_results,
+                    key=lambda item: (item[0], repairer_types.index(item[1])),
+                )
+            ]
+            write_results(checkpoint_results, args.output)
             print(
                 f"[done {idx}/{total_cases}] scenario={scenario_id}, ego_id={ego_id}, "
                 f"rule={rule}, repairer={repairer_type}\n"

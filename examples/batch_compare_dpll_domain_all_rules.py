@@ -6,6 +6,15 @@ import time
 import traceback
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+repo_root_str = str(REPO_ROOT)
+if sys.path[0] != repo_root_str:
+    try:
+        sys.path.remove(repo_root_str)
+    except ValueError:
+        pass
+    sys.path.insert(0, repo_root_str)
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -17,7 +26,6 @@ from crrepairer.utils.configuration import RepairerConfiguration
 from crrepairer.utils.repair import retrieve_ego_vehicle
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
 RESULT_CSV = REPO_ROOT / "evaluation" / "config" / "vp_compare_dpll_domain_all_rules.csv"
 HIGH_D_ROOT = "/data_linux/Lab/highD-cr-scenarios/highD-repair/"
 IND_ROOT = "/data_linux/Lab/highD-cr-scenarios/ind_scenarios_2024/"
@@ -363,7 +371,7 @@ def run_case(
         result["tv"] = repairer.tv
         result["tc"] = repairer.tc
         if getattr(repairer, "runtime_breakdown", None):
-            result["core_total_time"] = sum(repairer.runtime_breakdown.values())
+            result["core_total_time"] = repairer.core_runtime
 
         if repaired_traj is not None:
             result["success"] = True

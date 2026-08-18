@@ -214,11 +214,11 @@ def run_case(
         "domain_dict_size": 0,
         "domain_dict_time": 0.0,
         "sat_time": 0.0,
+        "clcs_time": 0.0,
         "constraint_extraction_time": 0.0,
         "constraint_conversion_time": 0.0,
         "lp_time": 0.0,
         "trajectory_build_time": 0.0,
-        "compliance_check_time": 0.0,
         "tc_search_time": 0.0,
         "reach_set_time": 0.0,
         "optimization_time": 0.0,
@@ -259,6 +259,7 @@ def run_case(
 
         if getattr(repairer, "runtime_breakdown", None):
             result["sat_time"] = repairer.runtime_breakdown.get("sat", 0.0)
+            result["clcs_time"] = repairer.runtime_breakdown.get("clcs", 0.0)
             result["constraint_extraction_time"] = repairer.runtime_breakdown.get(
                 "constraint_extraction", 0.0
             )
@@ -269,10 +270,7 @@ def run_case(
             result["trajectory_build_time"] = repairer.runtime_breakdown.get(
                 "trajectory_build", 0.0
             )
-            result["compliance_check_time"] = repairer.runtime_breakdown.get(
-                "compliance_check", 0.0
-            )
-            result["core_total_time"] = sum(repairer.runtime_breakdown.values())
+            result["core_total_time"] = repairer.core_runtime
         else:
             result["sat_time"] = getattr(repairer, "sat_reasoning_time", 0.0)
             result["tc_search_time"] = getattr(
@@ -373,11 +371,11 @@ def run_case_isolated(
             "domain_dict_size": 0,
             "domain_dict_time": 0.0,
             "sat_time": 0.0,
+            "clcs_time": 0.0,
             "constraint_extraction_time": 0.0,
             "constraint_conversion_time": 0.0,
             "lp_time": 0.0,
             "trajectory_build_time": 0.0,
-            "compliance_check_time": 0.0,
             "tc_search_time": 0.0,
             "reach_set_time": 0.0,
             "optimization_time": 0.0,
@@ -486,11 +484,11 @@ def write_results(results, csv_path: Path):
         "domain_dict_size",
         "domain_dict_time",
         "sat_time",
+        "clcs_time",
         "constraint_extraction_time",
         "constraint_conversion_time",
         "lp_time",
         "trajectory_build_time",
-        "compliance_check_time",
         "tc_search_time",
         "reach_set_time",
         "optimization_time",

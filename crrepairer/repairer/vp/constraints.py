@@ -1,6 +1,8 @@
 """Constraint extraction helpers for velocity-planning repair."""
 
 import math
+import os
+import time
 from typing import List, Union
 
 import numpy as np
@@ -14,9 +16,51 @@ from commonroad_clcs.clcs import CurvilinearCoordinateSystem
 
 from crmonitor.common.world import World
 
+from crrepairer.repairer.vp.temporal import constraint_time_interval
+
 
 class VPConstraintExtraction:
     """Extracts longitudinal position and velocity constraints for VP repair."""
+
+    def _temporal_constraint_steps(self, all_states):
+        """Map each selected proposition to its VP leaf-predicate frames."""
+        start = time.perf_counter()
+        trajectory_start = int(all_states[0].time_step)
+        trajectory_end = int(all_states[-1].time_step)
+        planning_start = int(self._tc) + 1
+        dt = float(self.config.scenario.dt)
+        future_time_step = int(self.rule_monitor.future_time_step)
+        active_steps = {}
+        diagnostics = []
+        for prop in self._sel_prop:
+            interval, expansion, pair_count = constraint_time_interval(
+                expression=prop.name,
+                dt=dt,
+                trajectory_start=trajectory_start,
+                planning_start=planning_start,
+                trajectory_end=trajectory_end,
+                future_time_step=future_time_step,
+            )
+            active_steps[id(prop)] = interval
+            diagnostics.append(
+                {
+                    "proposition": prop.name,
+                    "operators": expansion.operators,
+                    "leaf_expression": expansion.leaf_expression,
+                    "offsets": expansion.offsets,
+                    "active_start": interval.start,
+                    "active_end": interval.end,
+                    "active_count": interval.count,
+                    "represented_anchor_offset_pairs": pair_count,
+                    "universalized": any(
+                        operator in {"once", "eventually"}
+                        for operator in expansion.operators
+                    ),
+                }
+            )
+        self._last_temporal_expansion_time = time.perf_counter() - start
+        self._last_temporal_expansion_debug = diagnostics
+        return active_steps
 
     def _extract_interstate_constraints_manually(
         self,
@@ -43,6 +87,7 @@ class VPConstraintExtraction:
         v_min = np.zeros(horizon)
         v_max = np.ones(horizon) * math.inf
         speed_limits = self._extract_speed_limit_values() 
+        temporal_steps = self._temporal_constraint_steps(all_states)
 
         final_time_step = all_states[-1].time_step
         for time_step in range(int(self._tc) + 1, final_time_step + 1):
@@ -53,6 +98,8 @@ class VPConstraintExtraction:
             s_min_list = []
 
             for prop in self._sel_prop:
+                if not temporal_steps[id(prop)].contains(time_step):
+                    continue
                 if "distance" in prop.name:
                     s_up, v_up = self._constraint_keep_safe_distance(
                         world=self.rule_monitor.world,
@@ -100,16 +147,10 @@ class VPConstraintExtraction:
                 elif "brakes_abruptly" in prop.name:
                     self._constraint_not_break_abruptly(prop)
                 else:
-                    s_up, v_up = self._constraint_keep_safe_distance(
-                        world=self.rule_monitor.world,
-                        lanelet_clcs=lanelet_clcs,
-                        time_step=time_step,
-                        lead_id=self.rule_monitor.other_id,
-                        follow_id=self.ego_vehicle.obstacle_id,
-                        follow_velocity=follow_velocity,
+                    raise RuntimeError(
+                        "Unsupported RG predicate has no VP constraint: "
+                        f"{prop.name} ({prop.alphabet})."
                     )
-                    s_max_list.append(s_up)
-                    v_max_list.append(v_up)
                 v_max_list.append(follow_velocity)
                 # print('v_max candidates at time step {}: {}'.format(time_step, v_max_list))
 
@@ -165,12 +206,59 @@ class VPConstraintExtraction:
         )[0]
         trajectory_s_min_cap = np.ones(horizon) * ct_s_min
         trajectory_s_max_cap = np.ones(horizon) * ct_s_max
+        first_plan_state = all_states[min(start_idx + 1, len(all_states) - 1)]
+        first_plan_s_trajectory = trajectory_clcs.convert_to_curvilinear_coords(
+            float(first_plan_state.position[0]),
+            float(first_plan_state.position[1]),
+        )[0]
 
         wheelbase = self._get_planner_wheelbase()
         final_time_step = all_states[-1].time_step
+        temporal_steps = self._temporal_constraint_steps(all_states)
+        self._last_extraction_debug = []
+        in1_trajectory_stop_cap = None
+        if "R_IN1" in self.config.repair.rules:
+            in1_trajectory_stop_cap = self._constraint_stop_line_on_trajectory(
+                self.rule_monitor.world,
+                self.rule_monitor.world.vehicle_by_id(self.config.repair.ego_id),
+                ref_path,
+                trajectory_clcs,
+            )
+        conflict_trajectory_interval = None
+        if any(
+            rule in self.config.repair.rules
+            for rule in ("R_IN3_hand_draft", "R_IN4", "R_IN5")
+        ):
+            world = self.rule_monitor.world
+            ego = world.vehicle_by_id(self.config.repair.ego_id)
+            target = world.vehicle_by_id(self.rule_monitor.other_id)
+            if getattr(self, "_use_monitor_conflict_geometry", False):
+                monitor_interval = self._monitor_conflict_interval_on_trajectory(
+                    world=world,
+                    ego_vehicle=ego,
+                    target_vehicle=target,
+                    ref_path=ref_path,
+                    lanelet_clcs=lanelet_clcs,
+                    trajectory_clcs=trajectory_clcs,
+                )
+                if monitor_interval is not None:
+                    conflict_trajectory_interval = (
+                        monitor_interval[0], monitor_interval[1], "monitor"
+                    )
+            else:
+                conflict_trajectory_interval = self._legacy_conflict_interval_on_trajectory(
+                    world=world,
+                    ego_vehicle=ego,
+                    target_vehicle=target,
+                    trajectory_clcs=trajectory_clcs,
+                    wheelbase=wheelbase,
+                )
 
         for prop in self._sel_prop:
+            prop_debug_recorded = False
             for time_step in range(int(self._tc) + 1, final_time_step + 1):
+                if not temporal_steps[id(prop)].contains(time_step):
+                    continue
                 idx = time_step - int(self._tc) - 1
                 if "R_IN1" in self.config.repair.rules:
                     if "stop_line" in prop.name:
@@ -181,6 +269,25 @@ class VPConstraintExtraction:
                             lanelet_clcs,
                         )
                         s_max[idx] = min(s_max[idx], upper_bound)
+                        if in1_trajectory_stop_cap is not None:
+                            trajectory_s_max_cap[idx] = min(
+                                trajectory_s_max_cap[idx],
+                                in1_trajectory_stop_cap,
+                            )
+                        if not prop_debug_recorded:
+                            self._last_extraction_debug.append(
+                                {
+                                    "proposition": prop.name,
+                                    "kind": "stop_line_upper",
+                                    "upper_bound_lane_clcs": float(upper_bound),
+                                    "upper_bound_trajectory_clcs": (
+                                        None
+                                        if in1_trajectory_stop_cap is None
+                                        else float(in1_trajectory_stop_cap)
+                                    ),
+                                }
+                            )
+                            prop_debug_recorded = True
                     else:
                         print(
                             f"* \t<VPRepairer>: Unsupported predicate {prop.name} "
@@ -190,93 +297,100 @@ class VPConstraintExtraction:
 
                 if "in_intersection_conflict_area" in prop.name:
                     prop_assignment = -1 if prop.alphabet.startswith("~") else 1
-                    if "R_IN5" in self.config.repair.rules or "R_IN3_hand_draft" in self.config.repair.rules:
-                        if prop_assignment > 0:
-                            continue
-                        front_constr, rear_constr = self._constraint_in_intersection_conflict_area(
-                            time_step=time_step,
-                            prop_assignment=prop_assignment,
-                            lanelet_clcs=lanelet_clcs,
-                            cart=True,
-                        )
+                    if prop_assignment > 0:
+                        continue
+                    if conflict_trajectory_interval is None:
+                        if not prop_debug_recorded:
+                            self._last_extraction_debug.append(
+                                {
+                                    "proposition": prop.name,
+                                    "kind": "conflict_geometry_unavailable",
+                                }
+                            )
+                            prop_debug_recorded = True
+                        continue
+
+                    before_upper, after_lower, interval_mode = (
+                        conflict_trajectory_interval
+                    )
+                    start_s = float(first_plan_s_trajectory)
+                    if interval_mode == "legacy_in4":
+                        branch = "legacy_conflict_rear_upper"
                         if (
-                            not np.isfinite(np.asarray(front_constr, dtype=float)).all()
-                            or not np.isfinite(np.asarray(rear_constr, dtype=float)).all()
+                            not os.environ.get(
+                                "CRREPAIR_VP_DISABLE_CONFLICT_CAP_CLAMP"
+                            )
+                            and before_upper < ct_s_min
                         ):
-                            continue
-                        front_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
-                            float(front_constr[0]),
-                            float(front_constr[1]),
-                        )[0]
-                        rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
-                            float(rear_constr[0]),
-                            float(rear_constr[1]),
-                        )[0]
-                        start_plan_idx = min(start_idx + 1, len(all_states) - 1)
-                        start_state = all_states[start_plan_idx]
-                        start_s = trajectory_clcs.convert_to_curvilinear_coords(
-                            float(start_state.position[0]),
-                            float(start_state.position[1]),
-                        )[0]
-                        lower_interval_upper = min(front_constr_ct, rear_constr_ct)
-                        if "R_IN3_hand_draft" in self.config.repair.rules:
-                            lower_interval_upper -= (
-                                wheelbase / 2 + self.ego_vehicle.obstacle_shape.length / 3
+                            before_upper = max(start_s, before_upper)
+                        trajectory_s_max_cap[idx] = min(
+                            trajectory_s_max_cap[idx], before_upper
+                        )
+                    elif interval_mode == "legacy_interval":
+                        if (
+                            not os.environ.get(
+                                "CRREPAIR_VP_DISABLE_CONFLICT_CAP_CLAMP"
                             )
-                        upper_interval_lower = max(front_constr_ct, rear_constr_ct)
-                        if start_s <= lower_interval_upper:
+                            and before_upper < ct_s_min
+                        ):
+                            before_upper = max(start_s, before_upper)
+                        if start_s <= before_upper:
+                            branch = "legacy_before_conflict_upper"
                             trajectory_s_max_cap[idx] = min(
-                                trajectory_s_max_cap[idx],
-                                lower_interval_upper,
+                                trajectory_s_max_cap[idx], before_upper
                             )
-                        elif start_s >= upper_interval_lower:
+                        elif start_s >= after_lower:
+                            branch = "legacy_after_conflict_lower"
                             trajectory_s_min_cap[idx] = max(
-                                trajectory_s_min_cap[idx],
-                                upper_interval_lower,
+                                trajectory_s_min_cap[idx], after_lower
                             )
-                        elif start_s - lower_interval_upper <= upper_interval_lower - start_s:
+                        elif start_s - before_upper <= after_lower - start_s:
+                            branch = "legacy_inside_choose_before_upper"
                             trajectory_s_max_cap[idx] = min(
-                                trajectory_s_max_cap[idx],
-                                lower_interval_upper,
+                                trajectory_s_max_cap[idx], before_upper
                             )
                         else:
+                            branch = "legacy_inside_choose_after_lower"
                             trajectory_s_min_cap[idx] = max(
-                                trajectory_s_min_cap[idx],
-                                upper_interval_lower,
+                                trajectory_s_min_cap[idx], after_lower
                             )
-                        continue
-                    
-                    _, rear_constr = self._constraint_in_intersection_conflict_area(
-                        time_step=time_step,
-                        prop_assignment=prop_assignment,
-                        lanelet_clcs=lanelet_clcs,
-                        cart=True,
-                    )
-                    if not np.isfinite(np.asarray(rear_constr, dtype=float)).all():
-                        rear_constr_ct = None
-                    else:
-                        rear_constr_ct = trajectory_clcs.convert_to_curvilinear_coords(
-                            float(rear_constr[0]),
-                            float(rear_constr[1]),
-                        )[0]
-                    if rear_constr_ct is not None and np.isfinite(rear_constr_ct):
+                    elif start_s <= before_upper:
+                        branch = "before_conflict_upper"
                         trajectory_s_max_cap[idx] = min(
-                            trajectory_s_max_cap[idx],
-                            rear_constr_ct - wheelbase / 2 - self.ego_vehicle.obstacle_shape.length / 3,
+                            trajectory_s_max_cap[idx], before_upper
                         )
+                    elif start_s >= after_lower:
+                        # The first plannable state is already beyond the
+                        # monitored interval; braking cannot make it re-enter.
+                        branch = "already_after_conflict"
+                    else:
+                        # A deceleration-only repair cannot move an ego that is
+                        # already inside the monitored conflict interval back
+                        # to its entrance.  Preserve the contradiction so this
+                        # SAT assignment is rejected instead of producing an
+                        # unrelated trajectory.
+                        branch = "inside_conflict_unreachable_before"
+                        trajectory_s_max_cap[idx] = min(
+                            trajectory_s_max_cap[idx], before_upper
+                        )
+                    if not prop_debug_recorded:
+                        self._last_extraction_debug.append(
+                            {
+                                "proposition": prop.name,
+                                "kind": "monitor_conflict_interval",
+                                "start_s": start_s,
+                                "before_upper": float(before_upper),
+                                "after_lower": float(after_lower),
+                                "interval_mode": interval_mode,
+                                "branch": branch,
+                            }
+                        )
+                        prop_debug_recorded = True
                 else:
-                    front_constr, _ = self._constraint_in_intersection_conflict_area(
-                        time_step=time_step,
-                        prop_assignment=-1,
-                        lanelet_clcs=lanelet_clcs,
-                        cart=False,
+                    raise RuntimeError(
+                        "Unsupported IN predicate has no VP constraint: "
+                        f"{prop.name} ({prop.alphabet})."
                     )
-                    s_max[idx] = min(s_max[idx], front_constr)
-                    print(
-                        f"* \t<VPRepairer>: IN-series manual extraction reuses conflict-area upper bound "
-                        f"for unsupported predicate {prop.name}."
-                    )
-                    continue
         
         # trajectory_s_min_cap is actually not used in practice
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
@@ -345,6 +459,123 @@ class VPConstraintExtraction:
                     - wheelbase / 2,
                 )
         return upper_bound
+
+    def _constraint_stop_line_on_trajectory(
+        self,
+        world: World,
+        ego_vehicle,
+        ref_path: np.ndarray,
+        trajectory_clcs: CurvilinearCoordinateSystem,
+        clearance: float = 0.05,
+    ):
+        """Map the monitor stop line into the finite repair-path coordinates.
+
+        The lane CLCS and the finite trajectory CLCS use different longitudinal
+        origins and domains.  Converting a lane-CLCS stop coordinate through a
+        Cartesian point can therefore fall outside the trajectory projection
+        domain.  A monotone longitudinal mapping along the shared reference
+        path also handles a stop line just beyond the recorded trajectory.
+        """
+        lanelet_clcs = ego_vehicle.ref_path_lane.clcs
+        lane_progress = []
+        trajectory_progress = []
+        for point in np.asarray(ref_path, dtype=float):
+            try:
+                lane_s = lanelet_clcs.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
+                )[0]
+                trajectory_s = trajectory_clcs.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
+                )[0]
+            except Exception:
+                continue
+            if lane_progress and lane_s <= lane_progress[-1] + 1e-9:
+                continue
+            lane_progress.append(float(lane_s))
+            trajectory_progress.append(float(trajectory_s))
+        if len(lane_progress) < 2:
+            return None
+
+        def map_progress(lane_s):
+            if lane_s < lane_progress[0]:
+                scale = (
+                    (trajectory_progress[1] - trajectory_progress[0])
+                    / (lane_progress[1] - lane_progress[0])
+                )
+                return trajectory_progress[0] + scale * (lane_s - lane_progress[0])
+            if lane_s > lane_progress[-1]:
+                scale = (
+                    (trajectory_progress[-1] - trajectory_progress[-2])
+                    / (lane_progress[-1] - lane_progress[-2])
+                )
+                return trajectory_progress[-1] + scale * (lane_s - lane_progress[-1])
+            return float(np.interp(lane_s, lane_progress, trajectory_progress))
+
+        candidate_caps = []
+        lanelet_ids = set(ego_vehicle.ref_path_lane.contained_lanelets)
+        for lanelet_id in lanelet_ids:
+            lanelet = world.road_network.lanelet_network.find_lanelet_by_id(
+                lanelet_id
+            )
+            if lanelet.stop_line is None:
+                continue
+            stop_lane_s = min(
+                lanelet_clcs.convert_to_curvilinear_coords(
+                    *lanelet.stop_line.start
+                )[0],
+                lanelet_clcs.convert_to_curvilinear_coords(
+                    *lanelet.stop_line.end
+                )[0],
+            )
+            candidate_caps.append(float(map_progress(stop_lane_s)))
+
+        if not candidate_caps:
+            return None
+
+        first_time = min(ego_vehicle.states_cr)
+        state = ego_vehicle.states_cr[first_time]
+        center_s = lanelet_clcs.convert_to_curvilinear_coords(
+            float(state.position[0]), float(state.position[1])
+        )[0]
+        front_s = ego_vehicle.front_s(first_time, ego_vehicle.ref_path_lane)
+        front_extent = (
+            max(0.0, float(front_s) - float(center_s))
+            if front_s is not None
+            else ego_vehicle.shape.length / 2
+        )
+        stop_line_cap = min(candidate_caps) - front_extent - clearance
+
+        # A stop-line cap alone still lets the LP choose a much later stop.
+        # IN1 can be made vacuously compliant by never crossing, so also cap
+        # progress at the position reached by braking from the initial frame.
+        # This uses the same discrete integration as the dedicated feasibility
+        # audit and remains within the configured longitudinal acceleration.
+        initial_s = trajectory_clcs.convert_to_curvilinear_coords(
+            float(state.position[0]), float(state.position[1])
+        )[0]
+        speed = max(0.0, float(getattr(state, "velocity", 0.0)))
+        acceleration_min = min(
+            0.0, float(self.config.vehicle.qp_veh_config.a_lon_min)
+        )
+        dt = float(world.dt)
+        braking_distance = 0.0
+        while speed > 1e-9:
+            next_speed = max(0.0, speed + acceleration_min * dt)
+            braking_distance += 0.5 * (speed + next_speed) * dt
+            if next_speed >= speed:
+                break
+            speed = next_speed
+        immediate_brake_cap = float(initial_s) + braking_distance
+        result_cap = min(stop_line_cap, immediate_brake_cap)
+
+        if os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG"):
+            print(
+                "* \t<VPRepairer>: trajectory stop-line candidates: "
+                f"{candidate_caps}, front_extent={front_extent}, "
+                f"clearance={clearance}, stop_line_cap={stop_line_cap}, "
+                f"immediate_brake_cap={immediate_brake_cap}"
+            )
+        return result_cap
 
     def _get_planner_wheelbase(self):
         qp_veh_config = self.config.vehicle.qp_veh_config
@@ -613,24 +844,64 @@ class VPConstraintExtraction:
             lanelet = road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
             if LaneletType.INTERSECTION in lanelet.lanelet_type:
                 conflict_lanelets_shape.append(lanelet.polygon.shapely_object)
-        conflict_area_shape = shapely.unary_union(conflict_lanelets_shape)
-        conflict_linestring = shapely.offset_curve(
-            conflict_area_shape, ego_vehicle.circle_radius
-        )
-
-        traj_xy = [
-            (
-                ego_vehicle.states_cr[t].position[0],
-                ego_vehicle.states_cr[t].position[1],
-            )
-            for t in ego_vehicle.states_cr
-        ]
-        line_center = LineString(traj_xy)
-        conflict_circle_center_center = self._find_conflict_points(
-            line_center, conflict_linestring
-        )
-        if conflict_circle_center_center is None:
+        if not conflict_lanelets_shape:
             return np.array([np.inf, -np.inf])
+
+        if not getattr(self, "_use_monitor_conflict_geometry", False):
+            conflict_area_shape = shapely.unary_union(conflict_lanelets_shape)
+            conflict_linestring = shapely.offset_curve(
+                conflict_area_shape, ego_vehicle.circle_radius
+            )
+            traj_xy = [
+                (
+                    ego_vehicle.states_cr[t].position[0],
+                    ego_vehicle.states_cr[t].position[1],
+                )
+                for t in ego_vehicle.states_cr
+            ]
+            points = self._find_conflict_points(
+                LineString(traj_xy), conflict_linestring
+            )
+            if points is None:
+                return np.array([np.inf, -np.inf])
+            if cart:
+                return points
+            coordinate_system = clcs or ego_vehicle.ref_path_lane.clcs
+            progress = sorted(
+                coordinate_system.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
+                )[0]
+                for point in points
+            )
+            return progress[0], progress[-1]
+
+        # Match PredInIntersectionConflictArea's fallback geometry: intersect
+        # the complete ego lane-direction centerline with every intersection
+        # polygon on the target reference path.  The previous implementation
+        # intersected the finite recorded ego trajectory with
+        # ``offset_curve(Polygon)``.  For these polygons Shapely produces an
+        # open offset line, so the result was commonly zero or one point; that
+        # single point was then incorrectly used as both conflict endpoints.
+        line_center = LineString(ego_vehicle.lanelets_dir_center_vertices)
+        candidates = []
+        for conflict_shape in conflict_lanelets_shape:
+            points = self._find_conflict_points(line_center, conflict_shape)
+            if points is None:
+                continue
+            for point in points:
+                try:
+                    progress = ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                        float(point[0]), float(point[1])
+                    )[0]
+                except Exception:
+                    progress = line_center.project(
+                        shapely.Point(float(point[0]), float(point[1]))
+                    )
+                candidates.append((float(progress), np.asarray(point, dtype=float)))
+        if not candidates:
+            return np.array([np.inf, -np.inf])
+        candidates.sort(key=lambda item: item[0])
+        conflict_circle_center_center = [candidates[0][1], candidates[-1][1]]
         if cart:
             return conflict_circle_center_center
 
@@ -651,6 +922,137 @@ class VPConstraintExtraction:
         s_circle_center_center = np.sort(s_circle_center_center)
         return s_circle_center_center[0], s_circle_center_center[1]
 
+    def _monitor_conflict_interval_on_trajectory(
+        self,
+        world: World,
+        ego_vehicle,
+        target_vehicle,
+        ref_path: np.ndarray,
+        lanelet_clcs: CurvilinearCoordinateSystem,
+        trajectory_clcs: CurvilinearCoordinateSystem,
+        clearance: float = 0.05,
+    ):
+        """Return monitor-aligned ego-center bounds in trajectory coordinates.
+
+        Conflict endpoints are defined on the ego reference-lane CLCS, while
+        the LP uses a finite trajectory CLCS.  Direct Cartesian conversion of
+        an endpoint before/after that finite path raises a projection-domain
+        error.  A monotone longitudinal mapping through the shared repair path
+        keeps those out-of-horizon endpoints meaningful.
+        """
+        center_start, center_end = self._create_conflict_area_parameter(
+            ego_vehicle,
+            target_vehicle,
+            world,
+            clcs=lanelet_clcs,
+            cart=False,
+        )
+        if not np.isfinite([center_start, center_end]).all():
+            return None
+
+        lane_progress = []
+        trajectory_progress = []
+        for point in np.asarray(ref_path, dtype=float):
+            try:
+                lane_s = lanelet_clcs.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
+                )[0]
+                trajectory_s = trajectory_clcs.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
+                )[0]
+            except Exception:
+                continue
+            if lane_progress and lane_s <= lane_progress[-1] + 1e-9:
+                continue
+            lane_progress.append(float(lane_s))
+            trajectory_progress.append(float(trajectory_s))
+        if len(lane_progress) < 2:
+            return None
+
+        def map_progress(lane_s):
+            if lane_s < lane_progress[0]:
+                scale = (
+                    (trajectory_progress[1] - trajectory_progress[0])
+                    / (lane_progress[1] - lane_progress[0])
+                )
+                return trajectory_progress[0] + scale * (lane_s - lane_progress[0])
+            if lane_s > lane_progress[-1]:
+                scale = (
+                    (trajectory_progress[-1] - trajectory_progress[-2])
+                    / (lane_progress[-1] - lane_progress[-2])
+                )
+                return trajectory_progress[-1] + scale * (lane_s - lane_progress[-1])
+            return float(np.interp(lane_s, lane_progress, trajectory_progress))
+
+        center_start_ct, center_end_ct = sorted(
+            (map_progress(center_start), map_progress(center_end))
+        )
+        first_time = min(ego_vehicle.states_cr)
+        center_s = lanelet_clcs.convert_to_curvilinear_coords(
+            *ego_vehicle.states_cr[first_time].position
+        )[0]
+        front_s = ego_vehicle.front_s(first_time, ego_vehicle.ref_path_lane)
+        rear_s = ego_vehicle.rear_s(first_time, ego_vehicle.ref_path_lane)
+        front_extent = max(0.0, float(front_s) - float(center_s))
+        rear_extent = max(0.0, float(center_s) - float(rear_s))
+        initial_trajectory_s = trajectory_clcs.convert_to_curvilinear_coords(
+            *ego_vehicle.states_cr[first_time].position
+        )[0]
+        speed = max(
+            0.0, float(getattr(ego_vehicle.states_cr[first_time], "velocity", 0.0))
+        )
+        acceleration_min = min(
+            0.0, float(self.config.vehicle.qp_veh_config.a_lon_min)
+        )
+        dt = float(world.dt)
+        braking_distance = 0.0
+        while speed > 1e-9:
+            next_speed = max(0.0, speed + acceleration_min * dt)
+            braking_distance += 0.5 * (speed + next_speed) * dt
+            if next_speed >= speed:
+                break
+            speed = next_speed
+        immediate_brake_cap = float(initial_trajectory_s) + braking_distance
+        return (
+            min(
+                float(center_start_ct - front_extent - clearance),
+                immediate_brake_cap,
+            ),
+            float(center_end_ct + rear_extent + clearance),
+        )
+
+    def _legacy_conflict_interval_on_trajectory(
+        self,
+        world: World,
+        ego_vehicle,
+        target_vehicle,
+        trajectory_clcs: CurvilinearCoordinateSystem,
+        wheelbase: float,
+    ):
+        """Reproduce the original VP interval for first-pass compatibility."""
+        points = self._create_conflict_area_parameter(
+            ego_vehicle, target_vehicle, world, cart=True
+        )
+        if (
+            len(points) != 2
+            or not np.isfinite(np.asarray(points, dtype=float)).all()
+        ):
+            return None
+        try:
+            progress = [
+                float(trajectory_clcs.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
+                )[0])
+                for point in points
+            ]
+        except Exception:
+            return None
+        extent = wheelbase / 2 + self.ego_vehicle.obstacle_shape.length / 3
+        if "R_IN4" in self.config.repair.rules:
+            return float(progress[1] - extent), float(progress[1]), "legacy_in4"
+        lower, upper = sorted(progress)
+        return float(lower - extent), float(upper), "legacy_interval"
+
     def _constraint_in_intersection_conflict_area(
         self,
         time_step: int,
@@ -668,7 +1070,6 @@ class VPConstraintExtraction:
         ego_vehicle = world.vehicle_by_id(self.config.repair.ego_id)
         target_vehicle = world.vehicle_by_id(self.rule_monitor.other_id)
         wheelbase = self._get_planner_wheelbase()
-
         s_circle_center_front, s_circle_center_rear = self._create_conflict_area_parameter(
             ego_vehicle,
             target_vehicle,
