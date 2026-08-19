@@ -116,6 +116,12 @@ class VPConstraintExtraction:
                     s_max_list.append(s_up)
                     v_max_list.append(v_up)
                 elif "lane" in prop.name and "same" in prop.name:
+                    if prop.alphabet.startswith("~"):
+                        raise UnsupportedVPCandidateError(
+                            "Negative in-same-lane RG literal is not representable "
+                            f"by the positive VP lane constraint: {prop.name} "
+                            f"({prop.alphabet})."
+                        )
                     s_low, s_up = self._constraint_in_same_lane(
                         world=self.rule_monitor.world,
                         lanelet_clcs=lanelet_clcs,

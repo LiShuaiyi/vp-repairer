@@ -2,6 +2,7 @@ import os
 import re
 import time
 import warnings
+import math
 from fractions import Fraction
 from types import SimpleNamespace
 from typing import List
@@ -155,11 +156,49 @@ class SafeDistanceToObstaclePredicate(Predicate):
 
     def _get_other_position_and_velocity(self, step, semantic_model):
         vehicle = semantic_model.vehicle_model.find_vehicle_by_id(self.obstacle_id)
-        if vehicle is None:
+        if vehicle is not None:
+            if not vehicle.has_ref_prediction(step):
+                return None
+            return vehicle.rear_s_ref(step), vehicle.v_lon_ref(step)
+
+        # SemanticModel intentionally filters vehicles outside its modeled
+        # lane subset.  A rule-relevant leading vehicle may therefore be
+        # absent even though it is present in the source CommonRoad scenario.
+        # Recover the same longitudinal quantities directly from that scenario
+        # instead of rejecting an otherwise valid safe-distance constraint.
+        scenario = semantic_model.config.scenario
+        obstacle = scenario.obstacle_by_id(self.obstacle_id)
+        if obstacle is None:
             raise RuntimeError(f"Vehicle {self.obstacle_id} not found")
-        if not vehicle.has_ref_prediction(step):
+        state = obstacle.state_at_time(step)
+        if state is None:
             return None
-        return vehicle.rear_s_ref(step), vehicle.v_lon_ref(step)
+
+        orientation = float(getattr(state, "orientation", 0.0))
+        length, _ = shape_dimensions(obstacle.obstacle_shape)
+        rear_position = np.asarray(state.position, dtype=float) - 0.5 * length * np.array(
+            [math.cos(orientation), math.sin(orientation)],
+            dtype=float,
+        )
+        clcs = semantic_model.config.planning.CLCS
+        rear_s = clcs.convert_to_curvilinear_coords(
+            float(rear_position[0]), float(rear_position[1])
+        )[0]
+
+        center_s = clcs.convert_to_curvilinear_coords(
+            float(state.position[0]), float(state.position[1])
+        )[0]
+        probe_distance = min(0.1, max(1e-3, 0.1 * float(length)))
+        heading_probe = np.asarray(state.position, dtype=float) + probe_distance * np.array(
+            [math.cos(orientation), math.sin(orientation)],
+            dtype=float,
+        )
+        probe_s = clcs.convert_to_curvilinear_coords(
+            float(heading_probe[0]), float(heading_probe[1])
+        )[0]
+        direction = 1.0 if probe_s >= center_s else -1.0
+        v_lon = direction * float(getattr(state, "velocity", 0.0))
+        return float(rear_s), v_lon
 
     @staticmethod
     def _safe_position(ego_velocity, other_position, other_velocity, semantic_model):

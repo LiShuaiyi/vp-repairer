@@ -99,6 +99,11 @@ class VPTrajectoryRepairer(
         return self._model
 
     def repair(self, check_flag=True, *args, **kwargs):
+        # A repairer can be reused.  Each call starts optimistically with the
+        # inexpensive trajectory CLCS and switches to preprocessing only if
+        # the current scenario demonstrates that it needs the stable path.
+        self._force_trajectory_clcs_preprocess = False
+        self._shared_trajectory_clcs = None
         self._tv = self.rule_monitor.tv_time_step
         if self._tv in (-math.inf, math.inf):
             return None
@@ -168,6 +173,16 @@ class VPTrajectoryRepairer(
                     }
                 )
                 repaired_traj = None
+                if self._retry_with_preprocessed_trajectory_clcs():
+                    print(
+                        "* \t<VPRepairer>: retrying the same SAT model with "
+                        "preprocessed trajectory CLCS"
+                    )
+                    # The next loop reuses the same logical assignment; this
+                    # is a geometry fallback, not another SAT iteration.
+                    self.nr_iter -= 1
+                    nr += 1
+                    continue
             if repaired_traj is not None:
                 candidate_tv = math.inf
                 if check_flag:
@@ -276,6 +291,17 @@ class VPTrajectoryRepairer(
                     f"(updated TV={candidate_tv}); trying another SAT model"
                 )
 
+                if self._retry_with_preprocessed_trajectory_clcs():
+                    print(
+                        "* \t<VPRepairer>: retrying the same SAT model with "
+                        "preprocessed trajectory CLCS"
+                    )
+                    # The next loop reuses the same logical assignment; this
+                    # is a geometry fallback, not another SAT iteration.
+                    self.nr_iter -= 1
+                    nr += 1
+                    continue
+
                 selected_negative_conflict = any(
                     "in_intersection_conflict_area" in prop.name
                     and prop.alphabet.startswith("~")
@@ -297,14 +323,20 @@ class VPTrajectoryRepairer(
             self.sat_solver.update_formula()
             if self.sat_solver.solver_mode == "domain_dpll":
                 domain_solver = getattr(self.sat_solver, "_dpll_solver", None)
-                relaxed_domains = domain_solver.relax_domains_for_model(
-                    self.model
-                ) if domain_solver is not None else []
+                relaxed_domains = (
+                    domain_solver.relax_domains_for_model(self.model)
+                    if domain_solver is not None
+                    else []
+                )
                 if relaxed_domains:
                     self.domain_dict = dict(domain_solver.domains)
-                    self.sat_solver.set_domain_dict(self.domain_dict)
+                    self.sat_solver.set_domain_dict(
+                        self.domain_dict,
+                        hard_domain_vars=self._hard_domain_vars,
+                        repair_literals=self._repair_literals,
+                    )
                     print(
-                        "* \t<VPRepairer>: relaxed DomainDPLL domains after failed model: "
+                        "* \t<VPRepairer>: relaxed domains selected by failed model: "
                         f"{relaxed_domains}"
                     )
             nr += 1
@@ -316,7 +348,7 @@ class VPTrajectoryRepairer(
         all_states = self._get_states_with_initial()
         lanelet_clcs, dt = self._get_lanelet_clcs_and_dt()
         clcs_start_time = time.time()
-        trajectory_clcs, ref_path = self._build_trajectory_clcs(all_states)
+        trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(all_states)
         self.runtime_breakdown["clcs"] += time.time() - clcs_start_time
         cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
 

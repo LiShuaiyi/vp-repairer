@@ -32,6 +32,9 @@ class DomainDPLL:
         self._prop_nodes = prop_nodes
         self._tv_time_step = tv_time_step
         self._domains = domains or {}
+        # Domains are normally first-attempt pruning hints.  A deliberately
+        # small caller-provided subset may be kept hard for semantic facts
+        # which VP cannot change (currently IN priority predicates only).
         self._hard_domain_vars = set(hard_domain_vars or ())
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
         self._base_cnf = self._assign_cnf(sympy_cnf)
@@ -134,9 +137,11 @@ class DomainDPLL:
         self._new_false = []
 
     def _rebuild_cnf(self):
-        self._cnf = self._apply_domains(deepcopy(self._base_cnf), self._domains)
-        if self._repair_literals:
-            self._cnf.append(" ".join(self._repair_literals))
+        # Domains constrain a variable only when the DPLL search actually
+        # selects it.  Encoding every singleton domain as a unit clause would
+        # force even irrelevant variables into the partial model and make a
+        # failed attempt relax all domains at once.
+        self._cnf = deepcopy(self._base_cnf)
         self._literals = self.get_literal(
             self._cnf, self._prop_nodes, self._tv_time_step
         )
@@ -161,9 +166,8 @@ class DomainDPLL:
         """
         Remove domain restrictions for variables in a failed SAT model.
 
-        Domains are pruning hints. If a repair attempt rejects a model, keeping
-        a unit domain for variables in that model may block the updated CNF from
-        exploring alternative repair choices.
+        Ordinary domains are pruning hints.  Caller-designated hard domains
+        remain active after a failed repair attempt.
         """
         model = self.model if model is None else model
         if not self._domains or not model:
@@ -234,6 +238,10 @@ class DomainDPLL:
         self._assign_true = set(self._assign_true)
         self._assign_false = set(self._assign_false)
 
+        if any(not self._literal_allowed_by_domain(unit) for unit in units):
+            self.back_tracking()
+            return unsat
+
         if len(units):
             cnf = self.unit_propagation(cnf, units)
 
@@ -246,6 +254,14 @@ class DomainDPLL:
 
         literals = self.get_literal(cnf, self._prop_nodes, self._tv_time_step)
         lit = self.choose_literal(literals)
+
+        domain_lit = self._singleton_domain_literal(lit[-1])
+        if domain_lit is not None:
+            if self._solve(deepcopy(cnf) + [domain_lit]) == sat:
+                return sat
+            self._assign_true = set()
+            self._assign_false = set()
+            return unsat
 
         if self._solve(deepcopy(cnf) + [lit]) == sat:
             return sat
@@ -263,6 +279,23 @@ class DomainDPLL:
             if preferred[-1] in literal_vars:
                 return preferred
         return literals[0]
+
+    def _singleton_domain_literal(self, var):
+        allowed = set(self._domains.get(var, {0, 1}))
+        if allowed == {1}:
+            return var
+        if allowed == {0}:
+            return "~" + var
+        if allowed == {0, 1}:
+            return None
+        raise ValueError(
+            f"<DPLL>: invalid domain for {var}: {allowed} "
+            "(must be {0}, {1}, or {0,1})"
+        )
+
+    def _literal_allowed_by_domain(self, literal):
+        required = self._singleton_domain_literal(literal[-1])
+        return required is None or literal == required
 
     def unit_propagation(self, cnf, units):
         for unit in units:

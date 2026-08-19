@@ -106,13 +106,16 @@ class SATSolver:
         Based on the syntax for sympy, the SAT formula is updated by negating the unsatisfiable abstraction:
         phi_SAT = phi_SAT and (not abs)
         """
-        if self._formula[0] is not "(":
+        if self._formula[0] != "(":
             self._formula = "(" + self.formula + ")"
-        # generate counterexample
-        counter_ex = "~" + list(self._dpll_model)[0]
-        if len(list(self._dpll_model)) > 1:
+        # Block exactly the failed SAT model.  DomainDPLL may then relax only
+        # the domain variables which occur in this model, leaving all other
+        # domain restrictions active for the next search.
+        model = list(self._dpll_model)
+        counter_ex = "~" + model[0]
+        if len(model) > 1:
             counter_ex = "(" + counter_ex
-            for atom in list(self._dpll_model)[1:]:
+            for atom in model[1:]:
                 counter_ex += " | ~" + atom
             counter_ex += ")"
         self._formula += " & " + counter_ex

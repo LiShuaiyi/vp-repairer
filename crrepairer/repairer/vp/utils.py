@@ -23,6 +23,24 @@ class VPUtils:
         self._sel_prop = []
         for prop in propositions:
             if prop is not None and prop.alphabet in model:
+                variable = prop.alphabet[-1]
+                desired_value = 0 if prop.alphabet.startswith("~") else 1
+                domain = getattr(self, "domain_dict", {}).get(variable)
+                fixed_literal = (
+                    variable in getattr(self, "_hard_domain_vars", set())
+                    and domain == {desired_value}
+                )
+                entailed_negative_same_lane = (
+                    prop.alphabet.startswith("~")
+                    and "lane" in prop.name
+                    and "same" in prop.name
+                    and domain == {0}
+                )
+                if fixed_literal or entailed_negative_same_lane:
+                    # This literal is a fixed fact already enforced by SAT.
+                    # It needs no VP constraint and, for a negative literal,
+                    # must not accidentally invoke the positive extractor.
+                    continue
                 if (prop.ttv_value < 0 and prop.alphabet[0] != "~") or (
                     prop.ttv_value > 0 and prop.alphabet[0] == "~"
                 ):

@@ -57,9 +57,7 @@ class VPPredicateEstimation:
         breakdown["get_clcs_dt"] = time.time() - start
 
         start = time.time()
-        trajectory_clcs, ref_path = self._build_trajectory_clcs(
-            all_states, resampling_factor=2
-        )
+        trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(all_states)
         breakdown["build_trajectory_clcs"] = time.time() - start
 
         start = time.time()
@@ -99,18 +97,46 @@ class VPPredicateEstimation:
             domain_dict,
             self.sat_solver._prop_nodes,
         )
+        self._repair_literals = self._rg_controllable_repair_literals(
+            self.sat_solver._prop_nodes
+        )
         breakdown["infer_domain_dict"] = time.time() - start
         breakdown["fixed_rg_predicate_count"] = fixed_rg_count
+        breakdown["repair_literal_count"] = len(self._repair_literals)
         self.domain_dict_breakdown = breakdown
         return domain_dict
 
+    @staticmethod
+    def _rg_controllable_repair_literals(prop_nodes):
+        """Prioritize RG literals backed by an explicit VP constraint.
+
+        Fixed facts such as the other vehicle's cut-in state may satisfy a SAT
+        clause.  These literals guide DomainDPLL's branch order toward a real
+        ego action, but are not added to the working CNF and therefore do not
+        change the Boolean formula's semantics.
+        """
+        literals = []
+        for prop_node in prop_nodes:
+            name = prop_node.name
+            alphabet = prop_node.alphabet[-1]
+            current_positive = float(prop_node.ttv_value) > 0.0
+            if "distance" in name and not current_positive:
+                literals.append(alphabet)
+            elif "lane" in name and "same" in name and not current_positive:
+                literals.append(alphabet)
+            elif "speed" in name and not current_positive:
+                literals.append(alphabet)
+            elif "brakes_abruptly" in name and current_positive:
+                literals.append(f"~{alphabet}")
+        return list(dict.fromkeys(literals))
+
     def _fix_uncontrollable_rg_predicates(self, domain_dict, prop_nodes):
-        """Hard-fix RG facts that velocity planning cannot change.
+        """Initialize RG facts that velocity planning cannot change.
 
         A cut-in event is determined by the other vehicle's lateral motion and
         is not an action available to the ego-only velocity planner.  Its SAT
-        value must therefore agree with the monitored trajectory instead of
-        being relaxed or sent to constraint extraction.
+        search domain initially agrees with the monitored trajectory.  It is
+        intentionally not part of the IN-only hard-priority exception.
         """
         fixed_count = 0
         for prop_node in prop_nodes:
@@ -119,12 +145,11 @@ class VPPredicateEstimation:
             alphabet = prop_node.alphabet[-1]
             current_value = int(float(prop_node.ttv_value) > 0.0)
             domain_dict[alphabet] = {current_value}
-            self._hard_domain_vars.add(alphabet)
             fixed_count += 1
         return fixed_count
 
     def _build_domain_dict_for_sat_direct(self):
-        """Build hard domains and VP-action literals for directly handled rules.
+        """Build initial domains and VP-action literals for directly handled rules.
 
         Propositions with a dedicated VP constraint remain searchable.  Every
         other proposition is fixed to its current value because the velocity-
@@ -183,7 +208,8 @@ class VPPredicateEstimation:
     def _build_constraint_guided_intersection_domains(self):
         """Keep only propositions backed by explicit VP constraints searchable."""
         is_in1 = "R_IN1" in self.config.repair.rules
-        hard_domains = {}
+        initial_domains = {}
+        hard_priority_vars = set()
         repair_literals = []
 
         for prop_node in self.sat_solver._prop_nodes:
@@ -204,15 +230,22 @@ class VPPredicateEstimation:
             if extractable:
                 repair_literals.append(f"~{alphabet}")
             else:
-                hard_domains[alphabet] = {int(current_value)}
+                initial_domains[alphabet] = {int(current_value)}
+                # These IN antecedents encode route/right-of-way relations.
+                # Ego-only velocity planning cannot change them, so unlike
+                # ordinary reachability domains they must survive candidate
+                # failure and domain relaxation.
+                if "same_priority" in name or "target_has_priority" in name:
+                    hard_priority_vars.add(alphabet)
 
-        self._hard_domain_vars = set(hard_domains)
+        self._hard_domain_vars = hard_priority_vars
         self._repair_literals = repair_literals
         self.domain_dict_breakdown = {
-            "hard_domain_count": len(hard_domains),
+            "initial_domain_count": len(initial_domains),
+            "hard_priority_domain_count": len(hard_priority_vars),
             "repair_literal_count": len(repair_literals),
         }
-        return hard_domains
+        return initial_domains
 
     def _eval_abrupt_brake(self, t_start: int, t_end: int) -> dict:
         pred_dict = {}

@@ -44,17 +44,24 @@ import crrepairer.smt.monitor_wrapper as monitor_wrapper
 
 RESULT_PREFIX = "__UPDATED_BATCH_RESULT__="
 HIGH_D_ROOT = Path("/data_linux/Lab/highD-cr-scenarios/highD-repair")
+MONA_ROOT = Path("/data_linux/mona/scenarios")
 IND_ROOT = Path("/data_linux/Lab/highD-cr-scenarios/ind_scenarios_2024")
 INTERSECTION_RESULT_INDEX = (
     REPO_ROOT / "evaluation/config/vp_smt_repairer_intersection_final_batch_results.csv"
 )
 DEFAULT_OUTPUT_DIR = Path("/tmp/vp_repairer_updated_batches")
+ISOLATED_WORK_DIR = Path("/tmp/vp_repairer_updated_work")
 DEFAULT_MAX_WORKERS = min(4, max(1, (os.cpu_count() or 1) // 2))
 REPAIRER_TYPES = ("vp", "smt")
-# Preserve the backup policy used by the existing per-rule SMT batch scripts:
-# try planner 1 first, then planner 2 with the same constraint mode.
-SMT_CONFIGURATIONS = ((1, 2), (2, 2))
-SMT_FAILED_PREFERENCE = (2, 2)
+VP_SAT_SOLVER_MODES = ("dpll", "domain_dpll")
+VP_SAT_SOLVER_MODE_ENV = "CRREPAIR_VP_SAT_SOLVER_MODE"
+# Exercise both baseline planner modes and both constraint implementations.
+# The reachability constraints remain the primary configuration; manual
+# constraints are the semantic fallback when reach extraction cannot represent
+# a candidate.  On hosts without an MIQP license planner 2 transparently falls
+# back to QP, but retaining it keeps the batch policy portable.
+SMT_CONFIGURATIONS = ((1, 2), (2, 2), (1, 1), (2, 1))
+SMT_FAILED_PREFERENCE = (2, 1)
 
 
 RULE_SPECS = {
@@ -66,6 +73,19 @@ RULE_SPECS = {
         "vp_planner": 1,
         "vp_constraint_mode": 1,
         "smt_sat_solver_mode": "domain_dpll",
+    },
+    # The paper's interstate timing figures merge these 93 MONA RG1 cases
+    # with the 100 highD RG1 cases.  Keep this as an explicitly selected
+    # auxiliary group so the default eight-rule batch remains unchanged.
+    "rg1_mona": {
+        "rule_label": "R_G1",
+        "rules": ["R_G1"],
+        "csv_paths": [REPO_ROOT / "evaluation/config/mona_merge_RG1_results.csv"],
+        "scenario_root": MONA_ROOT,
+        "vp_planner": 1,
+        "vp_constraint_mode": 1,
+        "smt_sat_solver_mode": "domain_dpll",
+        "repairer_type_filter": "vp",
     },
     "rg2": {
         "rule_label": "R_G2",
@@ -189,7 +209,9 @@ def output_name(group: str) -> str:
 
 
 def normalize_case(row, spec):
-    scenario_id = row.get("scenario_id") or row.get("scenario")
+    scenario_id = (
+        row.get("scenario_id") or row.get("scenario") or row.get("scenario_name")
+    )
     scenario_path = row.get("scenario_path") or ""
     if not scenario_id and scenario_path:
         scenario_id = Path(scenario_path).stem
@@ -230,7 +252,14 @@ def load_group_cases(group: str):
     cases = []
     for csv_path in spec["csv_paths"]:
         with csv_path.open(newline="") as csv_file:
-            cases.extend(normalize_case(row, spec) for row in csv.DictReader(csv_file))
+            rows = csv.DictReader(csv_file)
+            repairer_type_filter = spec.get("repairer_type_filter")
+            cases.extend(
+                normalize_case(row, spec)
+                for row in rows
+                if not repairer_type_filter
+                or row.get("repairer_type") == repairer_type_filter
+            )
     if group.startswith("in"):
         path_index = load_intersection_path_index()
         for case in cases:
@@ -243,7 +272,13 @@ def load_group_cases(group: str):
 
 def solver_mode(group, repairer_type):
     if repairer_type == "vp":
-        return "domain_dpll"
+        mode = os.environ.get(VP_SAT_SOLVER_MODE_ENV, "domain_dpll")
+        if mode not in VP_SAT_SOLVER_MODES:
+            raise ValueError(
+                f"Unsupported VP SAT solver mode {mode!r}; "
+                f"expected one of {VP_SAT_SOLVER_MODES}"
+            )
+        return mode
     return RULE_SPECS[group].get("smt_sat_solver_mode", "dpll")
 
 
@@ -346,23 +381,39 @@ def is_positive_infinity(value):
 def collect_vp_timing(result, repairer):
     breakdown = getattr(repairer, "runtime_breakdown", {}) or {}
     domain_time = float(getattr(repairer, "domain_dict_time", 0.0) or 0.0)
+    domain_breakdown = getattr(repairer, "domain_dict_breakdown", {}) or {}
+    domain_clcs_time = float(
+        domain_breakdown.get("build_trajectory_clcs", 0.0) or 0.0
+    )
+    # The shared trajectory CLCS is first requested while constructing RG
+    # predicate domains, so its build time is physically included in
+    # domain_dict_time even though it belongs to velocity planning.  Move it
+    # out of predicate estimation and merge every CLCS contribution into the
+    # LP/planning component used by the paper plots.
+    domain_clcs_time = min(max(domain_clcs_time, 0.0), domain_time)
+    predicate_time = domain_time - domain_clcs_time
     sat_time = float(breakdown.get("sat", 0.0) or 0.0)
-    clcs_time = float(breakdown.get("clcs", 0.0) or 0.0)
+    runtime_clcs_time = float(breakdown.get("clcs", 0.0) or 0.0)
+    clcs_time = domain_clcs_time + runtime_clcs_time
     extraction_time = float(breakdown.get("constraint_extraction", 0.0) or 0.0)
     conversion_time = float(breakdown.get("constraint_conversion", 0.0) or 0.0)
-    lp_time = float(breakdown.get("lp", 0.0) or 0.0)
+    raw_lp_time = float(breakdown.get("lp", 0.0) or 0.0)
+    lp_time = clcs_time + raw_lp_time
     trajectory_time = float(breakdown.get("trajectory_build", 0.0) or 0.0)
 
-    result["predicate_value_estimate_time"] = domain_time
+    result["predicate_value_estimate_time"] = predicate_time
     result["sat_solve_time"] = sat_time
     result["constraint_extract_time"] = extraction_time + conversion_time
-    result["vp_planning_time"] = clcs_time + lp_time + trajectory_time
+    result["vp_planning_time"] = lp_time + trajectory_time
 
-    result["domain_dict_time"] = domain_time
+    result["domain_dict_time"] = predicate_time
     result["sat_time"] = sat_time
     result["clcs_time"] = clcs_time
     result["constraint_extraction_time"] = extraction_time
     result["constraint_conversion_time"] = conversion_time
+    # lp_time is the paper's velocity-planning component and intentionally
+    # includes CLCS preprocessing/construction. clcs_time remains as a
+    # diagnostic subset and must not be added to lp_time a second time.
     result["lp_time"] = lp_time
     result["trajectory_build_time"] = trajectory_time
     result["core_total_time"] = sum(
@@ -515,6 +566,7 @@ def run_case(group, case, repairer_type):
 
 
 def run_case_isolated(group, case, repairer_type, timeout):
+    ISOLATED_WORK_DIR.mkdir(parents=True, exist_ok=True)
     cmd = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -526,7 +578,10 @@ def run_case_isolated(group, case, repairer_type, timeout):
     try:
         completed = subprocess.run(
             cmd,
-            cwd=str(REPO_ROOT),
+            # Some legacy SMT/reachability components still write auxiliary
+            # files below a relative ``output/`` path.  Keep those artifacts
+            # outside the repository and writable in isolated evaluation.
+            cwd=str(ISOLATED_WORK_DIR),
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -631,10 +686,22 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--groups",
-        default=",".join(RULE_SPECS),
+        default=",".join(
+            group for group in RULE_SPECS if group != "rg1_mona"
+        ),
         help="Comma-separated groups: " + ",".join(RULE_SPECS),
     )
     parser.add_argument("--repairers", default="vp,smt")
+    parser.add_argument(
+        "--vp-sat-solver-mode",
+        choices=VP_SAT_SOLVER_MODES,
+        default=os.environ.get(VP_SAT_SOLVER_MODE_ENV, "domain_dpll"),
+        help=(
+            "SAT solver used by the VP repairer. The default remains "
+            "domain_dpll; dpll runs the unguided baseline without predicate "
+            "domain construction."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--max-workers", type=int, default=DEFAULT_MAX_WORKERS)
     parser.add_argument("--limit", type=int, default=None)
@@ -644,6 +711,10 @@ def parse_args():
 
 def main():
     args = parse_args()
+    # Isolated case subprocesses inherit this setting.  Keeping the selection
+    # in the unified runner guarantees identical cases, repair configuration,
+    # strict success checks, and timing columns for the DPLL ablation.
+    os.environ[VP_SAT_SOLVER_MODE_ENV] = args.vp_sat_solver_mode
     groups = tuple(item.strip() for item in args.groups.split(",") if item.strip())
     invalid_groups = [group for group in groups if group not in RULE_SPECS]
     if invalid_groups:
