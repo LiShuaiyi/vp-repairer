@@ -55,6 +55,9 @@ DEFAULT_MAX_WORKERS = min(4, max(1, (os.cpu_count() or 1) // 2))
 REPAIRER_TYPES = ("vp", "smt")
 VP_SAT_SOLVER_MODES = ("dpll", "domain_dpll")
 VP_SAT_SOLVER_MODE_ENV = "CRREPAIR_VP_SAT_SOLVER_MODE"
+VP_EXTEND_ACCELERATION_REFERENCE_ENV = (
+    "CRREPAIR_VP_EXTEND_ACCELERATION_REFERENCE_PATH"
+)
 # Exercise both baseline planner modes and both constraint implementations.
 # The reachability constraints remain the primary configuration; manual
 # constraints are the semantic fallback when reach extraction cannot represent
@@ -176,9 +179,13 @@ FIELDNAMES = [
     "planner",
     "constraint_mode",
     "sat_solver_mode",
+    "extend_acceleration_reference_path",
     "attempted_smt_configurations",
     "success",
     "iterations",
+    "successful_repair_mode",
+    "deceleration_iterations",
+    "acceleration_iterations",
     "tv",
     "tc",
     "updated_tv",
@@ -282,6 +289,11 @@ def solver_mode(group, repairer_type):
     return RULE_SPECS[group].get("smt_sat_solver_mode", "dpll")
 
 
+def extend_acceleration_reference_path_enabled():
+    value = os.environ.get(VP_EXTEND_ACCELERATION_REFERENCE_ENV, "1")
+    return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
 def empty_result(group, case, repairer_type, planner, constraint_mode):
     result = {field: "" for field in FIELDNAMES}
     result.update(
@@ -294,9 +306,17 @@ def empty_result(group, case, repairer_type, planner, constraint_mode):
             "planner": planner,
             "constraint_mode": constraint_mode,
             "sat_solver_mode": solver_mode(group, repairer_type),
+            "extend_acceleration_reference_path": (
+                extend_acceleration_reference_path_enabled()
+                if repairer_type == "vp"
+                else ""
+            ),
             "attempted_smt_configurations": "",
             "success": False,
             "iterations": 0,
+            "successful_repair_mode": "",
+            "deceleration_iterations": 0,
+            "acceleration_iterations": 0,
             "domain_dict_size": 0,
             "predicate_value_estimate_time": 0.0,
             "vp_planning_time": 0.0,
@@ -341,6 +361,9 @@ def build_config(group, case, repairer_type, planner, constraint_mode):
     config.repair.planner = planner
     config.repair.constraint_mode = constraint_mode
     config.repair.sat_solver_mode = solver_mode(group, repairer_type)
+    config.repair.extend_acceleration_reference_path = (
+        extend_acceleration_reference_path_enabled()
+    )
     config.repair.use_mpr = False
     config.repair.use_mpr_derivative = False
     config.debug.show_plots = False
@@ -382,9 +405,21 @@ def collect_vp_timing(result, repairer):
     breakdown = getattr(repairer, "runtime_breakdown", {}) or {}
     domain_time = float(getattr(repairer, "domain_dict_time", 0.0) or 0.0)
     domain_breakdown = getattr(repairer, "domain_dict_breakdown", {}) or {}
-    domain_clcs_time = float(
-        domain_breakdown.get("build_trajectory_clcs", 0.0) or 0.0
-    )
+    breakdown_by_mode = getattr(
+        repairer, "domain_dict_breakdown_by_mode", {}
+    ) or {}
+    if breakdown_by_mode:
+        # Deceleration and acceleration use distinct trajectory contexts.  If
+        # both phases run, both CLCS setup costs are physically inside the
+        # accumulated domain time and belong to VP planning in the paper.
+        domain_clcs_time = sum(
+            float(item.get("build_trajectory_clcs", 0.0) or 0.0)
+            for item in breakdown_by_mode.values()
+        )
+    else:
+        domain_clcs_time = float(
+            domain_breakdown.get("build_trajectory_clcs", 0.0) or 0.0
+        )
     # The shared trajectory CLCS is first requested while constructing RG
     # predicate domains, so its build time is physically included in
     # domain_dict_time even though it belongs to velocity planning.  Move it
@@ -469,6 +504,18 @@ def run_single_configuration(group, case, repairer_type, planner, constraint_mod
         repaired_trajectory = repairer.repair()
 
         result["iterations"] = int(getattr(repairer, "nr_iter", 0) or 0)
+        result["successful_repair_mode"] = (
+            getattr(repairer, "successful_repair_mode", "")
+            if repairer_type == "vp"
+            else ""
+        )
+        phase_iterations = getattr(repairer, "phase_iterations", {}) or {}
+        result["deceleration_iterations"] = int(
+            phase_iterations.get("deceleration", 0) or 0
+        )
+        result["acceleration_iterations"] = int(
+            phase_iterations.get("acceleration", 0) or 0
+        )
         result["tv"] = getattr(repairer, "tv", "")
         result["tc"] = getattr(repairer, "tc", "")
         result["domain_dict_size"] = len(getattr(repairer, "domain_dict", {}))
@@ -503,6 +550,16 @@ def run_single_configuration(group, case, repairer_type, planner, constraint_mod
         traceback.print_exc()
         if repairer is not None:
             result["iterations"] = int(getattr(repairer, "nr_iter", 0) or 0)
+            result["successful_repair_mode"] = getattr(
+                repairer, "successful_repair_mode", ""
+            )
+            phase_iterations = getattr(repairer, "phase_iterations", {}) or {}
+            result["deceleration_iterations"] = int(
+                phase_iterations.get("deceleration", 0) or 0
+            )
+            result["acceleration_iterations"] = int(
+                phase_iterations.get("acceleration", 0) or 0
+            )
             result["tv"] = getattr(repairer, "tv", "")
             result["tc"] = getattr(repairer, "tc", "")
             if repairer_type == "vp":
@@ -702,6 +759,16 @@ def parse_args():
             "domain construction."
         ),
     )
+    parser.add_argument(
+        "--extend-acceleration-reference-path",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Preserve and route-extend the original trajectory in the "
+            "acceleration branch. Use --no-extend-acceleration-reference-path "
+            "to reuse the route-lane CLCS directly."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--max-workers", type=int, default=DEFAULT_MAX_WORKERS)
     parser.add_argument("--limit", type=int, default=None)
@@ -715,6 +782,9 @@ def main():
     # in the unified runner guarantees identical cases, repair configuration,
     # strict success checks, and timing columns for the DPLL ablation.
     os.environ[VP_SAT_SOLVER_MODE_ENV] = args.vp_sat_solver_mode
+    os.environ[VP_EXTEND_ACCELERATION_REFERENCE_ENV] = (
+        "1" if args.extend_acceleration_reference_path else "0"
+    )
     groups = tuple(item.strip() for item in args.groups.split(",") if item.strip())
     invalid_groups = [group for group in groups if group not in RULE_SPECS]
     if invalid_groups:

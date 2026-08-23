@@ -266,6 +266,161 @@ class VPTrajectoryContext:
         self._shared_trajectory_clcs = None
         return True
 
+    def _build_acceleration_trajectory_clcs(
+        self,
+        all_states: List[CustomState],
+        position_debounce: float = 1e-2,
+        continuation_step: float = 0.1,
+        lateral_blend_distance: float = 5.0,
+        stationary_span: float = 0.5,
+    ) -> Tuple[CurvilinearCoordinateSystem, np.ndarray]:
+        """Extend the recorded ego path smoothly along its remaining route.
+
+        Acceleration repair can move beyond the finite recorded trajectory, but
+        replacing that trajectory with the lane centerline also changes its
+        already-observed geometry.  Preserve every reliable original point and
+        append samples from the complete route CLCS.  The last recorded lateral
+        offset decays smoothly to the route center over a short transition.
+        """
+        source_path = []
+        for state in all_states:
+            position = np.asarray(state.position, dtype=float).reshape(-1)[:2]
+            if position.size < 2 or not np.all(np.isfinite(position)):
+                raise ValueError(
+                    "Acceleration reference contains an invalid ego position."
+                )
+            if (
+                source_path
+                and np.linalg.norm(position - source_path[-1])
+                < position_debounce
+            ):
+                continue
+            if source_path:
+                displacement = position - source_path[-1]
+                heading = float(getattr(state, "orientation", 0.0))
+                forward = np.array([np.cos(heading), np.sin(heading)])
+                if float(np.dot(displacement, forward)) <= 0.0:
+                    continue
+            source_path.append(position)
+
+        source_path = np.asarray(source_path, dtype=float)
+        if len(source_path) == 0:
+            raise ValueError("Acceleration reference contains no ego positions.")
+        if (
+            len(source_path) < 2
+            or float(np.max(np.linalg.norm(source_path - source_path[0], axis=1)))
+            < stationary_span
+        ):
+            # A stopped vehicle often has centimetre-scale position jitter.
+            # Treat that as a single observed position instead of turning the
+            # noise into a high-curvature path tangent.
+            current_idx = int(self._tc - all_states[0].time_step)
+            current_position = np.asarray(
+                all_states[current_idx].position, dtype=float
+            ).reshape(-1)[:2]
+            source_path = current_position[None, :]
+
+        world_ego = self.rule_monitor.world.vehicle_by_id(
+            self.config.repair.ego_id
+        )
+        route_clcs = world_ego.ref_path_lane.clcs
+        projected = np.asarray(
+            [
+                route_clcs.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
+                )
+                for point in source_path
+            ],
+            dtype=float,
+        )
+        nonzero_progress = np.diff(projected[:, 0])
+        nonzero_progress = nonzero_progress[np.abs(nonzero_progress) > 1e-4]
+        last_s = float(projected[-1, 0])
+        last_d = float(projected[-1, 1])
+        if len(nonzero_progress):
+            direction = 1.0 if float(np.median(nonzero_progress)) >= 0.0 else -1.0
+        else:
+            ds = min(0.5, 0.25 * float(route_clcs.length()))
+            s_before = max(0.0, last_s - ds)
+            s_after = min(float(route_clcs.length()), last_s + ds)
+            point_before = np.asarray(
+                route_clcs.convert_to_cartesian_coords(s_before, last_d),
+                dtype=float,
+            )
+            point_after = np.asarray(
+                route_clcs.convert_to_cartesian_coords(s_after, last_d),
+                dtype=float,
+            )
+            route_tangent = point_after - point_before
+            current_idx = int(self._tc - all_states[0].time_step)
+            heading = float(getattr(all_states[current_idx], "orientation", 0.0))
+            forward = np.array([np.cos(heading), np.sin(heading)])
+            direction = 1.0 if float(np.dot(route_tangent, forward)) >= 0.0 else -1.0
+        route_end = float(route_clcs.length()) if direction > 0.0 else 0.0
+        remaining_length = direction * (route_end - last_s)
+        current_idx = int(self._tc - all_states[0].time_step)
+        current_velocity = max(
+            0.0, float(getattr(all_states[current_idx], "velocity", 0.0))
+        )
+        horizon_seconds = max(
+            0.0,
+            (all_states[-1].time_step - int(self._tc))
+            * float(self.config.scenario.dt),
+        )
+        qp_config = self.config.vehicle.qp_veh_config
+        maximum_travel = min(
+            float(qp_config.v_lon_max) * horizon_seconds,
+            current_velocity * horizon_seconds
+            + 0.5 * float(qp_config.a_lon_max) * horizon_seconds**2,
+        )
+        remaining_length = min(
+            remaining_length,
+            max(30.0, maximum_travel + 15.0),
+        )
+        if remaining_length <= continuation_step:
+            raise ValueError(
+                "Acceleration reference route has no usable continuation "
+                "after the recorded trajectory."
+            )
+
+        continuation_distances = np.arange(
+            continuation_step,
+            remaining_length,
+            continuation_step,
+            dtype=float,
+        )
+        continuation = []
+        for distance in continuation_distances:
+            blend_u = min(1.0, distance / lateral_blend_distance)
+            smoothstep = blend_u * blend_u * (3.0 - 2.0 * blend_u)
+            lateral_offset = last_d * (1.0 - smoothstep)
+            route_s = last_s + direction * float(distance)
+            continuation.append(
+                route_clcs.convert_to_cartesian_coords(route_s, lateral_offset)
+            )
+        if not continuation:
+            raise ValueError(
+                "Acceleration reference route continuation contains no samples."
+            )
+
+        extended_source_path = np.vstack(
+            (source_path, np.asarray(continuation, dtype=float))
+        )
+        ref_path, processed_ref_path = self._build_stable_reference_paths(
+            extended_source_path
+        )
+        trajectory_clcs = CurvilinearCoordinateSystem(
+            reference_path=processed_ref_path,
+            params=CLCSParams(),
+            preprocess_path=False,
+            validity_checks=False,
+        )
+        # The extended path already passes through the original trajectory;
+        # unlike the lane-centerline implementation it needs no fixed offset.
+        self._trajectory_clcs_lateral_offset = 0.0
+        self._trajectory_clcs_preprocessed = True
+        return trajectory_clcs, ref_path
+
     def _get_shared_trajectory_clcs(
         self,
         all_states: List[CustomState],
@@ -280,7 +435,37 @@ class VPTrajectoryContext:
         """
         cached = getattr(self, "_shared_trajectory_clcs", None)
         if cached is None:
-            cached = self._build_trajectory_clcs(all_states)
+            if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+                if getattr(
+                    self.config.repair,
+                    "extend_acceleration_reference_path",
+                    True,
+                ):
+                    cached = self._build_acceleration_trajectory_clcs(all_states)
+                else:
+                    # Ablation: use the complete route CLCS without building a
+                    # trajectory-aligned extension of the recorded ego path.
+                    world_ego = self.rule_monitor.world.vehicle_by_id(
+                        self.config.repair.ego_id
+                    )
+                    lane = world_ego.ref_path_lane
+                    ref_path = np.asarray(lane.center_vertices, dtype=float)
+                    if ref_path.ndim != 2 or len(ref_path) < 2:
+                        raise ValueError(
+                            "Acceleration reference lane has fewer than two points."
+                        )
+                    current_idx = int(self._tc - all_states[0].time_step)
+                    current_state = all_states[current_idx]
+                    current_ct = lane.clcs.convert_to_curvilinear_coords(
+                        float(current_state.position[0]),
+                        float(current_state.position[1]),
+                    )
+                    self._trajectory_clcs_lateral_offset = float(current_ct[1])
+                    self._trajectory_clcs_preprocessed = True
+                    cached = lane.clcs, ref_path
+            else:
+                self._trajectory_clcs_lateral_offset = 0.0
+                cached = self._build_trajectory_clcs(all_states)
             self._shared_trajectory_clcs = cached
         return cached
 

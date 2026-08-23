@@ -1,6 +1,7 @@
 """DomainDPLL domain estimation helpers for velocity-planning repair."""
 
 import math
+import os
 import time
 
 import numpy as np
@@ -27,7 +28,8 @@ class VPPredicateEstimation:
                 f"falling back to empty domains: {exc}"
             )
             domain_dict = {}
-        self.domain_dict_time = time.time() - domain_start_time
+        phase_domain_time = time.time() - domain_start_time
+        self.domain_dict_time += phase_domain_time
         self.runtime_breakdown["domain_dict"] = self.domain_dict_time
         self.domain_dict = dict(domain_dict)
         self.sat_solver.set_domain_dict(
@@ -36,7 +38,14 @@ class VPPredicateEstimation:
             repair_literals=self._repair_literals,
         )
         self._domain_dict_initialized = True
-        print(f"* \t<VPRepairer>: domain_dict construction time = {self.domain_dict_time:.6f}s")
+        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        breakdown_by_mode = getattr(self, "domain_dict_breakdown_by_mode", None)
+        if breakdown_by_mode is not None:
+            breakdown_by_mode[repair_mode] = dict(self.domain_dict_breakdown)
+        print(
+            "* \t<VPRepairer>: domain_dict construction time "
+            f"({repair_mode}) = {phase_domain_time:.6f}s"
+        )
         if self.domain_dict_breakdown:
             print(f"* \t<VPRepairer>: domain_dict breakdown = {self.domain_dict_breakdown}")
         print(f"* \t<VPRepairer>: domain_dict for DomainDPLL = {domain_dict}")
@@ -102,6 +111,9 @@ class VPPredicateEstimation:
         )
         breakdown["infer_domain_dict"] = time.time() - start
         breakdown["fixed_rg_predicate_count"] = fixed_rg_count
+        breakdown["hard_rg_front_speed_domain_count"] = getattr(
+            self, "_rg_front_speed_hard_domain_count", 0
+        )
         breakdown["repair_literal_count"] = len(self._repair_literals)
         self.domain_dict_breakdown = breakdown
         return domain_dict
@@ -211,6 +223,64 @@ class VPPredicateEstimation:
         initial_domains = {}
         hard_priority_vars = set()
         repair_literals = []
+        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        acceleration_reachability = {}
+        acceleration_diagnostics = {}
+        acceleration_reachability_time = 0.0
+        deceleration_reachability = {}
+        deceleration_diagnostics = {}
+        deceleration_reachability_time = 0.0
+        if repair_mode == "acceleration":
+            self._acceleration_exit_step_by_variable = {}
+            self._acceleration_exit_last_step_by_variable = {}
+        constraint_props = [
+            prop_node
+            for prop_node in self.sat_solver._prop_nodes
+            if (
+                "stop_line" in prop_node.name
+                if is_in1
+                else "in_intersection_conflict_area__0_1" in prop_node.name
+            )
+        ]
+        if repair_mode == "deceleration":
+            deceleration_reachability_start = time.time()
+            try:
+                (
+                    deceleration_reachability,
+                    deceleration_diagnostics,
+                ) = self._estimate_deceleration_constraint_reachability(
+                    constraint_props,
+                    is_in1=is_in1,
+                )
+            except Exception as exc:
+                # Reachability domains only guide SAT.  Leave a literal
+                # searchable on geometry/CLCS failure so that exact extraction
+                # and the LP remain the final feasibility proof.
+                deceleration_diagnostics = {
+                    "estimate_error": f"{type(exc).__name__}: {exc}"
+                }
+            deceleration_reachability_time = (
+                time.time() - deceleration_reachability_start
+            )
+        if not is_in1 and repair_mode == "acceleration":
+            acceleration_reachability_start = time.time()
+            try:
+                (
+                    acceleration_reachability,
+                    acceleration_diagnostics,
+                ) = self._estimate_acceleration_conflict_reachability(
+                    constraint_props
+                )
+            except Exception as exc:
+                # Reachability domains are search guidance.  Failure to build
+                # the estimate must not create a false hard rejection; exact
+                # constraint extraction and the LP remain the final guards.
+                acceleration_diagnostics = {
+                    "estimate_error": f"{type(exc).__name__}: {exc}"
+                }
+            acceleration_reachability_time = (
+                time.time() - acceleration_reachability_start
+            )
 
         for prop_node in self.sat_solver._prop_nodes:
             alphabet = prop_node.alphabet[-1]
@@ -227,6 +297,19 @@ class VPPredicateEstimation:
                     "in_intersection_conflict_area__0_1" in name
                     and current_value
                 )
+            if (
+                extractable
+                and repair_mode == "deceleration"
+                and deceleration_reachability.get(alphabet) is False
+            ):
+                extractable = False
+            if not is_in1:
+                if (
+                    extractable
+                    and repair_mode == "acceleration"
+                    and acceleration_reachability.get(alphabet) is False
+                ):
+                    extractable = False
             if extractable:
                 repair_literals.append(f"~{alphabet}")
             else:
@@ -241,11 +324,404 @@ class VPPredicateEstimation:
         self._hard_domain_vars = hard_priority_vars
         self._repair_literals = repair_literals
         self.domain_dict_breakdown = {
+            "repair_mode": repair_mode,
             "initial_domain_count": len(initial_domains),
             "hard_priority_domain_count": len(hard_priority_vars),
             "repair_literal_count": len(repair_literals),
+            "deceleration_reachability": deceleration_diagnostics,
+            "acceleration_reachability": acceleration_diagnostics,
+            # CLCS construction belongs to VP planning in the paper timing.
+            # The remaining time is the actual optimistic predicate/reachable
+            # computation added by the active reachability phase.
+            "build_trajectory_clcs": float(
+                (
+                    deceleration_diagnostics
+                    if repair_mode == "deceleration"
+                    else acceleration_diagnostics
+                ).get("build_trajectory_clcs", 0.0)
+            ),
+            "estimate_deceleration_reachability": max(
+                0.0,
+                deceleration_reachability_time
+                - float(
+                    deceleration_diagnostics.get(
+                        "build_trajectory_clcs", 0.0
+                    )
+                ),
+            ),
+            "estimate_acceleration_reachability": max(
+                0.0,
+                acceleration_reachability_time
+                - float(
+                    acceleration_diagnostics.get(
+                        "build_trajectory_clcs", 0.0
+                    )
+                ),
+            ),
         }
         return initial_domains
+
+    def _estimate_deceleration_constraint_reachability(
+        self,
+        constraint_props,
+        *,
+        is_in1,
+    ):
+        """Check constraint-backed IN literals over a braking interval.
+
+        The recorded trajectory is the upper endpoint of deceleration repair.
+        Only predicates with an explicit stop-line/conflict-area VP constraint
+        are considered.  The lower endpoint matches the current IN LP
+        semantics; a physically continuous maximum-braking rollout is retained
+        separately in diagnostics.  A literal is rejected only if even the
+        optimistic LP endpoint violates its upper-bound constraint on a
+        required temporal frame.
+        """
+        if not constraint_props:
+            return {}, {"constraint_proposition_count": 0}
+
+        all_states = self._get_states_with_initial()
+        lanelet_clcs, dt = self._get_lanelet_clcs_and_dt()
+        trajectory_clcs_start = time.time()
+        trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(all_states)
+        trajectory_clcs_time = time.time() - trajectory_clcs_start
+
+        current_s, current_v, current_a = (
+            self._get_velocity_planning_current_conditions(
+                all_states,
+                trajectory_clcs,
+            )
+        )
+        if current_s is None:
+            return {}, {
+                "constraint_proposition_count": len(constraint_props),
+                "estimate_error": "current VP state is unavailable",
+                "build_trajectory_clcs": trajectory_clcs_time,
+            }
+
+        original_s = self._build_reference_longitudinal_positions(
+            all_states,
+            trajectory_clcs,
+        )
+        amin, amax, jmin, _ = self._get_longitudinal_planning_limits()
+        maximum_braking_s = []
+        maximum_braking_v = []
+        s_prev = float(current_s)
+        v_prev = max(0.0, float(current_v))
+        a_prev = float(np.clip(current_a, amin, amax))
+        for original_endpoint in original_s:
+            a_next = float(np.clip(a_prev + jmin * dt, amin, amax))
+            v_next = max(0.0, v_prev + a_next * dt)
+            s_next = s_prev + 0.5 * (v_prev + v_next) * dt
+            # Projection noise or an unusually abrupt recorded stop must not
+            # invert the interval endpoints.
+            s_next = min(float(s_next), float(original_endpoint))
+            maximum_braking_s.append(float(s_next))
+            maximum_braking_v.append(float(v_next))
+            actual_acceleration = (v_next - v_prev) / dt
+            s_prev, v_prev, a_prev = (
+                float(s_next),
+                float(v_next),
+                float(np.clip(actual_acceleration, amin, amax)),
+            )
+
+        maximum_braking_s = np.asarray(maximum_braking_s, dtype=float)
+        maximum_braking_v = np.asarray(maximum_braking_v, dtype=float)
+
+        # The current IN velocity-planning LP intentionally leaves the
+        # current-to-first-planning-frame transition free (s0/v0 are not
+        # supplied).  Its optimistic reachable lower endpoint is therefore a
+        # stationary trajectory at the current longitudinal coordinate.  Keep
+        # the physically continuous maximum-braking rollout above as a useful
+        # diagnostic, but do not use that stricter model to reject a SAT
+        # literal which the actual LP is still allowed to realize.
+        reachable_lower_s = np.full(
+            len(original_s), float(current_s), dtype=float
+        )
+        temporal_steps = self._temporal_constraint_steps(
+            all_states,
+            propositions=constraint_props,
+        )
+
+        interval_mode = "stop_line"
+        if is_in1:
+            constraint_upper = self._constraint_stop_line_on_trajectory(
+                self.rule_monitor.world,
+                self.rule_monitor.world.vehicle_by_id(
+                    self.config.repair.ego_id
+                ),
+                ref_path,
+                trajectory_clcs,
+            )
+            if constraint_upper is None:
+                return {}, {
+                    "constraint_proposition_count": len(constraint_props),
+                    "geometry_available": False,
+                    "kind": "stop_line",
+                    "build_trajectory_clcs": trajectory_clcs_time,
+                }
+        else:
+            conflict_interval = self._get_intersection_conflict_trajectory_interval(
+                lanelet_clcs=lanelet_clcs,
+                trajectory_clcs=trajectory_clcs,
+                ref_path=ref_path,
+            )
+            if conflict_interval is None:
+                return {}, {
+                    "constraint_proposition_count": len(constraint_props),
+                    "geometry_available": False,
+                    "kind": "conflict",
+                    "build_trajectory_clcs": trajectory_clcs_time,
+                }
+            constraint_upper, _, interval_mode = conflict_interval
+
+        raw_constraint_upper = float(constraint_upper)
+        effective_constraint_upper = raw_constraint_upper
+        if not is_in1 and interval_mode.startswith("legacy"):
+            ct_s_min = float(
+                trajectory_clcs.convert_to_curvilinear_coords(
+                    float(ref_path[0][0]), float(ref_path[0][1])
+                )[0]
+            )
+            first_plan_s = (
+                float(original_s[0])
+                if len(original_s)
+                else float(current_s)
+            )
+            if (
+                not os.environ.get("CRREPAIR_VP_DISABLE_CONFLICT_CAP_CLAMP")
+                and effective_constraint_upper < ct_s_min
+            ):
+                effective_constraint_upper = max(
+                    first_plan_s, effective_constraint_upper
+                )
+
+        reachable = {}
+        per_literal = {}
+        planning_start = int(self._tc) + 1
+        for prop in constraint_props:
+            alphabet = prop.alphabet[-1]
+            interval = temporal_steps[id(prop)]
+            first_index = max(0, interval.start - planning_start)
+            last_index = min(
+                len(reachable_lower_s) - 1,
+                interval.end - planning_start,
+            )
+            if interval.count == 0 or last_index < first_index:
+                value = False
+                min_margin = None
+                active_minimum = []
+                active_original = []
+            else:
+                active_minimum = reachable_lower_s[
+                    first_index : last_index + 1
+                ]
+                active_braking = maximum_braking_s[
+                    first_index : last_index + 1
+                ]
+                active_original = original_s[first_index : last_index + 1]
+                margins = effective_constraint_upper - active_minimum
+                braking_margins = (
+                    effective_constraint_upper - active_braking
+                )
+                value = bool(np.all(margins >= -1e-6))
+                min_margin = float(np.min(margins))
+                braking_reachable = bool(
+                    np.all(braking_margins >= -1e-6)
+                )
+                braking_min_margin = float(np.min(braking_margins))
+            # Legacy intersection bounds are deliberately conservative
+            # projections and the exact constraint converter may recover from
+            # a local bound mismatch.  A negative interval overlap is thus
+            # ``unknown`` rather than a proof of infeasibility.  Only exact
+            # stop-line/monitor geometry may turn a negative estimate into a
+            # hard SAT-domain rejection.
+            conclusive = bool(
+                is_in1 or not interval_mode.startswith("legacy")
+            )
+            candidate_searchable = bool(value or not conclusive)
+            reachable[alphabet] = candidate_searchable
+            per_literal[alphabet] = {
+                "active_start": int(interval.start),
+                "active_end": int(interval.end),
+                "active_count": int(interval.count),
+                "constraint_upper": effective_constraint_upper,
+                "raw_constraint_upper": raw_constraint_upper,
+                "minimum_margin": min_margin,
+                "reachable": value,
+                "conclusive": conclusive,
+                "candidate_searchable": candidate_searchable,
+                "maximum_braking_reachable": (
+                    braking_reachable
+                    if interval.count and last_index >= first_index
+                    else None
+                ),
+                "maximum_braking_minimum_margin": (
+                    braking_min_margin
+                    if interval.count and last_index >= first_index
+                    else None
+                ),
+                "minimum_s_start": (
+                    float(active_minimum[0]) if len(active_minimum) else None
+                ),
+                "minimum_s_end": (
+                    float(active_minimum[-1]) if len(active_minimum) else None
+                ),
+                "original_s_start": (
+                    float(active_original[0]) if len(active_original) else None
+                ),
+                "original_s_end": (
+                    float(active_original[-1]) if len(active_original) else None
+                ),
+            }
+
+        return reachable, {
+            "constraint_proposition_count": len(constraint_props),
+            "geometry_available": True,
+            "kind": "stop_line" if is_in1 else "conflict",
+            "interval_mode": interval_mode,
+            "current_s": float(current_s),
+            "current_v": float(current_v),
+            "reachable_interval_semantics": "current_in_lp",
+            "reachable_lower_terminal_s": float(reachable_lower_s[-1]),
+            "maximum_braking_terminal_s": float(maximum_braking_s[-1]),
+            "maximum_braking_terminal_v": float(maximum_braking_v[-1]),
+            "original_terminal_s": float(original_s[-1]),
+            "literals": per_literal,
+            "build_trajectory_clcs": trajectory_clcs_time,
+        }
+
+    def _estimate_acceleration_conflict_reachability(self, conflict_props):
+        """Estimate whether maximum-progress dynamics can clear the exit.
+
+        This is deliberately an optimistic predicate-domain estimate.  It uses
+        the longitudinal acceleration, jerk, and vehicle-speed limits, while
+        the exact LP remains responsible for enforcing local curvature limits
+        and proving every selected proposition.
+        """
+        if not conflict_props:
+            return {}, {"conflict_proposition_count": 0}
+
+        all_states = self._get_states_with_initial()
+        lanelet_clcs, dt = self._get_lanelet_clcs_and_dt()
+        trajectory_clcs_start = time.time()
+        trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(all_states)
+        trajectory_clcs_time = time.time() - trajectory_clcs_start
+        conflict_interval = self._get_intersection_conflict_trajectory_interval(
+            lanelet_clcs=lanelet_clcs,
+            trajectory_clcs=trajectory_clcs,
+            ref_path=ref_path,
+        )
+        if conflict_interval is None:
+            return {}, {
+                "conflict_proposition_count": len(conflict_props),
+                "geometry_available": False,
+                "build_trajectory_clcs": trajectory_clcs_time,
+            }
+
+        _, after_lower, interval_mode = conflict_interval
+        temporal_steps = self._temporal_constraint_steps(
+            all_states,
+            propositions=conflict_props,
+        )
+        current_s, current_v, current_a = (
+            self._get_velocity_planning_current_conditions(
+                all_states,
+                trajectory_clcs,
+            )
+        )
+        if current_s is None:
+            return {}, {
+                "geometry_available": True,
+                "estimate_error": "current VP state is unavailable",
+                "build_trajectory_clcs": trajectory_clcs_time,
+            }
+
+        amin, amax, _, jmax = self._get_longitudinal_planning_limits()
+        qp_veh_config = self.config.vehicle.qp_veh_config
+        v_lon_max = float(qp_veh_config.v_lon_max)
+        path_progress = sorted(
+            (
+                float(
+                    trajectory_clcs.convert_to_curvilinear_coords(
+                        float(ref_path[0][0]), float(ref_path[0][1])
+                    )[0]
+                ),
+                float(
+                    trajectory_clcs.convert_to_curvilinear_coords(
+                        float(ref_path[-1][0]), float(ref_path[-1][1])
+                    )[0]
+                ),
+            )
+        )
+        _, path_max = path_progress
+        start_idx = int(self._tc - all_states[0].time_step)
+        horizon = max(0, len(all_states) - start_idx - 1)
+        maximum_progress = []
+        s_prev = float(current_s)
+        v_prev = float(current_v)
+        a_prev = float(np.clip(current_a, amin, amax))
+        for _ in range(horizon):
+            a_next = min(float(amax), a_prev + float(jmax) * dt)
+            v_next = min(v_lon_max, max(0.0, v_prev + a_next * dt))
+            s_next = min(
+                path_max,
+                s_prev + 0.5 * (v_prev + v_next) * dt,
+            )
+            maximum_progress.append(float(s_next))
+            actual_acceleration = (v_next - v_prev) / dt
+            s_prev, v_prev, a_prev = (
+                s_next,
+                v_next,
+                float(np.clip(actual_acceleration, amin, amax)),
+            )
+
+        reachable = {}
+        per_literal = {}
+        for prop in conflict_props:
+            alphabet = prop.alphabet[-1]
+            interval = temporal_steps[id(prop)]
+            if interval.count == 0:
+                value = False
+                first_required_step = None
+                exit_step = None
+                reachable_s = None
+            else:
+                first_required_step = max(int(self._tc) + 1, interval.start)
+                exit_step = None
+                reachable_s = None
+                if current_s >= after_lower:
+                    exit_step = first_required_step
+                    reachable_s = current_s
+                else:
+                    for time_step in range(first_required_step, interval.end + 1):
+                        index = time_step - int(self._tc) - 1
+                        if not (0 <= index < len(maximum_progress)):
+                            continue
+                        candidate_s = maximum_progress[index]
+                        if candidate_s >= after_lower - 1e-6:
+                            exit_step = time_step
+                            reachable_s = candidate_s
+                            break
+                value = exit_step is not None
+            reachable[alphabet] = bool(value)
+            per_literal[alphabet] = {
+                "first_required_step": first_required_step,
+                "earliest_exit_step": exit_step,
+                "maximum_reachable_s": reachable_s,
+                "after_lower": float(after_lower),
+                "reachable": bool(value),
+            }
+
+        return reachable, {
+            "conflict_proposition_count": len(conflict_props),
+            "geometry_available": True,
+            "interval_mode": interval_mode,
+            "current_s": float(current_s),
+            "path_max": float(path_max),
+            "literals": per_literal,
+            "build_trajectory_clcs": trajectory_clcs_time,
+        }
 
     def _eval_abrupt_brake(self, t_start: int, t_end: int) -> dict:
         pred_dict = {}
@@ -720,12 +1196,43 @@ class VPPredicateEstimation:
         return speed_limits
 
     def _domain_dict_construct_general(self, predicate_values, prop_nodes):
+        """Build singleton RG domains and preserve proven one-way facts.
+
+        ``in_front_of`` and the four speed-limit predicates are hard only when
+        reachability has already proved their domain to be a singleton.  In
+        particular, a violated speed predicate which braking can repair keeps
+        the domain ``{0, 1}`` and is never fixed here.
+        """
         domain_dict = {}
+        hard_domain_vars = set()
         for prop_node in prop_nodes:
-            predicate_values_key = self._prop_node_name_to_predicate_values_key(prop_node.name, predicate_values)
+            predicate_values_key = self._prop_node_name_to_predicate_values_key(
+                prop_node.name, predicate_values
+            )
             if predicate_values_key == {0} or predicate_values_key == {1}:
-                domain_dict[prop_node.alphabet[-1]] = set(predicate_values_key)
+                variable = prop_node.alphabet[-1]
+                domain_dict[variable] = set(predicate_values_key)
+                if self._is_rg_front_or_speed_predicate(prop_node.name):
+                    hard_domain_vars.add(variable)
+
+        self._hard_domain_vars.update(hard_domain_vars)
+        self._rg_front_speed_hard_domain_count = len(hard_domain_vars)
         return domain_dict
+
+    @staticmethod
+    def _is_rg_front_or_speed_predicate(prop_name):
+        # Temporal wrappers may be retained in a proposition name, as for the
+        # existing once(cut_in) form, so match the atomic predicate anywhere.
+        return any(
+            predicate_name in prop_name
+            for predicate_name in (
+                "in_front_of__",
+                "keeps_lane_speed_limit__",
+                "keeps_type_speed_limit__",
+                "keeps_fov_speed_limit__",
+                "keeps_brake_speed_limit__",
+            )
+        )
 
     def _prop_node_name_to_predicate_values_key(self, prop_name, predicate_values):
         key = None

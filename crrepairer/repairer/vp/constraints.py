@@ -23,10 +23,14 @@ class UnsupportedVPCandidateError(RuntimeError):
     """A SAT assignment that cannot be represented by VP constraints."""
 
 
+class AccelerationExitStepInfeasibleError(RuntimeError):
+    """The selected acceleration exit deadline is dynamically infeasible."""
+
+
 class VPConstraintExtraction:
     """Extracts longitudinal position and velocity constraints for VP repair."""
 
-    def _temporal_constraint_steps(self, all_states):
+    def _temporal_constraint_steps(self, all_states, propositions=None):
         """Map each selected proposition to its VP leaf-predicate frames."""
         start = time.perf_counter()
         trajectory_start = int(all_states[0].time_step)
@@ -36,7 +40,8 @@ class VPConstraintExtraction:
         future_time_step = int(self.rule_monitor.future_time_step)
         active_steps = {}
         diagnostics = []
-        for prop in self._sel_prop:
+        propositions = self._sel_prop if propositions is None else propositions
+        for prop in propositions:
             interval, expansion, pair_count = constraint_time_interval(
                 expression=prop.name,
                 dt=dt,
@@ -203,6 +208,11 @@ class VPConstraintExtraction:
         lane_end = cl_trajectory_before[-1][0]
         s_min = np.ones(horizon) * min(lane_start, lane_end)
         s_max = np.ones(horizon) * max(lane_start, lane_end)
+        if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+            # The recorded violating trajectory may stop inside the conflict
+            # area.  Its final lane progress is not a physical upper bound for
+            # the route-extended acceleration reference path.
+            s_max[:] = math.inf
         v_min = np.zeros(horizon)
         v_max = np.ones(horizon) * math.inf
 
@@ -214,6 +224,8 @@ class VPConstraintExtraction:
             float(ref_path[-1][0]),
             float(ref_path[-1][1]),
         )[0]
+        if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+            ct_s_max = float(trajectory_clcs.length())
         trajectory_s_min_cap = np.ones(horizon) * ct_s_min
         trajectory_s_max_cap = np.ones(horizon) * ct_s_max
         first_plan_state = all_states[min(start_idx + 1, len(all_states) - 1)]
@@ -239,49 +251,14 @@ class VPConstraintExtraction:
             rule in self.config.repair.rules
             for rule in ("R_IN3_hand_draft", "R_IN4", "R_IN5")
         ):
-            world = self.rule_monitor.world
-            ego = world.vehicle_by_id(self.config.repair.ego_id)
-            target = world.vehicle_by_id(self.rule_monitor.other_id)
-            if getattr(self, "_use_monitor_conflict_geometry", False):
-                monitor_interval = self._monitor_conflict_interval_on_trajectory(
-                    world=world,
-                    ego_vehicle=ego,
-                    target_vehicle=target,
-                    ref_path=ref_path,
+            conflict_trajectory_interval = (
+                self._get_intersection_conflict_trajectory_interval(
                     lanelet_clcs=lanelet_clcs,
                     trajectory_clcs=trajectory_clcs,
-                )
-                if monitor_interval is not None:
-                    conflict_trajectory_interval = (
-                        monitor_interval[0], monitor_interval[1], "monitor"
-                    )
-            else:
-                conflict_trajectory_interval = self._legacy_conflict_interval_on_trajectory(
-                    world=world,
-                    ego_vehicle=ego,
-                    target_vehicle=target,
-                    trajectory_clcs=trajectory_clcs,
+                    ref_path=ref_path,
                     wheelbase=wheelbase,
                 )
-                # Failure of one geometric representation does not make the
-                # predicate unsupported.  Try the monitor-aligned geometry
-                # immediately; reject the SAT candidate only if neither
-                # representation can produce a VP interval.
-                if conflict_trajectory_interval is None:
-                    monitor_interval = self._monitor_conflict_interval_fallback(
-                        world=world,
-                        ego_vehicle=ego,
-                        target_vehicle=target,
-                        ref_path=ref_path,
-                        lanelet_clcs=lanelet_clcs,
-                        trajectory_clcs=trajectory_clcs,
-                    )
-                    if monitor_interval is not None:
-                        conflict_trajectory_interval = (
-                            monitor_interval[0],
-                            monitor_interval[1],
-                            "monitor",
-                        )
+            )
 
         self._validate_intersection_candidate_support(
             temporal_steps=temporal_steps,
@@ -343,7 +320,36 @@ class VPConstraintExtraction:
                         conflict_trajectory_interval
                     )
                     start_s = float(first_plan_s_trajectory)
-                    if interval_mode == "legacy_in4":
+                    repair_mode = getattr(
+                        self, "_vp_repair_mode", "deceleration"
+                    )
+                    if repair_mode == "acceleration":
+                        variable = prop.alphabet[-1]
+                        exit_step = getattr(
+                            self,
+                            "_acceleration_exit_step_by_variable",
+                            {},
+                        ).get(variable)
+                        if exit_step is not None and time_step < exit_step:
+                            # While an initially-inside ego is physically
+                            # clearing the conflict interval, no outside-branch
+                            # lower bound is representable.  Keep the pre-exit
+                            # envelope at the conflict exit, though: besides
+                            # preventing an unmodelled early crossing, this lets
+                            # curvature conversion inspect only the path portion
+                            # which is actually needed to clear the conflict.
+                            trajectory_s_max_cap[idx] = min(
+                                trajectory_s_max_cap[idx], after_lower
+                            )
+                            branch = "acceleration_clearing_conflict"
+                        elif start_s >= after_lower:
+                            branch = "acceleration_already_after_conflict"
+                        else:
+                            branch = "acceleration_after_conflict_lower"
+                            trajectory_s_min_cap[idx] = max(
+                                trajectory_s_min_cap[idx], after_lower
+                            )
+                    elif interval_mode == "legacy_in4":
                         branch = "legacy_conflict_rear_upper"
                         if (
                             not os.environ.get(
@@ -411,6 +417,12 @@ class VPConstraintExtraction:
                                 "before_upper": float(before_upper),
                                 "after_lower": float(after_lower),
                                 "interval_mode": interval_mode,
+                                "repair_mode": repair_mode,
+                                "acceleration_exit_step": (
+                                    exit_step
+                                    if repair_mode == "acceleration"
+                                    else None
+                                ),
                                 "branch": branch,
                             }
                         )
@@ -421,8 +433,92 @@ class VPConstraintExtraction:
                         f"{prop.name} ({prop.alphabet})."
                     )
         
-        # trajectory_s_min_cap is actually not used in practice
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
+
+    def _get_intersection_conflict_trajectory_interval(
+        self,
+        lanelet_clcs,
+        trajectory_clcs,
+        ref_path,
+        wheelbase=None,
+    ):
+        """Return the shared entry/exit interval used by estimation and LP."""
+        geometry_mode = bool(
+            getattr(self, "_use_monitor_conflict_geometry", False)
+        )
+        cache = getattr(self, "_conflict_trajectory_interval_cache", None)
+        if cache is None:
+            cache = {}
+            self._conflict_trajectory_interval_cache = cache
+        if geometry_mode in cache:
+            return cache[geometry_mode]
+
+        world = self.rule_monitor.world
+        ego = world.vehicle_by_id(self.config.repair.ego_id)
+        target = world.vehicle_by_id(self.rule_monitor.other_id)
+        if wheelbase is None:
+            wheelbase = self._get_planner_wheelbase()
+
+        conflict_interval = None
+        if geometry_mode:
+            monitor_interval = self._monitor_conflict_interval_on_trajectory(
+                world=world,
+                ego_vehicle=ego,
+                target_vehicle=target,
+                ref_path=ref_path,
+                lanelet_clcs=lanelet_clcs,
+                trajectory_clcs=trajectory_clcs,
+            )
+            if monitor_interval is not None:
+                conflict_interval = (
+                    monitor_interval[0],
+                    monitor_interval[1],
+                    "monitor",
+                )
+        else:
+            conflict_interval = self._legacy_conflict_interval_on_trajectory(
+                world=world,
+                ego_vehicle=ego,
+                target_vehicle=target,
+                trajectory_clcs=trajectory_clcs,
+                wheelbase=wheelbase,
+            )
+            # Geometry representation is not part of the repair action.  Use
+            # the monitor-aligned construction if the legacy interval cannot
+            # represent this otherwise controllable predicate.
+            if conflict_interval is None:
+                monitor_interval = self._monitor_conflict_interval_fallback(
+                    world=world,
+                    ego_vehicle=ego,
+                    target_vehicle=target,
+                    ref_path=ref_path,
+                    lanelet_clcs=lanelet_clcs,
+                    trajectory_clcs=trajectory_clcs,
+                )
+                if monitor_interval is not None:
+                    conflict_interval = (
+                        monitor_interval[0],
+                        monitor_interval[1],
+                        "monitor",
+                    )
+
+        if (
+            conflict_interval is not None
+            and getattr(self, "_vp_repair_mode", "deceleration")
+            == "acceleration"
+        ):
+            # The reference path is sampled at 0.1 m and monitor overlap uses
+            # a strict polygon boundary.  Requiring one additional sample past
+            # the mapped rear-clearance boundary prevents a numerically
+            # boundary-touching LP solution from remaining non-compliant.
+            conflict_interval = (
+                conflict_interval[0],
+                conflict_interval[1] + 0.1,
+                conflict_interval[2],
+            )
+
+        cache[geometry_mode] = conflict_interval
+        return conflict_interval
 
     def _monitor_conflict_interval_fallback(self, **kwargs):
         """Evaluate monitor geometry under its required geometry-mode flag."""
@@ -765,6 +861,7 @@ class VPConstraintExtraction:
         cl_trajectory_before,
         trajectory_s_min_cap=None,
         trajectory_s_max_cap=None,
+        apply_curvature_limits=True,
     ):
         estimated_s_min = []
         estimated_s_max = []
@@ -821,6 +918,12 @@ class VPConstraintExtraction:
                 )[0]
             except Exception:
                 max_cart_to_traj = ct_s_max
+            if (
+                getattr(self, "_vp_repair_mode", "deceleration")
+                == "acceleration"
+                and not np.isfinite(s_max[i])
+            ):
+                max_cart_to_traj = ct_s_max
 
             s_min_traj = min_cart_to_traj
             if trajectory_s_min_cap is not None:
@@ -833,16 +936,17 @@ class VPConstraintExtraction:
             estimated_v_max.append(v_max[i] * rmin)
             estimated_v_min.append(v_min[i] * rmax)
 
-        curvature_v_max = self._curvature_velocity_limits(
-            trajectory_clcs,
-            estimated_s_min,
-            estimated_s_max,
-            self.config.vehicle.qp_veh_config.a_lat_max,
-        )
-        estimated_v_max = np.minimum(
-            np.asarray(estimated_v_max, dtype=float),
-            curvature_v_max,
-        ).tolist()
+        if apply_curvature_limits:
+            curvature_v_max = self._curvature_velocity_limits(
+                trajectory_clcs,
+                estimated_s_min,
+                estimated_s_max,
+                self.config.vehicle.qp_veh_config.a_lat_max,
+            )
+            estimated_v_max = np.minimum(
+                np.asarray(estimated_v_max, dtype=float),
+                curvature_v_max,
+            ).tolist()
 
         return estimated_s_min, estimated_s_max, estimated_v_min, estimated_v_max
 
@@ -1034,8 +1138,7 @@ class VPConstraintExtraction:
         if not np.isfinite([center_start, center_end]).all():
             return None
 
-        lane_progress = []
-        trajectory_progress = []
+        raw_progress = []
         for point in np.asarray(ref_path, dtype=float):
             try:
                 lane_s = lanelet_clcs.convert_to_curvilinear_coords(
@@ -1046,10 +1149,32 @@ class VPConstraintExtraction:
                 )[0]
             except Exception:
                 continue
-            if lane_progress and lane_s <= lane_progress[-1] + 1e-9:
-                continue
-            lane_progress.append(float(lane_s))
-            trajectory_progress.append(float(trajectory_s))
+            raw_progress.append((float(lane_s), float(trajectory_s)))
+        if len(raw_progress) < 2:
+            return None
+
+        # The route used to extend a stopped trajectory and the lane CLCS used
+        # by the monitor can describe the same path in opposite orientations.
+        # Infer that direction before discarding non-monotone samples.
+        lane_deltas = np.diff([item[0] for item in raw_progress])
+        lane_deltas = lane_deltas[np.abs(lane_deltas) > 1e-9]
+        if len(lane_deltas) == 0:
+            return None
+        lane_direction = 1.0 if float(np.median(lane_deltas)) >= 0.0 else -1.0
+        monotone_progress = []
+        for lane_s, trajectory_s in raw_progress:
+            if monotone_progress:
+                progress_delta = lane_direction * (
+                    lane_s - monotone_progress[-1][0]
+                )
+                if progress_delta <= 1e-9:
+                    continue
+            monotone_progress.append((lane_s, trajectory_s))
+        if lane_direction < 0.0:
+            monotone_progress.reverse()
+
+        lane_progress = [item[0] for item in monotone_progress]
+        trajectory_progress = [item[1] for item in monotone_progress]
         if len(lane_progress) < 2:
             return None
 

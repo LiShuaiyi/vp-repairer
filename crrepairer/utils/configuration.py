@@ -163,6 +163,18 @@ class RepairConfiguration(BaseConfiguration):
     use_mpr_derivative: bool = False
     use_dummy_tc: bool = False
     sat_solver_mode: str = "dpll"
+    # Acceleration repair can either preserve and extend the recorded path or
+    # directly reuse the complete route-lane CLCS for timing/semantic ablation.
+    extend_acceleration_reference_path: bool = True
+    # Acceleration repair keeps closeness to the recorded trajectory as its
+    # primary LP objective, then uses this allowance for a smoother velocity
+    # and acceleration profile in a lexicographic second LP.
+    acceleration_smoothing_position_relative_tolerance: float = 0.35
+    acceleration_smoothing_position_absolute_tolerance: float = 3.0
+    acceleration_smoothing_jerk_weight: float = 20.0
+    # Acceleration fallback also uses a comfort-oriented hard jerk bound.  It
+    # remains well inside the vehicle model's broad numerical jerk limits.
+    acceleration_smoothing_jerk_limit: float = 60.0
 
     def __post_init__(self):
         pass
