@@ -318,7 +318,11 @@ class VPPredicateEstimation:
                 # Ego-only velocity planning cannot change them, so unlike
                 # ordinary reachability domains they must survive candidate
                 # failure and domain relaxation.
-                if "same_priority" in name or "target_has_priority" in name:
+                if (
+                    "same_priority" in name
+                    or "target_has_priority" in name
+                    or "on_lanelet_with_type_intersection" in name
+                ):
                     hard_priority_vars.add(alphabet)
 
         self._hard_domain_vars = hard_priority_vars
