@@ -1,0 +1,30 @@
+diff --git a/crmonitor/traffic_rules_rtamt.yaml b/crmonitor/traffic_rules_rtamt.yaml
+index f42e160..8450e41 100644
+--- a/crmonitor/traffic_rules_rtamt.yaml
++++ b/crmonitor/traffic_rules_rtamt.yaml
+@@ -53,10 +53,10 @@ traffic_rules:
+                         (in_intersection_conflict_area(a0, a1)) implies
+                           (
+                             not(causes_braking_intersection(a0, a1)) and
+-                            not(eventually[0,1s](in_intersection_conflict_area(a0, a1)))
++                            not(eventually[0,1s](in_intersection_conflict_area(a1, a0)))
+                           )
+                         ) and
+                         (
+-                          (in_intersection_conflict_area(a0, a1)) implies
++                          (in_intersection_conflict_area(a1, a0)) implies
+                           not (eventually[0,0.52s](in_intersection_conflict_area(a0, a1)))
+                         )
+@@ -88,10 +88,10 @@ traffic_rules:
+                           (in_intersection_conflict_area(a0, a1)) implies
+                             (
+                               not(causes_braking_intersection(a0, a1)) and
+-                              not(eventually[0,1s](in_intersection_conflict_area(a0, a1)))
++                              not(eventually[0,1s](in_intersection_conflict_area(a1, a0)))
+                             )
+                           ) and
+                           (
+-                            (in_intersection_conflict_area(a0, a1)) implies
++                            (in_intersection_conflict_area(a1, a0)) implies
+                             not (eventually[0,1s](in_intersection_conflict_area(a0, a1)))
+                           )

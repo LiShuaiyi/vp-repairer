@@ -32,6 +32,7 @@ You have to manually install the following packages:
 
 * [commonroad-qp-planner](https://gitlab.lrz.de/yuanfei/commonroad-qp-planner): branch `feature/repair-all`
 * [commonroad-stl-monitor](https://gitlab.lrz.de/ge69xek/stl_crmonitor): branch `feature/repair-all`
+  Apply `patches/commonroad-stl-monitor-in3-parameter-order.patch` to use the corrected IN3 parameter order used by the VP experiments.
   (if `rtamt` is not installed successfully, you need to update the submodules with `git submodule init` and `git submodule update`
 * [commonroad-mpr](https://gitlab.lrz.de/cps/commonroad-model-predictive-robustness): branch `feature/repair-all`
 * [commonroad-reach-semantic](https://gitlab.lrz.de/cps/commonroad/commonroad-reach-semantic): branch `feature/repair-new` 
