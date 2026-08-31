@@ -428,7 +428,7 @@ class VPConstraintExtraction:
                         )
                         prop_debug_recorded = True
                 else:
-                    raise RuntimeError(
+                    raise UnsupportedVPCandidateError(
                         "Unsupported IN predicate has no VP constraint: "
                         f"{prop.name} ({prop.alphabet})."
                     )

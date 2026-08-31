@@ -67,6 +67,8 @@ class VPTrajectoryRepairer(
         self._domain_predicate_timing = {}
         self._hard_domain_vars = set()
         self._repair_literals = []
+        self._constraint_repair_literals = []
+        self._constraint_repair_analysis_complete = False
         self.candidate_tvs = []
         self.candidate_diagnostics = []
         self._use_monitor_conflict_geometry = False
@@ -160,6 +162,8 @@ class VPTrajectoryRepairer(
         self._domain_predicate_timing = {}
         self._hard_domain_vars = set()
         self._repair_literals = []
+        self._constraint_repair_literals = []
+        self._constraint_repair_analysis_complete = False
         self._acceleration_profile_model_key = None
         self._acceleration_profile_index = 0
         self._current_acceleration_profile = None
@@ -170,9 +174,10 @@ class VPTrajectoryRepairer(
         if self.sat_solver.solver_mode == "domain_dpll":
             self.ensure_domain_dict_initialized()
         return not (
-            repair_mode == "acceleration"
+            self._supports_acceleration_fallback()
             and self.sat_solver.solver_mode == "domain_dpll"
-            and not self._repair_literals
+            and self._constraint_repair_analysis_complete
+            and not self._constraint_repair_literals
         )
 
     def repair(self, check_flag=True, *args, **kwargs):
@@ -207,11 +212,32 @@ class VPTrajectoryRepairer(
         self.candidate_tvs = []
         self.candidate_diagnostics = []
         if not self._begin_vp_repair_phase("deceleration"):
+            # Even though domain analysis can reject this phase before a SAT
+            # model is enumerated, it is still one logical repair attempt in
+            # the deceleration-then-acceleration algorithm.
+            self.nr_iter += 1
+            self.phase_iterations["deceleration"] += 1
             print(
-                "* \t<VPRepairer>: deceleration predicate estimate "
-                "found no reachable conflict-exit literal"
+                "* \t<VPRepairer>: deceleration predicate estimate found "
+                "no reachable constraint-backed literal"
             )
-            return None
+            acceleration_available = (
+                self._supports_acceleration_fallback()
+                and self._begin_vp_repair_phase("acceleration")
+            )
+            if not acceleration_available:
+                if self._supports_acceleration_fallback():
+                    self.nr_iter += 1
+                    self.phase_iterations["acceleration"] += 1
+                print(
+                    "* \t<VPRepairer>: acceleration predicate estimate found "
+                    "no reachable constraint-backed literal"
+                )
+                return None
+            print(
+                "* \t<VPRepairer>: starting acceleration exit fallback "
+                "without SAT-enumerating an uncontrollable deceleration phase"
+            )
         print("******** Velocity-Planning Trajectory Repairing starts! ********")
         while True:
             sat_start_time = time.time()

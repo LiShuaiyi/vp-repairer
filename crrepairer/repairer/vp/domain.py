@@ -7,6 +7,14 @@ import time
 import numpy as np
 from shapely import affinity
 
+from crrepairer.repairer.vp.semantic_predicate_regions import (
+    FALSE_DOMAIN,
+    TRUE_DOMAIN,
+    UNKNOWN_DOMAIN,
+    build_semantic_in_predicate_region_builder,
+)
+from crrepairer.repairer.vp.temporal import expand_temporal_expression
+
 
 
 class VPPredicateEstimation:
@@ -220,8 +228,11 @@ class VPPredicateEstimation:
     def _build_constraint_guided_intersection_domains(self):
         """Keep only propositions backed by explicit VP constraints searchable."""
         is_in1 = "R_IN1" in self.config.repair.rules
+        region_estimation_mode = self._in_region_estimation_mode()
+        use_critical_hybrid = region_estimation_mode == "critical_hybrid"
         initial_domains = {}
         hard_priority_vars = set()
+        unsupported_polarity_hard_vars = []
         repair_literals = []
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
         acceleration_reachability = {}
@@ -230,6 +241,7 @@ class VPPredicateEstimation:
         deceleration_reachability = {}
         deceleration_diagnostics = {}
         deceleration_reachability_time = 0.0
+        constraint_repair_analysis_complete = True
         if repair_mode == "acceleration":
             self._acceleration_exit_step_by_variable = {}
             self._acceleration_exit_last_step_by_variable = {}
@@ -259,6 +271,7 @@ class VPPredicateEstimation:
                 deceleration_diagnostics = {
                     "estimate_error": f"{type(exc).__name__}: {exc}"
                 }
+                constraint_repair_analysis_complete = False
             deceleration_reachability_time = (
                 time.time() - deceleration_reachability_start
             )
@@ -278,9 +291,36 @@ class VPPredicateEstimation:
                 acceleration_diagnostics = {
                     "estimate_error": f"{type(exc).__name__}: {exc}"
                 }
+                constraint_repair_analysis_complete = False
             acceleration_reachability_time = (
                 time.time() - acceleration_reachability_start
             )
+
+        region_estimates = {}
+        region_diagnostics = {"enabled": False}
+        region_estimation_time = 0.0
+        region_estimation_failed = False
+        if use_critical_hybrid:
+            region_start = time.perf_counter()
+            try:
+                region_estimates, region_diagnostics = (
+                    self._estimate_semantic_intersection_predicate_domains(
+                        self.sat_solver._prop_nodes
+                    )
+                )
+            except Exception as exc:
+                # A failed estimate carries no information.  Represent that
+                # conservatively as {0, 1} below; never substitute the
+                # monitored point value as if it were a proof over the whole
+                # reachable interval.
+                region_estimates = {}
+                region_estimation_failed = True
+                region_diagnostics = {
+                    "enabled": True,
+                    "mode": region_estimation_mode,
+                    "estimate_error": f"{type(exc).__name__}: {exc}",
+                }
+            region_estimation_time = time.perf_counter() - region_start
 
         for prop_node in self.sat_solver._prop_nodes:
             alphabet = prop_node.alphabet[-1]
@@ -288,11 +328,15 @@ class VPPredicateEstimation:
             current_value = float(prop_node.ttv_value) > 0.0
             if is_in1:
                 extractable = "stop_line" in name
+            elif use_critical_hybrid:
+                # A negative ego-conflict literal is VP-controllable whenever
+                # its future reachable envelope can touch the conflict region.
+                # Its value at t_c alone cannot prove otherwise.
+                extractable = "in_intersection_conflict_area__0_1" in name
             else:
-                # The current IN-series VP constraint can only make the ego
-                # stay out of its conflict area.  It cannot change the target
-                # trajectory (__1_0), nor can it force a currently-false
-                # conflict proposition to become true.
+                # Preserve the original committed baseline exactly: it treats
+                # the current monitored truth value as fixed and only exposes
+                # a currently-true ego-conflict predicate to VP.
                 extractable = (
                     "in_intersection_conflict_area__0_1" in name
                     and current_value
@@ -310,14 +354,58 @@ class VPPredicateEstimation:
                     and acceleration_reachability.get(alphabet) is False
                 ):
                     extractable = False
+
+            if use_critical_hybrid:
+                estimated_value = (
+                    None
+                    if region_estimation_failed
+                    else region_estimates.get(alphabet)
+                )
+                # A domain is the complete set of truth values which remain
+                # possible over VP's reachable longitudinal intervals.  A
+                # singleton is proved fixed; {0, 1} is a sound but
+                # non-pruning result.  All such domains are permanent -- LP
+                # failure must not relax a reachability proof.
+                initial_domains[alphabet] = (
+                    {0, 1}
+                    if estimated_value is None
+                    else {int(estimated_value)}
+                )
+                if (
+                    not extractable
+                    and initial_domains[alphabet] == {0, 1}
+                ):
+                    # The region estimate cannot certify a fixed truth value,
+                    # but this repair phase has no VP constraint capable of
+                    # requesting either polarity.  A model which changes the
+                    # current polarity would therefore be rejected later by
+                    # constraint extraction.  Encode that rejection as a hard
+                    # domain now so DomainDPLL prunes the partial assignment
+                    # before constructing a complete unsupported model.
+                    initial_domains[alphabet] = {int(current_value)}
+                    unsupported_polarity_hard_vars.append(alphabet)
+                if len(initial_domains[alphabet]) == 1:
+                    hard_priority_vars.add(alphabet)
+                if extractable:
+                    # The executable polarity is rule-specific.  IN1 repairs
+                    # the violation by making its stop-line/standstill event
+                    # true, whereas IN3/IN4/IN5 avoid a conflict region by
+                    # making the ego-conflict proposition false.
+                    repair_value = 1 if is_in1 else 0
+                    if repair_value in initial_domains[alphabet]:
+                        repair_literals.append(
+                            alphabet if repair_value else f"~{alphabet}"
+                        )
+                continue
+
             if extractable:
                 repair_literals.append(f"~{alphabet}")
             else:
                 initial_domains[alphabet] = {int(current_value)}
-                # These IN antecedents encode route/right-of-way relations.
-                # Ego-only velocity planning cannot change them, so unlike
-                # ordinary reachability domains they must survive candidate
-                # failure and domain relaxation.
+                # Legacy behavior: these names used to hard-fix the whole
+                # turning composite, even though ego turning is a function
+                # of longitudinal position.  Preserve it behind the A/B
+                # switch so the experiment has an exact baseline.
                 if (
                     "same_priority" in name
                     or "target_has_priority" in name
@@ -325,13 +413,64 @@ class VPPredicateEstimation:
                 ):
                     hard_priority_vars.add(alphabet)
 
+        current_value_guidance_count = 0
+        # Keep executable VP actions separate from ordinary SAT branch
+        # guidance.  If this list is empty, Boolean models in the current
+        # repair phase cannot produce any trajectory constraint and therefore
+        # cannot repair an already violating trajectory.
+        self._constraint_repair_literals = list(
+            dict.fromkeys(repair_literals)
+        )
+        self._constraint_repair_analysis_complete = (
+            constraint_repair_analysis_complete
+        )
+        if use_critical_hybrid:
+            constraint_guided_variables = {
+                literal[-1] for literal in repair_literals
+            }
+            # Unknown semantic regions must remain searchable, but choosing an
+            # unsupported polarity first only creates a rejected VP model.
+            # After the explicit constraint-backed repair literals, prefer the
+            # proposition's monitored polarity as DPLL branch order.  This is
+            # not a clause or a domain restriction and therefore cannot remove
+            # a valid alternative assignment.
+            for prop_node in self.sat_solver._prop_nodes:
+                alphabet = prop_node.alphabet[-1]
+                if (
+                    initial_domains.get(alphabet) != {0, 1}
+                    or alphabet in constraint_guided_variables
+                ):
+                    continue
+                current_value = float(prop_node.ttv_value) >= 0.0
+                repair_literals.append(
+                    alphabet if current_value else f"~{alphabet}"
+                )
+                current_value_guidance_count += 1
+
         self._hard_domain_vars = hard_priority_vars
         self._repair_literals = repair_literals
         self.domain_dict_breakdown = {
             "repair_mode": repair_mode,
             "initial_domain_count": len(initial_domains),
             "hard_priority_domain_count": len(hard_priority_vars),
+            "unsupported_polarity_hard_domain_count": len(
+                unsupported_polarity_hard_vars
+            ),
+            "unsupported_polarity_hard_domain_vars": list(
+                unsupported_polarity_hard_vars
+            ),
+            "unrestricted_domain_count": sum(
+                set(values) == {0, 1} for values in initial_domains.values()
+            ),
             "repair_literal_count": len(repair_literals),
+            "constraint_repair_literal_count": len(
+                self._constraint_repair_literals
+            ),
+            "current_value_branch_guidance_count": (
+                current_value_guidance_count
+            ),
+            "critical_region_estimation": region_diagnostics,
+            "estimate_critical_regions": region_estimation_time,
             "deceleration_reachability": deceleration_diagnostics,
             "acceleration_reachability": acceleration_diagnostics,
             # CLCS construction belongs to VP planning in the paper timing.
@@ -365,6 +504,417 @@ class VPPredicateEstimation:
         }
         return initial_domains
 
+    @staticmethod
+    def _in_region_estimation_mode():
+        """Return the configured IN predicate-region estimation mode."""
+        value = os.environ.get(
+            "CRREPAIR_VP_IN_REGION_ESTIMATE", "critical_hybrid"
+        )
+        value = str(value).strip().lower()
+        if value in {"sample", "sampled", "trace", "legacy"}:
+            return "sampled"
+        if value in {
+            "critical",
+            "critical_hybrid",
+            "hybrid",
+            "boundary",
+            "boundaries",
+        }:
+            return "critical_hybrid"
+        raise ValueError(
+            "CRREPAIR_VP_IN_REGION_ESTIMATE must be 'critical_hybrid' "
+            f"or 'sampled', got {value!r}."
+        )
+
+    def _estimate_semantic_intersection_predicate_domains(self, prop_nodes):
+        """Estimate IN proposition domains from monitor definitions.
+
+        Spatial regions come from map/route geometry rather than the recorded
+        ego predicate trace.  A proposition is fixed only when every active
+        repair frame has the same guaranteed value over the complete reachable
+        interval.  Mixed or unresolved frames remain ``{0, 1}``.
+        """
+        context_start = time.perf_counter()
+        all_states = self._get_states_with_initial()
+        _, reachable_by_time, context_diagnostics = (
+            self._in_longitudinal_reachability_context()
+        )
+        try:
+            trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(
+                all_states
+            )
+        except (RuntimeError, ValueError):
+            if getattr(self, "_vp_repair_mode", "deceleration") != "deceleration":
+                raise
+            world_ego = self.rule_monitor.world.vehicle_by_id(
+                self.config.repair.ego_id
+            )
+            trajectory_clcs = self._get_vp_lanelet_clcs()
+            ref_path = np.asarray(
+                world_ego.ref_path_lane.center_vertices, dtype=float
+            )
+
+        temporal_steps = self._temporal_constraint_steps(
+            all_states, propositions=prop_nodes
+        )
+        velocity_reachable_by_time = (
+            self._semantic_in_velocity_reachable_intervals(all_states)
+        )
+        builder = build_semantic_in_predicate_region_builder(
+            self,
+            trajectory_clcs,
+            ref_path,
+            reachable_by_time,
+            lanelet_clcs=self._get_vp_lanelet_clcs(),
+            reachable_velocity_by_time=velocity_reachable_by_time,
+            uncertainty=(
+                float(
+                    os.environ.get(
+                        "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY", "0.05"
+                    )
+                )
+            ),
+        )
+        context_time = time.perf_counter() - context_start
+
+        def time_steps(prop):
+            interval = temporal_steps[id(prop)]
+            if interval.count <= 0:
+                return ()
+            return range(int(interval.start), int(interval.end) + 1)
+
+        def negate_domain(domain):
+            return frozenset(1 - int(value) for value in domain)
+
+        def and_domain(left, right):
+            if left == FALSE_DOMAIN or right == FALSE_DOMAIN:
+                return FALSE_DOMAIN
+            if left == TRUE_DOMAIN and right == TRUE_DOMAIN:
+                return TRUE_DOMAIN
+            return UNKNOWN_DOMAIN
+
+        estimates = {}
+        predicate_debug_enabled = bool(
+            os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
+        )
+        per_prop = {} if predicate_debug_enabled else None
+        classification_counts = {}
+        turning_spatial_domain_cache = {}
+        short_circuit_counts = {
+            "turning_spatial_false": 0,
+            "unknown_or_mixed_prefix": 0,
+            "conjunction_left_false": 0,
+        }
+        inference_start = time.perf_counter()
+        dt = float(self.config.scenario.dt)
+        for prop in prop_nodes:
+            alphabet = prop.alphabet[-1]
+            prop_name = str(prop.name)
+            children = list(getattr(prop, "children", ()) or ())
+            active_steps = tuple(time_steps(prop))
+            frame_domains = []
+            frame_sources = []
+            classification = "unsupported"
+
+            try:
+                leaf_expression = expand_temporal_expression(
+                    prop_name, dt
+                ).leaf_expression.strip().lower()
+            except Exception:
+                leaf_expression = prop_name.strip().lower()
+
+            if len(children) == 1:
+                evaluator = getattr(children[0], "evaluator", None)
+                if evaluator is not None:
+                    predicate_name = getattr(evaluator, "predicate_name", None)
+                    base_name = str(
+                        getattr(predicate_name, "value", predicate_name or "")
+                    ).lower()
+                    if hasattr(evaluator, "_turning_ego"):
+                        classification = "critical_boolean_composite"
+                    elif base_name in builder.QUANTITATIVE_NAMES:
+                        classification = "critical_quantitative_envelope"
+                    else:
+                        classification = "critical_boolean_cells"
+                    negate = leaf_expression.startswith("not(")
+                    turning_ego = getattr(evaluator, "_turning_ego", None)
+                    if turning_ego is not None and not negate:
+                        turning_name = str(
+                            getattr(
+                                getattr(turning_ego, "predicate_name", None),
+                                "value",
+                                getattr(turning_ego, "predicate_name", ""),
+                            )
+                        ).lower()
+                        turning_key = (turning_name, active_steps)
+                        spatial_domain = turning_spatial_domain_cache.get(
+                            turning_key
+                        )
+                        if spatial_domain is None:
+                            spatial_domain = (
+                                builder.estimate_turning_spatial_domain(
+                                    turning_ego, active_steps
+                                )
+                            )
+                            turning_spatial_domain_cache[turning_key] = (
+                                spatial_domain
+                            )
+                        if spatial_domain == FALSE_DOMAIN:
+                            frame_domains.append(FALSE_DOMAIN)
+                            classification = "critical_boolean_short_circuit"
+                            short_circuit_counts["turning_spatial_false"] += 1
+                    if not frame_domains:
+                        prefix_values = set()
+                        for step in active_steps:
+                            frame = builder.estimate_frame(
+                                evaluator, prop_name, step
+                            )
+                            domain = frame.domain
+                            if negate:
+                                domain = negate_domain(domain)
+                            frame_domains.append(domain)
+                            prefix_values.update(int(value) for value in domain)
+                            if predicate_debug_enabled:
+                                frame_sources.append(frame.source)
+                            if prefix_values == {0, 1}:
+                                short_circuit_counts[
+                                    "unknown_or_mixed_prefix"
+                                ] += 1
+                                break
+            elif len(children) == 2 and "and" in leaf_expression:
+                evaluators = [
+                    getattr(child, "evaluator", None) for child in children
+                ]
+                if all(item is not None for item in evaluators):
+                    classification = "semantic_conjunction"
+                    prefix_values = set()
+                    for step in active_steps:
+                        left = builder.estimate_frame(
+                            evaluators[0], prop_name, step
+                        )
+                        if left.domain == FALSE_DOMAIN:
+                            domain = FALSE_DOMAIN
+                            right = None
+                            short_circuit_counts[
+                                "conjunction_left_false"
+                            ] += 1
+                        else:
+                            right = builder.estimate_frame(
+                                evaluators[1], prop_name, step
+                            )
+                            domain = and_domain(left.domain, right.domain)
+                        frame_domains.append(domain)
+                        prefix_values.update(int(value) for value in domain)
+                        if predicate_debug_enabled:
+                            frame_sources.append(left.source)
+                            if right is not None:
+                                frame_sources.append(right.source)
+                        if prefix_values == {0, 1}:
+                            short_circuit_counts[
+                                "unknown_or_mixed_prefix"
+                            ] += 1
+                            break
+
+            possible_values = set()
+            for frame_domain in frame_domains:
+                possible_values.update(int(value) for value in frame_domain)
+                if possible_values == {0, 1}:
+                    break
+            estimate = (
+                next(iter(possible_values))
+                if len(possible_values) == 1 and frame_domains
+                else None
+            )
+            if classification == "semantic_conjunction" and estimate == 0:
+                # IN1 wraps this conjunction in an unbounded past ``once``.
+                # A true witness before the modifiable planning interval can
+                # keep the temporal proposition true even when every future
+                # conjunction frame is false.  Without reconstructing that
+                # immutable prefix, falsehood is not a safe hard singleton.
+                estimate = None
+            if estimate is not None:
+                estimates[alphabet] = int(estimate)
+            classification_counts[classification] = (
+                classification_counts.get(classification, 0) + 1
+            )
+            if predicate_debug_enabled:
+                per_prop[alphabet] = {
+                    "classification": classification,
+                    "estimate": estimate,
+                    "current": int(float(prop.ttv_value) >= 0.0),
+                    "active_count": len(active_steps),
+                    "reachable_first_last": (
+                        [
+                            reachable_by_time.get(active_steps[0]),
+                            reachable_by_time.get(active_steps[-1]),
+                        ]
+                        if active_steps
+                        else []
+                    ),
+                    "frame_domain_counts": {
+                        str(sorted(domain)): frame_domains.count(domain)
+                        for domain in set(frame_domains)
+                    },
+                    "frame_source_counts": {
+                        source: frame_sources.count(source)
+                        for source in sorted(set(frame_sources))
+                    },
+                }
+
+        inference_time = time.perf_counter() - inference_start
+        builder_diagnostics = builder.get_diagnostics(
+            include_regions=predicate_debug_enabled
+        )
+        diagnostics = {
+            "enabled": True,
+            "mode": "critical_hybrid",
+            "repair_mode": getattr(self, "_vp_repair_mode", "deceleration"),
+            "context": context_diagnostics,
+            "classification_counts": classification_counts,
+            "short_circuit_counts": short_circuit_counts,
+            "certified_count": len(estimates),
+            "unrestricted_count": len(prop_nodes) - len(estimates),
+            "context_time": context_time,
+            "inference_time": inference_time,
+            "builder": builder_diagnostics,
+        }
+        if predicate_debug_enabled:
+            diagnostics["propositions"] = per_prop
+        return estimates, diagnostics
+
+    def _semantic_in_velocity_reachable_intervals(self, all_states):
+        """Return conservative per-frame velocity ranges for IN predicates."""
+        result = {}
+        tc = int(self._tc)
+        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        vehicle_v_max = float(self.config.vehicle.qp_veh_config.v_lon_max)
+        for state in all_states:
+            step = int(state.time_step)
+            velocity = max(0.0, float(getattr(state, "velocity", 0.0)))
+            if step <= tc:
+                result[step] = (velocity, velocity)
+            else:
+                # IN constraint extraction currently leaves v_max unbounded by
+                # the recorded velocity in both modes; optimization applies
+                # only the configured vehicle cap.  Using [0, original_v]
+                # would therefore look tighter but would not be a proof about
+                # every LP trajectory.
+                result[step] = (0.0, vehicle_v_max)
+        return result
+
+    def _in_longitudinal_reachability_context(self):
+        """Build per-frame fixed-path progress and VP reachable intervals."""
+        all_states = self._get_states_with_initial()
+        context_source = "trajectory_clcs"
+        try:
+            trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(
+                all_states
+            )
+        except (RuntimeError, ValueError):
+            if getattr(self, "_vp_repair_mode", "deceleration") != "deceleration":
+                raise
+            # A stationary/very short violating trajectory may be unusable as
+            # a standalone CLCS even though all of its states project onto the
+            # route lane.  Deceleration does not need a path extension, so use
+            # that existing route CLCS for predicate regions instead of
+            # discarding every domain estimate.
+            trajectory_clcs = self._get_vp_lanelet_clcs()
+            ref_path = None
+            context_source = "route_lane_clcs_fallback"
+        s_by_time = {}
+        for state in all_states:
+            s_value = trajectory_clcs.convert_to_curvilinear_coords(
+                float(state.position[0]), float(state.position[1])
+            )[0]
+            s_by_time[int(state.time_step)] = float(s_value)
+
+        current_s, current_v, current_a = (
+            self._get_velocity_planning_current_conditions(
+                all_states, trajectory_clcs
+            )
+        )
+        if current_s is None:
+            raise RuntimeError("current VP state is unavailable")
+        tc = int(self._tc)
+        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        reachable_by_time = {}
+        if tc in s_by_time:
+            reachable_by_time[tc] = (s_by_time[tc], s_by_time[tc])
+
+        if repair_mode == "deceleration":
+            for time_step, original_s in s_by_time.items():
+                if time_step <= tc:
+                    continue
+                reachable_by_time[time_step] = tuple(
+                    sorted((float(current_s), float(original_s)))
+                )
+        elif repair_mode == "acceleration":
+            dt = float(self.config.scenario.dt)
+            amin, amax, _, jmax = self._get_longitudinal_planning_limits()
+            vehicle_v_max = float(self.config.vehicle.qp_veh_config.v_lon_max)
+            path_s = [
+                float(
+                    trajectory_clcs.convert_to_curvilinear_coords(
+                        float(point[0]), float(point[1])
+                    )[0]
+                )
+                for point in (ref_path[0], ref_path[-1])
+            ]
+            path_max = max(path_s)
+            s_prev = float(current_s)
+            v_prev = max(0.0, float(current_v))
+            a_prev = float(np.clip(current_a, amin, amax))
+            future_times = sorted(
+                time_step for time_step in s_by_time if time_step > tc
+            )
+            for time_step in future_times:
+                a_next = min(float(amax), a_prev + float(jmax) * dt)
+                v_next = min(
+                    vehicle_v_max,
+                    max(0.0, v_prev + a_next * dt),
+                )
+                s_next = min(
+                    path_max,
+                    s_prev + 0.5 * (v_prev + v_next) * dt,
+                )
+                reachable_by_time[time_step] = tuple(
+                    sorted((float(current_s), float(s_next)))
+                )
+                actual_acceleration = (v_next - v_prev) / dt
+                s_prev, v_prev, a_prev = (
+                    float(s_next),
+                    float(v_next),
+                    float(np.clip(actual_acceleration, amin, amax)),
+                )
+        else:
+            raise ValueError(f"Unsupported VP repair mode: {repair_mode!r}")
+
+        ordered_s = [s_by_time[key] for key in sorted(s_by_time)]
+        s_deltas = np.diff(ordered_s) if len(ordered_s) > 1 else np.array([])
+        reverse_tolerance = float(
+            os.environ.get("CRREPAIR_VP_REGION_REVERSE_TOLERANCE", "0.05")
+        )
+        monotone = all(
+            right >= left - reverse_tolerance
+            for left, right in zip(ordered_s, ordered_s[1:])
+        )
+        if not monotone:
+            # Longitudinal VP assumes forward progress on the chosen reference
+            # path.  Do not certify any domain for a reversing trajectory.
+            reachable_by_time = {}
+        return s_by_time, reachable_by_time, {
+            "projection_source": context_source,
+            "trajectory_sample_count": len(s_by_time),
+            "reachable_frame_count": len(reachable_by_time),
+            "trajectory_s_monotone": monotone,
+            "trajectory_s_min": min(ordered_s) if ordered_s else None,
+            "trajectory_s_max": max(ordered_s) if ordered_s else None,
+            "trajectory_s_min_step": (
+                float(np.min(s_deltas)) if len(s_deltas) else None
+            ),
+            "reverse_tolerance": reverse_tolerance,
+        }
+
     def _estimate_deceleration_constraint_reachability(
         self,
         constraint_props,
@@ -387,7 +937,26 @@ class VPPredicateEstimation:
         all_states = self._get_states_with_initial()
         lanelet_clcs, dt = self._get_lanelet_clcs_and_dt()
         trajectory_clcs_start = time.time()
-        trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(all_states)
+        trajectory_clcs_source = "trajectory_clcs"
+        try:
+            trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(
+                all_states
+            )
+        except (RuntimeError, ValueError):
+            # A stopped trajectory can contain fewer than three distinct
+            # points.  That does not make deceleration reachability unknown:
+            # project it onto the already available route CLCS.
+            world_ego = self.rule_monitor.world.vehicle_by_id(
+                self.config.repair.ego_id
+            )
+            lane = world_ego.ref_path_lane
+            trajectory_clcs = self._get_vp_lanelet_clcs()
+            ref_path = np.asarray(lane.center_vertices, dtype=float)
+            if ref_path.ndim != 2 or len(ref_path) < 2:
+                raise ValueError(
+                    "Deceleration reference lane has fewer than two points."
+                )
+            trajectory_clcs_source = "route_lane_clcs_fallback"
         trajectory_clcs_time = time.time() - trajectory_clcs_start
 
         current_s, current_v, current_a = (
@@ -587,6 +1156,7 @@ class VPPredicateEstimation:
             "current_s": float(current_s),
             "current_v": float(current_v),
             "reachable_interval_semantics": "current_in_lp",
+            "projection_source": trajectory_clcs_source,
             "reachable_lower_terminal_s": float(reachable_lower_s[-1]),
             "maximum_braking_terminal_s": float(maximum_braking_s[-1]),
             "maximum_braking_terminal_v": float(maximum_braking_v[-1]),
