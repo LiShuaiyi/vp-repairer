@@ -61,7 +61,7 @@ class VPPredicateEstimation:
 
     def _build_domain_dict_for_sat(self):
         """Estimate possible truth values for SAT proposition nodes from VP reachability."""
-        if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4", "R_G2", "R_IN3_hand_draft", "R_IN5")):
+        if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_G2", "R_IN5")):
             return self._build_domain_dict_for_sat_direct()
         if self._tv in (-math.inf, math.inf):
             self.domain_dict_breakdown = {}
@@ -178,7 +178,7 @@ class VPPredicateEstimation:
         self.domain_dict_breakdown = {}
         if any(
             rule in self.config.repair.rules
-            for rule in ("R_IN1", "R_IN4", "R_IN3_hand_draft", "R_IN5")
+            for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
         ):
             return self._build_constraint_guided_intersection_domains()
         if "R_IN4" in self.config.repair.rules:
@@ -205,7 +205,10 @@ class VPPredicateEstimation:
             return self._domain_dict_construct_abrupt_brake(
                 pred_dict, self.sat_solver._prop_nodes
             )
-        if "R_IN3_hand_draft" in self.config.repair.rules:
+        if any(
+            rule in self.config.repair.rules
+            for rule in ("R_IN3", "R_IN3_hand_draft")
+        ):
             pred_dict = self._eval_same_priority(
                 0,
                 len(self.ego_vehicle.prediction.trajectory.state_list),
@@ -242,9 +245,6 @@ class VPPredicateEstimation:
         deceleration_diagnostics = {}
         deceleration_reachability_time = 0.0
         constraint_repair_analysis_complete = True
-        if repair_mode == "acceleration":
-            self._acceleration_exit_step_by_variable = {}
-            self._acceleration_exit_last_step_by_variable = {}
         constraint_props = [
             prop_node
             for prop_node in self.sat_solver._prop_nodes
@@ -567,6 +567,7 @@ class VPPredicateEstimation:
             reachable_by_time,
             lanelet_clcs=self._get_vp_lanelet_clcs(),
             reachable_velocity_by_time=velocity_reachable_by_time,
+            fixed_domain_cache=self._semantic_fixed_domain_cache,
             uncertainty=(
                 float(
                     os.environ.get(
@@ -575,13 +576,34 @@ class VPPredicateEstimation:
                 )
             ),
         )
+        # Constraint extraction uses the same path-specific certified conflict
+        # cover.  Reusing this builder avoids reconstructing geometry and keeps
+        # SAT estimation and LP bounds on exactly the same reference path.
+        self._semantic_in_region_builder = builder
         context_time = time.perf_counter() - context_start
 
         def time_steps(prop):
             interval = temporal_steps[id(prop)]
             if interval.count <= 0:
                 return ()
-            return range(int(interval.start), int(interval.end) + 1)
+            # Domain inference unions the possible values over all active
+            # frames, so evaluation order cannot change the result.  Inspect
+            # both extremes first: long trajectories commonly become unknown
+            # at the target horizon or cross a critical spatial boundary,
+            # while some rules expose a mixed value near the first frame.
+            # Alternating end/start finds either case without evaluating a
+            # hundred interior singleton frames.
+            start = int(interval.start)
+            end = int(interval.end)
+            ordered = []
+            left, right = start, end
+            while left <= right:
+                ordered.append(right)
+                if left != right:
+                    ordered.append(left)
+                left += 1
+                right -= 1
+            return tuple(ordered)
 
         def negate_domain(domain):
             return frozenset(1 - int(value) for value in domain)
@@ -804,6 +826,11 @@ class VPPredicateEstimation:
 
     def _in_longitudinal_reachability_context(self):
         """Build per-frame fixed-path progress and VP reachable intervals."""
+        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        cached = getattr(self, "_in_reachability_context_cache", None)
+        if cached is not None and cached[0] == repair_mode:
+            return cached[1]
+
         all_states = self._get_states_with_initial()
         context_source = "trajectory_clcs"
         try:
@@ -821,13 +848,6 @@ class VPPredicateEstimation:
             trajectory_clcs = self._get_vp_lanelet_clcs()
             ref_path = None
             context_source = "route_lane_clcs_fallback"
-        s_by_time = {}
-        for state in all_states:
-            s_value = trajectory_clcs.convert_to_curvilinear_coords(
-                float(state.position[0]), float(state.position[1])
-            )[0]
-            s_by_time[int(state.time_step)] = float(s_value)
-
         current_s, current_v, current_a = (
             self._get_velocity_planning_current_conditions(
                 all_states, trajectory_clcs
@@ -836,7 +856,12 @@ class VPPredicateEstimation:
         if current_s is None:
             raise RuntimeError("current VP state is unavailable")
         tc = int(self._tc)
-        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        s_by_time = {tc: float(current_s)}
+        future_s = self._build_reference_longitudinal_positions(
+            all_states, trajectory_clcs
+        )
+        for index, s_value in enumerate(future_s, start=1):
+            s_by_time[tc + index] = float(s_value)
         reachable_by_time = {}
         if tc in s_by_time:
             reachable_by_time[tc] = (s_by_time[tc], s_by_time[tc])
@@ -902,7 +927,7 @@ class VPPredicateEstimation:
             # Longitudinal VP assumes forward progress on the chosen reference
             # path.  Do not certify any domain for a reversing trajectory.
             reachable_by_time = {}
-        return s_by_time, reachable_by_time, {
+        result = (s_by_time, reachable_by_time, {
             "projection_source": context_source,
             "trajectory_sample_count": len(s_by_time),
             "reachable_frame_count": len(reachable_by_time),
@@ -913,7 +938,12 @@ class VPPredicateEstimation:
                 float(np.min(s_deltas)) if len(s_deltas) else None
             ),
             "reverse_tolerance": reverse_tolerance,
-        }
+            "current_s": float(current_s),
+            "current_v": float(current_v),
+            "current_a": float(current_a),
+        })
+        self._in_reachability_context_cache = (repair_mode, result)
+        return result
 
     def _estimate_deceleration_constraint_reachability(
         self,
@@ -1268,6 +1298,11 @@ class VPPredicateEstimation:
                     exit_step = first_required_step
                     reachable_s = current_s
                 else:
+                    # Before SAT chooses a model, the implication guard is not
+                    # yet available to temporal extraction.  Keep this domain
+                    # estimate optimistic if the exit is reachable somewhere
+                    # in the ungated interval; constraint extraction performs
+                    # the exact implication-aware deadline check afterwards.
                     for time_step in range(first_required_step, interval.end + 1):
                         index = time_step - int(self._tc) - 1
                         if not (0 <= index < len(maximum_progress)):

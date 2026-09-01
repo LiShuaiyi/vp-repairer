@@ -5,6 +5,7 @@ from typing import List
 
 import numpy as np
 from scipy.optimize import linprog
+from scipy.sparse import csr_matrix, vstack as sparse_vstack
 
 from commonroad.scenario.state import CustomState
 from commonroad.scenario.trajectory import Trajectory
@@ -21,6 +22,21 @@ class VPOptimization:
         trajectory_clcs: CurvilinearCoordinateSystem,
     ) -> np.ndarray:
         """Project the original ego trajectory to longitudinal reference positions."""
+        cache = getattr(self, "_reference_longitudinal_positions_cache", None)
+        if cache is None:
+            cache = {}
+            self._reference_longitudinal_positions_cache = cache
+        key = (
+            id(trajectory_clcs),
+            int(self._tc),
+            int(all_states[0].time_step),
+            int(all_states[-1].time_step),
+            len(all_states),
+        )
+        cached = cache.get(key)
+        if cached is not None:
+            return cached.copy()
+
         s_hat = np.zeros(all_states[-1].time_step - int(self._tc))
         for time_step in range(int(self._tc) + 1, all_states[-1].time_step + 1):
             state = all_states[time_step - all_states[0].time_step]
@@ -29,6 +45,7 @@ class VPOptimization:
                 float(state.position[1]),
             )
             s_hat[time_step - int(self._tc) - 1] = ct_pos[0]
+        cache[key] = s_hat.copy()
         return s_hat
 
     def _get_velocity_planning_initial_conditions(
@@ -95,49 +112,436 @@ class VPOptimization:
             qp_veh_config.v_lon_max,
         )
 
-    def _build_constant_acceleration_reference(
+    def _build_acceleration_lp_template(
         self,
-        *,
+        dt,
+        s_hat,
+        amin,
+        amax,
+        jmin,
+        jmax,
+        s0,
+        v0,
         initial_s,
         initial_v,
-        acceleration,
-        horizon,
-        dt,
-        path_max,
+        initial_a,
     ):
-        """Build the longitudinal reference used by one acceleration attempt.
+        """Build and cache the acceleration LP matrices shared by SAT candidates.
 
-        The earlier acceleration feasibility audit swept constant positive
-        accelerations.  Keeping the same family here makes that audit an exact
-        regression oracle, while the LP still enforces all position, speed,
-        acceleration, jerk, and temporal constraints around the reference.
+        Candidate-specific longitudinal and velocity requirements are variable
+        bounds, not matrix coefficients.  The dynamics, absolute-deviation,
+        acceleration, and jerk rows therefore remain identical throughout one
+        acceleration phase and only need to be assembled once.
         """
-        vehicle_v_max = float(self.config.vehicle.qp_veh_config.v_lon_max)
-        s_values = []
-        v_values = []
-        s_prev = float(initial_s)
-        v_prev = max(0.0, float(initial_v))
-        path_exhausted = False
-        for _ in range(int(horizon)):
-            v_next = min(
-                vehicle_v_max,
-                v_prev + float(acceleration) * float(dt),
+        s_hat = np.asarray(s_hat, dtype=float)
+        T = len(s_hat)
+        n_s = n_v = T
+        n_delta_s = T
+        n_delta_acceleration = T
+        n_delta_jerk = max(0, T - 1)
+        n_x = n_s + n_v + n_delta_s + n_delta_acceleration + n_delta_jerk
+
+        def s_idx(t):
+            return t
+
+        def v_idx(t):
+            return n_s + t
+
+        def delta_s_idx(t):
+            return n_s + n_v + t
+
+        def delta_acceleration_idx(t):
+            return n_s + n_v + n_delta_s + t
+
+        def delta_jerk_idx(t):
+            return n_s + n_v + n_delta_s + n_delta_acceleration + t
+
+        key = (
+            T,
+            float(dt),
+            float(amin),
+            float(amax),
+            float(jmin),
+            float(jmax),
+            None if s0 is None else float(s0),
+            None if v0 is None else float(v0),
+            None if initial_s is None else float(initial_s),
+            None if initial_v is None else float(initial_v),
+            None if initial_a is None else float(initial_a),
+            s_hat.tobytes(),
+        )
+        cache = getattr(self, "_acceleration_lp_template_cache", None)
+        if cache is None:
+            cache = {}
+            self._acceleration_lp_template_cache = cache
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+
+        def build_sparse(rows):
+            row_indices = []
+            column_indices = []
+            values = []
+            rhs = []
+            for row_index, (coefficients, bound) in enumerate(rows):
+                for column, value in coefficients:
+                    if value:
+                        row_indices.append(row_index)
+                        column_indices.append(column)
+                        values.append(float(value))
+                rhs.append(float(bound))
+            matrix = csr_matrix(
+                (values, (row_indices, column_indices)),
+                shape=(len(rows), n_x),
+                dtype=float,
             )
-            s_next = s_prev + 0.5 * (v_prev + v_next) * float(dt)
-            if s_next > float(path_max) + 1e-9:
-                path_exhausted = True
-            s_next = min(s_next, float(path_max))
-            s_values.append(float(s_next))
-            v_values.append(float(v_next))
-            s_prev, v_prev = s_next, v_next
+            return matrix, np.asarray(rhs, dtype=float)
+
+        eq_rows = []
+        for t in range(T - 1):
+            eq_rows.append(
+                (
+                    (
+                        (s_idx(t + 1), 1.0),
+                        (s_idx(t), -1.0),
+                        (v_idx(t), -0.5 * dt),
+                        (v_idx(t + 1), -0.5 * dt),
+                    ),
+                    0.0,
+                )
+            )
+        if initial_s is not None and initial_v is not None and T:
+            eq_rows.append(
+                (
+                    ((s_idx(0), 1.0), (v_idx(0), -0.5 * dt)),
+                    float(initial_s) + 0.5 * float(initial_v) * dt,
+                )
+            )
+        if s0 is not None:
+            eq_rows.append((((s_idx(0), 1.0),), float(s0)))
+        if v0 is not None:
+            eq_rows.append((((v_idx(0), 1.0),), float(v0)))
+        A_eq, b_eq = build_sparse(eq_rows)
+
+        ub_rows = []
+        if initial_v is not None and T:
+            ub_rows.extend(
+                (
+                    (((v_idx(0), 1.0),), float(initial_v) + amax * dt),
+                    (((v_idx(0), -1.0),), -float(initial_v) - amin * dt),
+                )
+            )
+            if initial_a is not None:
+                ub_rows.extend(
+                    (
+                        (
+                            ((v_idx(0), 1.0),),
+                            float(initial_v) + float(initial_a) * dt + jmax * dt * dt,
+                        ),
+                        (
+                            ((v_idx(0), -1.0),),
+                            -float(initial_v) - float(initial_a) * dt - jmin * dt * dt,
+                        ),
+                    )
+                )
+        for t in range(T - 1):
+            ub_rows.extend(
+                (
+                    (
+                        ((v_idx(t + 1), 1.0), (v_idx(t), -1.0)),
+                        amax * dt,
+                    ),
+                    (
+                        ((v_idx(t + 1), -1.0), (v_idx(t), 1.0)),
+                        -amin * dt,
+                    ),
+                )
+            )
+        for t in range(T - 2):
+            ub_rows.extend(
+                (
+                    (
+                        (
+                            (v_idx(t), 1.0),
+                            (v_idx(t + 1), -2.0),
+                            (v_idx(t + 2), 1.0),
+                        ),
+                        jmax * dt * dt,
+                    ),
+                    (
+                        (
+                            (v_idx(t), -1.0),
+                            (v_idx(t + 1), 2.0),
+                            (v_idx(t + 2), -1.0),
+                        ),
+                        -jmin * dt * dt,
+                    ),
+                )
+            )
+        for t in range(T):
+            ub_rows.extend(
+                (
+                    (
+                        ((s_idx(t), 1.0), (delta_s_idx(t), -1.0)),
+                        float(s_hat[t]),
+                    ),
+                    (
+                        ((s_idx(t), -1.0), (delta_s_idx(t), -1.0)),
+                        -float(s_hat[t]),
+                    ),
+                )
+            )
+        for t in range(T):
+            if t == 0:
+                if initial_v is None:
+                    continue
+                coefficients = ((v_idx(t), 1.0), (delta_acceleration_idx(t), -1.0))
+                opposite = ((v_idx(t), -1.0), (delta_acceleration_idx(t), -1.0))
+                rhs = float(initial_v)
+            else:
+                coefficients = (
+                    (v_idx(t), 1.0),
+                    (v_idx(t - 1), -1.0),
+                    (delta_acceleration_idx(t), -1.0),
+                )
+                opposite = (
+                    (v_idx(t), -1.0),
+                    (v_idx(t - 1), 1.0),
+                    (delta_acceleration_idx(t), -1.0),
+                )
+                rhs = 0.0
+            ub_rows.extend(((coefficients, rhs), (opposite, -rhs)))
+        if T >= 2 and initial_v is not None:
+            expected_first_velocity = float(initial_v) + float(initial_a or 0.0) * dt
+            ub_rows.extend(
+                (
+                    (
+                        ((v_idx(0), 1.0), (delta_jerk_idx(0), -1.0)),
+                        expected_first_velocity,
+                    ),
+                    (
+                        ((v_idx(0), -1.0), (delta_jerk_idx(0), -1.0)),
+                        -expected_first_velocity,
+                    ),
+                )
+            )
+        for t in range(T - 2):
+            ub_rows.extend(
+                (
+                    (
+                        (
+                            (v_idx(t), 1.0),
+                            (v_idx(t + 1), -2.0),
+                            (v_idx(t + 2), 1.0),
+                            (delta_jerk_idx(t + 1), -1.0),
+                        ),
+                        0.0,
+                    ),
+                    (
+                        (
+                            (v_idx(t), -1.0),
+                            (v_idx(t + 1), 2.0),
+                            (v_idx(t + 2), -1.0),
+                            (delta_jerk_idx(t + 1), -1.0),
+                        ),
+                        0.0,
+                    ),
+                )
+            )
+        A_ub, b_ub = build_sparse(ub_rows)
+
+        primary_c = np.zeros(n_x)
+        primary_c[n_s + n_v : n_s + n_v + n_delta_s] = 1.0
+        secondary_c = np.zeros(n_x)
+        secondary_c[
+            n_s + n_v + n_delta_s : n_s + n_v + n_delta_s + n_delta_acceleration
+        ] = 1.0
+        secondary_c[n_s + n_v + n_delta_s + n_delta_acceleration :] = float(
+            self.config.repair.acceleration_smoothing_jerk_weight
+        )
+        primary_row = csr_matrix(
+            (
+                np.ones(T, dtype=float),
+                (
+                    np.zeros(T, dtype=int),
+                    np.arange(n_s + n_v, n_s + n_v + T, dtype=int),
+                ),
+            ),
+            shape=(1, n_x),
+        )
+        template = {
+            "A_eq": A_eq,
+            "b_eq": b_eq,
+            "A_ub": A_ub,
+            "b_ub": b_ub,
+            "secondary_A_ub": sparse_vstack((A_ub, primary_row), format="csr"),
+            "primary_c": primary_c,
+            "secondary_c": secondary_c,
+            "n_x": n_x,
+            "T": T,
+            "n_delta_acceleration": n_delta_acceleration,
+            "n_delta_jerk": n_delta_jerk,
+        }
+        cache.clear()
+        cache[key] = template
+        return template
+
+    def _solve_acceleration_velocity_planning_lp_cached(
+        self,
+        dt,
+        s_hat,
+        vmin,
+        vmax,
+        smin,
+        smax,
+        amin,
+        amax,
+        jmin,
+        jmax,
+        s0=None,
+        v0=None,
+        time_offset=0,
+        initial_s=None,
+        initial_v=None,
+        initial_a=None,
+    ):
+        """Solve the unchanged two-stage acceleration LP using cached sparse matrices."""
+        arrays = tuple(
+            np.asarray(values, dtype=float)
+            for values in (s_hat, vmin, vmax, smin, smax)
+        )
+        s_hat, vmin, vmax, smin, smax = arrays
+        template = self._build_acceleration_lp_template(
+            dt,
+            s_hat,
+            amin,
+            amax,
+            jmin,
+            jmax,
+            s0,
+            v0,
+            initial_s,
+            initial_v,
+            initial_a,
+        )
+        T = template["T"]
+        bounds = []
+        for t in range(T):
+            lb, ub = float(smin[t]), float(smax[t])
+            if lb > ub:
+                raise RuntimeError(
+                    "Infeasible acceleration position bounds at "
+                    f"time_step={time_offset + t}: smin={lb}, smax={ub}, "
+                    f"s_hat={s_hat[t]}"
+                )
+            bounds.append((lb, ub))
+        for t in range(T):
+            lb, ub = float(vmin[t]), float(vmax[t])
+            if lb > ub:
+                raise RuntimeError(
+                    "Infeasible acceleration velocity bounds at "
+                    f"time_step={time_offset + t}: vmin={lb}, vmax={ub}"
+                )
+            bounds.append((lb, ub))
+        bounds.extend((0.0, None) for _ in range(3 * T - 1))
+
+        result = linprog(
+            c=template["primary_c"],
+            A_ub=template["A_ub"],
+            b_ub=template["b_ub"],
+            A_eq=template["A_eq"],
+            b_eq=template["b_eq"],
+            bounds=bounds,
+            method="highs",
+        )
+        if not result.success:
+            raise RuntimeError(f"LP failed: {result.message}")
+
+        primary_limit = float(result.fun) + max(
+            float(self.config.repair.acceleration_smoothing_position_absolute_tolerance),
+            float(self.config.repair.acceleration_smoothing_position_relative_tolerance)
+            * max(1.0, abs(float(result.fun))),
+        )
+        secondary_result = linprog(
+            c=template["secondary_c"],
+            A_ub=template["secondary_A_ub"],
+            b_ub=np.append(template["b_ub"], primary_limit),
+            A_eq=template["A_eq"],
+            b_eq=template["b_eq"],
+            bounds=bounds,
+            method="highs",
+        )
+        if secondary_result.success:
+            result = secondary_result
+        s = result.x[:T]
+        v = result.x[T : 2 * T]
         return {
-            "acceleration": float(acceleration),
-            "s": np.asarray(s_values, dtype=float),
-            "v": np.asarray(v_values, dtype=float),
-            "path_exhausted": bool(path_exhausted),
+            "s": s,
+            "v": v,
+            "objective_min_sum_s_hat_minus_s": np.sum(s_hat - s),
+            "raw_result": result,
         }
 
     def _solve_velocity_planning_lp(
+        self,
+        dt,
+        s_hat,
+        vmin,
+        vmax,
+        smin,
+        smax,
+        amin,
+        amax,
+        jmin,
+        jmax,
+        s0=None,
+        v0=None,
+        time_offset=0,
+        repair_mode="deceleration",
+        initial_s=None,
+        initial_v=None,
+        initial_a=None,
+    ):
+        if repair_mode == "acceleration":
+            return self._solve_acceleration_velocity_planning_lp_cached(
+                dt=dt,
+                s_hat=s_hat,
+                vmin=vmin,
+                vmax=vmax,
+                smin=smin,
+                smax=smax,
+                amin=amin,
+                amax=amax,
+                jmin=jmin,
+                jmax=jmax,
+                s0=s0,
+                v0=v0,
+                time_offset=time_offset,
+                initial_s=initial_s,
+                initial_v=initial_v,
+                initial_a=initial_a,
+            )
+        return self._solve_velocity_planning_lp_uncached(
+            dt=dt,
+            s_hat=s_hat,
+            vmin=vmin,
+            vmax=vmax,
+            smin=smin,
+            smax=smax,
+            amin=amin,
+            amax=amax,
+            jmin=jmin,
+            jmax=jmax,
+            s0=s0,
+            v0=v0,
+            time_offset=time_offset,
+            repair_mode=repair_mode,
+            initial_s=initial_s,
+            initial_v=initial_v,
+            initial_a=initial_a,
+        )
+
+    def _solve_velocity_planning_lp_uncached(
         self,
         dt,
         s_hat,

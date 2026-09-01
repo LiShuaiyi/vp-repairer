@@ -77,9 +77,12 @@ class VPTrajectoryRepairer(
         self.phase_iterations = {"deceleration": 0, "acceleration": 0}
         self.domain_dict_breakdown_by_mode = {}
         self._conflict_trajectory_interval_cache = {}
-        self._acceleration_profile_model_key = None
-        self._acceleration_profile_index = 0
-        self._current_acceleration_profile = None
+        self._semantic_fixed_domain_cache = {}
+        self._temporal_constraint_steps_cache = {}
+        self._reference_longitudinal_positions_cache = {}
+        self._in_reachability_context_cache = None
+        self._acceleration_lp_template_cache = {}
+        self._acceleration_curvature_cache = {}
 
     @property
     def tv(self):
@@ -110,37 +113,15 @@ class VPTrajectoryRepairer(
         return self._model
 
     def _supports_acceleration_fallback(self):
+        # ``dpll`` is the deliberately minimal baseline: solve the original
+        # formula once and try one deceleration VP problem. Keep all modern
+        # phase-search behaviour confined to DomainDPLL.
+        if self.sat_solver.solver_mode == "dpll":
+            return False
         return any(
             rule in self.config.repair.rules
-            for rule in ("R_IN3_hand_draft", "R_IN4", "R_IN5")
+            for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
         )
-
-    def _acceleration_values(self):
-        """Return the same positive-acceleration sweep used by the audit."""
-        amax = max(0.0, float(self.config.vehicle.qp_veh_config.a_lon_max))
-        values = np.arange(1.0, amax + 0.5, 1.0).tolist()
-        if amax > 0.0 and (not values or values[-1] < amax - 1e-9):
-            values.append(amax)
-        return values
-
-    def _sync_acceleration_profile_with_model(self):
-        if getattr(self, "_vp_repair_mode", "deceleration") != "acceleration":
-            return
-        model_key = tuple(sorted(str(literal) for literal in (self.model or ())))
-        if model_key != self._acceleration_profile_model_key:
-            self._acceleration_profile_model_key = model_key
-            self._acceleration_profile_index = 0
-            self._use_monitor_conflict_geometry = True
-
-    def _advance_acceleration_profile(self):
-        if getattr(self, "_vp_repair_mode", "deceleration") != "acceleration":
-            return False
-        values = self._acceleration_values()
-        if self._acceleration_profile_index + 1 >= len(values):
-            return False
-        self._acceleration_profile_index += 1
-        self._use_monitor_conflict_geometry = True
-        return True
 
     def _begin_vp_repair_phase(self, repair_mode):
         """Start one independent SAT/domain search for a VP branch."""
@@ -151,7 +132,8 @@ class VPTrajectoryRepairer(
             # the exit branch, so acceleration rebuilds it with route extension.
             self._shared_trajectory_clcs = None
             self._conflict_trajectory_interval_cache = {}
-            self._acceleration_exit_step_by_variable = {}
+            self._acceleration_lp_template_cache = {}
+            self._acceleration_curvature_cache = {}
         self._model = None
         self._sel_prop = None
         self._prop_full = None
@@ -164,9 +146,8 @@ class VPTrajectoryRepairer(
         self._repair_literals = []
         self._constraint_repair_literals = []
         self._constraint_repair_analysis_complete = False
-        self._acceleration_profile_model_key = None
-        self._acceleration_profile_index = 0
-        self._current_acceleration_profile = None
+        self._in_reachability_context_cache = None
+        self._semantic_in_region_builder = None
         # Failed deceleration models are valid candidates for the alternative
         # exit branch, so the acceleration phase must start from the original
         # CNF rather than the formula containing deceleration blocking clauses.
@@ -187,6 +168,12 @@ class VPTrajectoryRepairer(
         self._force_trajectory_clcs_preprocess = False
         self._shared_trajectory_clcs = None
         self._conflict_trajectory_interval_cache = {}
+        self._semantic_fixed_domain_cache = {}
+        self._temporal_constraint_steps_cache = {}
+        self._reference_longitudinal_positions_cache = {}
+        self._in_reachability_context_cache = None
+        self._acceleration_lp_template_cache = {}
+        self._acceleration_curvature_cache = {}
         self._tv = self.rule_monitor.tv_time_step
         if self._tv in (-math.inf, math.inf):
             return None
@@ -239,69 +226,62 @@ class VPTrajectoryRepairer(
                 "without SAT-enumerating an uncontrollable deceleration phase"
             )
         print("******** Velocity-Planning Trajectory Repairing starts! ********")
+        reuse_sat_model = False
         while True:
-            sat_start_time = time.time()
-            solve_result = self.sat_solver.solve()
-            if solve_result != sat:
-                self.runtime_breakdown["sat"] += time.time() - sat_start_time
-                if (
-                    self._vp_repair_mode == "deceleration"
-                    and self._supports_acceleration_fallback()
-                ):
-                    print(
-                        "* \t<VPRepairer>: deceleration search exhausted; "
-                        "starting acceleration exit fallback"
-                    )
-                    if self._begin_vp_repair_phase("acceleration"):
-                        continue
-                    print(
-                        "* \t<VPRepairer>: acceleration predicate estimate "
-                        "found no reachable conflict-exit literal"
-                    )
-                break
+            if not reuse_sat_model:
+                sat_start_time = time.time()
+                solve_result = self.sat_solver.solve()
+                if solve_result != sat:
+                    self.runtime_breakdown["sat"] += time.time() - sat_start_time
+                    if (
+                        self._vp_repair_mode == "deceleration"
+                        and self._supports_acceleration_fallback()
+                    ):
+                        print(
+                            "* \t<VPRepairer>: deceleration search exhausted; "
+                            "starting acceleration exit fallback"
+                        )
+                        if self._begin_vp_repair_phase("acceleration"):
+                            continue
+                        print(
+                            "* \t<VPRepairer>: acceleration predicate estimate "
+                            "found no reachable conflict-exit literal"
+                        )
+                    break
 
-            self.nr_iter += 1
-            self.phase_iterations[self._vp_repair_mode] += 1
-            print("* {}. iteration...".format(nr))
-            if self.rule_monitor.proposition_nodes is None:
-                self.runtime_breakdown["sat"] += time.time() - sat_start_time
-                return None
+                self.nr_iter += 1
+                self.phase_iterations[self._vp_repair_mode] += 1
+                print("* {}. iteration...".format(nr))
+                if self.rule_monitor.proposition_nodes is None:
+                    self.runtime_breakdown["sat"] += time.time() - sat_start_time
+                    return None
 
-            select_proposition, self._model = self.sat_solver.model()
-            print(f"selected proposition: {select_proposition}")
-            sat_elapsed = time.time() - sat_start_time
-            self.sat_reasoning_time += sat_elapsed
-            self.runtime_breakdown["sat"] += sat_elapsed
-            print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(self.sat_reasoning_time))
+                select_proposition, self._model = self.sat_solver.model()
+                print(f"selected proposition: {select_proposition}")
+                sat_elapsed = time.time() - sat_start_time
+                self.sat_reasoning_time += sat_elapsed
+                self.runtime_breakdown["sat"] += sat_elapsed
+                print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(self.sat_reasoning_time))
 
-            self._assign_proposition(
-                select_proposition,
-                list(self._model),
-            )
-            self._sync_acceleration_profile_with_model()
+                self._assign_proposition(
+                    select_proposition,
+                    list(self._model),
+                )
+            else:
+                # CLCS preprocessing and monitor-aligned geometry are
+                # continuous fallbacks for the same Boolean candidate.
+                reuse_sat_model = False
             try:
                 repaired_traj = self._repair_with_velocity_planning()
             except AccelerationExitStepInfeasibleError as exc:
-                if self._advance_acceleration_profile():
-                    print(
-                        "* \t<VPRepairer>: acceleration profile was infeasible; "
-                        "trying the next constant-acceleration reference"
-                    )
-                    nr += 1
-                    continue
                 print(
-                    "* \t<VPRepairer>: all acceleration profiles are "
-                    f"infeasible for this SAT model: {exc}"
+                    "* \t<VPRepairer>: acceleration LP is infeasible for "
+                    f"this temporal SAT model: {exc}"
                 )
                 self.candidate_diagnostics.append(
                     {
                         "status": "planning_failed",
                         "repair_mode": self._vp_repair_mode,
-                        "acceleration": (
-                            self._current_acceleration_profile.get("acceleration")
-                            if self._current_acceleration_profile is not None
-                            else None
-                        ),
                         "selected": [prop.name for prop in self._sel_prop],
                         "error": str(exc),
                     }
@@ -336,16 +316,7 @@ class VPTrajectoryRepairer(
                         "* \t<VPRepairer>: retrying the same SAT model with "
                         "preprocessed trajectory CLCS"
                     )
-                    # The next loop reuses the same logical assignment; this
-                    # is a geometry fallback, not another SAT iteration.
-                    self.nr_iter -= 1
-                    nr += 1
-                    continue
-                if self._advance_acceleration_profile():
-                    print(
-                        "* \t<VPRepairer>: trying the next "
-                        "constant-acceleration reference"
-                    )
+                    reuse_sat_model = True
                     nr += 1
                     continue
             if repaired_traj is not None:
@@ -401,13 +372,6 @@ class VPTrajectoryRepairer(
                         {
                             "status": "checked",
                             "repair_mode": self._vp_repair_mode,
-                            "acceleration": (
-                                self._current_acceleration_profile.get(
-                                    "acceleration"
-                                )
-                                if self._current_acceleration_profile is not None
-                                else None
-                            ),
                             "selected": [prop.name for prop in selected_props],
                             "selected_assignments": [
                                 {
@@ -472,9 +436,7 @@ class VPTrajectoryRepairer(
                         "* \t<VPRepairer>: retrying the same SAT model with "
                         "preprocessed trajectory CLCS"
                     )
-                    # The next loop reuses the same logical assignment; this
-                    # is a geometry fallback, not another SAT iteration.
-                    self.nr_iter -= 1
+                    reuse_sat_model = True
                     nr += 1
                     continue
 
@@ -492,14 +454,7 @@ class VPTrajectoryRepairer(
                         "* \t<VPRepairer>: retrying the same SAT model with "
                         "monitor-aligned conflict geometry"
                     )
-                    nr += 1
-                    continue
-
-                if self._advance_acceleration_profile():
-                    print(
-                        "* \t<VPRepairer>: acceleration candidate remains "
-                        "non-compliant; trying the next acceleration"
-                    )
+                    reuse_sat_model = True
                     nr += 1
                     continue
 
@@ -537,7 +492,6 @@ class VPTrajectoryRepairer(
         self.runtime_breakdown["clcs"] += time.time() - clcs_start_time
         cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
 
-        acceleration_profile = None
         initial_s = initial_v = initial_a = None
         if repair_mode == "acceleration":
             initial_s, initial_v, initial_a = (
@@ -550,58 +504,6 @@ class VPTrajectoryRepairer(
                 raise AccelerationExitStepInfeasibleError(
                     "Acceleration planning has no fixed current state."
                 )
-            path_max = float(trajectory_clcs.length())
-            acceleration_values = self._acceleration_values()
-            if self._acceleration_profile_index >= len(acceleration_values):
-                raise AccelerationExitStepInfeasibleError(
-                    "Acceleration profile sweep is exhausted."
-                )
-            acceleration_profile = self._build_constant_acceleration_reference(
-                initial_s=initial_s,
-                initial_v=initial_v,
-                acceleration=acceleration_values[
-                    self._acceleration_profile_index
-                ],
-                horizon=all_states[-1].time_step - int(self._tc),
-                dt=dt,
-                path_max=path_max,
-            )
-            self._current_acceleration_profile = acceleration_profile
-            if acceleration_profile["path_exhausted"]:
-                raise AccelerationExitStepInfeasibleError(
-                    "Constant-acceleration reference exhausts the recorded path."
-                )
-
-            selected_conflict_variables = {
-                prop.alphabet[-1]
-                for prop in (getattr(self, "_sel_prop", None) or [])
-                if "in_intersection_conflict_area__0_1" in prop.name
-                and prop.alphabet.startswith("~")
-            }
-            if selected_conflict_variables:
-                conflict_interval = (
-                    self._get_intersection_conflict_trajectory_interval(
-                        lanelet_clcs=lanelet_clcs,
-                        trajectory_clcs=trajectory_clcs,
-                        ref_path=ref_path,
-                    )
-                )
-                if conflict_interval is None:
-                    raise UnsupportedVPCandidateError(
-                        "Conflict geometry is unavailable for acceleration repair."
-                    )
-                after_lower = float(conflict_interval[1])
-                exit_indices = np.flatnonzero(
-                    acceleration_profile["s"] >= after_lower - 1e-6
-                )
-                if len(exit_indices) == 0:
-                    raise AccelerationExitStepInfeasibleError(
-                        "Constant-acceleration reference cannot clear the "
-                        "conflict interval within the trajectory horizon."
-                    )
-                exit_step = int(self._tc) + int(exit_indices[0]) + 1
-                for variable in selected_conflict_variables:
-                    self._acceleration_exit_step_by_variable[variable] = exit_step
 
         constraint_extraction_start_time = time.time()
         trajectory_s_min_cap = None
@@ -609,7 +511,7 @@ class VPTrajectoryRepairer(
         if self.config.repair.constraint_mode == 2:
             s_min, s_max, v_min, v_max = self._extract_constraints_from_corridor()
         elif self.config.repair.constraint_mode == 1:
-            if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN4", "R_IN3_hand_draft", "R_IN5")):
+            if any(rule in self.config.repair.rules for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")):
                 (
                     s_min,
                     s_max,
@@ -655,31 +557,14 @@ class VPTrajectoryRepairer(
                 cl_trajectory_before,
                 trajectory_s_min_cap=trajectory_s_min_cap,
                 trajectory_s_max_cap=trajectory_s_max_cap,
-                apply_curvature_limits=repair_mode != "acceleration",
+                apply_curvature_limits=True,
             )
         )
-        if repair_mode == "acceleration":
-            # The acceleration reference identifies the path location occupied
-            # at each time step.  Apply the curvature speed bound locally at
-            # those locations instead of using the maximum curvature over the
-            # entire current-to-exit interval for every frame.
-            profile_s = np.asarray(acceleration_profile["s"], dtype=float)
-            local_radius = 0.05
-            curvature_v_max = self._curvature_velocity_limits(
-                trajectory_clcs,
-                profile_s - local_radius,
-                profile_s + local_radius,
-                self.config.vehicle.qp_veh_config.a_lat_max,
-            )
-            est_v_max = np.minimum(
-                np.asarray(est_v_max, dtype=float),
-                curvature_v_max,
-            ).tolist()
         self.runtime_breakdown["constraint_conversion"] += time.time() - constraint_conversion_start_time
 
         # Both repair modes minimize their change relative to the recorded ego
-        # trajectory.  The constant-acceleration profile only guides reachability,
-        # the conflict-exit deadline, and local curvature lookup.
+        # trajectory.  Temporal proposition steps determine every conflict
+        # bound directly; acceleration has no separate reference-profile sweep.
         s_hat = self._build_reference_longitudinal_positions(
             all_states, trajectory_clcs
         )
@@ -751,7 +636,10 @@ class VPTrajectoryRepairer(
                     f"smin={np.asarray(est_s_min).round(6).tolist()}, "
                     f"smax={np.asarray(est_s_max).round(6).tolist()}, "
                     f"vmin={np.asarray(est_v_min).round(6).tolist()}, "
-                    f"vmax={np.asarray(est_v_max).round(6).tolist()}"
+                    f"vmax={np.asarray(est_v_max).round(6).tolist()}, "
+                    f"temporal={getattr(self, '_last_temporal_expansion_debug', [])}, "
+                    f"implication_anchors="
+                    f"{getattr(self, '_last_implication_anchor_debug', {})}"
                 )
             if repair_mode == "acceleration":
                 raise AccelerationExitStepInfeasibleError(
@@ -763,11 +651,6 @@ class VPTrajectoryRepairer(
         if os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG"):
             self._last_constraint_debug = {
                 "repair_mode": repair_mode,
-                "acceleration": (
-                    acceleration_profile["acceleration"]
-                    if acceleration_profile is not None
-                    else None
-                ),
                 "extraction": getattr(self, "_last_extraction_debug", []),
                 "s_hat": np.asarray(s_hat, dtype=float).round(9).tolist(),
                 "s_min": np.asarray(est_s_min, dtype=float).round(9).tolist(),

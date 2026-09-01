@@ -271,8 +271,8 @@ class VPTrajectoryContext:
         all_states: List[CustomState],
         position_debounce: float = 1e-2,
         continuation_step: float = 0.1,
-        lateral_blend_distance: float = 5.0,
-        stationary_span: float = 0.5,
+        lateral_blend_distance: float = 15.0,
+        minimum_reliable_observed_span: float = 5.0,
     ) -> Tuple[CurvilinearCoordinateSystem, np.ndarray]:
         """Extend the recorded ego path smoothly along its remaining route.
 
@@ -309,11 +309,12 @@ class VPTrajectoryContext:
         if (
             len(source_path) < 2
             or float(np.max(np.linalg.norm(source_path - source_path[0], axis=1)))
-            < stationary_span
+            < minimum_reliable_observed_span
         ):
-            # A stopped vehicle often has centimetre-scale position jitter.
-            # Treat that as a single observed position instead of turning the
-            # noise into a high-curvature path tangent.
+            # A very short recorded path does not contain enough longitudinal
+            # baseline to distinguish route shape from localization/lateral
+            # jitter.  Keep its current pose as the trusted anchor and let the
+            # tangent-continuous continuation below define the future path.
             current_idx = int(self._tc - all_states[0].time_step)
             current_position = np.asarray(
                 all_states[current_idx].position, dtype=float
@@ -362,21 +363,88 @@ class VPTrajectoryContext:
         current_velocity = max(
             0.0, float(getattr(all_states[current_idx], "velocity", 0.0))
         )
-        horizon_seconds = max(
-            0.0,
-            (all_states[-1].time_step - int(self._tc))
-            * float(self.config.scenario.dt),
-        )
         qp_config = self.config.vehicle.qp_veh_config
-        maximum_travel = min(
-            float(qp_config.v_lon_max) * horizon_seconds,
-            current_velocity * horizon_seconds
-            + 0.5 * float(qp_config.a_lon_max) * horizon_seconds**2,
+        dt = float(self.config.scenario.dt)
+        horizon_steps = max(
+            0, int(all_states[-1].time_step) - int(self._tc)
         )
+        acceleration_min = float(qp_config.a_lon_min)
+        acceleration_max = float(qp_config.a_lon_max)
+        jerk_max = float(qp_config.j_lon_max)
+        smoothing_jerk_limit = max(
+            0.0,
+            float(
+                getattr(
+                    self.config.repair,
+                    "acceleration_smoothing_jerk_limit",
+                    0.0,
+                )
+            ),
+        )
+        if smoothing_jerk_limit > 0.0:
+            jerk_max = min(jerk_max, smoothing_jerk_limit)
+        current_acceleration = float(
+            getattr(all_states[current_idx], "acceleration", 0.0)
+        )
+        if not np.isfinite(current_acceleration):
+            current_acceleration = 0.0
+        current_acceleration = float(
+            np.clip(current_acceleration, acceleration_min, acceleration_max)
+        )
+
+        # Roll out the exact optimistic side of the discrete acceleration/jerk
+        # model used by the LP.  Curvature limits are intentionally omitted:
+        # doing so leaves a certified upper bound on longitudinal reachability.
+        maximum_travel = 0.0
+        reachable_velocity = current_velocity
+        reachable_acceleration = current_acceleration
+        for _ in range(horizon_steps):
+            next_acceleration = min(
+                acceleration_max,
+                reachable_acceleration + jerk_max * dt,
+            )
+            next_velocity = min(
+                float(qp_config.v_lon_max),
+                max(0.0, reachable_velocity + next_acceleration * dt),
+            )
+            maximum_travel += 0.5 * (
+                reachable_velocity + next_velocity
+            ) * dt
+            reachable_velocity = next_velocity
+            reachable_acceleration = next_acceleration
+
+        current_position = np.asarray(
+            all_states[current_idx].position, dtype=float
+        ).reshape(-1)[:2]
+        current_route_s = float(
+            route_clcs.convert_to_curvilinear_coords(
+                float(current_position[0]), float(current_position[1])
+            )[0]
+        )
+        observed_route_progress = max(
+            0.0, direction * (last_s - current_route_s)
+        )
+        required_continuation = max(
+            0.0, maximum_travel - observed_route_progress
+        )
+        # Keep the original 15 m Hermite transition intact throughout every
+        # physically reachable point.  The final metre is only a projection
+        # and endpoint-interpolation guard; it does not enlarge reachability.
+        projection_margin = 1.0
         remaining_length = min(
             remaining_length,
-            max(30.0, maximum_travel + 15.0),
+            max(
+                float(lateral_blend_distance) + float(continuation_step),
+                required_continuation + projection_margin,
+            ),
         )
+        self._last_acceleration_extension_debug = {
+            "maximum_travel": float(maximum_travel),
+            "observed_route_progress": float(observed_route_progress),
+            "required_continuation": float(required_continuation),
+            "selected_continuation": float(remaining_length),
+            "horizon_steps": int(horizon_steps),
+        }
         if remaining_length <= continuation_step:
             raise ValueError(
                 "Acceleration reference route has no usable continuation "
@@ -389,15 +457,63 @@ class VPTrajectoryContext:
             continuation_step,
             dtype=float,
         )
+        transition_distance = min(
+            float(lateral_blend_distance),
+            float(remaining_length) - float(continuation_step),
+        )
+        transition_distance = max(float(continuation_step), transition_distance)
+        transition_start = np.asarray(source_path[-1], dtype=float)
+        if len(source_path) >= 2:
+            start_tangent = source_path[-1] - source_path[-2]
+        else:
+            heading = float(getattr(all_states[current_idx], "orientation", 0.0))
+            start_tangent = np.array([np.cos(heading), np.sin(heading)])
+        start_tangent /= max(np.linalg.norm(start_tangent), 1e-12)
+
+        transition_route_s = last_s + direction * transition_distance
+        transition_end = np.asarray(
+            route_clcs.convert_to_cartesian_coords(transition_route_s, 0.0),
+            dtype=float,
+        )
+        tangent_sample = min(0.25, 0.25 * transition_distance)
+        tangent_before_s = transition_route_s - direction * tangent_sample
+        tangent_after_s = transition_route_s + direction * tangent_sample
+        tangent_before_s = min(
+            max(0.0, tangent_before_s), float(route_clcs.length())
+        )
+        tangent_after_s = min(
+            max(0.0, tangent_after_s), float(route_clcs.length())
+        )
+        end_tangent = np.asarray(
+            route_clcs.convert_to_cartesian_coords(tangent_after_s, 0.0),
+            dtype=float,
+        ) - np.asarray(
+            route_clcs.convert_to_cartesian_coords(tangent_before_s, 0.0),
+            dtype=float,
+        )
+        end_tangent /= max(np.linalg.norm(end_tangent), 1e-12)
+        if float(np.dot(start_tangent, end_tangent)) < -0.5:
+            end_tangent = -end_tangent
+
         continuation = []
         for distance in continuation_distances:
-            blend_u = min(1.0, distance / lateral_blend_distance)
-            smoothstep = blend_u * blend_u * (3.0 - 2.0 * blend_u)
-            lateral_offset = last_d * (1.0 - smoothstep)
-            route_s = last_s + direction * float(distance)
-            continuation.append(
-                route_clcs.convert_to_cartesian_coords(route_s, lateral_offset)
-            )
+            distance = float(distance)
+            if distance <= transition_distance:
+                u = distance / transition_distance
+                h00 = 2.0 * u**3 - 3.0 * u**2 + 1.0
+                h10 = u**3 - 2.0 * u**2 + u
+                h01 = -2.0 * u**3 + 3.0 * u**2
+                h11 = u**3 - u**2
+                point = (
+                    h00 * transition_start
+                    + h10 * transition_distance * start_tangent
+                    + h01 * transition_end
+                    + h11 * transition_distance * end_tangent
+                )
+            else:
+                route_s = last_s + direction * distance
+                point = route_clcs.convert_to_cartesian_coords(route_s, 0.0)
+            continuation.append(point)
         if not continuation:
             raise ValueError(
                 "Acceleration reference route continuation contains no samples."

@@ -21,6 +21,7 @@ import math
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -58,6 +59,7 @@ VP_SAT_SOLVER_MODE_ENV = "CRREPAIR_VP_SAT_SOLVER_MODE"
 VP_EXTEND_ACCELERATION_REFERENCE_ENV = (
     "CRREPAIR_VP_EXTEND_ACCELERATION_REFERENCE_PATH"
 )
+BATCH_CASE_OUTPUT_ROOT_ENV = "CRREPAIR_BATCH_CASE_OUTPUT_ROOT"
 # Exercise both baseline planner modes and both constraint implementations.
 # The reachability constraints remain the primary configuration; manual
 # constraints are the semantic fallback when reach extraction cannot represent
@@ -129,8 +131,8 @@ RULE_SPECS = {
         "N_r": 20,
     },
     "in3": {
-        "rule_label": "R_IN3_hand_draft",
-        "rules": ["R_IN3_hand_draft"],
+        "rule_label": "R_IN3",
+        "rules": ["R_IN3"],
         "csv_paths": [
             REPO_ROOT / "evaluation/config/ind_in3_original.csv",
             REPO_ROOT / "evaluation/config/ind_in3_generated.csv",
@@ -139,7 +141,7 @@ RULE_SPECS = {
         "vp_planner": 2,
         "vp_constraint_mode": 1,
         "scenario_type": "intersection",
-        "intersection_type": "hand_draft",
+        "intersection_type": "dataset",
         "N_r": 50,
     },
     "in4": {
@@ -271,6 +273,12 @@ def load_group_cases(group: str):
         path_index = load_intersection_path_index()
         for case in cases:
             key = (case["scenario_id"], case["ego_id"], case["rule"])
+            if key not in path_index and group == "in3" and case["rule"] == "R_IN3":
+                key = (
+                    case["scenario_id"],
+                    case["ego_id"],
+                    "R_IN3_hand_draft",
+                )
             if key not in path_index:
                 raise ValueError(f"Missing scenario-path index for {group} case {key}")
             case["scenario_path"] = path_index[key]
@@ -345,9 +353,15 @@ def build_config(group, case, repairer_type, planner, constraint_mode):
     config = RepairerConfiguration()
     # Batch execution must not write figures/logs into the repository.  These
     # paths are outside every repair-method timer and visualization is disabled.
-    config.general.path_output = "/tmp/vp_repairer_updated_output/"
-    config.general.path_logs = "/tmp/vp_repairer_updated_output/logs/"
-    config.general.path_figures = "/tmp/vp_repairer_updated_output/figures/"
+    output_root = Path(
+        os.environ.get(
+            BATCH_CASE_OUTPUT_ROOT_ENV,
+            "/tmp/vp_repairer_updated_output",
+        )
+    )
+    config.general.path_output = str(output_root) + "/"
+    config.general.path_logs = str(output_root / "logs") + "/"
+    config.general.path_figures = str(output_root / "figures") + "/"
     if case["scenario_path"]:
         scenario_path = Path(case["scenario_path"])
         config.general.path_scenarios = str(scenario_path.parent) + "/"
@@ -632,28 +646,36 @@ def run_case_isolated(group, case, repairer_type, timeout):
         repairer_type,
         json.dumps(case),
     ]
-    try:
-        completed = subprocess.run(
-            cmd,
-            # Some legacy SMT/reachability components still write auxiliary
-            # files below a relative ``output/`` path.  Keep those artifacts
-            # outside the repository and writable in isolated evaluation.
-            cwd=str(ISOLATED_WORK_DIR),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        spec = RULE_SPECS[group]
-        result = empty_result(
-            group,
-            case,
-            repairer_type,
-            spec["vp_planner"] if repairer_type == "vp" else 1,
-            spec["vp_constraint_mode"] if repairer_type == "vp" else 2,
-        )
-        result["error"] = f"isolated run timed out after {timeout}s"
-        return result
+    with tempfile.TemporaryDirectory(
+        prefix=f"{group}_{repairer_type}_",
+        dir=ISOLATED_WORK_DIR,
+    ) as work_dir:
+        child_env = os.environ.copy()
+        child_env[BATCH_CASE_OUTPUT_ROOT_ENV] = str(Path(work_dir) / "output")
+        try:
+            completed = subprocess.run(
+                cmd,
+                # Legacy SMT/reachability components write auxiliary files to
+                # relative paths.  A per-case cwd and output root prevent
+                # concurrent cases from overwriting one another; the temporary
+                # directory is removed when this call finishes.
+                cwd=work_dir,
+                env=child_env,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            spec = RULE_SPECS[group]
+            result = empty_result(
+                group,
+                case,
+                repairer_type,
+                spec["vp_planner"] if repairer_type == "vp" else 1,
+                spec["vp_constraint_mode"] if repairer_type == "vp" else 2,
+            )
+            result["error"] = f"isolated run timed out after {timeout}s"
+            return result
 
     for line in reversed(completed.stdout.splitlines()):
         if line.startswith(RESULT_PREFIX):
@@ -755,8 +777,10 @@ def parse_args():
         default=os.environ.get(VP_SAT_SOLVER_MODE_ENV, "domain_dpll"),
         help=(
             "SAT solver used by the VP repairer. The default remains "
-            "domain_dpll; dpll runs the unguided baseline without predicate "
-            "domain construction."
+            "domain_dpll; dpll enumerates the original CNF using standard "
+            "failed-model blocking and deceleration VP only, without predicate "
+            "domains, unsupported-candidate rejection, phase switching, or "
+            "acceleration fallback."
         ),
     )
     parser.add_argument(

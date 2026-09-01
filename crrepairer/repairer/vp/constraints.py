@@ -7,7 +7,9 @@ from typing import List, Union
 
 import numpy as np
 import shapely
+from scipy.signal import savgol_filter
 from shapely.geometry import LineString, Polygon
+from sympy.logic.boolalg import simplify_logic
 
 from commonroad.scenario.lanelet import LaneletType
 from commonroad.scenario.state import CustomState
@@ -16,7 +18,13 @@ from commonroad_clcs.clcs import CurvilinearCoordinateSystem
 
 from crmonitor.common.world import World
 
-from crrepairer.repairer.vp.temporal import constraint_time_interval
+from crrepairer.repairer.vp.semantic_predicate_regions import (
+    _project_points_to_s,
+)
+from crrepairer.repairer.vp.temporal import (
+    constraint_steps_for_anchors,
+    constraint_time_interval,
+)
 
 
 class UnsupportedVPCandidateError(RuntimeError):
@@ -30,6 +38,192 @@ class AccelerationExitStepInfeasibleError(RuntimeError):
 class VPConstraintExtraction:
     """Extracts longitudinal position and velocity constraints for VP repair."""
 
+    def _reject_unsupported_vp_candidates(self):
+        """Return whether missing VP semantics must reject the SAT model.
+
+        Plain DPLL intentionally preserves the original permissive baseline:
+        unsupported literals add no LP constraint. DomainDPLL uses the
+        explicit controllable/fixed/unsupported classification.
+        """
+        sat_solver = getattr(self, "sat_solver", None)
+        return getattr(sat_solver, "solver_mode", "domain_dpll") != "dpll"
+
+    def _proposition_sequence(self, proposition):
+        """Return the monitor sequence associated with one proposition node."""
+        try:
+            rule_index = self.rule_monitor._rules.index(proposition.source_rule)
+            by_vehicle = self.rule_monitor.all_props_all_ids_all[rule_index].get(
+                proposition.name,
+                {},
+            )
+            return self.rule_monitor._safe_prop_sequence(
+                by_vehicle,
+                self.rule_monitor.other_id,
+                self.rule_monitor.vehicle_id,
+            )
+        except (AttributeError, IndexError, KeyError, TypeError, ValueError):
+            return ()
+
+    def _implication_active_source_anchors(
+        self,
+        proposition,
+        trajectory_start,
+        trajectory_end,
+    ):
+        """Find source anchors where ``proposition`` is critical to the rule.
+
+        A temporal leaf constraint is unnecessary at an anchor where changing
+        the selected literal cannot change the Boolean rule value--most
+        importantly, while the antecedent of an implication is false.  The
+        Per-frame monitor values are substituted only for hard/fixed
+        propositions; VP-controllable consequent variables remain symbolic.
+        Missing evaluations are retained conservatively.
+
+        ``None`` asks the caller to use the legacy all-anchor expansion.  This
+        is used before a SAT model exists (during domain estimation) and if the
+        monitor formula cannot be evaluated reliably.
+        """
+        if getattr(self, "_model", None) is None:
+            return None
+        if not (
+            getattr(self, "_vp_repair_mode", "deceleration") == "acceleration"
+            and "in_intersection_conflict_area" in proposition.name
+        ):
+            return None
+
+        try:
+            formula = self.rule_monitor.sat_formula_sep[proposition.source_rule]
+            formula_symbols = {str(symbol): symbol for symbol in formula.free_symbols}
+        except (AttributeError, KeyError, TypeError):
+            return None
+
+        target_variable = proposition.alphabet[-1]
+        target_symbol = formula_symbols.get(target_variable)
+        if target_symbol is None:
+            return None
+
+        rule_propositions = {}
+        for node in self.rule_monitor.proposition_nodes:
+            if node.source_rule != proposition.source_rule:
+                continue
+            variable = node.alphabet[-1]
+            if variable in formula_symbols:
+                rule_propositions[variable] = node
+        if set(formula_symbols) - set(rule_propositions):
+            return None
+
+        hard_variables = set(getattr(self, "_hard_domain_vars", set()))
+        fixed_variables = hard_variables & set(formula_symbols)
+        if not fixed_variables:
+            return None
+        constrained_variables = {
+            node.alphabet[-1]
+            for node in (getattr(self, "_sel_prop", None) or ())
+        }
+        sequences = {
+            variable: self._proposition_sequence(rule_propositions[variable])
+            for variable in fixed_variables
+        }
+
+        start_time_step = int(self.rule_monitor.start_time_step)
+        active_anchors = []
+        filtered_anchors = []
+        unknown_anchors = []
+        anchor_evaluations = []
+        for source_anchor in range(int(trajectory_start), int(trajectory_end) + 1):
+            # ``all_props_all_ids_all`` is indexed by the monitor's evaluation
+            # frame.  For a pastified future rule this is already the delayed
+            # anchor.  The temporal leaf offsets are applied below, but the
+            # global ``future_time_step`` must not be added a second time.
+            evaluation_index = source_anchor - start_time_step
+            assignment = {}
+            complete = True
+            for variable in sorted(fixed_variables):
+                sequence = sequences[variable]
+                if not (0 <= evaluation_index < len(sequence)):
+                    complete = False
+                    break
+                value = sequence[evaluation_index]
+                try:
+                    numeric_value = float(value)
+                    if math.isnan(numeric_value):
+                        complete = False
+                        break
+                    assignment[formula_symbols[variable]] = bool(numeric_value >= 0.0)
+                except (TypeError, ValueError):
+                    complete = False
+                    break
+
+            if not complete:
+                # Unknown anchors must remain constrained: filtering them would
+                # be an unsound under-approximation.
+                active_anchors.append(source_anchor)
+                unknown_anchors.append(source_anchor)
+                continue
+
+            try:
+                substituted_formula = formula.subs(assignment)
+                # Symbol membership alone is not a semantic relevance test.
+                # For example, ``~j | (~j & ~n)`` still contains ``n``
+                # syntactically but is equivalent to ``~j``.  Expanding n's
+                # temporal window at such an anchor imposes an artificial
+                # early exit deadline.  Hard/fixed substitution leaves only a
+                # few VP-controllable symbols here, so simplify before testing
+                # whether this particular target can affect the rule value.
+                reduced_formula = simplify_logic(
+                    substituted_formula, force=True
+                )
+                target_relevant = target_symbol in reduced_formula.free_symbols
+                if (
+                    not target_relevant
+                    and reduced_formula not in (True, False)
+                ):
+                    # A different VP-controllable literal may absorb this
+                    # target (e.g. ``~l | (~l & ~p) == ~l``).  Dropping p is
+                    # sound only if l is itself being enforced by the current
+                    # VP candidate.  PropositionNode.ttv_value is evaluated at
+                    # one reference frame and cannot prove l's polarity at all
+                    # implication anchors.  If the absorbing symbols are not
+                    # constrained, retain the target conservatively.
+                    remaining_variables = {
+                        str(symbol) for symbol in reduced_formula.free_symbols
+                    }
+                    if not remaining_variables.issubset(constrained_variables):
+                        target_relevant = (
+                            target_symbol in substituted_formula.free_symbols
+                        )
+            except (TypeError, ValueError):
+                return None
+            anchor_evaluations.append(
+                {
+                    "source_anchor": source_anchor,
+                    "target_relevant": target_relevant,
+                    "reduced_formula": str(reduced_formula),
+                    "hard_values": {
+                        variable: assignment[formula_symbols[variable]]
+                        for variable in sorted(hard_variables & set(formula_symbols))
+                    },
+                }
+            )
+
+            # Substituting only hard/fixed facts leaves the VP-controllable
+            # consequent symbolic.  The target disappears exactly when the
+            # fixed implication guard makes it irrelevant at this anchor.
+            if target_relevant:
+                active_anchors.append(source_anchor)
+            else:
+                filtered_anchors.append(source_anchor)
+
+        self._last_implication_anchor_debug = {
+            "proposition": proposition.name,
+            "active_source_anchors": active_anchors,
+            "filtered_source_anchors": filtered_anchors,
+            "unknown_source_anchors": unknown_anchors,
+            "anchor_evaluations": anchor_evaluations,
+            "formula": str(formula),
+        }
+        return active_anchors
+
     def _temporal_constraint_steps(self, all_states, propositions=None):
         """Map each selected proposition to its VP leaf-predicate frames."""
         start = time.perf_counter()
@@ -38,18 +232,61 @@ class VPConstraintExtraction:
         planning_start = int(self._tc) + 1
         dt = float(self.config.scenario.dt)
         future_time_step = int(self.rule_monitor.future_time_step)
+        propositions = self._sel_prop if propositions is None else propositions
+        propositions = tuple(propositions or ())
+        model_key = tuple(sorted(str(item) for item in (self._model or ())))
+        cache_key = (
+            getattr(self, "_vp_repair_mode", "deceleration"),
+            model_key,
+            tuple(id(prop) for prop in propositions),
+            trajectory_start,
+            trajectory_end,
+            planning_start,
+            dt,
+            future_time_step,
+        )
+        cache = getattr(self, "_temporal_constraint_steps_cache", None)
+        if cache is None:
+            cache = {}
+            self._temporal_constraint_steps_cache = cache
+        cached = cache.get(cache_key)
+        if cached is not None:
+            active_steps, diagnostics = cached
+            self._last_temporal_expansion_time = time.perf_counter() - start
+            self._last_temporal_expansion_debug = diagnostics
+            return active_steps
+
         active_steps = {}
         diagnostics = []
-        propositions = self._sel_prop if propositions is None else propositions
         for prop in propositions:
-            interval, expansion, pair_count = constraint_time_interval(
-                expression=prop.name,
-                dt=dt,
+            source_anchors = self._implication_active_source_anchors(
+                proposition=prop,
                 trajectory_start=trajectory_start,
-                planning_start=planning_start,
                 trajectory_end=trajectory_end,
-                future_time_step=future_time_step,
             )
+            if source_anchors is None:
+                interval, expansion, pair_count = constraint_time_interval(
+                    expression=prop.name,
+                    dt=dt,
+                    trajectory_start=trajectory_start,
+                    planning_start=planning_start,
+                    trajectory_end=trajectory_end,
+                    future_time_step=future_time_step,
+                )
+            else:
+                interval, expansion, pair_count = constraint_steps_for_anchors(
+                    expression=prop.name,
+                    dt=dt,
+                    source_anchors=source_anchors,
+                    planning_start=planning_start,
+                    trajectory_end=trajectory_end,
+                    # These anchors come from the already-pastified monitor
+                    # sequences, hence they are delayed evaluation anchors.
+                    # Applying ``future_time_step`` again would shift the leaf
+                    # window twice (e.g. evaluation anchor 9 for once[0,1]
+                    # must constrain frames 4..9, not 9..14 for dt=0.2).
+                    future_time_step=0,
+                )
             active_steps[id(prop)] = interval
             diagnostics.append(
                 {
@@ -61,6 +298,10 @@ class VPConstraintExtraction:
                     "active_end": interval.end,
                     "active_count": interval.count,
                     "represented_anchor_offset_pairs": pair_count,
+                    "implication_aware": source_anchors is not None,
+                    "source_anchor_count": (
+                        len(source_anchors) if source_anchors is not None else None
+                    ),
                     "universalized": any(
                         operator in {"once", "eventually"}
                         for operator in expansion.operators
@@ -69,6 +310,7 @@ class VPConstraintExtraction:
             )
         self._last_temporal_expansion_time = time.perf_counter() - start
         self._last_temporal_expansion_debug = diagnostics
+        cache[cache_key] = (active_steps, diagnostics)
         return active_steps
 
     def _extract_interstate_constraints_manually(
@@ -122,11 +364,12 @@ class VPConstraintExtraction:
                     v_max_list.append(v_up)
                 elif "lane" in prop.name and "same" in prop.name:
                     if prop.alphabet.startswith("~"):
-                        raise UnsupportedVPCandidateError(
-                            "Negative in-same-lane RG literal is not representable "
-                            f"by the positive VP lane constraint: {prop.name} "
-                            f"({prop.alphabet})."
-                        )
+                        if self._reject_unsupported_vp_candidates():
+                            raise UnsupportedVPCandidateError(
+                                "Negative in-same-lane RG literal is not representable "
+                                f"by the positive VP lane constraint: {prop.name} "
+                                f"({prop.alphabet})."
+                            )
                     s_low, s_up = self._constraint_in_same_lane(
                         world=self.rule_monitor.world,
                         lanelet_clcs=lanelet_clcs,
@@ -162,7 +405,12 @@ class VPConstraintExtraction:
                 elif "brakes_abruptly" in prop.name:
                     self._constraint_not_break_abruptly(prop)
                 else:
-                    raise UnsupportedVPCandidateError(
+                    if self._reject_unsupported_vp_candidates():
+                        raise UnsupportedVPCandidateError(
+                            "Unsupported RG predicate has no VP constraint: "
+                            f"{prop.name} ({prop.alphabet})."
+                        )
+                    raise RuntimeError(
                         "Unsupported RG predicate has no VP constraint: "
                         f"{prop.name} ({prop.alphabet})."
                     )
@@ -194,9 +442,13 @@ class VPConstraintExtraction:
         cl_trajectory_before: List[np.ndarray],
         ref_path: np.ndarray,
     ):
-        if "R_IN4" not in self.config.repair.rules and "R_IN1" not in self.config.repair.rules and "R_IN3_hand_draft" not in self.config.repair.rules and "R_IN5" not in self.config.repair.rules:
+        if not any(
+            rule in self.config.repair.rules
+            for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+        ):
             raise NotImplementedError(
-                "Intersection VP constraints currently support R_IN1, R_IN4, R_IN3_hand_draft and R_IN5 only."
+                "Intersection VP constraints currently support R_IN1, R_IN3, "
+                "R_IN3_hand_draft, R_IN4 and R_IN5 only."
             )
 
         start_idx = int(self._tc - all_states[0].time_step)
@@ -249,7 +501,7 @@ class VPConstraintExtraction:
         conflict_trajectory_interval = None
         if any(
             rule in self.config.repair.rules
-            for rule in ("R_IN3_hand_draft", "R_IN4", "R_IN5")
+            for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
         ):
             conflict_trajectory_interval = (
                 self._get_intersection_conflict_trajectory_interval(
@@ -300,10 +552,11 @@ class VPConstraintExtraction:
                             )
                             prop_debug_recorded = True
                     else:
-                        raise UnsupportedVPCandidateError(
-                            "IN1 SAT candidate requires a non-stop-line predicate "
-                            f"that VP cannot constrain: {prop.name} ({prop.alphabet})."
-                        )
+                        if self._reject_unsupported_vp_candidates():
+                            raise UnsupportedVPCandidateError(
+                                "IN1 SAT candidate requires a non-stop-line predicate "
+                                f"that VP cannot constrain: {prop.name} ({prop.alphabet})."
+                            )
                     continue
 
                 if "in_intersection_conflict_area" in prop.name:
@@ -311,10 +564,12 @@ class VPConstraintExtraction:
                     if prop_assignment > 0:
                         continue
                     if conflict_trajectory_interval is None:
-                        raise UnsupportedVPCandidateError(
-                            "Conflict geometry is unavailable for VP SAT candidate: "
-                            f"{prop.name} ({prop.alphabet})."
-                        )
+                        if self._reject_unsupported_vp_candidates():
+                            raise UnsupportedVPCandidateError(
+                                "Conflict geometry is unavailable for VP SAT candidate: "
+                                f"{prop.name} ({prop.alphabet})."
+                            )
+                        continue
 
                     before_upper, after_lower, interval_mode = (
                         conflict_trajectory_interval
@@ -324,25 +579,33 @@ class VPConstraintExtraction:
                         self, "_vp_repair_mode", "deceleration"
                     )
                     if repair_mode == "acceleration":
-                        variable = prop.alphabet[-1]
-                        exit_step = getattr(
-                            self,
-                            "_acceleration_exit_step_by_variable",
-                            {},
-                        ).get(variable)
-                        if exit_step is not None and time_step < exit_step:
-                            # While an initially-inside ego is physically
-                            # clearing the conflict interval, no outside-branch
-                            # lower bound is representable.  Keep the pre-exit
-                            # envelope at the conflict exit, though: besides
-                            # preventing an unmodelled early crossing, this lets
-                            # curvature conversion inspect only the path portion
-                            # which is actually needed to clear the conflict.
-                            trajectory_s_max_cap[idx] = min(
-                                trajectory_s_max_cap[idx], after_lower
-                            )
-                            branch = "acceleration_clearing_conflict"
-                        elif start_s >= after_lower:
+                        semantic_builder = getattr(
+                            self, "_semantic_in_region_builder", None
+                        )
+                        if semantic_builder is not None:
+                            semantic_region = semantic_builder.ego_conflict_region()
+                            if semantic_region.complete and semantic_region.outer_true:
+                                # ``outer_true`` covers every path position at
+                                # which the monitor's Boolean conflict predicate
+                                # may still hold.  Its final endpoint is thus a
+                                # certified acceleration-side exit boundary on
+                                # the processed trajectory path itself.
+                                semantic_after_lower = max(
+                                    interval.upper
+                                    for interval in semantic_region.outer_true
+                                )
+                                if semantic_after_lower > after_lower:
+                                    after_lower = float(semantic_after_lower)
+                                    interval_mode = (
+                                        f"{interval_mode}_semantic_outer"
+                                    )
+                        # The temporal operator has already selected the exact
+                        # frames at which this negative conflict predicate must
+                        # hold.  The acceleration branch chooses the spatial
+                        # disjunct after the conflict region at every one of
+                        # those frames; it must not postpone the requirement to
+                        # an exit step guessed from an acceleration profile.
+                        if start_s >= after_lower:
                             branch = "acceleration_already_after_conflict"
                         else:
                             branch = "acceleration_after_conflict_lower"
@@ -418,17 +681,17 @@ class VPConstraintExtraction:
                                 "after_lower": float(after_lower),
                                 "interval_mode": interval_mode,
                                 "repair_mode": repair_mode,
-                                "acceleration_exit_step": (
-                                    exit_step
-                                    if repair_mode == "acceleration"
-                                    else None
-                                ),
                                 "branch": branch,
                             }
                         )
                         prop_debug_recorded = True
                 else:
-                    raise UnsupportedVPCandidateError(
+                    if self._reject_unsupported_vp_candidates():
+                        raise UnsupportedVPCandidateError(
+                            "Unsupported IN predicate has no VP constraint: "
+                            f"{prop.name} ({prop.alphabet})."
+                        )
+                    raise RuntimeError(
                         "Unsupported IN predicate has no VP constraint: "
                         f"{prop.name} ({prop.alphabet})."
                     )
@@ -542,6 +805,8 @@ class VPConstraintExtraction:
         the final guard for genuinely unsupported selected literals, so the LP
         is never solved with a silently missing constraint.
         """
+        if not self._reject_unsupported_vp_candidates():
+            return
         is_in1 = "R_IN1" in self.config.repair.rules
         for prop in self._sel_prop:
             interval = temporal_steps[id(prop)]
@@ -657,17 +922,13 @@ class VPConstraintExtraction:
         path also handles a stop line just beyond the recorded trajectory.
         """
         lanelet_clcs = ego_vehicle.ref_path_lane.clcs
+        points = np.asarray(ref_path, dtype=float)
+        lane_values = _project_points_to_s(lanelet_clcs, points)
+        trajectory_values = _project_points_to_s(trajectory_clcs, points)
         lane_progress = []
         trajectory_progress = []
-        for point in np.asarray(ref_path, dtype=float):
-            try:
-                lane_s = lanelet_clcs.convert_to_curvilinear_coords(
-                    float(point[0]), float(point[1])
-                )[0]
-                trajectory_s = trajectory_clcs.convert_to_curvilinear_coords(
-                    float(point[0]), float(point[1])
-                )[0]
-            except Exception:
+        for lane_s, trajectory_s in zip(lane_values, trajectory_values):
+            if not (np.isfinite(lane_s) and np.isfinite(trajectory_s)):
                 continue
             if lane_progress and lane_s <= lane_progress[-1] + 1e-9:
                 continue
@@ -936,19 +1197,266 @@ class VPConstraintExtraction:
             estimated_v_max.append(v_max[i] * rmin)
             estimated_v_min.append(v_min[i] * rmax)
 
+        if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+            # All temporal/proposition requirements for one frame have already
+            # been consolidated into these arrays by repeated max(lower) and
+            # min(upper) updates.  Detect an empty merged interval before doing
+            # curvature work or constructing the LP; adding separate rows for
+            # the original requirements would be redundant.
+            merged_s_min = np.asarray(estimated_s_min, dtype=float)
+            merged_s_max = np.asarray(estimated_s_max, dtype=float)
+            infeasible_frames = np.flatnonzero(merged_s_min > merged_s_max)
+            if len(infeasible_frames):
+                first = int(infeasible_frames[0])
+                raise AccelerationExitStepInfeasibleError(
+                    "Merged acceleration position constraints are infeasible at "
+                    f"time_step={int(self._tc) + first + 1}: "
+                    f"smin={merged_s_min[first]}, smax={merged_s_max[first]}"
+                )
+            estimated_s_min = merged_s_min.tolist()
+            estimated_s_max = merged_s_max.tolist()
+
         if apply_curvature_limits:
-            curvature_v_max = self._curvature_velocity_limits(
-                trajectory_clcs,
-                estimated_s_min,
-                estimated_s_max,
-                self.config.vehicle.qp_veh_config.a_lat_max,
-            )
+            curvature_s_min = estimated_s_min
+            curvature_s_max = estimated_s_max
+            if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+                reachable_s_min, reachable_s_max = (
+                    self._acceleration_reachable_s_intervals(
+                        all_states,
+                        trajectory_clcs,
+                        len(estimated_s_min),
+                    )
+                )
+                curvature_s_min = np.maximum(
+                    np.asarray(estimated_s_min, dtype=float),
+                    reachable_s_min,
+                )
+                curvature_s_max = np.minimum(
+                    np.asarray(estimated_s_max, dtype=float),
+                    reachable_s_max,
+                )
+                # An empty intersection is already position-infeasible for the
+                # LP.  Query curvature at its required lower boundary rather
+                # than swapping endpoints and scanning an unrelated segment.
+                curvature_s_max = np.maximum(curvature_s_min, curvature_s_max)
+                self._last_curvature_reachable_intervals = [
+                    (float(lower), float(upper))
+                    for lower, upper in zip(curvature_s_min, curvature_s_max)
+                ]
+            if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+                curvature_v_max = self._acceleration_curvature_velocity_limits(
+                    trajectory_clcs,
+                    curvature_s_min,
+                    curvature_s_max,
+                    self.config.vehicle.qp_veh_config.a_lat_max,
+                )
+            else:
+                curvature_v_max = self._curvature_velocity_limits(
+                    trajectory_clcs,
+                    curvature_s_min,
+                    curvature_s_max,
+                    self.config.vehicle.qp_veh_config.a_lat_max,
+                )
             estimated_v_max = np.minimum(
                 np.asarray(estimated_v_max, dtype=float),
                 curvature_v_max,
             ).tolist()
 
         return estimated_s_min, estimated_s_max, estimated_v_min, estimated_v_max
+
+    def _acceleration_reachable_s_intervals(
+        self,
+        all_states,
+        trajectory_clcs,
+        horizon,
+    ):
+        """Return a sound forward reachable ``s`` envelope for acceleration VP."""
+        current_s, current_v, current_a = (
+            self._get_velocity_planning_current_conditions(
+                all_states,
+                trajectory_clcs,
+            )
+        )
+        if current_s is None or horizon <= 0:
+            return np.zeros(horizon), np.full(horizon, float(trajectory_clcs.length()))
+
+        dt = float(self.config.scenario.dt)
+        amin, amax, jmin, jmax = self._get_longitudinal_planning_limits()
+        v_max = float(self.config.vehicle.qp_veh_config.v_lon_max)
+        path_max = float(trajectory_clcs.length())
+
+        lower_s = upper_s = float(current_s)
+        lower_v = upper_v = max(0.0, float(current_v))
+        lower_a = upper_a = float(np.clip(current_a, amin, amax))
+        reachable_lower = []
+        reachable_upper = []
+        for _ in range(horizon):
+            next_lower_a = max(float(amin), lower_a + float(jmin) * dt)
+            next_upper_a = min(float(amax), upper_a + float(jmax) * dt)
+            next_lower_v = max(0.0, lower_v + next_lower_a * dt)
+            next_upper_v = min(v_max, upper_v + next_upper_a * dt)
+            lower_s = max(
+                float(current_s),
+                lower_s + 0.5 * (lower_v + next_lower_v) * dt,
+            )
+            upper_s = min(
+                path_max,
+                upper_s + 0.5 * (upper_v + next_upper_v) * dt,
+            )
+            reachable_lower.append(lower_s)
+            reachable_upper.append(upper_s)
+            lower_v, upper_v = next_lower_v, next_upper_v
+            lower_a, upper_a = next_lower_a, next_upper_a
+        return (
+            np.asarray(reachable_lower, dtype=float),
+            np.asarray(reachable_upper, dtype=float),
+        )
+
+    @staticmethod
+    def _smoothed_curvature_profile(
+        trajectory_clcs,
+        smoothing_distance=2.0,
+    ):
+        """Estimate path curvature from a de-jittered heading profile.
+
+        The planning CLCS is deliberately left unchanged.  Its reference path
+        is already sampled at roughly 0.1 m, so smoothing the unwrapped heading
+        and differentiating it with respect to longitudinal progress is enough
+        to suppress localization-induced vertex spikes without another CLCS or
+        Cartesian/curvilinear remapping pass.
+        """
+
+        def values(attribute):
+            value = getattr(trajectory_clcs, attribute)
+            return np.asarray(value() if callable(value) else value, dtype=float).reshape(-1)
+
+        positions = values("ref_pos")
+        headings = values("ref_theta")
+        if len(positions) != len(headings) or len(positions) < 5:
+            raise ValueError("Trajectory CLCS has no usable heading profile.")
+        finite = np.isfinite(positions) & np.isfinite(headings)
+        positions = positions[finite]
+        headings = headings[finite]
+        order = np.argsort(positions)
+        positions = positions[order]
+        headings = headings[order]
+        keep = np.r_[True, np.diff(positions) > 1e-9]
+        positions = positions[keep]
+        headings = headings[keep]
+        if len(positions) < 5:
+            raise ValueError("Trajectory CLCS heading samples are degenerate.")
+
+        step = float(np.median(np.diff(positions)))
+        window_length = max(5, int(round(float(smoothing_distance) / step)))
+        if window_length % 2 == 0:
+            window_length += 1
+        maximum_window = len(positions) if len(positions) % 2 else len(positions) - 1
+        window_length = min(window_length, maximum_window)
+        smoothed_heading = savgol_filter(
+            np.unwrap(headings),
+            window_length=window_length,
+            polyorder=min(3, window_length - 2),
+            mode="interp",
+        )
+        curvature = np.abs(np.gradient(smoothed_heading, positions))
+        if not np.all(np.isfinite(curvature)):
+            raise ValueError("Smoothed trajectory curvature is non-finite.")
+        return positions, curvature
+
+    def _acceleration_curvature_velocity_limits(
+        self,
+        trajectory_clcs,
+        s_min,
+        s_max,
+        a_lat_max,
+        curvature_epsilon=1e-9,
+    ):
+        """Acceleration-only cached curvature range queries.
+
+        The smoothed path profile is invariant across SAT candidates.  A
+        sparse-table range maximum preserves the exact sample maximum used by
+        :meth:`_curvature_velocity_limits` while replacing a full Boolean mask
+        and scan for every planning frame with two ``searchsorted`` calls and
+        an O(1) maximum query.
+        """
+        if len(s_min) != len(s_max):
+            raise ValueError(
+                f"s_min and s_max must have equal lengths: {len(s_min)} != {len(s_max)}"
+            )
+        if not np.isfinite(a_lat_max) or a_lat_max <= 0:
+            raise ValueError(f"a_lat_max must be positive and finite, got {a_lat_max!r}")
+        path_length = float(trajectory_clcs.length())
+        if not np.isfinite(path_length) or path_length <= 0:
+            raise ValueError(f"Invalid trajectory CLCS length: {path_length!r}")
+
+        cache = getattr(self, "_acceleration_curvature_cache", None)
+        if cache is None:
+            cache = {}
+            self._acceleration_curvature_cache = cache
+        key = id(trajectory_clcs)
+        profile_data = cache.get(key)
+        if profile_data is None:
+            try:
+                positions, profile = self._smoothed_curvature_profile(
+                    trajectory_clcs
+                )
+            except (AttributeError, TypeError, ValueError):
+                # Preserve the CLCS-native fallback used by the original
+                # implementation for unusual/mock coordinate systems.
+                return self._curvature_velocity_limits(
+                    trajectory_clcs,
+                    s_min,
+                    s_max,
+                    a_lat_max,
+                    curvature_epsilon=curvature_epsilon,
+                )
+            levels = [np.asarray(profile, dtype=float)]
+            span = 2
+            while span <= len(profile):
+                half = span // 2
+                previous = levels[-1]
+                levels.append(
+                    np.maximum(previous[:-half], previous[half:])
+                )
+                span *= 2
+            profile_data = (positions, profile, levels)
+            cache.clear()
+            cache[key] = profile_data
+        positions, profile, levels = profile_data
+
+        def sampled_maximum(lower, upper):
+            left = int(np.searchsorted(positions, lower, side="left"))
+            right = int(np.searchsorted(positions, upper, side="right"))
+            if left >= right:
+                return -math.inf
+            count = right - left
+            level = count.bit_length() - 1
+            width = 1 << level
+            return max(
+                float(levels[level][left]),
+                float(levels[level][right - width]),
+            )
+
+        limits = np.full(len(s_min), math.inf, dtype=float)
+        for t, (lower, upper) in enumerate(zip(s_min, s_max)):
+            lower = float(lower)
+            upper = float(upper)
+            if not np.isfinite(lower) or not np.isfinite(upper):
+                lower, upper = 0.0, path_length
+            else:
+                lower, upper = min(lower, upper), max(lower, upper)
+                lower = min(max(lower, 0.0), path_length)
+                upper = min(max(upper, 0.0), path_length)
+            boundary_values = np.interp(
+                (lower, upper), positions, profile
+            )
+            max_curvature = max(
+                float(np.max(boundary_values)),
+                sampled_maximum(lower, upper),
+            )
+            if max_curvature > curvature_epsilon:
+                limits[t] = math.sqrt(float(a_lat_max) / max_curvature)
+        return limits
 
     @staticmethod
     def _curvature_velocity_limits(
@@ -973,6 +1481,14 @@ class VPConstraintExtraction:
         path_length = float(trajectory_clcs.length())
         if not np.isfinite(path_length) or path_length <= 0:
             raise ValueError(f"Invalid trajectory CLCS length: {path_length!r}")
+        try:
+            curvature_positions, curvature_profile = (
+                VPConstraintExtraction._smoothed_curvature_profile(
+                    trajectory_clcs
+                )
+            )
+        except (AttributeError, TypeError, ValueError):
+            curvature_positions = curvature_profile = None
         limits = np.full(len(s_min), math.inf, dtype=float)
         for t, (lower, upper) in enumerate(zip(s_min, s_max)):
             lower = float(lower)
@@ -984,15 +1500,34 @@ class VPConstraintExtraction:
                 lower = min(max(lower, 0.0), path_length)
                 upper = min(max(upper, 0.0), path_length)
 
-            curvature_min, curvature_max = trajectory_clcs.curvature_range(
-                lower, upper
-            )
-            if not np.isfinite(curvature_min) or not np.isfinite(curvature_max):
-                raise ValueError(
-                    "Trajectory CLCS returned a non-finite curvature range at "
-                    f"t={t}: ({curvature_min}, {curvature_max})"
+            if curvature_positions is None:
+                curvature_min, curvature_max = trajectory_clcs.curvature_range(
+                    lower, upper
                 )
-            max_curvature = max(abs(float(curvature_min)), abs(float(curvature_max)))
+                if not np.isfinite(curvature_min) or not np.isfinite(curvature_max):
+                    raise ValueError(
+                        "Trajectory CLCS returned a non-finite curvature range at "
+                        f"t={t}: ({curvature_min}, {curvature_max})"
+                    )
+                max_curvature = max(
+                    abs(float(curvature_min)), abs(float(curvature_max))
+                )
+            else:
+                inside = (
+                    (curvature_positions >= lower)
+                    & (curvature_positions <= upper)
+                )
+                boundary_values = np.interp(
+                    (lower, upper),
+                    curvature_positions,
+                    curvature_profile,
+                )
+                max_curvature = float(np.max(boundary_values))
+                if np.any(inside):
+                    max_curvature = max(
+                        max_curvature,
+                        float(np.max(curvature_profile[inside])),
+                    )
 
             if max_curvature > curvature_epsilon:
                 limits[t] = math.sqrt(float(a_lat_max) / max_curvature)
@@ -1138,18 +1673,14 @@ class VPConstraintExtraction:
         if not np.isfinite([center_start, center_end]).all():
             return None
 
-        raw_progress = []
-        for point in np.asarray(ref_path, dtype=float):
-            try:
-                lane_s = lanelet_clcs.convert_to_curvilinear_coords(
-                    float(point[0]), float(point[1])
-                )[0]
-                trajectory_s = trajectory_clcs.convert_to_curvilinear_coords(
-                    float(point[0]), float(point[1])
-                )[0]
-            except Exception:
-                continue
-            raw_progress.append((float(lane_s), float(trajectory_s)))
+        points = np.asarray(ref_path, dtype=float)
+        lane_values = _project_points_to_s(lanelet_clcs, points)
+        trajectory_values = _project_points_to_s(trajectory_clcs, points)
+        raw_progress = [
+            (float(lane_s), float(trajectory_s))
+            for lane_s, trajectory_s in zip(lane_values, trajectory_values)
+            if np.isfinite(lane_s) and np.isfinite(trajectory_s)
+        ]
         if len(raw_progress) < 2:
             return None
 

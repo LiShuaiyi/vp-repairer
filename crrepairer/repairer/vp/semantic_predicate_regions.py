@@ -61,6 +61,36 @@ def _predicate_name(evaluator: Any) -> str:
     return str(getattr(name, "value", name or "")).strip().lower()
 
 
+def _freeze_cache_value(value: Any) -> Any:
+    """Return a stable, hashable signature for evaluator configuration."""
+    if isinstance(value, Mapping):
+        return tuple(sorted(
+            (str(key), _freeze_cache_value(item))
+            for key, item in value.items()
+        ))
+    if isinstance(value, (tuple, list)):
+        return tuple(_freeze_cache_value(item) for item in value)
+    if isinstance(value, (set, frozenset)):
+        return tuple(sorted(repr(_freeze_cache_value(item)) for item in value))
+    if isinstance(value, np.generic):
+        return value.item()
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    return repr(value)
+
+
+def _evaluator_semantic_key(evaluator: Any) -> Tuple[Any, ...]:
+    """Identify repeated monitor evaluators by equivalent semantics."""
+    evaluator_type = type(evaluator)
+    return (
+        evaluator_type.__module__,
+        evaluator_type.__qualname__,
+        _predicate_name(evaluator),
+        tuple(getattr(evaluator, "agent_placeholders", ()) or ()),
+        _freeze_cache_value(getattr(evaluator, "config", None)),
+    )
+
+
 def _finite_pair(value: Any) -> Optional[Tuple[float, float]]:
     try:
         lower, upper = float(value[0]), float(value[1])
@@ -459,6 +489,7 @@ class SemanticINPredicateRegionBuilder:
         reachable_velocity_by_time: Optional[
             Mapping[int, Sequence[float]]
         ] = None,
+        fixed_domain_cache: Optional[Dict[Any, TruthDomain]] = None,
         uncertainty: float = 0.10,
     ) -> None:
         started = time.perf_counter()
@@ -517,8 +548,15 @@ class SemanticINPredicateRegionBuilder:
             self.lanelet_clcs, trajectory_clcs, self.ref_path
         )
         self._region_cache: Dict[Any, SemanticIntervalSet] = {}
-        self._fixed_cache: Dict[Any, TruthDomain] = {}
+        # Fixed target trajectories and topology/priority gates do not depend
+        # on whether the ego VP phase is deceleration or acceleration.  A
+        # repair-call-scoped cache lets both builders reuse those exact monitor
+        # evaluations without sharing any path-dependent spatial region.
+        self._fixed_cache = (
+            fixed_domain_cache if fixed_domain_cache is not None else {}
+        )
         self._frame_cache: Dict[Any, FramePredicateEstimate] = {}
+        self._evaluator_semantic_key_cache: Dict[int, Tuple[Any, ...]] = {}
         self._turning_spatial_domain_cache: Dict[Any, TruthDomain] = {}
         self._lanelet_bounds_cache: Dict[int, Optional[Tuple[float, float]]] = {}
         # These caches contain only definition-derived route geometry and
@@ -535,6 +573,14 @@ class SemanticINPredicateRegionBuilder:
             "fixed_gate": 0.0,
         }
         self._counts: Dict[str, int] = {}
+
+    def _semantic_evaluator_key(self, evaluator: Any) -> Tuple[Any, ...]:
+        object_key = id(evaluator)
+        cached = self._evaluator_semantic_key_cache.get(object_key)
+        if cached is None:
+            cached = _evaluator_semantic_key(evaluator)
+            self._evaluator_semantic_key_cache[object_key] = cached
+        return cached
 
     # ------------------------------------------------------------------
     # Public API
@@ -561,9 +607,25 @@ class SemanticINPredicateRegionBuilder:
             if reachable is not None
             else self.reachable_by_time.get(int(time_step))
         )
+        # The monitor can reuse one atomic PredicateNode in several temporal
+        # propositions (for example IN5 c/g).  Temporal wrappers do not change
+        # a frame predicate's semantics; only argument order and the explicit
+        # not-oncoming composite marker do.  Share the exact frame result
+        # across those aliases rather than evaluating it twice.
+        name = _predicate_name(evaluator)
+        frame_context = (
+            name,
+            "__1_0" in str(prop_name),
+            "not_oncoming" in str(prop_name).lower(),
+        )
+        evaluator_key = (
+            ("object", id(evaluator))
+            if hasattr(evaluator, "_turning_ego")
+            else self._semantic_evaluator_key(evaluator)
+        )
         key = (
-            id(evaluator),
-            str(prop_name),
+            evaluator_key,
+            frame_context,
             int(time_step),
             vehicle_ids,
             reachable_pair,
@@ -750,6 +812,13 @@ class SemanticINPredicateRegionBuilder:
             }
         return result
 
+    def ego_conflict_region(self) -> SemanticIntervalSet:
+        """Return the cached path-specific outer/inner conflict bounds."""
+        return self._cached_region(
+            ("in_intersection_conflict_area", self.other_id),
+            self._ego_conflict_region,
+        )
+
     @property
     def diagnostics(self) -> Dict[str, Any]:
         """Compact timing/cache diagnostics for batch-result accounting."""
@@ -893,7 +962,12 @@ class SemanticINPredicateRegionBuilder:
         the complete conjunction.
         """
         name = _predicate_name(evaluator)
-        key = ("boolean", name, id(evaluator), int(time_step), tuple(vehicle_ids))
+        key = (
+            "boolean",
+            self._semantic_evaluator_key(evaluator),
+            int(time_step),
+            tuple(vehicle_ids),
+        )
         if key in self._fixed_cache:
             return self._fixed_cache[key]
         started = time.perf_counter()
@@ -914,7 +988,12 @@ class SemanticINPredicateRegionBuilder:
     ) -> TruthDomain:
         """Evaluate a fixed target/topology fact, with cache-first lookup."""
         name = _predicate_name(evaluator)
-        key = (name, id(evaluator), int(time_step), tuple(vehicle_ids))
+        key = (
+            "robustness",
+            self._semantic_evaluator_key(evaluator),
+            int(time_step),
+            tuple(vehicle_ids),
+        )
         if key in self._fixed_cache:
             return self._fixed_cache[key]
         started = time.perf_counter()

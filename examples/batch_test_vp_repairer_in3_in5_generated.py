@@ -72,6 +72,8 @@ def normalize_case(case, default_rule: str):
 def _rule_params(rule: str):
     if rule == "R_IN1":
         return None, 20, 2
+    if rule == "R_IN3":
+        return "dataset", 50, 2
     if rule == "R_IN3_hand_draft":
         return "hand_draft", 50, 2
     if rule == "R_IN4":
@@ -125,7 +127,10 @@ def align_rtamt_bounds_in_rule(rule_str: str, dt: float, mode: str = "ceil"):
 
 
 def patch_rtamt_bound_alignment_for_batch(config):
-    if "R_IN5" not in config.repair.rules:
+    if not any(
+        rule in config.repair.rules
+        for rule in ("R_IN3", "R_IN5")
+    ):
         return None
 
     original_get_config = monitor_wrapper.get_traffic_rule_config

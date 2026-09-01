@@ -20,6 +20,7 @@ class SATSolver:
         self._hard_domain_vars = set()
         self._repair_literals = []
         self._dpll_solver = self._build_solver(rule_monitor.tv_time_step)
+        self._solver_formula = self._formula
         self._dpll_model = None
 
     def _build_solver(self, tv_time_step):
@@ -74,9 +75,13 @@ class SATSolver:
                     self._hard_domain_vars,
                     self._repair_literals,
                 )
-            self._dpll_solver.update_cnf(self._formula)
+            if self._solver_formula != self._formula:
+                self._dpll_solver.update_cnf(self._formula)
+                self._solver_formula = self._formula
         else:
-            self._dpll_solver.update_cnf(self._formula)
+            if self._solver_formula != self._formula:
+                self._dpll_solver.update_cnf(self._formula)
+                self._solver_formula = self._formula
         sat_result = self._dpll_solver.solve()
         return sat_result
 

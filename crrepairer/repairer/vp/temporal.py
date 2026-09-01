@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass
 from fractions import Fraction
 from functools import lru_cache
-from typing import Optional, Sequence, Tuple
+from typing import Iterable, Optional, Sequence, Tuple
 
 
 _TEMPORAL_PREFIX = re.compile(
@@ -63,6 +63,32 @@ class TemporalConstraintInterval:
             not self.is_empty
             and self.start <= time_step <= self.end
         )
+
+
+@dataclass(frozen=True)
+class TemporalConstraintSteps:
+    """Exact (possibly disjoint) leaf frames selected by gated anchors."""
+
+    steps: frozenset[int]
+
+    @property
+    def start(self) -> Optional[int]:
+        return min(self.steps) if self.steps else None
+
+    @property
+    def end(self) -> Optional[int]:
+        return max(self.steps) if self.steps else None
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.steps
+
+    @property
+    def count(self) -> int:
+        return len(self.steps)
+
+    def contains(self, time_step: int) -> bool:
+        return int(time_step) in self.steps
 
 
 def _strip_outer_parentheses(expression: str) -> str:
@@ -248,3 +274,47 @@ def constraint_time_interval(
     anchor_count = last_source - trajectory_start + 1
     pair_count = anchor_count * len(expansion.offsets)
     return interval, expansion, pair_count
+
+
+def constraint_steps_for_anchors(
+    expression: str,
+    dt: float,
+    source_anchors: Iterable[int],
+    planning_start: int,
+    trajectory_end: int,
+    future_time_step: int,
+) -> Tuple[TemporalConstraintSteps, TemporalExpansion, int]:
+    """Map implication-active anchors to exact VP leaf frames.
+
+    ``future_time_step`` is nonzero for original source-rule anchors and zero
+    when callers pass already-delayed pastified-monitor evaluation anchors.
+    """
+
+    expansion = expand_temporal_expression(expression, dt)
+    anchors = tuple(sorted({int(anchor) for anchor in source_anchors}))
+    if not anchors or planning_start > trajectory_end:
+        return TemporalConstraintSteps(frozenset()), expansion, 0
+
+    if expansion.offsets is None:
+        # An unbounded temporal child extends from every active anchor through
+        # the available trajectory tail.
+        steps = {
+            step
+            for anchor in anchors
+            for step in range(
+                max(planning_start, anchor + int(future_time_step)),
+                trajectory_end + 1,
+            )
+        }
+        return TemporalConstraintSteps(frozenset(steps)), expansion, len(steps)
+
+    steps = {
+        anchor + int(future_time_step) + int(offset)
+        for anchor in anchors
+        for offset in expansion.offsets
+        if planning_start
+        <= anchor + int(future_time_step) + int(offset)
+        <= trajectory_end
+    }
+    pair_count = len(anchors) * len(expansion.offsets)
+    return TemporalConstraintSteps(frozenset(steps)), expansion, pair_count
