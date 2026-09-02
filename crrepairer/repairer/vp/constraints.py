@@ -75,8 +75,11 @@ class VPConstraintExtraction:
         A temporal leaf constraint is unnecessary at an anchor where changing
         the selected literal cannot change the Boolean rule value--most
         importantly, while the antecedent of an implication is false.  The
-        Per-frame monitor values are substituted only for hard/fixed
-        propositions; VP-controllable consequent variables remain symbolic.
+        Per-frame monitor values are substituted only for propositions that
+        have no longitudinal VP constraint; VP-controllable conflict
+        propositions remain symbolic.  This semantic distinction is shared
+        by plain DPLL and DomainDPLL and must not depend on whether SAT-domain
+        guidance happens to be enabled.
         Missing evaluations are retained conservatively.
 
         ``None`` asks the caller to use the legacy all-anchor expansion.  This
@@ -87,7 +90,7 @@ class VPConstraintExtraction:
             return None
         if not (
             getattr(self, "_vp_repair_mode", "deceleration") == "acceleration"
-            and "in_intersection_conflict_area" in proposition.name
+            and "in_intersection_conflict_area__0_1" in proposition.name
         ):
             return None
 
@@ -112,8 +115,12 @@ class VPConstraintExtraction:
         if set(formula_symbols) - set(rule_propositions):
             return None
 
-        hard_variables = set(getattr(self, "_hard_domain_vars", set()))
-        fixed_variables = hard_variables & set(formula_symbols)
+        fixed_variables = {
+            variable
+            for variable, node in rule_propositions.items()
+            if "in_intersection_conflict_area__0_1" not in str(node.name)
+        }
+        fixed_variables &= set(formula_symbols)
         if not fixed_variables:
             return None
         constrained_variables = {
@@ -201,7 +208,7 @@ class VPConstraintExtraction:
                     "reduced_formula": str(reduced_formula),
                     "hard_values": {
                         variable: assignment[formula_symbols[variable]]
-                        for variable in sorted(hard_variables & set(formula_symbols))
+                        for variable in sorted(fixed_variables)
                     },
                 }
             )
@@ -559,7 +566,7 @@ class VPConstraintExtraction:
                             )
                     continue
 
-                if "in_intersection_conflict_area" in prop.name:
+                if "in_intersection_conflict_area__0_1" in prop.name:
                     prop_assignment = -1 if prop.alphabet.startswith("~") else 1
                     if prop_assignment > 0:
                         continue
@@ -582,6 +589,16 @@ class VPConstraintExtraction:
                         semantic_builder = getattr(
                             self, "_semantic_in_region_builder", None
                         )
+                        if semantic_builder is None:
+                            try:
+                                semantic_builder, _ = (
+                                    self._ensure_semantic_in_region_builder()
+                                )
+                            except (RuntimeError, TypeError, ValueError):
+                                # Preserve the legacy geometric bound when the
+                                # definition-driven monitor region cannot be
+                                # constructed for this scenario.
+                                semantic_builder = None
                         if semantic_builder is not None:
                             semantic_region = semantic_builder.ego_conflict_region()
                             if semantic_region.complete and semantic_region.outer_true:
@@ -691,10 +708,12 @@ class VPConstraintExtraction:
                             "Unsupported IN predicate has no VP constraint: "
                             f"{prop.name} ({prop.alphabet})."
                         )
-                    raise RuntimeError(
-                        "Unsupported IN predicate has no VP constraint: "
-                        f"{prop.name} ({prop.alphabet})."
-                    )
+                    # Plain DPLL is the unguided baseline.  An unsupported
+                    # extra literal in its complete SAT model must not discard
+                    # a simultaneously selected, executable VP constraint.
+                    # The repaired trajectory is still accepted only after
+                    # the complete STL monitor check below the optimizer.
+                    continue
         
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
 
@@ -825,7 +844,7 @@ class VPConstraintExtraction:
                 )
             if (
                 not is_in1
-                and "in_intersection_conflict_area" in prop.name
+                and "in_intersection_conflict_area__0_1" in prop.name
                 and prop.alphabet.startswith("~")
                 and conflict_trajectory_interval is None
             ):

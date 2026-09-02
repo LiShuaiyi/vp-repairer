@@ -536,51 +536,14 @@ class VPPredicateEstimation:
         """
         context_start = time.perf_counter()
         all_states = self._get_states_with_initial()
-        _, reachable_by_time, context_diagnostics = (
-            self._in_longitudinal_reachability_context()
+        builder, context_diagnostics = (
+            self._ensure_semantic_in_region_builder()
         )
-        try:
-            trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(
-                all_states
-            )
-        except (RuntimeError, ValueError):
-            if getattr(self, "_vp_repair_mode", "deceleration") != "deceleration":
-                raise
-            world_ego = self.rule_monitor.world.vehicle_by_id(
-                self.config.repair.ego_id
-            )
-            trajectory_clcs = self._get_vp_lanelet_clcs()
-            ref_path = np.asarray(
-                world_ego.ref_path_lane.center_vertices, dtype=float
-            )
+        context_time = time.perf_counter() - context_start
 
         temporal_steps = self._temporal_constraint_steps(
             all_states, propositions=prop_nodes
         )
-        velocity_reachable_by_time = (
-            self._semantic_in_velocity_reachable_intervals(all_states)
-        )
-        builder = build_semantic_in_predicate_region_builder(
-            self,
-            trajectory_clcs,
-            ref_path,
-            reachable_by_time,
-            lanelet_clcs=self._get_vp_lanelet_clcs(),
-            reachable_velocity_by_time=velocity_reachable_by_time,
-            fixed_domain_cache=self._semantic_fixed_domain_cache,
-            uncertainty=(
-                float(
-                    os.environ.get(
-                        "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY", "0.05"
-                    )
-                )
-            ),
-        )
-        # Constraint extraction uses the same path-specific certified conflict
-        # cover.  Reusing this builder avoids reconstructing geometry and keeps
-        # SAT estimation and LP bounds on exactly the same reference path.
-        self._semantic_in_region_builder = builder
-        context_time = time.perf_counter() - context_start
 
         def time_steps(prop):
             interval = temporal_steps[id(prop)]
@@ -767,8 +730,8 @@ class VPPredicateEstimation:
                     "active_count": len(active_steps),
                     "reachable_first_last": (
                         [
-                            reachable_by_time.get(active_steps[0]),
-                            reachable_by_time.get(active_steps[-1]),
+                            builder.reachable_by_time.get(active_steps[0]),
+                            builder.reachable_by_time.get(active_steps[-1]),
                         ]
                         if active_steps
                         else []
@@ -803,6 +766,64 @@ class VPPredicateEstimation:
         if predicate_debug_enabled:
             diagnostics["propositions"] = per_prop
         return estimates, diagnostics
+
+    def _ensure_semantic_in_region_builder(self):
+        """Return the phase-local definition-driven IN region builder.
+
+        Constraint extraction also needs the monitor-exact conflict exit
+        boundary in plain DPLL mode, where predicate-domain estimation is not
+        run.  Keeping construction here makes that geometry independent of the
+        chosen SAT backend while retaining the existing phase-local cache.
+        """
+        builder = getattr(self, "_semantic_in_region_builder", None)
+        cached_context = getattr(self, "_semantic_in_region_context", None)
+        if builder is not None and cached_context is not None:
+            return builder, cached_context
+
+        all_states = self._get_states_with_initial()
+        _, reachable_by_time, context_diagnostics = (
+            self._in_longitudinal_reachability_context()
+        )
+        try:
+            trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(
+                all_states
+            )
+        except (RuntimeError, ValueError):
+            if getattr(self, "_vp_repair_mode", "deceleration") != "deceleration":
+                raise
+            world_ego = self.rule_monitor.world.vehicle_by_id(
+                self.config.repair.ego_id
+            )
+            trajectory_clcs = self._get_vp_lanelet_clcs()
+            ref_path = np.asarray(
+                world_ego.ref_path_lane.center_vertices, dtype=float
+            )
+
+        velocity_reachable_by_time = (
+            self._semantic_in_velocity_reachable_intervals(all_states)
+        )
+        builder = build_semantic_in_predicate_region_builder(
+            self,
+            trajectory_clcs,
+            ref_path,
+            reachable_by_time,
+            lanelet_clcs=self._get_vp_lanelet_clcs(),
+            reachable_velocity_by_time=velocity_reachable_by_time,
+            fixed_domain_cache=self._semantic_fixed_domain_cache,
+            uncertainty=(
+                float(
+                    os.environ.get(
+                        "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY", "0.05"
+                    )
+                )
+            ),
+        )
+        # Constraint extraction uses the same path-specific certified conflict
+        # cover.  Reusing this builder avoids reconstructing geometry and keeps
+        # SAT estimation and LP bounds on exactly the same reference path.
+        self._semantic_in_region_builder = builder
+        self._semantic_in_region_context = context_diagnostics
+        return builder, context_diagnostics
 
     def _semantic_in_velocity_reachable_intervals(self, all_states):
         """Return conservative per-frame velocity ranges for IN predicates."""

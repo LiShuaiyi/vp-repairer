@@ -59,6 +59,8 @@ VP_SAT_SOLVER_MODE_ENV = "CRREPAIR_VP_SAT_SOLVER_MODE"
 VP_EXTEND_ACCELERATION_REFERENCE_ENV = (
     "CRREPAIR_VP_EXTEND_ACCELERATION_REFERENCE_PATH"
 )
+IN3_RULE_VARIANT_ENV = "CRREPAIR_BATCH_IN3_RULE_VARIANT"
+IN3_RULE_VARIANTS = ("full", "hand_draft")
 BATCH_CASE_OUTPUT_ROOT_ENV = "CRREPAIR_BATCH_CASE_OUTPUT_ROOT"
 # Exercise both baseline planner modes and both constraint implementations.
 # The reachability constraints remain the primary configuration; manual
@@ -172,6 +174,26 @@ RULE_SPECS = {
 }
 
 
+def configure_in3_rule_variant(variant: str):
+    """Select the full or configured hand-draft IN3 formula for this batch.
+
+    Isolated case workers inherit the environment variable, so the parent and
+    every child construct the monitor with exactly the same rule variant.
+    """
+    variant = str(variant).strip().lower()
+    if variant not in IN3_RULE_VARIANTS:
+        raise ValueError(
+            f"Unsupported IN3 rule variant {variant!r}; "
+            f"expected one of {IN3_RULE_VARIANTS}."
+        )
+    rule = "R_IN3" if variant == "full" else "R_IN3_hand_draft"
+    RULE_SPECS["in3"]["rule_label"] = rule
+    RULE_SPECS["in3"]["rules"] = [rule]
+
+
+configure_in3_rule_variant(os.environ.get(IN3_RULE_VARIANT_ENV, "full"))
+
+
 FIELDNAMES = [
     "scenario_id",
     "scenario_path",
@@ -273,12 +295,13 @@ def load_group_cases(group: str):
         path_index = load_intersection_path_index()
         for case in cases:
             key = (case["scenario_id"], case["ego_id"], case["rule"])
-            if key not in path_index and group == "in3" and case["rule"] == "R_IN3":
-                key = (
-                    case["scenario_id"],
-                    case["ego_id"],
-                    "R_IN3_hand_draft",
+            if key not in path_index and group == "in3":
+                alternate_rule = (
+                    "R_IN3_hand_draft"
+                    if case["rule"] == "R_IN3"
+                    else "R_IN3"
                 )
+                key = (case["scenario_id"], case["ego_id"], alternate_rule)
             if key not in path_index:
                 raise ValueError(f"Missing scenario-path index for {group} case {key}")
             case["scenario_path"] = path_index[key]
@@ -778,9 +801,9 @@ def parse_args():
         help=(
             "SAT solver used by the VP repairer. The default remains "
             "domain_dpll; dpll enumerates the original CNF using standard "
-            "failed-model blocking and deceleration VP only, without predicate "
-            "domains, unsupported-candidate rejection, phase switching, or "
-            "acceleration fallback."
+            "failed-model blocking and the same deceleration-then-acceleration "
+            "VP phases, but without predicate domains or unsupported-candidate "
+            "pre-rejection."
         ),
     )
     parser.add_argument(
@@ -791,6 +814,15 @@ def parse_args():
             "Preserve and route-extend the original trajectory in the "
             "acceleration branch. Use --no-extend-acceleration-reference-path "
             "to reuse the route-lane CLCS directly."
+        ),
+    )
+    parser.add_argument(
+        "--in3-rule-variant",
+        choices=IN3_RULE_VARIANTS,
+        default=os.environ.get(IN3_RULE_VARIANT_ENV, "full"),
+        help=(
+            "IN3 formula used by every repairer and isolated worker: the "
+            "current complete rule or the configured hand-draft variant."
         ),
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
@@ -809,6 +841,8 @@ def main():
     os.environ[VP_EXTEND_ACCELERATION_REFERENCE_ENV] = (
         "1" if args.extend_acceleration_reference_path else "0"
     )
+    os.environ[IN3_RULE_VARIANT_ENV] = args.in3_rule_variant
+    configure_in3_rule_variant(args.in3_rule_variant)
     groups = tuple(item.strip() for item in args.groups.split(",") if item.strip())
     invalid_groups = [group for group in groups if group not in RULE_SPECS]
     if invalid_groups:

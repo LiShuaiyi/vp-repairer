@@ -113,11 +113,9 @@ class VPTrajectoryRepairer(
         return self._model
 
     def _supports_acceleration_fallback(self):
-        # ``dpll`` is the deliberately minimal baseline: solve the original
-        # formula once and try one deceleration VP problem. Keep all modern
-        # phase-search behaviour confined to DomainDPLL.
-        if self.sat_solver.solver_mode == "dpll":
-            return False
+        # Both SAT backends use the same deceleration-then-acceleration VP
+        # phases.  Plain DPLL still remains the unguided baseline: it does not
+        # receive predicate domains or unsupported-candidate pre-rejection.
         return any(
             rule in self.config.repair.rules
             for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")

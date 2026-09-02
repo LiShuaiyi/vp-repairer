@@ -19,7 +19,7 @@ the following three setups:
 ## Code and environment
 
 - Repository branch: `feature/repair-all`
-- Base revision: `535b5e2` (`Optimize acceleration VP planning and update results`)
+- Base revision: `da120f4` (`Record full VP DPLL and SMT batch results`)
 - Conda environment: `/data_linux/conda-envs/repairverse310_gpu`
 - Batch runner: `examples/batch_test_vp_repairer_all_rules_updated.py`
 - Execution: serial (`--max-workers 1`), per-case timeout 300 seconds
@@ -28,11 +28,14 @@ the following three setups:
   traffic-rule violation time is positive infinity.
 - `core_total_time` excludes the post-repair STL monitor/compliance check.
 
-The plain-DPLL IN refresh additionally enabled `_supports_acceleration_fallback`
-for DPLL, so an exhausted deceleration search starts a fresh acceleration SAT
-phase from the original CNF. This experimental change was present in the work
-tree when the IN plain-DPLL rows were generated; it was not part of base
-revision `535b5e2`.
+The plain-DPLL IN refresh was generated from the work tree after revision
+`da120f4`. It enables `_supports_acceleration_fallback` for DPLL, so an
+exhausted deceleration search starts a fresh acceleration SAT phase from the
+original CNF. The work tree also aligns implication anchors and semantic
+conflict geometry between DPLL backends, treats only the ego-direction
+`in_intersection_conflict_area__0_1` predicate as VP-controllable, and
+permissively ignores unsupported extra literals in the unguided DPLL model.
+Every returned trajectory still has to pass the complete STL monitor check.
 
 ## Commands and source result directories
 
@@ -61,28 +64,66 @@ batch_test_vp_repairer_all_rules_updated.py \
 --max-workers 1 --timeout 300
 ```
 
-Plain DPLL with acceleration fallback for IN groups:
+Plain DPLL with acceleration fallback and aligned IN semantics:
 
 ```bash
-PYTHONPATH=.. PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/tmp/mpl \
+PYTHONPATH=.. PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=0 \
+MPLCONFIGDIR=/tmp/mpl \
 /data_linux/conda-envs/repairverse310_gpu/bin/python \
 batch_test_vp_repairer_all_rules_updated.py \
 --groups in1,in3,in4,in5 \
 --repairers vp --vp-sat-solver-mode dpll \
---output-dir /tmp/vp_plain_dpll_acceleration_serial_in_20260902 \
+--output-dir /tmp/vp_plain_dpll_semantic_aligned_serial_in_20260902_v2 \
 --max-workers 1 --timeout 300
 ```
+
+Current IN3 hand-draft VP refresh (49 finite-TV cases after filtering 36 cases
+whose current monitor value is positive infinity):
+
+```bash
+PYTHONPATH=.. PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=0 \
+MPLCONFIGDIR=/tmp/mpl \
+/data_linux/conda-envs/repairverse310_gpu/bin/python \
+batch_test_vp_repairer_all_rules_updated.py \
+--groups in3 --repairers vp --in3-rule-variant hand_draft \
+--vp-sat-solver-mode domain_dpll \
+--max-workers 1 --timeout 300
+```
+
+The plain-DPLL run uses the same command with
+`--vp-sat-solver-mode dpll`.
+
+The actual runs used a prefiltered 49-case manifest so the 36 known
+positive-infinity cases did not repeat the per-case monitor setup. This only
+changes the input selection; all repair configurations and internal timers are
+the same as in the unified runner.
 
 The formal CSVs were assembled as `DomainDPLL VP`, `plain-DPLL VP`, then `SMT`
 for every input row. RG1 paper-level summaries combine the 100 highD `rg1`
 rows and the 93 `rg1_mona` rows.
 
-## Result caveat
+## Result caveats
 
-`PYTHONHASHSEED` was not fixed for this batch. Plain DPLL uses Python sets while
-constructing and traversing partial assignments, so its branch/model order can
-vary between isolated subprocesses. In this refresh, one extra IN3 case and one
-extra IN4 case succeeded in the deceleration phase relative to the immediately
-preceding plain-DPLL run; neither was an acceleration success. Use the explicit
+The refreshed IN plain-DPLL rows use `PYTHONHASHSEED=0`, making their Python-set
+branch order reproducible. The retained RG plain-DPLL rows came from the older
+all-rule batch above, where `PYTHONHASHSEED` was not fixed. Use the explicit
 `successful_repair_mode`, `deceleration_iterations`, and
 `acceleration_iterations` columns when attributing an outcome to acceleration.
+
+The main `vp_repairer_in3_batch_result_updated.csv` is the current
+`R_IN3_hand_draft` comparison. It contains 49 cases per method: freshly run
+serial DomainDPLL VP and plain-DPLL VP rows, plus the matching 49 rows selected
+from the previously recorded hand-draft SMT batch. The 36 cases for which the
+current monitor returns `tv=inf` are excluded from all three methods.
+
+The separate `vp_repairer_in3_full_batch_result_updated.csv` preserves the
+complete-`R_IN3` experiment. It retains all 85 input rows per method, including
+36 explicit positive-infinity skip rows. Its VP timings are serial; its SMT run
+was a parallel success-rate probe, so those SMT timing fields must not be used
+as paper timing measurements.
+
+The direction-aligned DomainDPLL work tree was additionally rerun serially in
+`/tmp/vp_domain_dpll_direction_aligned_serial_in_20260902`. Its success,
+iteration, phase, and error fields matched the retained DomainDPLL rows for
+every IN case, so the existing formal DomainDPLL rows were not replaced merely
+for timing noise.
