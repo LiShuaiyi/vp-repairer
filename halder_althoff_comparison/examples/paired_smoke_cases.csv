@@ -1,0 +1,8 @@
+scenario_id,scenario_path,ego_id,rule,scenario_type,intersection_type,vp_core_time_s,dv,tc
+DEU_LocationALower-34_37_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-34_37_T-1.xml,9,R_G1,interstate,,0.02973318099975586,,0
+DEU_LocationALower-11_119_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-11_119_T-1.xml,10,R_G2,interstate,,0.005758523941040039,0.5,0
+DEU_LocationALower-11_102_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-11_102_T-1.xml,16,R_G3,interstate,,0.010229825973510742,,0
+DEU_AachenBendplatz-1_155320_T-5339,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_2024/DEU_AachenBendplatz-1_155320_T-5339.xml,10335,R_IN1,intersection,dataset,0.009977102279663086,,0
+DEU_AachenFrankenburg-1_201920_T-1939,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_201920_T-1939.xml,10185,R_IN3_hand_draft,intersection,dataset,0.013504743576049805,,0
+DEU_AachenFrankenburg-1_265260_T-5279,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_2024/DEU_AachenFrankenburg-1_265260_T-5279.xml,10453,R_IN4,intersection,dataset,0.011926889419555664,,0
+DEU_AachenFrankenburg-1_252340_T-2359,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_252340_T-2359.xml,10218,R_IN5,intersection,dataset,0.01010894775390625,,0

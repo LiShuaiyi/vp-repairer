@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+
+# Keep generated/raw experiment artifacts local. Only the consolidated CSV is
+# versioned as the result delivered with this implementation.
+/audit_rg2_in1_fixed_3s_10k/
+/full_results_history_aware/
+/full_results_history_aware_3s_10k/
+/mona_rg1_results_3s_10k/
+/rg1_rg3_results_3s_10k/
+/*.md
+!/README.md
+/*.csv
+!/halder_full_timing_results_2026-09-03.csv
+/*.json

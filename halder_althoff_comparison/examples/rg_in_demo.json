@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "description": "Synthetic smoke case: brake for a lead vehicle, obey a speed limit, stop before entering a priority conflict area"
+  },
+  "lattice": {
+    "dt": 0.5,
+    "ds": 0.25,
+    "dv": 1.0,
+    "horizon_steps": 12,
+    "s_min": 0.0,
+    "s_max": 40.0,
+    "v_min": 0.0,
+    "v_max": 12.0,
+    "a_min": -4.0,
+    "a_max": 2.0,
+    "max_expansions": 200000
+  },
+  "initial_state": {"s": 0.0, "v": 6.0},
+  "rule_order": [
+    "vehicle_constraints",
+    "R_G1",
+    "R_G2",
+    "R_G3",
+    "R_IN1",
+    "R_IN4",
+    "acceleration_comfort"
+  ],
+  "rule_parameters": {
+    "R_G1": {"ego_length": 4.5},
+    "R_G2": {"ego_length": 4.5, "abrupt_threshold": -2.0},
+    "R_IN1": {
+      "stop_line_s": 17.0,
+      "ego_length": 4.5,
+      "standstill_tolerance": 0.1,
+      "stop_duration_s": 0.5,
+      "history_s": 3.0
+    }
+  },
+  "speed_limits": {
+    "lane": 8.0,
+    "type": 10.0,
+    "fov": 7.0,
+    "braking": 9.0
+  },
+  "lead_vehicles": [
+    {
+      "id": "lead",
+      "rear_s": [20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0, 32.0],
+      "velocity": 2.0,
+      "acceleration": 0.0,
+      "same_lane": true
+    }
+  ],
+  "intersection_rules": {
+    "R_IN4": {
+      "conflict_interval": [17.0, 22.0],
+      "priority_active": true,
+      "target_in_conflict": [false, false, false, false, true, true, true, false, false, false, false, false, false],
+      "ego_lookahead_s": 1.0,
+      "target_clearance_s": 0.6,
+      "clearance": 0.25
+    }
+  }
+}
