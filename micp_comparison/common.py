@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 from crmonitor.common.vehicle import CurvilinearStateManager
+from crmonitor.evaluation.visitor import EvaluationMonitorTreeVisitor
 
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.utils.configuration import RepairerConfiguration
@@ -34,6 +35,35 @@ TIMED = re.compile(
     r"(?P<op>eventually|always|historically|once)\["
     r"(?P<low>-?\d+(?:\.\d+)?)\s*,\s*(?P<high>-?\d+(?:\.\d+)?)(?P<unit>s?)\]"
 )
+
+
+class FixedVehicleEvaluationVisitor(EvaluationMonitorTreeVisitor):
+    """Evaluate quantified rules against one preselected vehicle binding.
+
+    The regular monitor visitor enumerates every vehicle at every time step.
+    That is appropriate for whole-scene monitoring, but it changes the target
+    of a pairwise repair after optimization.  This visitor keeps the world
+    intact for predicate evaluation while restricting each quantifier to the
+    vehicle ID selected from the original violation.
+    """
+
+    def __init__(self, fixed_other_ids, **kwargs):
+        super().__init__(**kwargs)
+        self._fixed_other_ids = tuple(int(value) for value in fixed_other_ids)
+
+    def _visit_quant_node(self, node, *ctx):
+        world, mpr_world, time_step, bound_ids = ctx[:4]
+        depth = len(bound_ids) - 1  # a0 (ego) is already bound by walk().
+        if depth >= len(self._fixed_other_ids):
+            raise ValueError("Missing fixed vehicle ID for nested rule quantifier")
+        vehicle_id = self._fixed_other_ids[depth]
+        if vehicle_id in bound_ids or vehicle_id not in world.vehicle_ids_for_time_step(time_step):
+            return [], []
+        ids = bound_ids + (vehicle_id,)
+        value = node.monitors[vehicle_id].visit(
+            self, world, mpr_world, time_step, ids, *ctx[2:]
+        )
+        return [value], [ids]
 
 
 def align_rule_bounds(text, dt):
@@ -142,17 +172,69 @@ def make_monitor(dataset, scenario_path, scenario, ego_id, rule):
         monitor_wrapper.get_traffic_rule_config = original
 
 
-def validate_states(
-    rule_monitor, ego_id, states, return_other_id=False, return_details=False,
-):
-    """Validate a candidate with the same protocol used by VP repair.
+def select_fixed_other_id(rule_monitor, rule, ego_id):
+    """Return the vehicle binding associated with the original violation."""
+    if rule in {"R_G3", "R_IN1"}:
+        return None
+    quantified_rule = "R_G1" if rule == "R_G1_R_G3" else rule
+    vehicle_id = rule_monitor.rule_to_other_id.get(quantified_rule)
+    if vehicle_id is not None and int(vehicle_id) != int(ego_id):
+        return int(vehicle_id)
 
-    ``return_other_id`` exposes the quantified vehicle selected at the first
-    violation.  It is diagnostic only and does not affect compliance.
+    if rule != "R_G2":
+        raise ValueError(f"{rule} has no related vehicle in the original violation")
+
+    # R_G2's outer implication is ego-centric, so the monitor wrapper can
+    # report a0 rather than the existential a1.  Bind the nearest relevant
+    # preceding vehicle once at the original trigger and retain it thereafter.
+    world = rule_monitor.world
+    ego = world.vehicle_by_id(ego_id)
+    trigger = rule_monitor.rule_to_tv.get("R_G2", rule_monitor.tv_time_step)
+    step = 0 if not math.isfinite(trigger) else max(0, int(trigger))
+    step = min(step, ego.end_time)
+    lane = ego.get_lane(step)
+    candidates = []
+    for candidate_id in world.vehicle_ids_for_time_step(step):
+        if int(candidate_id) == int(ego_id):
+            continue
+        target = world.vehicle_by_id(candidate_id)
+        try:
+            rear = target.rear_s(step, lane)
+            front = ego.front_s(step, lane)
+            if (
+                rear is not None and front is not None and rear >= front
+                and ego.lanes_at_state(step).intersection(target.lanes_at_state(step))
+            ):
+                candidates.append((rear - front, int(candidate_id)))
+        except (AttributeError, KeyError, TypeError, ValueError):
+            continue
+    if not candidates:
+        raise ValueError("R_G2 has no preceding vehicle at the original trigger")
+    return min(candidates)[1]
+
+
+def validate_states(
+    rule_monitor, ego_id, states, fixed_other_id=None,
+    return_other_id=False, return_details=False,
+):
+    """Validate a candidate and return its fixed-binding time to violation.
+
+    Pairwise rules must pass the same ``fixed_other_id`` used to construct the
+    optimization problem.  This prevents final validation from silently
+    switching to another vehicle in the scene.  Single-vehicle rules leave it
+    unset.  ``return_other_id`` is retained for diagnostics.
     """
     monitor = copy.copy(rule_monitor)
     world = copy.deepcopy(rule_monitor.world)
     monitor._world = world
+    if fixed_other_id is not None:
+        for evaluator in monitor._rule_eval:
+            previous = evaluator._eval_visitor
+            evaluator._eval_visitor = FixedVehicleEvaluationVisitor(
+                (fixed_other_id,),
+                use_boolean=previous.use_boolean,
+                output_type=previous.output_type,
+            )
     ego = world.vehicle_by_id(ego_id)
     for state in states:
         ego.states_cr[state.time_step] = state

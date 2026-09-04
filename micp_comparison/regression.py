@@ -52,7 +52,7 @@ def parse_args():
         "--rule-semantics",
         choices=(
             "lin2025", "vp_compatible", "vp_no_crossing_temporal",
-            "vp_no_crossing_rule_only", "vp_witness", "vp_quantified",
+            "vp_no_crossing_rule_only", "vp_quantified",
         ),
         default="lin2025",
     )

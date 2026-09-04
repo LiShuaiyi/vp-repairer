@@ -25,6 +25,7 @@ from micp_comparison.common import (
     make_monitor,
     read_cases,
     resolve_scenario_path,
+    select_fixed_other_id,
     validate_states,
 )
 from micp_comparison.fewer_binary_solver import FewerBinaryGurobiSolver
@@ -38,7 +39,7 @@ FIELDS = [
     "solver_setup_time", "solve_time", "core_total_time", "validation_time",
     "gurobi_runtime", "num_variables", "num_binary_variables",
     "num_constraints", "solver_status", "mip_gap", "robustness",
-    "updated_tv", "updated_other_id", "updated_diagnostics",
+    "fixed_other_id", "updated_tv", "updated_other_id", "updated_diagnostics",
     "candidate_sd_at_tv", "error",
 ]
 
@@ -76,7 +77,7 @@ def parse_args():
         "--rule-semantics",
         choices=(
             "lin2025", "vp_compatible", "vp_no_crossing_temporal",
-            "vp_no_crossing_rule_only", "vp_witness", "vp_quantified",
+            "vp_no_crossing_rule_only", "vp_quantified",
         ),
         default="lin2025",
         help="Rule formula family; vp_compatible contains separately labelled sound repairs.",
@@ -141,38 +142,14 @@ def evaluate(args, case, repeat, config):
         world = World.create_from_scenario(scenario, config)
         ego = world.vehicle_by_id(case["ego_id"])
         monitor = make_monitor(args.dataset, path, scenario, case["ego_id"], case["rule"])
-        other = None
-        if case["rule"] not in {"R_G3", "R_IN1"}:
-            if monitor.other_id is not None and int(monitor.other_id) != int(case["ego_id"]):
-                other = world.vehicle_by_id(int(monitor.other_id))
-            elif case["rule"] == "R_G2":
-                # R_G2's outer implication reports the ego as other_id.  Lin's
-                # MICP takes one witness vehicle, so deterministically select
-                # the nearest route-relevant vehicle in front at the trigger.
-                step = max(0, int(monitor.tv_time_step or 0))
-                lane = ego.get_lane(min(step, ego.end_time))
-                candidates = []
-                for vehicle_id in world.vehicle_ids_for_time_step(step):
-                    if int(vehicle_id) == int(case["ego_id"]):
-                        continue
-                    target = world.vehicle_by_id(vehicle_id)
-                    try:
-                        rear = target.rear_s(step, lane)
-                        front = ego.front_s(step, lane)
-                        if (
-                            rear is not None and front is not None
-                            and rear >= front
-                            and ego.lanes_at_state(step).intersection(
-                                target.lanes_at_state(step)
-                            )
-                        ):
-                            candidates.append((rear - front, int(vehicle_id)))
-                    except (AttributeError, KeyError, TypeError, ValueError):
-                        continue
-                if candidates:
-                    other = world.vehicle_by_id(min(candidates)[1])
-            elif case["rule"].startswith("R_IN"):
-                raise ValueError(f"{case['rule']} has no related vehicle in the monitor")
+        fixed_other_id = select_fixed_other_id(
+            monitor, case["rule"], case["ego_id"]
+        )
+        other = (
+            None if fixed_other_id is None
+            else world.vehicle_by_id(fixed_other_id)
+        )
+        row["fixed_other_id"] = "" if fixed_other_id is None else fixed_other_id
         final = scenario.obstacle_by_id(case["ego_id"]).prediction.trajectory.final_state.time_step
         row["num_steps"] = num_steps = int(final) + 1
 
@@ -251,6 +228,7 @@ def evaluate(args, case, repeat, config):
                 row["updated_diagnostics"],
             ) = validate_states(
                 monitor, case["ego_id"], candidate_states(x, u, lane),
+                fixed_other_id=fixed_other_id,
                 return_other_id=True, return_details=True,
             )
             row["validation_time"] = time.perf_counter() - started

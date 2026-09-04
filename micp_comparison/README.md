@@ -35,6 +35,9 @@ runner 默认使用 `standard`（原始 `stlpy.GurobiMICPSolver`）作为 Lin202
 复现基线。可通过 `--encoding fewer_binary` 在完全相同的动力学、规则和时域上
 启用 logarithmic SOS1 编码；该选项只改变整数编码，不得再与简化模型混用。
 
+正式 Lin2025 对比中的 R_G2 使用默认的 `--rule-semantics lin2025`，并在优化和
+最终验证中保持初始违反对应的固定车辆绑定。逐时刻重新选择前车的实验版本已删除。
+
 默认 Gurobi license 是仓库 Docker 配置中的 academic WLS license；它需要访问
 `token.gurobi.com`。`repair-autoware/lib/gurobi.lic` 是 size-limited license，
 只能用于小型单元测试，不能运行真实轨迹回归。

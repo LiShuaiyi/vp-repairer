@@ -280,60 +280,6 @@ class RG1(Rule):
 
 class RG2(Rule):
     def GetSpecification(self):
-        if self.rule_semantics == "vp_witness":
-            result = []
-            reference_lane = self.ego.get_lane(0)
-            for k in range(self.num_steps):
-                fixed_preceding = []
-                ego_front = self.ego.front_s(k, reference_lane)
-                for vehicle_id in self.world.vehicle_ids_for_time_step(k):
-                    if int(vehicle_id) == int(self.ego.id):
-                        continue
-                    target = self.world.vehicle_by_id(vehicle_id)
-                    try:
-                        rear_l = target.rear_s(k, reference_lane)
-                        if (
-                            rear_l is not None and ego_front is not None
-                            and rear_l >= ego_front
-                            and self.ego.lanes_at_state(k).intersection(
-                                target.lanes_at_state(k)
-                            )
-                        ):
-                            fixed_preceding.append((rear_l - ego_front, target))
-                    except (AttributeError, KeyError, TypeError, ValueError):
-                        continue
-
-                clause = not_braking_abruptly_formula(4, DIM)
-                if fixed_preceding:
-                    target = min(fixed_preceding, key=lambda item: item[0])[1]
-                    try:
-                        rear_l = target.rear_s(k, reference_lane)
-                        same_bounds = compute_lane_bounds(
-                            target.get_lane(k), reference_lane
-                        )
-                        precedes = (
-                            in_front_of_formula(
-                                (-np.inf, rear_l), 0, DIM,
-                                self.ego.shape.length, 2.578,
-                            )
-                            & in_same_lane_formula(same_bounds, 0, 1, DIM)
-                        )
-                        safe = linearized_keeps_safe_distance_formula(
-                            rear_l,
-                            target.get_lon_state(k, reference_lane).v,
-                            0, 2, DIM, self.ego.shape.length, 2.578,
-                        )
-                        rel_abrupt = relative_braking_abruptly_formula(
-                            target.get_lon_state(k, reference_lane).a, 4, DIM,
-                        )
-                        justified = (
-                            negate_pnf(safe) | rel_abrupt.negation()
-                        )
-                        clause = clause | (precedes & justified)
-                    except (AttributeError, KeyError, TypeError, ValueError):
-                        pass
-                result.append(clause & no_backwards_driving(2, DIM))
-            return at_each_step(result)
         if self.rule_semantics == "vp_quantified":
             result = []
             reference_lane = self.ego.get_lane(0)
