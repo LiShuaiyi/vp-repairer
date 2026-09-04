@@ -1,0 +1,2 @@
+rule,rule_semantics,cases,timed_cases,solver_feasible,monitor_success,success_rate,mean_core_time_s,median_core_time_s,p95_core_time_s,max_core_time_s,mean_binary_variables,status
+R_G2,vp_witness,69,69,66,66,0.956522,1.036936,1.201220,2.096465,3.530395,278.985507,full_per_step_nearest_witness_formula

@@ -1,0 +1,6 @@
+cohort,cases,timed_cases,solver_feasible,success,success_rate,mean_core_time_s,median_core_time_s,p95_core_time_s,max_core_time_s,note
+R_G1_highD,100,100,100,98,0.980000,0.851996,0.877033,0.936587,1.346837,existing strict Lin2025 run
+R_G1_MONA,93,93,93,93,1.000000,0.738329,0.759444,0.828214,0.934549,new aligned run
+R_G1_highD_plus_MONA,193,193,193,191,0.989637,0.797224,0.814262,0.926344,1.346837,case-weighted combined RG1 result
+R_IN3_hand_draft_49,49,48,36,16,0.326531,1.526105,1.407236,2.661101,3.543620,one case failed before timing with KeyError at missing time step 0
+new_runs_MONA_plus_IN3,142,141,129,109,0.767606,1.006508,0.784510,1.505850,3.543620,descriptive aggregate of the two newly run cohorts only

@@ -1,0 +1,44 @@
+scenario_id,scenario_path,ego_id,rule,repeat,encoding,rule_semantics,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,solver_status,mip_gap,robustness,updated_tv,updated_other_id,updated_diagnostics,candidate_sd_at_tv,error
+DEU_AachenBendplatz-1_7140_T-159,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_7140_T-159.xml,10021,R_IN1,0,standard,vp_compatible,20,False,False,False,0.00044152099872007966,,,,,,,,,,,,,,,,"KeyError: 0
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 180, in evaluate
+    lon, lat = ego.get_lon_state(0, lane), ego.get_lat_state(0, lane)
+  File ""/data_linux/Lab/commonroad-stl-monitor/crmonitor/common/vehicle.py"", line 443, in get_lon_state
+    states = self.ccosy_cache.get_curvilinear_state(self.states_cr[time_step], lane)
+KeyError: 0
+"
+DEU_AachenBendplatz-1_7180_T-199,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_7180_T-199.xml,10023,R_IN1,0,standard,vp_compatible,20,True,True,True,0.00027007600147044286,0.12959123899781844,0.0038972089969320223,0.1337585239962209,0.4379899330015178,0.0030770301818847656,502,40,983,2,0.0,0.010000000000056382,inf,,,,
+DEU_AachenBendplatz-1_73340_T-3359,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_73340_T-3359.xml,10133,R_IN1,0,standard,vp_compatible,20,False,False,False,0.00028210500022396445,,,,,,,,,,,,,,,,"KeyError: 0
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 180, in evaluate
+    lon, lat = ego.get_lon_state(0, lane), ego.get_lat_state(0, lane)
+  File ""/data_linux/Lab/commonroad-stl-monitor/crmonitor/common/vehicle.py"", line 443, in get_lon_state
+    states = self.ccosy_cache.get_curvilinear_state(self.states_cr[time_step], lane)
+KeyError: 0
+"
+DEU_AachenBendplatz-1_74540_T-4559,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_74540_T-4559.xml,10176,R_IN1,0,standard,vp_compatible,20,True,True,True,0.0003130839977529831,0.13491187500039814,0.0031439730009878986,0.13836893199913902,0.46443491400714265,0.002407073974609375,502,40,983,2,0.0,0.01000000000001039,inf,,,,
+DEU_AachenBendplatz-1_83880_T-3899,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_83880_T-3899.xml,10296,R_IN1,0,standard,vp_compatible,20,True,True,True,0.00041836799937300384,0.13467243299965048,0.0036291650030761957,0.13871996600209968,0.4908330769976601,0.002774953842163086,502,40,983,2,0.0,0.010000000000050883,inf,,,,
+DEU_AachenBendplatz-1_84360_T-4379,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_84360_T-4379.xml,10337,R_IN1,0,standard,vp_compatible,20,True,True,True,0.0002891120020649396,0.1325572049972834,0.0034112799985450692,0.13625759699789342,0.49681261899968376,0.0026590824127197266,502,40,983,2,0.0,0.010000000000304628,inf,,,,
+DEU_AachenBendplatz-1_8620_T-639,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_8620_T-639.xml,10044,R_IN1,0,standard,vp_compatible,20,True,True,True,0.0004104570034542121,0.14010181499907048,0.00380352399952244,0.14431579600204714,0.5077945049997652,0.0028488636016845703,502,40,983,2,0.0,0.010000000000471207,inf,,,,
+DEU_AachenBendplatz-1_91680_T-1699,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenBendplatz-1_91680_T-1699.xml,10108,R_IN1,0,standard,vp_compatible,20,False,False,False,0.00031745900196256116,,,,,,,,,,,,,,,,"KeyError: 0
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 180, in evaluate
+    lon, lat = ego.get_lon_state(0, lane), ego.get_lat_state(0, lane)
+  File ""/data_linux/Lab/commonroad-stl-monitor/crmonitor/common/vehicle.py"", line 443, in get_lon_state
+    states = self.ccosy_cache.get_curvilinear_state(self.states_cr[time_step], lane)
+KeyError: 0
+"
+DEU_AachenBendplatz-1_155315_T-5334,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155315_T-5334.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.0003745829963008873,0.14478479599347338,0.001319489994784817,0.14647886898455909,,0.0004761219024658203,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_155318_T-5337,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155318_T-5337.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.0003053640029975213,0.13973285000247415,0.001111458994273562,0.14114967299974523,,0.0004830360412597656,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_155317_T-5336,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155317_T-5336.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.0003971170008298941,0.14581082299991976,0.0011315560041111894,0.14733949600486085,,0.00044918060302734375,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_155316_T-5335,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155316_T-5335.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.00039490599738201126,0.14362716199684655,0.0013473439976223744,0.14536941199185094,,0.0005230903625488281,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_155321_T-5340,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155321_T-5340.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.0003544669962138869,0.14303922800172586,0.0012740189995383844,0.14466771399747813,,0.0005829334259033203,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_155322_T-5341,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155322_T-5341.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.00041928000428015366,0.1470062379958108,0.001451980002457276,0.14887749800254824,,0.0006010532379150391,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_155323_T-5342,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155323_T-5342.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.0002987510015373118,0.1496981809978024,0.0013061319987173192,0.15130306399805704,,0.0005438327789306641,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_155319_T-5338,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_155319_T-5338.xml,10335,R_IN1,0,standard,vp_compatible,20,False,False,False,0.0002843059992301278,0.1503465099958703,0.0010717879995354451,0.15170260399463587,,0.0004329681396484375,502,40,983,4,,-inf,,,,,
+DEU_AachenBendplatz-1_124696_T-4715,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_124696_T-4715.xml,10320,R_IN1,0,standard,vp_compatible,20,True,True,True,0.0003990030018030666,0.1467508630012162,0.003728534000401851,0.15087840000342112,0.5722731700006989,0.002849102020263672,502,40,983,2,0.0,0.010000000000204897,inf,,,,
+DEU_AachenBendplatz-1_124698_T-4717,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_124698_T-4717.xml,10320,R_IN1,0,standard,vp_compatible,20,True,True,True,0.00034472800325602293,0.14386418600042816,0.0034238890002598055,0.147632803003944,0.5605858060007449,0.0026929378509521484,502,40,983,2,1.958930511154878e-12,0.010000000000003348,inf,,,,
+DEU_AachenBendplatz-1_124695_T-4714,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_124695_T-4714.xml,10320,R_IN1,0,standard,vp_compatible,20,True,True,True,0.0004573420010274276,0.14327591699839104,0.004005568000138737,0.1477388269995572,0.602503838003031,0.002977132797241211,502,40,983,2,0.0,0.010000000000013233,inf,,,,
+DEU_AachenBendplatz-1_124697_T-4716,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_124697_T-4716.xml,10320,R_IN1,0,standard,vp_compatible,20,True,True,True,0.00035402699722908437,0.18714334599644644,0.00383025300106965,0.19132762599474518,0.6383911019947845,0.002843141555786133,502,40,983,2,0.0,0.010000000000030235,inf,,,,
+DEU_AachenBendplatz-1_124699_T-4718,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_124699_T-4718.xml,10320,R_IN1,0,standard,vp_compatible,20,True,True,True,0.00036342599923955277,0.14438052599871298,0.003884829995513428,0.14862878199346596,0.5786890489980578,0.002974987030029297,502,40,983,2,2.0090610386350176e-16,0.01,inf,,,,
+DEU_AachenBendplatz-1_124701_T-4720,/tmp/ind_converter_time_shift_pilot2/in1/DEU_AachenBendplatz-1_124701_T-4720.xml,10320,R_IN1,0,standard,vp_compatible,20,False,False,False,0.0004041279971715994,0.16772632300126133,0.0012716460041701794,0.1694020970026031,,0.0005409717559814453,502,40,983,4,,-inf,,,,,

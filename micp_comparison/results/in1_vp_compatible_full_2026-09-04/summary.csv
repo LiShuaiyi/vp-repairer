@@ -1,0 +1,2 @@
+rule,rule_semantics,cases,timed_cases,solver_feasible,monitor_success,success_rate,mean_core_time_s,median_core_time_s,p95_core_time_s,max_core_time_s,mean_binary_variables,status
+R_IN1,vp_compatible_stop_before_line,91,87,70,61,0.670330,0.147639,0.145369,0.158822,0.316631,40.0,diagnostic_sufficient_condition_not_final_Lin_timing

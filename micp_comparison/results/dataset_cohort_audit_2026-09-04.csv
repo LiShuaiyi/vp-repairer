@@ -1,0 +1,11 @@
+rule,vp_formal_rows,vp_unique_cases,vp_repair_attempt_cases,current_micp_rows,current_comparable_cases,note
+R_G1_highD,100,100,100,100,100,MONA is a separate missing cohort
+R_G1_MONA,93,93,93,0,0,not included in current MICP result
+R_G1_R_G3,164,87,87,87,87,VP CSV contains duplicate case rows
+R_G2,69,69,69,69,69,
+R_G3,100,100,100,100,100,
+R_IN1,91,91,91,16,16,current run inherited only old MICP cases
+R_IN3_complete,85,85,49,85,49,36 nonviolating VP skip cases were incorrectly included in aggregate
+R_IN4,48,46,46,24,24,VP CSV contains two duplicate case keys
+R_IN5,50,50,50,29,29,excluded six generated 150-step variants from the statistical cohort
+ALL_UNIQUE_COMPARABLE,,685,685,510,474,current 510 equals 474 comparable plus 36 IN3 skip cases

@@ -1,0 +1,53 @@
+{
+  "options": {
+    "per_cohort": 5,
+    "seed": 20260903,
+    "all_cases": true,
+    "time_limit": 10.0,
+    "threads": 1,
+    "monitor_config": "/data_linux/Lab/commonroad-stl-monitor/crmonitor/config.yaml",
+    "gurobi_license": "/data_linux/planning-sim/repairer/commonroad-repairer-vp/autoware-repair-docker/gurobi.lic"
+  },
+  "completed": [
+    [
+      "R_G2",
+      69,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/rg2.csv"
+    ],
+    [
+      "R_G3",
+      100,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/rg3.csv"
+    ],
+    [
+      "R_G1",
+      100,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/rg1.csv"
+    ],
+    [
+      "R_G1_R_G3",
+      87,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/rg1_rg3.csv"
+    ],
+    [
+      "R_IN1",
+      16,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/in1.csv"
+    ],
+    [
+      "R_IN4",
+      24,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/in4.csv"
+    ],
+    [
+      "R_IN5",
+      35,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/in5.csv"
+    ],
+    [
+      "R_IN3",
+      85,
+      "micp_comparison/results/lin_balanced_full_2026-09-04/in3.csv"
+    ]
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "options": {
+    "per_cohort": 5,
+    "seed": 20260903,
+    "all_cases": true,
+    "time_limit": 30.0,
+    "threads": 1,
+    "encoding": "standard",
+    "monitor_config": "/data_linux/Lab/commonroad-stl-monitor/crmonitor/config.yaml",
+    "gurobi_license": "/data_linux/planning-sim/repairer/commonroad-repairer-vp/autoware-repair-docker/gurobi.lic"
+  },
+  "completed": [
+    [
+      "R_IN1",
+      16,
+      "micp_comparison/results/lin2025_exact_in_full_2026-09-04/in1.csv"
+    ],
+    [
+      "R_IN4",
+      24,
+      "micp_comparison/results/lin2025_exact_in_full_2026-09-04/in4.csv"
+    ],
+    [
+      "R_IN5",
+      35,
+      "micp_comparison/results/lin2025_exact_in_full_2026-09-04/in5.csv"
+    ],
+    [
+      "R_IN3",
+      85,
+      "micp_comparison/results/lin2025_exact_in_full_2026-09-04/in3.csv"
+    ]
+  ]
+}

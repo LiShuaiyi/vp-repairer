@@ -1,0 +1,12 @@
+cohort,old_solver_feasible,old_monitor_compliant,old_success,old_core_total_time,old_num_binary_variables,scenario_id,scenario_path,ego_id,rule,repeat,encoding,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,solver_status,mip_gap,robustness,updated_tv,updated_other_id,error
+old_success,True,True,True,0.2639108759994997,52,DEU_AachenBendplatz-1_134900_T-4919,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_2024/DEU_AachenBendplatz-1_134900_T-4919.xml,10351,R_IN1,0,kurtz_lin_log_sos1,20,False,False,False,0.00357847700001912,,,,,,,,,,,,,,"GurobiError: HostID mismatch (licensed to aa6fbaab, hostid is 0)
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 132, in evaluate
+    solver = FewerBinaryGurobiSolver(
+  File ""/data_linux/conda-envs/repairverse310_gpu/lib/python3.10/site-packages/stlpy/solvers/gurobi/gurobi_micp.py"", line 61, in __init__
+    self.model = gp.Model(""STL_MICP"")
+  File ""src/gurobipy/_model.pyx"", line 152, in gurobipy._model.Model.__init__
+  File ""src/gurobipy/gurobi.pxi"", line 40, in gurobipy._core.gurobi._getdefaultenv
+  File ""src/gurobipy/env.pxi"", line 112, in gurobipy._core.Env.__init__
+gurobipy._exception.GurobiError: HostID mismatch (licensed to aa6fbaab, hostid is 0)
+"

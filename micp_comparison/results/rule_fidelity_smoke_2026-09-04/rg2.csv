@@ -1,0 +1,17 @@
+cohort,old_solver_feasible,old_monitor_compliant,old_success,old_core_total_time,old_num_binary_variables,scenario_id,scenario_path,ego_id,rule,repeat,encoding,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,solver_status,mip_gap,robustness,updated_tv,updated_other_id,updated_diagnostics,candidate_sd_at_tv,error
+old_false_positive,True,False,False,1.7758746130002692,378,DEU_LocationALower-33_190_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-33_190_T-1.xml,22,R_G2,0,kurtz_lin_log_sos1,21,False,False,False,,,,,,,,,,,,,,,,,"ValueError: R_G2 requires the monitor-selected witness vehicle
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 128, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 323, in GetSpecification
+    raise ValueError(""R_G2 requires the monitor-selected witness vehicle"")
+ValueError: R_G2 requires the monitor-selected witness vehicle
+"
+old_success,True,True,True,2.3322648189987376,378,DEU_LocationALower-31_81_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-31_81_T-1.xml,19,R_G2,0,kurtz_lin_log_sos1,21,False,False,False,,,,,,,,,,,,,,,,,"ValueError: R_G2 requires the monitor-selected witness vehicle
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 128, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 323, in GetSpecification
+    raise ValueError(""R_G2 requires the monitor-selected witness vehicle"")
+ValueError: R_G2 requires the monitor-selected witness vehicle
+"

@@ -1,0 +1,19 @@
+cohort,old_solver_feasible,old_monitor_compliant,old_success,old_core_total_time,old_num_binary_variables,scenario_id,scenario_path,ego_id,rule,repeat,encoding,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,solver_status,mip_gap,robustness,updated_tv,updated_other_id,updated_diagnostics,candidate_sd_at_tv,error
+old_false_positive,True,False,False,1.088696197997706,115,DEU_AachenFrankenburg-1_295880_T-5899,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_295880_T-5899.xml,10562,R_IN5,0,kurtz_lin_log_sos1,20,False,False,False,0.013512541000636702,0.8890899520001767,,,,,1329,210,1915,,,,,,,,"GurobiError: Model too large for size-limited license; visit https://gurobi.com/unrestricted for more information
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 169, in evaluate
+    x, u, robustness, grb_runtime = solver.Solve()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/fewer_binary_solver.py"", line 97, in Solve
+    self.model.optimize()
+  File ""src/gurobipy/_model.pyx"", line 926, in gurobipy._model.Model.optimize
+gurobipy._exception.GurobiError: Model too large for size-limited license; visit https://gurobi.com/unrestricted for more information
+"
+old_success,True,True,True,0.48660912200102757,115,DEU_AachenBendplatz-1_84280_T-4299_in5_safe_variant_27,/data_linux/Lab/commonroad-repairer-vp/scenarios/in5_generate/DEU_AachenBendplatz-1_84280_T-4299_in5_safe_variant_27.xml,10331,R_IN5,0,kurtz_lin_log_sos1,20,False,False,False,0.021756471999651694,2.1005033949995777,,,,,2669,512,3625,,,,,,,,"GurobiError: Model too large for size-limited license; visit https://gurobi.com/unrestricted for more information
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 169, in evaluate
+    x, u, robustness, grb_runtime = solver.Solve()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/fewer_binary_solver.py"", line 97, in Solve
+    self.model.optimize()
+  File ""src/gurobipy/_model.pyx"", line 926, in gurobipy._model.Model.optimize
+gurobipy._exception.GurobiError: Model too large for size-limited license; visit https://gurobi.com/unrestricted for more information
+"

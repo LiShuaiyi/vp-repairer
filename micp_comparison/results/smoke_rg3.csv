@@ -1,0 +1,2 @@
+scenario_id,scenario_path,ego_id,rule,repeat,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,robustness,updated_tv,error
+DEU_LocationALower-11_102_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-11_102_T-1.xml,16,R_G3,0,21,True,True,True,0.00019639300080598332,0.2286285769987444,0.05383526900004654,0.2826602389995969,0.043590494999079965,0.05272388458251953,547,42,633,0.0,inf,

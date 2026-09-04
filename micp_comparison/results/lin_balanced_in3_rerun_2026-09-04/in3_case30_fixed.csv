@@ -1,0 +1,9 @@
+scenario_id,scenario_path,ego_id,rule,repeat,encoding,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,solver_status,mip_gap,robustness,updated_tv,updated_other_id,updated_diagnostics,candidate_sd_at_tv,error
+DEU_AachenFrankenburg-1_215560_T-5579,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_215560_T-5579.xml,10491,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.0032955359984043753,,,,,,,,,,,,,,,,"KeyError: 0
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 162, in evaluate
+    lon, lat = ego.get_lon_state(0, lane), ego.get_lat_state(0, lane)
+  File ""/data_linux/Lab/commonroad-stl-monitor/crmonitor/common/vehicle.py"", line 443, in get_lon_state
+    states = self.ccosy_cache.get_curvilinear_state(self.states_cr[time_step], lane)
+KeyError: 0
+"

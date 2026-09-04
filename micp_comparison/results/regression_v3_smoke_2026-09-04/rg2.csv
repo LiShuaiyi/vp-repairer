@@ -1,0 +1,23 @@
+cohort,old_solver_feasible,old_monitor_compliant,old_success,old_core_total_time,old_num_binary_variables,scenario_id,scenario_path,ego_id,rule,repeat,encoding,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,solver_status,mip_gap,robustness,updated_tv,updated_other_id,error
+old_false_positive,True,False,False,1.7758746130002692,378,DEU_LocationALower-33_190_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-33_190_T-1.xml,22,R_G2,0,kurtz_lin_log_sos1,21,False,False,False,0.021308507999947324,,,,,,,,,,,,,,"GurobiError: HostID mismatch (licensed to aa6fbaab, hostid is 0)
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 132, in evaluate
+    solver = FewerBinaryGurobiSolver(
+  File ""/data_linux/conda-envs/repairverse310_gpu/lib/python3.10/site-packages/stlpy/solvers/gurobi/gurobi_micp.py"", line 61, in __init__
+    self.model = gp.Model(""STL_MICP"")
+  File ""src/gurobipy/_model.pyx"", line 152, in gurobipy._model.Model.__init__
+  File ""src/gurobipy/gurobi.pxi"", line 40, in gurobipy._core.gurobi._getdefaultenv
+  File ""src/gurobipy/env.pxi"", line 112, in gurobipy._core.Env.__init__
+gurobipy._exception.GurobiError: HostID mismatch (licensed to aa6fbaab, hostid is 0)
+"
+old_success,True,True,True,2.3322648189987376,378,DEU_LocationALower-31_81_T-1,/data_linux/Lab/highD-cr-scenarios/highD-repair/DEU_LocationALower-31_81_T-1.xml,19,R_G2,0,kurtz_lin_log_sos1,21,False,False,False,0.01982191500007957,,,,,,,,,,,,,,"GurobiError: HostID mismatch (licensed to aa6fbaab, hostid is 0)
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 132, in evaluate
+    solver = FewerBinaryGurobiSolver(
+  File ""/data_linux/conda-envs/repairverse310_gpu/lib/python3.10/site-packages/stlpy/solvers/gurobi/gurobi_micp.py"", line 61, in __init__
+    self.model = gp.Model(""STL_MICP"")
+  File ""src/gurobipy/_model.pyx"", line 152, in gurobipy._model.Model.__init__
+  File ""src/gurobipy/gurobi.pxi"", line 40, in gurobipy._core.gurobi._getdefaultenv
+  File ""src/gurobipy/env.pxi"", line 112, in gurobipy._core.Env.__init__
+gurobipy._exception.GurobiError: HostID mismatch (licensed to aa6fbaab, hostid is 0)
+"

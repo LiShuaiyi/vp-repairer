@@ -1,0 +1,52 @@
+{
+  "options": {
+    "per_cohort": 1,
+    "seed": 20260903,
+    "time_limit": 30.0,
+    "threads": 1,
+    "monitor_config": "/data_linux/Lab/commonroad-stl-monitor/crmonitor/config.yaml",
+    "gurobi_license": "/home/shuaiyi/gurobi.lic"
+  },
+  "completed": [
+    [
+      "R_G3",
+      2,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/rg3.csv"
+    ],
+    [
+      "R_IN1",
+      1,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/in1.csv"
+    ],
+    [
+      "R_G1_R_G3",
+      2,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/rg1_rg3.csv"
+    ],
+    [
+      "R_G2",
+      2,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/rg2.csv"
+    ],
+    [
+      "R_G1",
+      2,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/rg1.csv"
+    ],
+    [
+      "R_IN3",
+      2,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/in3.csv"
+    ],
+    [
+      "R_IN4",
+      2,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/in4.csv"
+    ],
+    [
+      "R_IN5",
+      2,
+      "micp_comparison/results/regression_v3b_smoke_2026-09-04/in5.csv"
+    ]
+  ]
+}

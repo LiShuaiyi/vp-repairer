@@ -1,0 +1,2 @@
+scenario_id,scenario_path,ego_id,rule,repeat,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,robustness,updated_tv,error
+DEU_AachenBendplatz-1_155320_T-5339,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_2024/DEU_AachenBendplatz-1_155320_T-5339.xml,10335,R_IN1,0,20,False,False,False,0.006145127001218498,0.3579947660000471,0.002066160001049866,0.36620605300231546,,0.0006589889526367188,600,66,708,-inf,,

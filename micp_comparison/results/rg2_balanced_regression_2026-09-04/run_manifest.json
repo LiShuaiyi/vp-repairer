@@ -1,0 +1,18 @@
+{
+  "options": {
+    "per_cohort": 5,
+    "seed": 20260903,
+    "all_cases": false,
+    "time_limit": 10.0,
+    "threads": 1,
+    "monitor_config": "/data_linux/Lab/commonroad-stl-monitor/crmonitor/config.yaml",
+    "gurobi_license": "/data_linux/planning-sim/repairer/commonroad-repairer-vp/autoware-repair-docker/gurobi.lic"
+  },
+  "completed": [
+    [
+      "R_G2",
+      10,
+      "micp_comparison/results/rg2_balanced_regression_2026-09-04/rg2.csv"
+    ]
+  ]
+}

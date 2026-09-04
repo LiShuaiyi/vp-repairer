@@ -1,0 +1,2 @@
+scenario_id,scenario_path,ego_id,rule,repeat,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,robustness,updated_tv,error
+DEU_AachenFrankenburg-1_295880_T-5899,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_295880_T-5899.xml,10562,R_IN5,0,20,True,False,False,0.002472820999173564,0.22466535000057775,0.08898911200049042,0.31612728300024173,0.21128851600042253,0.0883030891418457,738,112,832,0.0,1.0,

@@ -1,0 +1,2 @@
+rule,semantics,total_cases,data_valid_cases,solver_feasible,monitor_compliant,success,success_rate_all,success_rate_valid,data_errors,micp_infeasible,feasible_monitor_fail,timed_cases,mean_core_s,median_core_s,p95_core_s,max_core_s,mean_binary_variables,mean_constraints
+R_IN1,vp_no_crossing_temporal,91,87,75,75,75,0.824176,0.862069,4,12,0,87,0.476757,0.439183,0.880784,1.342173,214.000000,1548.689655

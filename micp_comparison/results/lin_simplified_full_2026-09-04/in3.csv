@@ -1,0 +1,281 @@
+cohort,old_solver_feasible,old_monitor_compliant,old_success,old_core_total_time,old_num_binary_variables,scenario_id,scenario_path,ego_id,rule,repeat,encoding,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,solver_status,mip_gap,robustness,updated_tv,updated_other_id,updated_diagnostics,candidate_sd_at_tv,error
+all_cases,False,False,False,0.3509737550011778,80,DEU_AachenFrankenburg-1_201920_T-1939,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_201920_T-1939.xml,10185,R_IN3,0,kurtz_lin_log_sos1,20,True,False,False,0.003617546999521437,0.09884913800124195,0.015430331999596092,0.11789701700035948,0.22292745399863634,0.014653205871582031,379,4,703,2,0.0,0.01,1.0,"(10183,)",,"{""t"": 5, ""s"": 56.49676222070094, ""d"": 1.3525149978407924}",
+all_cases,True,True,True,0.45000257500032603,50,DEU_AachenFrankenburg-1_212980_T-2999,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_212980_T-2999.xml,10277,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004356302999440231,0.08865119499932916,0.0018079650017170934,0.09481546300048649,0.2582972839991271,0.0011799335479736328,372,0,703,2,,0.010000000000802355,inf,,,,
+all_cases,False,False,False,0.7672205620001478,94,DEU_AachenFrankenburg-1_214320_T-4339,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_214320_T-4339.xml,10381,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.005074174998298986,0.10942710800009081,0.0009887920004985062,0.1154900749988883,,0.0003361701965332031,393,4,731,4,,-inf,,,,,
+all_cases,True,True,True,0.6963415850004822,132,DEU_AachenFrankenburg-1_231880_T-1899,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_231880_T-1899.xml,10184,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0041249079986300785,0.11201200599862204,0.005080308999822591,0.12121722299707471,0.2588434259996575,0.004216909408569336,393,4,731,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.7709981199986942,101,DEU_AachenFrankenburg-1_26540_T-559,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_26540_T-559.xml,10066,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.006189403999087517,0.10140923699873383,0.0010685359993658494,0.1086671769971872,,0.0003528594970703125,383,4,714,4,,-inf,,,,,
+all_cases,True,True,True,0.28189153599851124,58,DEU_AachenFrankenburg-1_281480_T-1499,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_281480_T-1499.xml,10138,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0039020459989842493,0.09403542900145112,0.0016778190001787152,0.09961529400061409,0.27667717799886304,0.0010030269622802734,364,0,687,2,,0.010000000003913028,inf,,,,
+all_cases,True,True,True,0.6941836309997598,92,DEU_AachenFrankenburg-1_291080_T-1099,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_291080_T-1099.xml,10131,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004310582000471186,0.10676406200036581,0.005295997998473467,0.11637064199931046,0.269763263000641,0.0043621063232421875,385,4,715,2,0.0,0.01,inf,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_291980_T-1999,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_291980_T-1999.xml,10203,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,True,True,True,0.31552902999646903,64,DEU_AachenFrankenburg-1_294020_T-4039,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_294020_T-4039.xml,10394,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.003218206999008544,0.1051825619997544,0.00466467600017495,0.11306544499893789,0.2875689760003297,0.003854036331176758,373,4,691,2,0.0,0.009999999999138254,inf,,,,
+all_cases,True,True,True,0.46231907199944544,54,DEU_AachenFrankenburg-1_183000_T-3019,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_183000_T-3019.xml,10233,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005127749000166659,0.10285864399884304,0.0018683159996726317,0.10985470899868233,0.2940891020007257,0.0011839866638183594,376,0,711,2,,0.010000000012573087,inf,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_183020_T-3039,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_183020_T-3039.xml,10235,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,True,False,False,0.8221804679997149,117,DEU_AachenFrankenburg-1_183920_T-3939,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_183920_T-3939.xml,10289,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004642693000278086,0.1201586290007981,0.011454437999418587,0.13625576000049477,0.27275499399911496,0.01041102409362793,381,4,708,2,0.0,0.01,inf,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_183940_T-3959,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_183940_T-3959.xml,10291,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,True,True,True,0.5216620880000846,64,DEU_AachenFrankenburg-1_184840_T-4859,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_184840_T-4859.xml,10366,R_IN3,0,kurtz_lin_log_sos1,20,True,False,False,0.003674311999930069,0.10750811799880466,0.014699892999487929,0.12588232299822266,0.2908874590011692,0.013818979263305664,376,4,702,2,0.0,0.01,2.8000000000000003,"(10367,)","[{""causes_braking"": true, ""conflict_lanelet_ids"": [108], ""d"": 0.3204061225762331, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": false, ""s"": 52.41358816751405, ""t"": 13}, {""causes_braking"": true, ""conflict_lanelet_ids"": [108], ""d"": 0.2748591172560206, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": true, ""s"": 52.41558613497601, ""t"": 14}, {""causes_braking"": true, ""conflict_lanelet_ids"": [108], ""d"": 0.23574613411027948, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": true, ""s"": 52.417584372983775, ""t"": 15}, {""causes_braking"": true, ""conflict_lanelet_ids"": [108], ""d"": 0.20164334642237242, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": true, ""s"": 52.41958282283265, ""t"": 16}, {""causes_braking"": true, ""conflict_lanelet_ids"": [108], ""d"": 0.17128941542795606, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": true, ""s"": 52.4215814308219, ""t"": 17}, {""causes_braking"": false, ""conflict_lanelet_ids"": [108], ""d"": 0.1435405436847381, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": true, ""s"": 52.423580146748506, ""t"": 18}, {""causes_braking"": false, ""conflict_lanelet_ids"": [108], ""d"": 0.11732962556930558, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": true, ""s"": 52.425578922378776, ""t"": 19}]","{""t"": 14, ""s"": 52.41557328730711, ""d"": 0.2748584303725869}",
+all_cases,False,False,False,0.7603329039993696,128,DEU_AachenFrankenburg-1_193620_T-3639,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_193620_T-3639.xml,10258,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No monitor-equivalent conflict lanelets
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 434, in conflict_lanelets
+    return reduce(lambda left, right: left & right, outside_all)
+ValueError: No monitor-equivalent conflict lanelets
+"
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_194200_T-4219,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_194200_T-4219.xml,10301,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,False,False,False,0.43604258300001675,104,DEU_AachenFrankenburg-1_194240_T-4259,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_194240_T-4259.xml,10303,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No monitor-equivalent conflict lanelets
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 434, in conflict_lanelets
+    return reduce(lambda left, right: left & right, outside_all)
+ValueError: No monitor-equivalent conflict lanelets
+"
+all_cases,False,False,False,0.39130607699917164,108,DEU_AachenFrankenburg-1_19980_T-999,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_19980_T-999.xml,10083,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.004639403001419851,0.11227897200114967,0.0010003010011132574,0.11791867600368278,,0.00032210350036621094,376,4,702,4,,-inf,,,,,
+all_cases,True,True,True,0.582298658999207,87,DEU_AachenFrankenburg-1_19980_T-999,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_19980_T-999.xml,10085,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005183682000279077,0.25102678700022807,0.005367816000216408,0.26157828500072355,0.33671266499914054,0.0044591426849365234,510,28,881,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.3998897580022458,96,DEU_AachenFrankenburg-1_20100_T-119,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_20100_T-119.xml,10032,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005220426000960288,0.1072547769999801,0.002228703999207937,0.11470390700014832,0.34376705099930405,0.0013477802276611328,378,0,715,2,,0.010000000007255984,inf,,,,
+all_cases,True,True,True,0.43158136700003524,120,DEU_AachenFrankenburg-1_202240_T-2259,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_202240_T-2259.xml,10200,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0040708419983275235,0.10759678199974587,0.009251000999938697,0.12091862499801209,0.305766854000467,0.008162975311279297,377,4,703,2,0.0,0.01,inf,,,,
+all_cases,True,False,False,0.7004708679996838,113,DEU_AachenFrankenburg-1_202720_T-2739,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_202720_T-2739.xml,10227,R_IN3,0,kurtz_lin_log_sos1,20,True,False,False,0.0027545609991648234,0.11065479399985634,0.01646583100045973,0.1298751859994809,0.3246157209996454,0.015438079833984375,370,4,689,2,0.0,0.01,2.6,"(10225,)",,"{""t"": 13, ""s"": 54.22798273497108, ""d"": 3.9941849034441113}",
+all_cases,False,False,False,0.2888943449997896,80,DEU_AachenFrankenburg-1_202900_T-2919,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_202900_T-2919.xml,10233,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.003434656999161234,0.11639106800066656,0.0009891150002658833,0.12081484000009368,,0.00031304359436035156,376,4,702,4,,-inf,,,,,
+all_cases,True,False,False,0.5529758510001557,73,DEU_AachenFrankenburg-1_206360_T-6379,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_206360_T-6379.xml,10490,R_IN3,0,kurtz_lin_log_sos1,20,True,False,False,0.005217182000706089,0.1747426740002993,0.01716136200047913,0.19712121800148452,0.3181096259995684,0.016309022903442383,387,4,720,2,0.0,0.01,1.4000000000000001,"(10492,)","[{""causes_braking"": false, ""conflict_lanelet_ids"": [120], ""d"": -3.5512447859372065, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": false, ""s"": 56.405683197995145, ""t"": 6}, {""causes_braking"": false, ""conflict_lanelet_ids"": [120], ""d"": -4.628154875323284, ""ego_in_conflict"": true, ""ego_on_intersection"": true, ""other_in_conflict"": false, ""s"": 58.30814800567935, ""t"": 7}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -5.542961424758568, ""ego_in_conflict"": false, ""ego_on_intersection"": true, ""other_in_conflict"": false, ""s"": 60.08977909502267, ""t"": 8}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -6.265704661889199, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": false, ""s"": 61.451410183885635, ""t"": 9}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -6.823531489557313, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": false, ""s"": 62.39340729755731, ""t"": 10}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -7.2514246447203945, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": false, ""s"": 62.97160457503316, ""t"": 11}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -7.578082949746374, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": false, ""s"": 63.288840329915786, ""t"": 12}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -7.826999654448035, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": false, ""s"": 63.43266862633713, ""t"": 13}]","{""t"": 7, ""s"": 58.308148005906844, ""d"": -4.6281548753230535}",
+all_cases,True,True,True,0.7589127369992639,108,DEU_AachenFrankenburg-1_211260_T-1279,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_211260_T-1279.xml,10135,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0037577059993054718,0.47925968100025784,10.001314819999607,10.48433220699917,0.32324601000073017,10.000159978866577,730,76,1153,9,0.0002690414317308779,0.01,inf,,,,
+all_cases,True,True,True,0.39941442500094126,108,DEU_AachenFrankenburg-1_211520_T-1539,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_211520_T-1539.xml,10159,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.00328288499986229,0.10144390200002817,0.007193242001449107,0.11192002900133957,0.3166783710003074,0.00627899169921875,371,4,691,2,0.0,0.009999999998811404,inf,,,,
+all_cases,False,False,False,0.3314136650005821,120,DEU_AachenFrankenburg-1_2120_T-39,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_2120_T-39.xml,10023,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.0054941870002949145,0.10160629100028018,0.0010157029992114985,0.10811618099978659,,0.0003590583801269531,374,4,693,4,,-inf,,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_212700_T-2719,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_212700_T-2719.xml,10260,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,False,False,False,0.20793712200065784,68,DEU_AachenFrankenburg-1_213160_T-3179,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_213160_T-3179.xml,10295,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.0037710579999838956,0.221630952999476,0.0012774589995387942,0.22667946999899868,,0.0006101131439208984,499,28,866,4,,-inf,,,,,
+all_cases,True,True,True,0.14402274699932605,34,DEU_AachenFrankenburg-1_213400_T-3419,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_213400_T-3419.xml,10319,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.002343443999052397,0.08601085099871852,0.0018261820005136542,0.09018047699828458,0.3059265220017551,0.001077890396118164,356,0,671,2,,0.010000000005694827,inf,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_215560_T-5579,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_215560_T-5579.xml,10491,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"KeyError: 0
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 571, in GetSpecification
+    clearance = math.ceil(clearance_seconds / self.dt)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 157, in safe_collision_bounds
+    lane = ego.get_lane(0)
+  File ""/data_linux/Lab/commonroad-stl-monitor/crmonitor/common/vehicle.py"", line 482, in get_lane
+    lanes = self.lanes_at_state(time_step)
+  File ""/data_linux/Lab/commonroad-stl-monitor/crmonitor/common/vehicle.py"", line 477, in lanes_at_state
+    lanelets = self.lanelet_assignment[time_step]
+KeyError: 0
+"
+all_cases,True,False,False,0.11891505899984622,29,DEU_AachenFrankenburg-1_216200_T-6219,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_216200_T-6219.xml,10547,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.004425505998369772,0.10457966499961913,0.0024978169985843124,0.11150298799657321,,0.001837015151977539,374,0,707,4,,-inf,,,,,
+all_cases,False,False,False,0.17556973999853653,54,DEU_AachenFrankenburg-1_221380_T-1399,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_221380_T-1399.xml,10156,R_IN3,0,kurtz_lin_log_sos1,19,False,False,False,0.006665679000434466,0.10805371400056174,0.0009671890002209693,0.11568658200121718,,0.000331878662109375,363,0,687,4,,-inf,,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_22140_T-159,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_22140_T-159.xml,10039,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,False,False,False,0.6546349859982001,84,DEU_AachenFrankenburg-1_223120_T-3139,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_223120_T-3139.xml,10286,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.004657564999433816,0.1077413830007572,0.0011494209993543336,0.11354836899954535,,0.0004069805145263672,376,4,702,4,,-inf,,,,,
+all_cases,False,False,False,0.3803430730004038,108,DEU_AachenFrankenburg-1_223120_T-3139,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_223120_T-3139.xml,10294,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.006504392998976982,0.12725633500122058,0.0011384099998394959,0.13489913800003706,,0.0003898143768310547,396,4,742,4,,-inf,,,,,
+all_cases,True,True,True,0.5198249980003311,100,DEU_AachenFrankenburg-1_224460_T-4479,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_224460_T-4479.xml,10410,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.003166481999869575,0.08280036299947824,0.0020990709999750834,0.0880659159993229,0.37187053299930994,0.0012090206146240234,342,0,643,2,,0.010000000001041455,inf,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_225080_T-5099,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_225080_T-5099.xml,10464,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_225660_T-5679,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_225660_T-5679.xml,10512,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,False,False,False,0.3029330650006159,113,DEU_AachenFrankenburg-1_233380_T-3399,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_233380_T-3399.xml,10319,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.005800364000606351,0.10973089099934441,0.0010358409999753349,0.1165670959999261,,0.00033593177795410156,389,4,728,4,,-inf,,,,,
+all_cases,True,True,True,0.20280454099884082,65,DEU_AachenFrankenburg-1_233960_T-3979,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_233960_T-3979.xml,10382,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0029669230007129954,0.1093371129991283,0.00524222700005339,0.11754626299989468,0.3416398319986911,0.004456043243408203,379,4,702,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.10773206600060803,21,DEU_AachenFrankenburg-1_234880_T-4899,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_234880_T-4899.xml,10460,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0021583509987976868,0.07707754700095393,0.0017763640007615322,0.08101226200051315,0.3479625979998673,0.0010437965393066406,348,0,655,2,,0.010000000000161853,inf,,,,
+all_cases,True,True,True,0.34727997400113964,104,DEU_AachenFrankenburg-1_243980_T-3999,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_243980_T-3999.xml,10377,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.0041899990010279,0.10556258200085722,0.0009821410003496567,0.11073472200223478,,0.0003509521484375,376,4,702,4,,-inf,,,,,
+all_cases,True,True,True,0.4179663340000843,120,DEU_AachenFrankenburg-1_25120_T-139,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_25120_T-139.xml,10031,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.006668911999440752,0.12870663899957435,0.014082665000387351,0.14945821599940246,0.4477226060007524,0.013000011444091797,400,4,746,2,0.0,0.01,inf,,,,
+all_cases,False,False,False,0.26088383399837767,92,DEU_AachenFrankenburg-1_252140_T-2159,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_252140_T-2159.xml,10194,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No monitor-equivalent conflict lanelets
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 434, in conflict_lanelets
+    return reduce(lambda left, right: left & right, outside_all)
+ValueError: No monitor-equivalent conflict lanelets
+"
+all_cases,True,True,True,0.18597318899992388,51,DEU_AachenFrankenburg-1_25240_T-259,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_25240_T-259.xml,10042,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005417274000137695,0.09581663999961165,0.001805653000701568,0.10303956700045092,0.3883871039997757,0.0010750293731689453,373,0,705,2,,0.010000000000251584,inf,,,,
+all_cases,True,True,True,0.19576354600212653,60,DEU_AachenFrankenburg-1_25280_T-299,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_25280_T-299.xml,10047,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No monitor-equivalent conflict lanelets
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 434, in conflict_lanelets
+    return reduce(lambda left, right: left & right, outside_all)
+ValueError: No monitor-equivalent conflict lanelets
+"
+all_cases,False,False,False,0.336025481001343,125,DEU_AachenFrankenburg-1_253060_T-3079,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_253060_T-3079.xml,10269,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004441048999069608,0.11094330400010222,0.004764993000208051,0.12014934599937988,0.8077591259989276,0.004113912582397461,391,4,727,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.30404206000093836,92,DEU_AachenFrankenburg-1_254980_T-4999,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_254980_T-4999.xml,10437,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004089197998837335,0.08356590400035202,0.0018366889999015257,0.08949179099909088,0.35521773300024506,0.001088857650756836,362,0,683,2,,0.010000000032316539,inf,,,,
+all_cases,True,True,True,0.2588910020022013,81,DEU_AachenFrankenburg-1_255300_T-5319,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_255300_T-5319.xml,10465,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.002635275999637088,0.09439595399999234,0.005983173001368414,0.10301440300099785,0.3412791319988173,0.005171060562133789,372,4,694,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.6346698549987195,111,DEU_AachenFrankenburg-1_255460_T-5479,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_255460_T-5479.xml,10478,R_IN3,0,kurtz_lin_log_sos1,20,True,False,False,0.0029606169991893694,0.09753806100161455,0.004534504998446209,0.10503318299925013,0.35587622999992163,0.0038988590240478516,376,4,700,2,0.0,0.009999999998825615,2.4000000000000004,"(10470,)",,"{""t"": 12, ""s"": 56.995740602855115, ""d"": -0.950624381050178}",
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_261280_T-1299,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_261280_T-1299.xml,10142,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,True,True,True,0.19387547399855976,57,DEU_AachenFrankenburg-1_26500_T-519,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_26500_T-519.xml,10059,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005922352998823044,0.10240453999904275,0.001873952000096324,0.11020084499796212,0.42377966299864056,0.001116037368774414,379,0,717,2,,0.010000000000018324,inf,,,,
+all_cases,False,False,False,0.2306490639984986,72,DEU_AachenFrankenburg-1_26500_T-519,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_26500_T-519.xml,10062,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.00653869300003862,0.08910017999914999,0.0018508970006223535,0.09748976999981096,0.41234196100049303,0.0011360645294189453,370,0,699,2,,0.010000000001193714,inf,,,,
+all_cases,True,True,True,0.3142233020007552,101,DEU_AachenFrankenburg-1_26540_T-559,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_26540_T-559.xml,10060,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005946309000137262,0.10667538999950921,0.004935320999720716,0.11755701999936718,0.4124093519985763,0.00410914421081543,379,4,702,2,0.0,0.01,inf,,,,
+all_cases,False,False,False,0.30107103799855395,96,DEU_AachenFrankenburg-1_273460_T-3479,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_273460_T-3479.xml,10327,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.004069571999934851,0.2505914800003666,0.0011749789991881698,0.2558360309994896,,0.0005609989166259766,535,40,899,4,,-inf,,,,,
+all_cases,False,False,False,,,DEU_AachenFrankenburg-1_273460_T-3479,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_273460_T-3479.xml,10328,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,,,,,,,,,,,,,,,,,"ValueError: No intersection lanelets available for conflict area
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 157, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 517, in GetSpecification
+    return None
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 439, in yield_region_formula
+    network.find_lanelet_by_id(lanelet_id)
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 416, in conflict_avoidance_formula
+    outside_all = []
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 423, in conflict_lanelets
+    continue
+ValueError: No intersection lanelets available for conflict area
+"
+all_cases,True,True,True,0.32128528600151185,106,DEU_AachenFrankenburg-1_281720_T-1739,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_281720_T-1739.xml,10161,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0038317720009217737,0.11099243499847944,0.012917571000798489,0.1277417780001997,0.38888434000000416,0.011919021606445312,386,4,718,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.5094513730018662,102,DEU_AachenFrankenburg-1_281820_T-1839,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_281820_T-1839.xml,10173,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.004742181999972672,0.11422225600108504,0.0010401520012237597,0.12000459000228147,,0.0003669261932373047,399,4,744,4,,-inf,,,,,
+all_cases,False,False,False,0.27315603000351985,92,DEU_AachenFrankenburg-1_28560_T-579,/data_linux/Lab/highD-cr-scenarios/ind_scenarios_converter_2026_update/DEU_AachenFrankenburg-1_28560_T-579.xml,10067,R_IN3,0,kurtz_lin_log_sos1,20,True,False,False,0.00290675900032511,0.21032867699977942,0.04338048499994329,0.2566159210000478,0.3633780210002442,0.04260683059692383,496,36,870,2,0.0,0.01,3.2,"(10069,)","[{""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -3.50668785741623, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": false, ""s"": 57.31439369400383, ""t"": 15}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -3.6319878532589485, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": true, ""s"": 58.17966918153594, ""t"": 16}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -3.7398643592435103, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": true, ""s"": 59.1105246308393, ""t"": 17}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -3.836469195536177, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": true, ""s"": 60.07954700439703, ""t"": 18}, {""causes_braking"": false, ""conflict_lanelet_ids"": [], ""d"": -3.9269046354891164, ""ego_in_conflict"": false, ""ego_on_intersection"": false, ""other_in_conflict"": true, ""s"": 61.06192282233747, ""t"": 19}]","{""t"": 16, ""s"": 58.17967346951034, ""d"": -3.6319877428176643}",
+all_cases,False,False,False,0.24617806599781034,74,DEU_AachenFrankenburg-1_201920_T-1939_in3_safe_variant_00,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_201920_T-1939_in3_safe_variant_00.xml,10185,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004112468999664998,0.1136744750001526,0.005168775000129244,0.12295571899994684,0.40388977600014186,0.00436091423034668,388,4,721,2,2.1181636282199254e-05,0.01,inf,,,,
+all_cases,False,False,False,0.20726586500131816,74,DEU_AachenFrankenburg-1_201920_T-1939_in3_safe_variant_01,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_201920_T-1939_in3_safe_variant_01.xml,10185,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.003674966001199209,0.11188758799835341,0.01604138100083219,0.1316039350003848,0.37912483099898964,0.015344858169555664,388,4,721,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.16392839299987827,50,DEU_AachenFrankenburg-1_212980_T-2999_in3_safe_variant_02,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_212980_T-2999_in3_safe_variant_02.xml,10277,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004062842001076206,0.07726889500008838,0.0017625550008233404,0.08309429200198792,0.38847181699929934,0.0010819435119628906,355,0,669,2,,0.010000000006772642,inf,,,,
+all_cases,True,True,True,0.11941605499850994,33,DEU_AachenFrankenburg-1_212980_T-2999_in3_safe_variant_03,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_212980_T-2999_in3_safe_variant_03.xml,10277,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.003888552000717027,0.07971586399980879,0.0008892629994079471,0.08449367899993376,,0.0002658367156982422,357,0,673,4,,-inf,,,,,
+all_cases,True,True,True,0.25861410400102613,84,DEU_AachenFrankenburg-1_214320_T-4339_in3_safe_variant_04,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_214320_T-4339_in3_safe_variant_04.xml,10381,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005197706999751972,0.10720740999931877,0.004973859000529046,0.11737897599959979,0.4021287529994879,0.004222869873046875,393,4,731,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.42552803400030825,132,DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_06,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_06.xml,10184,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0037494009993679356,0.10831816099926073,0.005240579999735928,0.11730814199836459,0.39617444099894783,0.0045740604400634766,393,4,731,2,0.0,0.01,inf,,,,
+all_cases,True,True,True,0.4065986730001896,132,DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_07,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_07.xml,10184,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.003787481000472326,0.10962697799914167,0.0008226350000768434,0.11423709399969084,,0.00030994415283203125,393,4,731,4,,-inf,,,,,
+all_cases,False,False,False,0.49608940899997833,193,DEU_TestIntersectionInteract-3_1_T-1_in3_variant_00,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_TestIntersectionInteract-3_1_T-1_in3_variant_00.xml,30,R_IN3,0,kurtz_lin_log_sos1,51,False,False,False,0.005307707000611117,0.2373774810002942,0.0013263499986351235,0.24401153799954045,,0.0004489421844482422,952,5,1774,4,,-inf,,,,,
+all_cases,True,True,True,0.5035257290019217,177,DEU_TestIntersectionInteract-3_1_T-1_in3_variant_01,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_TestIntersectionInteract-3_1_T-1_in3_variant_01.xml,30,R_IN3,0,kurtz_lin_log_sos1,51,True,True,True,0.0039507099991169525,0.20818756300104724,0.011672300001009717,0.2238105730011739,0.472466462999364,0.010492086410522461,910,5,1690,2,0.0,0.00999999999914536,inf,,,,
+all_cases,True,True,True,0.5125364790001186,166,DEU_TestIntersectionInteract-3_1_T-1_in3_variant_02,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_TestIntersectionInteract-3_1_T-1_in3_variant_02.xml,30,R_IN3,0,kurtz_lin_log_sos1,51,True,True,True,0.005243547000645776,0.22778055999879143,0.01199685000028694,0.24502095699972415,0.5076721719997295,0.010823965072631836,929,5,1728,2,0.0,0.009999999999187992,inf,,,,
+all_cases,True,True,True,0.17410846699567628,58,DEU_AachenFrankenburg-1_281480_T-1499_in3_safe_variant_27,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_281480_T-1499_in3_safe_variant_27.xml,10138,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004071768000358134,0.08661618199948862,0.0016216570002143271,0.09230960700006108,0.7963002370015602,0.0010080337524414062,366,0,691,2,,0.010000000001664535,inf,,,,
+all_cases,True,True,True,0.2200256680007442,70,DEU_AachenFrankenburg-1_294020_T-4039_in3_safe_variant_29,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_294020_T-4039_in3_safe_variant_29.xml,10394,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0031975140009308234,0.10666733999823919,0.004819509998924332,0.11468436399809434,0.4183490100003837,0.004079103469848633,385,4,715,2,0.0,0.009999999998512976,inf,,,,
+all_cases,True,True,True,0.36637522199816885,120,DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_32,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_32.xml,10066,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005927243999394705,0.1082401010007743,0.010779403000924503,0.12494674800109351,0.44491642600041814,0.009992122650146484,393,4,734,2,0.0,0.009999999998200337,inf,,,,
+all_cases,True,True,True,0.2873977109993575,100,DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_35,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_35.xml,10131,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004461275999346981,0.10975999199945363,0.004555084999083192,0.1187763529978838,0.42679901600058656,0.0038449764251708984,389,4,723,2,0.0,0.009999999999127596,inf,,,,
+all_cases,False,False,False,0.3020631570034311,120,DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_40,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_40.xml,10066,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.005815640000946587,0.10462803699920187,0.0009382629996252945,0.11138193999977375,,0.0003459453582763672,394,4,736,4,,-inf,,,,,
+all_cases,True,True,True,0.30636625999977696,100,DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_43,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_43.xml,10131,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004165501999523258,0.10511360799864633,0.004766714000652428,0.11404582399882202,0.4020690839988674,0.004055976867675781,389,4,723,2,0.0,0.01,inf,,,,
+all_cases,False,False,False,0.2504555849991448,92,DEU_AachenFrankenburg-1_214320_T-4339_in3_safe_variant_47,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_214320_T-4339_in3_safe_variant_47.xml,10381,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.004746616999909747,0.1031956730003003,0.00463857700015069,0.11258086700036074,0.4241528140009905,0.003823995590209961,393,4,731,2,0.0,0.01,inf,,,,
+all_cases,False,False,False,0.2751472409981943,120,DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_48,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_48.xml,10184,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.003977914000643068,0.10613136699976167,0.0008251710005424684,0.1109344520009472,,0.0002770423889160156,393,4,731,4,,-inf,,,,,
+all_cases,False,False,False,0.2580383040076413,112,DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_50,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_50.xml,10066,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.005936862000453402,0.10116357900005823,0.0009053869998751907,0.10800582800038683,,0.00032806396484375,386,4,720,4,,-inf,,,,,
+all_cases,False,False,False,0.2164561630015669,80,DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_53,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_53.xml,10131,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0038658329995087115,0.1036647830005677,0.014232413999707205,0.12176302999978361,0.39892948900160263,0.01359701156616211,401,4,747,2,0.0,0.01,inf,,,,
+all_cases,False,False,False,0.14227702700372902,50,DEU_AachenFrankenburg-1_212980_T-2999_in3_safe_variant_56,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_212980_T-2999_in3_safe_variant_56.xml,10277,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.0037402990001282888,0.07023628999922948,0.0014718570000695763,0.07544844599942735,0.39554181799940125,0.0009400844573974609,355,0,669,2,,0.010000000005065193,inf,,,,
+all_cases,True,True,True,0.22520416700353962,85,DEU_AachenFrankenburg-1_214320_T-4339_in3_safe_variant_57,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_214320_T-4339_in3_safe_variant_57.xml,10381,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.005023800000344636,0.10996725199947832,0.0007590340010210639,0.11575008600084402,,0.0002689361572265625,401,4,747,4,,-inf,,,,,
+all_cases,False,False,False,0.28304457599733723,125,DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_58,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_231880_T-1899_in3_safe_variant_58.xml,10184,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.0034563110002636677,0.09940646799987007,0.000854014999276842,0.10371679399941058,,0.0002911090850830078,386,4,717,4,,-inf,,,,,
+all_cases,True,True,True,0.30852792900259374,111,DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_60,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_26540_T-559_in3_safe_variant_60.xml,10066,R_IN3,0,kurtz_lin_log_sos1,20,True,True,True,0.005110553000122309,0.09788115899937111,0.007296064999536611,0.11028777699903003,0.42604318400117336,0.006675004959106445,393,4,734,2,0.0,0.009999999999092068,inf,,,,
+all_cases,True,True,True,0.21802824100086582,89,DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_63,/data_linux/Lab/commonroad-repairer-vp/scenarios/in3_generate/DEU_AachenFrankenburg-1_291080_T-1099_in3_safe_variant_63.xml,10131,R_IN3,0,kurtz_lin_log_sos1,20,False,False,False,0.004061698999066721,0.1021237069999188,0.0008433050006715348,0.10702871099965705,,0.00032806396484375,401,4,747,4,,-inf,,,,,

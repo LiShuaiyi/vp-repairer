@@ -1,0 +1,2 @@
+scenario_id,scenario_path,ego_id,rule,repeat,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,robustness,updated_tv,error
+DEU_AachenFrankenburg-1_201920_T-1939,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_201920_T-1939.xml,10185,R_IN3,0,20,False,False,False,0.006092181998610613,0.33447876700120105,0.001900278999528382,0.34247122799934004,,0.0007150173187255859,600,66,690,-inf,,

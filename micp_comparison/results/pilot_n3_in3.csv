@@ -1,0 +1,11 @@
+scenario_id,scenario_path,ego_id,rule,repeat,num_steps,solver_feasible,monitor_compliant,success,specification_time,solver_setup_time,solve_time,core_total_time,validation_time,gurobi_runtime,num_variables,num_binary_variables,num_constraints,robustness,updated_tv,error
+DEU_AachenFrankenburg-1_201920_T-1939,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_201920_T-1939.xml,10185,R_IN3,0,20,False,False,False,0.006971714999963297,0.3361063529991952,0.0015604769996571122,0.34463854499881563,,0.0006420612335205078,600,66,690,-inf,,
+DEU_AachenFrankenburg-1_212980_T-2999,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_212980_T-2999.xml,10277,R_IN3,0,20,False,False,False,,,,,,,,,,,,"OverflowError: cannot convert float infinity to integer
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/runner.py"", line 101, in evaluate
+    specification = rule.GetSpecification()
+  File ""/data_linux/Lab/commonroad-repairer-vp/micp_comparison/rules.py"", line 269, in GetSpecification
+    first = max(0, int(self.trigger_step) - lookahead)
+OverflowError: cannot convert float infinity to integer
+"
+DEU_AachenFrankenburg-1_214320_T-4339,/data_linux/Lab/highD-cr-scenarios/13_inD/scenarios/DEU_AachenFrankenburg-1_214320_T-4339.xml,10381,R_IN3,0,20,False,False,False,0.009707069999421947,0.373895808999805,0.0017683610003587091,0.38537123999958567,,0.0008709430694580078,666,88,769,-inf,,

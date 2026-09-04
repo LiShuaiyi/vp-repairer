@@ -1,0 +1,2 @@
+rule_semantics,cases,solver_feasible,success,success_rate,mean_core_time_s,median_core_time_s,p95_core_time_s,max_core_time_s,status
+vp_compatible_sufficient_condition,69,67,67,0.971014,0.124047,0.134643,0.144906,0.261898,diagnostic_only_not_Lin2025_timing
