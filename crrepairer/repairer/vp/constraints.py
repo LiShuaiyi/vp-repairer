@@ -25,6 +25,12 @@ from crrepairer.repairer.vp.temporal import (
     constraint_steps_for_anchors,
     constraint_time_interval,
 )
+from crrepairer.smt.vp_proposition_capabilities import (
+    VPConstraintKind,
+    predicate_base_name,
+    proposition_constraint_kind,
+    supported_constraint_kinds,
+)
 
 
 class UnsupportedVPCandidateError(RuntimeError):
@@ -497,8 +503,11 @@ class VPConstraintExtraction:
         final_time_step = all_states[-1].time_step
         temporal_steps = self._temporal_constraint_steps(all_states)
         self._last_extraction_debug = []
+        selected_constraint_kinds = {
+            proposition_constraint_kind(prop) for prop in self._sel_prop
+        }
         in1_trajectory_stop_cap = None
-        if "R_IN1" in self.config.repair.rules:
+        if VPConstraintKind.STOP_LINE_UPPER in selected_constraint_kinds:
             in1_trajectory_stop_cap = self._constraint_stop_line_on_trajectory(
                 self.rule_monitor.world,
                 self.rule_monitor.world.vehicle_by_id(self.config.repair.ego_id),
@@ -530,40 +539,52 @@ class VPConstraintExtraction:
                 if not temporal_steps[id(prop)].contains(time_step):
                     continue
                 idx = time_step - int(self._tc) - 1
-                if "R_IN1" in self.config.repair.rules:
-                    if "stop_line" in prop.name:
-                        upper_bound = self._constraint_stop_line(
-                            self.rule_monitor.world,
-                            self.rule_monitor.world.vehicle_by_id(self.config.repair.ego_id),
-                            wheelbase,
-                            lanelet_clcs,
+                constraint_kind = proposition_constraint_kind(prop)
+                if constraint_kind == VPConstraintKind.STOP_LINE_UPPER:
+                    upper_bound = self._constraint_stop_line(
+                        self.rule_monitor.world,
+                        self.rule_monitor.world.vehicle_by_id(self.config.repair.ego_id),
+                        wheelbase,
+                        lanelet_clcs,
+                    )
+                    s_max[idx] = min(s_max[idx], upper_bound)
+                    if in1_trajectory_stop_cap is not None:
+                        trajectory_s_max_cap[idx] = min(
+                            trajectory_s_max_cap[idx],
+                            in1_trajectory_stop_cap,
                         )
-                        s_max[idx] = min(s_max[idx], upper_bound)
-                        if in1_trajectory_stop_cap is not None:
-                            trajectory_s_max_cap[idx] = min(
-                                trajectory_s_max_cap[idx],
-                                in1_trajectory_stop_cap,
-                            )
-                        if not prop_debug_recorded:
-                            self._last_extraction_debug.append(
-                                {
-                                    "proposition": prop.name,
-                                    "kind": "stop_line_upper",
-                                    "upper_bound_lane_clcs": float(upper_bound),
-                                    "upper_bound_trajectory_clcs": (
-                                        None
-                                        if in1_trajectory_stop_cap is None
-                                        else float(in1_trajectory_stop_cap)
-                                    ),
-                                }
-                            )
-                            prop_debug_recorded = True
-                    else:
-                        if self._reject_unsupported_vp_candidates():
-                            raise UnsupportedVPCandidateError(
-                                "IN1 SAT candidate requires a non-stop-line predicate "
-                                f"that VP cannot constrain: {prop.name} ({prop.alphabet})."
-                            )
+                    if not prop_debug_recorded:
+                        self._last_extraction_debug.append(
+                            {
+                                "proposition": prop.name,
+                                "kind": "stop_line_upper",
+                                "upper_bound_lane_clcs": float(upper_bound),
+                                "upper_bound_trajectory_clcs": (
+                                    None
+                                    if in1_trajectory_stop_cap is None
+                                    else float(in1_trajectory_stop_cap)
+                                ),
+                            }
+                        )
+                        prop_debug_recorded = True
+                    continue
+                if constraint_kind == VPConstraintKind.STANDSTILL_VELOCITY:
+                    upper_bound = self._constraint_standstill_velocity(prop)
+                    v_max[idx] = min(v_max[idx], upper_bound)
+                    if not prop_debug_recorded:
+                        self._last_extraction_debug.append(
+                            {
+                                "proposition": prop.name,
+                                "kind": "standstill_velocity_upper",
+                                "upper_bound": float(upper_bound),
+                            }
+                        )
+                        prop_debug_recorded = True
+                    continue
+
+                if supported_constraint_kinds(self.config.repair.rules):
+                    # This rule has an explicit capability registry, but the
+                    # selected proposition has no executable VP action.
                     continue
 
                 if "in_intersection_conflict_area__0_1" in prop.name:
@@ -826,24 +847,24 @@ class VPConstraintExtraction:
         """
         if not self._reject_unsupported_vp_candidates():
             return
-        is_in1 = "R_IN1" in self.config.repair.rules
+        registered_kinds = supported_constraint_kinds(self.config.repair.rules)
         for prop in self._sel_prop:
             interval = temporal_steps[id(prop)]
             if interval.count == 0:
                 continue
-            if is_in1 and "stop_line" not in prop.name:
+            if registered_kinds and proposition_constraint_kind(prop) not in registered_kinds:
                 self._last_extraction_debug.append(
                     {
                         "proposition": prop.name,
-                        "kind": "unsupported_in1_non_stop_line",
+                        "kind": "unsupported_registered_vp_predicate",
                     }
                 )
                 raise UnsupportedVPCandidateError(
-                    "IN1 SAT candidate requires a non-stop-line predicate "
-                    f"that VP cannot constrain: {prop.name} ({prop.alphabet})."
+                    "SAT candidate requires a predicate with no registered VP "
+                    f"constraint: {prop.name} ({prop.alphabet})."
                 )
             if (
-                not is_in1
+                not registered_kinds
                 and "in_intersection_conflict_area__0_1" in prop.name
                 and prop.alphabet.startswith("~")
                 and conflict_trajectory_interval is None
@@ -858,6 +879,29 @@ class VPConstraintExtraction:
                     "Conflict geometry is unavailable for VP SAT candidate: "
                     f"{prop.name} ({prop.alphabet})."
                 )
+
+    @staticmethod
+    def _constraint_standstill_velocity(prop):
+        """Return a non-strict LP upper bound for positive standstill."""
+        for predicate in getattr(prop, "children", ()):
+            candidates = (
+                getattr(predicate, "base_name", None),
+                getattr(predicate, "name", None),
+                getattr(getattr(predicate, "evaluator", None), "predicate_name", None),
+            )
+            if not any(
+                candidate is not None
+                and predicate_base_name(candidate) == "in_standstill"
+                for candidate in candidates
+            ):
+                continue
+            config = getattr(getattr(predicate, "evaluator", None), "config", {})
+            epsilon = float(config.get("standstill_error"))
+            numerical_margin = min(1.0e-6, max(1.0e-9, epsilon * 1.0e-3))
+            return max(0.0, epsilon - numerical_margin)
+        raise UnsupportedVPCandidateError(
+            f"Standstill proposition has no predicate evaluator: {prop.name}."
+        )
 
     def _constraint_in_same_lane(
         self,

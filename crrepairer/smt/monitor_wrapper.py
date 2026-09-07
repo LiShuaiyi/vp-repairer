@@ -20,6 +20,12 @@ from crmonitor.evaluation.evaluation import (
 from crmonitor.common.world import World, get_world_config
 from crmonitor.common.config import get_traffic_rule_config
 from crmonitor.rule.rule_node import PredicateNode
+from crmonitor.monitor.rtamt_monitor_stl import RtamtStlMonitor
+
+from crrepairer.smt.vp_proposition_capabilities import (
+    DECOMPOSABLE_VP_PREDICATES,
+    predicate_base_name,
+)
 
 from crrepairer.utils.configuration import (
     RepairerConfiguration,
@@ -39,6 +45,7 @@ class PropositionNode:
     children: List['PredicateNode'] = field(default_factory=list)
     ttv_value: Optional[float] = None
     ttv_h_min: Optional[float] = None  # Optional, initialized as None
+    vp_decomposition_group: Optional[str] = None
 
     def set_ttv_values(self, ttv_value: float, ttv_h_min: float):
         """Method to set the ttv_value and ttv_h_min later."""
@@ -364,13 +371,12 @@ class STLRuleMonitor:
             self.all_rules_all_ids_all,
         ) = self.evaluate_initially()
 
-        # initialize the propositional nodes
+        # First construct the monitor's original Lin-2025 abstraction.  Its
+        # formula is used to locate the violation time, so VP-only
+        # approximations cannot silently change violation detection.
+        self._vp_proposition_decompositions = {}
         self._prop_nodes = self._initialize_prop_nodes()
-        # generate the SAT formula in the NNF
-
         self.sat_formula, self.sat_formula_sep = self.obtain_sat_formula_in_nnf()
-        print("===== formula in NNF: ", self.sat_formula)
-        # obtain the time-to-violation using the way written in the Journal paper
         (
             self._violated_rules,
             self.min_rule_idx,
@@ -378,6 +384,15 @@ class STLRuleMonitor:
             self.rule_to_tv,
             self.rule_to_other_id,
         ) = self._cal_tv_def()
+
+        # Candidate generation may use a VP-aware propositional decomposition,
+        # while every evaluator above remains the untouched original rule
+        # monitor.  Rebuild only the SAT-side proposition view after TV has
+        # been computed from the original abstraction.
+        if self._apply_vp_proposition_decomposition():
+            self._prop_nodes = self._initialize_prop_nodes()
+            self.sat_formula, self.sat_formula_sep = self.obtain_sat_formula_in_nnf()
+        print("===== formula in NNF: ", self.sat_formula)
 
         self._future_time_step = self.search_future_time_step()[self.min_rule_idx]
         self._update_prop_nodes()
@@ -480,20 +495,41 @@ class STLRuleMonitor:
             props_of_rule = self._prop_nodes[prev_idx : prev_idx + length]
             prev_idx += length
 
+            decompositions = self._vp_proposition_decompositions.get(
+                rule_node.name, {}
+            )
+            decomposed_names = {
+                child_name
+                for child_names in decompositions.values()
+                for child_name in child_names
+            }
+
             for prop_node in props_of_rule:
+                if prop_node.name in decomposed_names:
+                    continue
                 prop_node_name = self._normalize_prop_name(prop_node.name)
+                sat_formula = self._replace_proposition_expression(
+                    sat_formula, prop_node_name, prop_node.alphabet
+                )
 
-                # Match and replace the proposition name in the formula
-                matches = SequenceMatcher(None, sat_formula, prop_node_name, autojunk=True).get_matching_blocks()
-                clean_matches = [match for match in matches if match.size > 1]
-                if clean_matches:
-                    first_index = clean_matches[0].a
-                    last_index = clean_matches[-1].a + clean_matches[-1].size
-                    to_replace = re.escape(sat_formula[first_index:last_index])
-
-                    # Avoid replacing incorrect propositions
-                    pattern = rf"(?<!\]\(){to_replace}"
-                    sat_formula = re.sub(pattern, prop_node.alphabet, sat_formula)
+            # Insert Boolean combinations only after all ordinary fuzzy name
+            # replacements.  Otherwise a later SequenceMatcher invocation can
+            # mistake the text of the inserted ``and`` for part of a monitor
+            # proposition name.
+            for original_name, child_names in decompositions.items():
+                child_nodes = [
+                    node for node in props_of_rule if node.name in child_names
+                ]
+                if len(child_nodes) != len(child_names):
+                    continue
+                replacement = "(" + " & ".join(
+                    node.alphabet for node in child_nodes
+                ) + ")"
+                sat_formula = self._replace_proposition_expression(
+                    sat_formula,
+                    self._normalize_prop_name(original_name),
+                    replacement,
+                )
 
             subformula_list.append(f"({sat_formula})")
             subformula_dict[rule_node.name] = construct_nnf(sat_formula)
@@ -503,6 +539,240 @@ class STLRuleMonitor:
 
         # Return the formula in NNF
         return construct_nnf(sat_formula), subformula_dict
+
+    @staticmethod
+    def _replace_proposition_expression(formula, proposition_name, replacement):
+        """Apply the monitor wrapper's established fuzzy AST-name matching."""
+        matches = SequenceMatcher(
+            None, formula, proposition_name, autojunk=True
+        ).get_matching_blocks()
+        clean_matches = [match for match in matches if match.size > 1]
+        if not clean_matches:
+            return formula
+        first_index = clean_matches[0].a
+        last_index = clean_matches[-1].a + clean_matches[-1].size
+        to_replace = re.escape(formula[first_index:last_index])
+        pattern = rf"(?<!\]\(){to_replace}"
+        return re.sub(pattern, replacement, formula)
+
+    @staticmethod
+    def _strip_balanced_outer_parentheses(expression):
+        expression = expression.strip()
+        while expression.startswith("(") and expression.endswith(")"):
+            depth = 0
+            encloses_all = True
+            for index, character in enumerate(expression):
+                if character == "(":
+                    depth += 1
+                elif character == ")":
+                    depth -= 1
+                    if depth == 0 and index != len(expression) - 1:
+                        encloses_all = False
+                        break
+            if not encloses_all or depth != 0:
+                break
+            expression = expression[1:-1].strip()
+        return expression
+
+    @classmethod
+    def _split_top_level_conjunction(cls, expression):
+        """Split a Boolean conjunction without depending on a rule name."""
+        expression = cls._strip_balanced_outer_parentheses(expression)
+        depth = 0
+        parts = []
+        start = 0
+        index = 0
+        while index < len(expression):
+            character = expression[index]
+            if character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+            elif depth == 0 and expression.startswith("and", index):
+                before = expression[index - 1] if index else " "
+                after_index = index + 3
+                after = expression[after_index] if after_index < len(expression) else " "
+                if not (before.isalnum() or before == "_") and not (
+                    after.isalnum() or after == "_"
+                ):
+                    parts.append(expression[start:index])
+                    start = after_index
+                    index = after_index
+                    continue
+            index += 1
+        if not parts:
+            return ()
+        parts.append(expression[start:])
+        return tuple(cls._strip_balanced_outer_parentheses(part) for part in parts)
+
+    @classmethod
+    def _decompose_supported_temporal_conjunction(cls, expression):
+        """Distribute a common unary temporal prefix over supported leaves.
+
+        This is deliberately a VP candidate-generation approximation.  It is
+        activated by proposition structure and leaf capabilities, not by a
+        traffic-rule identifier.
+        """
+        current = cls._strip_balanced_outer_parentheses(expression)
+        wrappers = []
+        temporal_prefix = re.compile(
+            r"^(once|eventually|historically|globally|always|previous|prev|pre)\b",
+            re.IGNORECASE,
+        )
+        while True:
+            match = temporal_prefix.match(current)
+            if match is None:
+                break
+            open_index = current.find("(", match.end())
+            if open_index < 0 or not current.endswith(")"):
+                return ()
+            depth = 0
+            close_index = None
+            for index in range(open_index, len(current)):
+                if current[index] == "(":
+                    depth += 1
+                elif current[index] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        close_index = index
+                        break
+            if close_index != len(current) - 1:
+                return ()
+            wrappers.append(current[: open_index + 1])
+            current = cls._strip_balanced_outer_parentheses(
+                current[open_index + 1 : close_index]
+            )
+
+        if not wrappers:
+            return ()
+        leaves = cls._split_top_level_conjunction(current)
+        if len(leaves) < 2:
+            return ()
+        leaf_bases = {predicate_base_name(leaf) for leaf in leaves}
+        if len(leaf_bases) != len(leaves) or not leaf_bases.issubset(
+            DECOMPOSABLE_VP_PREDICATES
+        ):
+            return ()
+
+        decomposed = []
+        for leaf in leaves:
+            child = leaf
+            for wrapper in reversed(wrappers):
+                child = f"{wrapper}{child})"
+            decomposed.append(child)
+        return tuple(decomposed)
+
+    @staticmethod
+    def _predicate_nodes(rule_node):
+        nodes = []
+
+        def visit(node):
+            for child in getattr(node, "children", ()):
+                if hasattr(child, "latest_value"):
+                    nodes.append(child)
+                else:
+                    visit(child)
+
+        visit(rule_node)
+        unique = {}
+        for node in nodes:
+            unique.setdefault(node.name, node)
+        return list(unique.values())
+
+    def _evaluate_derived_proposition(self, evaluator, expression, predicate_trace):
+        """Evaluate a synthetic proposition with RTAMT's exact operators."""
+        predicate_nodes = [
+            node
+            for node in self._predicate_nodes(evaluator._rule)
+            if node.name in expression
+        ]
+        if not predicate_nodes:
+            return None
+        monitor = RtamtStlMonitor(
+            expression,
+            [
+                (node, node.io_type if hasattr(node, "io_type") else None)
+                for node in predicate_nodes
+            ],
+            self._world.dt,
+        )
+        values = []
+        for offset, predicates in enumerate(predicate_trace):
+            sample = []
+            for node in predicate_nodes:
+                entry = predicates.get(node.name) if isinstance(predicates, dict) else None
+                if entry is None:
+                    return None
+                raw_value = entry[0] if isinstance(entry, (tuple, list, np.ndarray)) else entry
+                sample.append((node.name, float(raw_value)))
+            result = monitor.evaluate_monitor_online(
+                self._start_time_step + offset, sample
+            )
+            values.append(float(result))
+        return values
+
+    def _apply_vp_proposition_decomposition(self):
+        """Build the VP-only proposition view while retaining original monitors."""
+        per_rule_names = []
+        per_rule_values = []
+        changed = False
+
+        for rule_index, evaluator in enumerate(self._rule_eval):
+            original_names = [
+                name
+                for name in self.abstraction_names[rule_index, 0]
+                if self._is_valid_prop_name(name)
+            ]
+            names = []
+            columns = []
+            decomposition = {}
+            for prop_index, original_name in enumerate(original_names):
+                children = self._decompose_supported_temporal_conjunction(original_name)
+                child_values = []
+                if children:
+                    for child in children:
+                        sequence = self._evaluate_derived_proposition(
+                            evaluator, child, self.rob_predicate[rule_index]
+                        )
+                        if sequence is None:
+                            child_values = []
+                            break
+                        child_values.append(sequence)
+                if child_values:
+                    changed = True
+                    decomposition[original_name] = children
+                    for child, sequence in zip(children, child_values):
+                        names.append(child)
+                        columns.append(sequence)
+                        self.all_props_all_ids_all[rule_index].setdefault(
+                            child, {}
+                        )[self._vehicle_id] = list(sequence)
+                else:
+                    names.append(original_name)
+                    columns.append(
+                        self.rob_abstraction[rule_index, :, prop_index].tolist()
+                    )
+            self._vp_proposition_decompositions[evaluator._rule.name] = decomposition
+            per_rule_names.append(names)
+            per_rule_values.append(columns)
+
+        if not changed:
+            return False
+
+        n_rules = len(per_rule_names)
+        n_times = self.rob_abstraction.shape[1]
+        n_props = max(len(names) for names in per_rule_names)
+        names_array = np.full((n_rules, n_times, n_props), np.nan, dtype=object)
+        values_array = np.full((n_rules, n_times, n_props), np.nan, dtype=float)
+        for rule_index, (names, columns) in enumerate(
+            zip(per_rule_names, per_rule_values)
+        ):
+            for prop_index, (name, sequence) in enumerate(zip(names, columns)):
+                names_array[rule_index, :, prop_index] = name
+                values_array[rule_index, :, prop_index] = sequence
+        self.abstraction_names = names_array
+        self.rob_abstraction = values_array
+        return True
 
     def _normalize_prop_name(self, prop_name):
         """
@@ -576,6 +846,13 @@ class STLRuleMonitor:
                 alphabet=prop_alphabet,
                 source_rule=self._rule_eval[idx[0]]._rule.name
             )
+
+            for original_name, child_names in self._vp_proposition_decompositions.get(
+                proposition.source_rule, {}
+            ).items():
+                if prop_name in child_names:
+                    proposition.vp_decomposition_group = original_name
+                    break
 
             # Append the constructed node to the list
             prop_nodes.append(proposition)

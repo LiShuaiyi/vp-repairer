@@ -89,7 +89,32 @@ class SATSolver:
         """
         return a satisfiable proposition - based on robustness
         """
-        self._dpll_model = self._dpll_solver.model
+        self._dpll_model = list(self._dpll_solver.model)
+        # A DPLL model is intentionally partial: once one literal satisfies a
+        # clause, unrelated variables may be absent.  For a proposition which
+        # VP split into independently executable children, however, blocking
+        # that partial model would also block a stronger candidate that keeps
+        # the same literals and activates the remaining child constraints.
+        # Complete only decomposition children with their monitored truth
+        # value.  This makes failed-candidate blocking exact in the new
+        # abstraction dimensions and leaves every ordinary rule unchanged.
+        assigned_variables = {literal[-1] for literal in self._dpll_model}
+        for prop_node in self._prop_nodes:
+            if (
+                getattr(prop_node, "vp_decomposition_group", None) is None
+                or prop_node.alphabet[-1] in assigned_variables
+            ):
+                continue
+            variable = prop_node.alphabet[-1]
+            domain = getattr(self._dpll_solver, "domains", {}).get(variable)
+            if domain is not None and len(domain) == 1:
+                desired_positive = bool(next(iter(domain)))
+            else:
+                desired_positive = float(prop_node.ttv_value) > 0.0
+            self._dpll_model.append(
+                variable if desired_positive else f"~{variable}"
+            )
+            assigned_variables.add(variable)
         prop_list = list()
         for m in list(self._dpll_model):
             sel_prop_node = next(

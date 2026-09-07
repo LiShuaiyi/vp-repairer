@@ -14,6 +14,10 @@ from crrepairer.repairer.vp.semantic_predicate_regions import (
     build_semantic_in_predicate_region_builder,
 )
 from crrepairer.repairer.vp.temporal import expand_temporal_expression
+from crrepairer.smt.vp_proposition_capabilities import (
+    VPConstraintKind,
+    proposition_constraint_kind,
+)
 
 
 
@@ -249,7 +253,11 @@ class VPPredicateEstimation:
             prop_node
             for prop_node in self.sat_solver._prop_nodes
             if (
-                "stop_line" in prop_node.name
+                proposition_constraint_kind(prop_node)
+                in {
+                    VPConstraintKind.STOP_LINE_UPPER,
+                    VPConstraintKind.STANDSTILL_VELOCITY,
+                }
                 if is_in1
                 else "in_intersection_conflict_area__0_1" in prop_node.name
             )
@@ -261,7 +269,14 @@ class VPPredicateEstimation:
                     deceleration_reachability,
                     deceleration_diagnostics,
                 ) = self._estimate_deceleration_constraint_reachability(
-                    constraint_props,
+                    [
+                        prop
+                        for prop in constraint_props
+                        if proposition_constraint_kind(prop)
+                        == VPConstraintKind.STOP_LINE_UPPER
+                    ]
+                    if is_in1
+                    else constraint_props,
                     is_in1=is_in1,
                 )
             except Exception as exc:
@@ -327,7 +342,10 @@ class VPPredicateEstimation:
             name = prop_node.name
             current_value = float(prop_node.ttv_value) > 0.0
             if is_in1:
-                extractable = "stop_line" in name
+                extractable = proposition_constraint_kind(prop_node) in {
+                    VPConstraintKind.STOP_LINE_UPPER,
+                    VPConstraintKind.STANDSTILL_VELOCITY,
+                }
             elif use_critical_hybrid:
                 # A negative ego-conflict literal is VP-controllable whenever
                 # its future reachable envelope can touch the conflict region.
@@ -399,7 +417,7 @@ class VPPredicateEstimation:
                 continue
 
             if extractable:
-                repair_literals.append(f"~{alphabet}")
+                repair_literals.append(alphabet if is_in1 else f"~{alphabet}")
             else:
                 initial_domains[alphabet] = {int(current_value)}
                 # Legacy behavior: these names used to hard-fix the whole
