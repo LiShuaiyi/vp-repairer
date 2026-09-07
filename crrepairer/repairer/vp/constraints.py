@@ -365,14 +365,41 @@ class VPConstraintExtraction:
                 if not temporal_steps[id(prop)].contains(time_step):
                     continue
                 if "distance" in prop.name:
-                    s_up, v_up = self._constraint_keep_safe_distance(
-                        world=self.rule_monitor.world,
-                        lanelet_clcs=lanelet_clcs,
-                        time_step=time_step,
-                        lead_id=self.rule_monitor.other_id,
-                        follow_id=self.ego_vehicle.obstacle_id,
-                        follow_velocity=follow_velocity,
-                    )
+                    rg1_lead_ids = self._rg1_safe_distance_lead_ids(time_step)
+                    if rg1_lead_ids is None:
+                        # Preserve the existing code path exactly for every
+                        # non-RG1 rule and for RG1 with a valid selected lead.
+                        s_up, v_up = self._constraint_keep_safe_distance(
+                            world=self.rule_monitor.world,
+                            lanelet_clcs=lanelet_clcs,
+                            time_step=time_step,
+                            lead_id=self.rule_monitor.other_id,
+                            follow_id=self.ego_vehicle.obstacle_id,
+                            follow_velocity=follow_velocity,
+                        )
+                    else:
+                        safe_distance_bounds = [
+                            self._constraint_keep_safe_distance(
+                                world=self.rule_monitor.world,
+                                lanelet_clcs=lanelet_clcs,
+                                time_step=time_step,
+                                lead_id=lead_id,
+                                follow_id=self.ego_vehicle.obstacle_id,
+                                follow_velocity=follow_velocity,
+                            )
+                            for lead_id in rg1_lead_ids
+                        ]
+                        finite_bounds = [
+                            (s_bound, v_bound)
+                            for s_bound, v_bound in safe_distance_bounds
+                            if math.isfinite(s_bound)
+                        ]
+                        if finite_bounds:
+                            s_up, v_up = min(
+                                finite_bounds, key=lambda bound: bound[0]
+                            )
+                        else:
+                            s_up, v_up = math.inf, math.inf
                     s_max_list.append(s_up)
                     v_max_list.append(v_up)
                 elif "lane" in prop.name and "same" in prop.name:
@@ -1171,6 +1198,81 @@ class VPConstraintExtraction:
         lead_rear_s = lead_rear_s - vehicle_lead.shape.length / 2
         s = lead_rear_s - safe_distance - follow_length - delta_s
         return s, follow_velocity
+
+    def _rg1_safe_distance_lead_ids(self, time_step):
+        """Return RG1 antecedent-active leads when the selected lead is stale.
+
+        The monitor reports one ``other_id`` for the minimum rule robustness.
+        In multi-vehicle RG1 scenarios that vehicle can nevertheless have a
+        false implication antecedent at every frame, while another vehicle is
+        the actual front vehicle requiring the safe-distance constraint.  Keep
+        the legacy selected-lead behavior whenever that lead is ever active;
+        this narrowly fixes only the stale-selection case.
+
+        ``None`` means use the legacy selected ``other_id``.  An empty tuple
+        means that no lead activates the RG1 antecedent at this frame.
+        """
+        if list(getattr(self.config.repair, "rules", ())) != ["R_G1"]:
+            return None
+
+        cache = getattr(self, "_rg1_safe_distance_lead_cache", None)
+        monitor = self.rule_monitor
+        cache_key = (id(monitor), monitor.other_id)
+        if cache is None or cache.get("key") != cache_key:
+            try:
+                rule_index = monitor._rules.index("R_G1")
+                proposition_maps = monitor.all_props_all_ids_all[rule_index]
+                by_kind = {}
+                for name, values_by_vehicle in proposition_maps.items():
+                    if "in_front_of" in name:
+                        by_kind["front"] = values_by_vehicle
+                    elif "in_same_lane" in name:
+                        by_kind["same"] = values_by_vehicle
+                    elif "cut_in" in name:
+                        by_kind["cutin"] = values_by_vehicle
+
+                front_by_vehicle = by_kind["front"]
+                same_by_vehicle = by_kind["same"]
+                cutin_by_vehicle = by_kind.get("cutin", {})
+                active_by_index = {}
+                candidate_ids = set(front_by_vehicle) & set(same_by_vehicle)
+                for candidate_id in candidate_ids:
+                    front = front_by_vehicle[candidate_id]
+                    same = same_by_vehicle[candidate_id]
+                    cutin = cutin_by_vehicle.get(candidate_id, ())
+                    for index in range(min(len(front), len(same))):
+                        cutin_value = cutin[index] if index < len(cutin) else -1.0
+                        if (
+                            float(front[index]) > 0.0
+                            and float(same[index]) > 0.0
+                            and float(cutin_value) <= 0.0
+                        ):
+                            active_by_index.setdefault(index, []).append(candidate_id)
+
+                selected_lead_is_active = any(
+                    monitor.other_id in lead_ids
+                    for lead_ids in active_by_index.values()
+                )
+                cache = {
+                    "key": cache_key,
+                    "selected_lead_is_active": selected_lead_is_active,
+                    "active_by_index": {
+                        index: tuple(sorted(lead_ids))
+                        for index, lead_ids in active_by_index.items()
+                    },
+                }
+            except (AttributeError, IndexError, KeyError, TypeError, ValueError):
+                cache = {
+                    "key": cache_key,
+                    "selected_lead_is_active": True,
+                    "active_by_index": {},
+                }
+            self._rg1_safe_distance_lead_cache = cache
+
+        if cache["selected_lead_is_active"]:
+            return None
+        relative_step = int(time_step - monitor.start_time_step)
+        return cache["active_by_index"].get(relative_step, ())
 
     def _convert_lanelet_constraints_to_trajectory_constraints(
         self,
