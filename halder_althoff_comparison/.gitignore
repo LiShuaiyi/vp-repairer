@@ -7,6 +7,8 @@ __pycache__/
 /full_results_history_aware/
 /full_results_history_aware_3s_10k/
 /mona_rg1_results_3s_10k/
+/missing_in_results_3s_10k/
+/local_tools/
 /rg1_rg3_results_3s_10k/
 /*.md
 !/README.md
