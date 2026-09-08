@@ -1,13 +1,9 @@
 import os
-import json
 import re
-import subprocess
-import tempfile
 import time
 import warnings
 import math
 from fractions import Fraction
-from pathlib import Path
 from types import SimpleNamespace
 from typing import List
 import numpy as np
@@ -37,7 +33,6 @@ from crmonitor.predicates.velocity import (
     PredFovSpeedLimit,
     PredBrSpeedLimit,
     PredTypeSpeedLimit,
-    PredInStandStill,
 )
 from crmonitor.predicates.acceleration import PredAbruptBreaking
 
@@ -418,13 +413,6 @@ class RuleConstraintsReach:
         self._sel_prop_full = None
         self._prop_full = None
         self._nr_ts = None
-        self._config_repair = config_repair
-        self._use_reach_flow = (
-            os.environ.get("CRREPAIR_SMT_REACH_BACKEND", "legacy").strip().lower()
-            == "flow"
-        )
-        self._flow_payload = None
-        self._flow_s_offset = None
 
         # initialize the commonroad-reach
         # we use the default path of the reach folder
@@ -513,13 +501,7 @@ class RuleConstraintsReach:
         self.reach_config.vehicle.other.width = target_width
         self.reach_config.vehicle.other.length = target_length
 
-        # Reach-Flow runs in its dedicated environment/process and does not
-        # need the legacy semantic reachable-set interface. Constructing that
-        # interface here is both wasted work and fails on intersection actors
-        # represented by Circle shapes before Flow is ever invoked.
-        if self._use_reach_flow:
-            self.reach_interface = None
-        elif self.reach_config.reachable_set.mode_computation in [7, 8]:
+        if self.reach_config.reachable_set.mode_computation in [7, 8]:
             self.reach_interface = SemanticReachableSetInterface(self.reach_config, self.semantic_model,
                                                                  self.rule_interface)
         else:
@@ -747,17 +729,6 @@ class RuleConstraintsReach:
 
 
     def longitudinal_constraints(self, vehicle_configuration):
-        if self._use_reach_flow:
-            payload = self._compute_reach_flow_payload(skip_lateral=True)
-            self._flow_payload = payload
-            rows = payload["bounds"][1:]
-            s_min = np.asarray([row["s_min"] for row in rows])
-            s_max = np.asarray([row["s_max"] for row in rows])
-            v_min = np.asarray([row["v_min"] for row in rows])
-            v_max = np.asarray([row["v_max"] for row in rows])
-            return LonConstraints.construct_constraints(
-                s_min, s_max, s_min, s_max, v_min=v_min, v_max=v_max
-            )
         # compute the driving corridor
         time_start = time.time()
         self.compute_semantic_reachable_set(vehicle_configuration)
@@ -789,18 +760,6 @@ class RuleConstraintsReach:
 
     def lateral_constraints(self, traj_lon, configuration_qp):
         traj_lon_positions = traj_lon.get_positions()[:, 0]
-        if self._use_reach_flow:
-            cut_state = self._ini_traj.state_at_time_step(self._tc_obj.tc_time_step)
-            initial_s = configuration_qp.CLCS.convert_to_curvilinear_coords(
-                cut_state.position[0], cut_state.position[1]
-            )[0]
-            lon_positions = [float(initial_s)] + [float(value) for value in traj_lon_positions]
-            payload = self._compute_reach_flow_payload(lon_positions=lon_positions)
-            rows = payload["lateral_three_circle"][1:]
-            names = ("reference", "rear_or_center", "front")
-            d_min = np.asarray([[row[name][0] for name in names] for row in rows])
-            d_max = np.asarray([[row[name][1] for name in names] for row in rows])
-            return LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
         # fixme: not the same interface as reach
         # lateral_driving_corridors = self.reach_interface.extract_driving_corridors(
         #     corridor_lon=self.corridor,
@@ -812,180 +771,3 @@ class RuleConstraintsReach:
         )
         c_tv_lat = LatConstraints.construct_constraints(d_min, d_max, d_min, d_max)
         return c_tv_lat
-
-    def _flow_specifications(self):
-        """Translate the repair propositions supported by Reach-Flow."""
-        translated = []
-        substitutions = (
-            ("SafeDistance_V", "KeepsSafeDistancePrec_V"),
-            ("InConflictWith_V", "EgoInIntersectionConflictAreaOf_V"),
-            ("InConflictBy_V", "InIntersectionConflictAreaOfEgo_V"),
-        )
-        for formula in self.repaired_rules or ():
-            candidate = formula.removeprefix("LTL ")
-            for legacy, flow in substitutions:
-                candidate = candidate.replace(legacy, flow)
-            unsupported = (
-                "BehindStopLine", "SpeedLimit",
-            )
-            if not any(name in candidate for name in unsupported):
-                translated.append(candidate)
-        return translated or ["true"]
-
-    def _flow_stop_line_upper_bound(self):
-        upper_bound = np.inf
-        clcs = self.reach_config.planning.CLCS
-        lanelet_network = self._world_state.road_network.lanelet_network
-        for lanelet_id in self._ego_vehicle_world.lanelets_dir:
-            lanelet = lanelet_network.find_lanelet_by_id(lanelet_id)
-            if lanelet.stop_line is None:
-                continue
-            stop_line_s = min(
-                clcs.convert_to_curvilinear_coords(*lanelet.stop_line.start)[0],
-                clcs.convert_to_curvilinear_coords(*lanelet.stop_line.end)[0],
-            )
-            upper_bound = min(
-                upper_bound,
-                stop_line_s
-                - self._ego_vehicle_world.circle_radius
-                - self._veh_config.length / 3
-                - self._veh_config.wheelbase / 2,
-            )
-        return upper_bound
-
-    def _apply_flow_post_constraints(self, payload):
-        """Apply monitor predicates not registered by Flow to corridor bounds."""
-        speed_predicates = {
-            PredFovSpeedLimit.predicate_name,
-            PredBrSpeedLimit.predicate_name,
-            PredLaneSpeedLimit.predicate_name,
-            PredTypeSpeedLimit.predicate_name,
-        }
-        speed_clips = 0
-        stop_line_clips = 0
-        standstill_clips = 0
-        stop_line_upper = None
-        for prop in self._prop_full or ():
-            # A leading '~' asks for the negated predicate and cannot be
-            # represented by an upper-bound clip.
-            if prop is None or prop.alphabet.startswith("~"):
-                continue
-            for predicate in getattr(prop, "children", ()):
-                base_name = getattr(predicate, "base_name", None)
-                if base_name in speed_predicates:
-                    for row in payload["bounds"]:
-                        if row["step"] < self._tc_obj.tv_time_step:
-                            continue
-                        speed_limit = predicate.evaluator.get_speed_limit(
-                            self._world_state, row["step"], [self._ego_id]
-                        )
-                        if speed_limit is not None and speed_limit < row["v_max"]:
-                            row["v_max"] = float(speed_limit)
-                            speed_clips += 1
-                elif base_name == PredStopLineInFront.predicate_name:
-                    if stop_line_upper is None:
-                        stop_line_upper = self._flow_stop_line_upper_bound()
-                    if np.isfinite(stop_line_upper):
-                        for row in payload["bounds"]:
-                            if (
-                                row["step"] >= self._tc_obj.tv_time_step
-                                and stop_line_upper < row["s_max"]
-                            ):
-                                row["s_max"] = float(stop_line_upper)
-                                stop_line_clips += 1
-                elif base_name == PredInStandStill.predicate_name:
-                    match = re.search(r"historically\[\s*0\s*,\s*(\d+)\s*\]", prop.name)
-                    window = int(match.group(1)) if match else 0
-                    eligible = [
-                        row for row in payload["bounds"]
-                        if row["step"] >= self._tc_obj.tv_time_step
-                    ]
-                    config = getattr(predicate.evaluator, "config", {})
-                    epsilon = float(config.get("standstill_error", 0.01))
-                    numerical_margin = min(1.0e-6, max(1.0e-9, epsilon * 1.0e-3))
-                    velocity_upper = max(0.0, epsilon - numerical_margin)
-                    for row in eligible[-(window + 1):]:
-                        if velocity_upper < row["v_max"]:
-                            row["v_max"] = velocity_upper
-                            standstill_clips += 1
-        payload["post_constraints"] = {
-            "speed_limit_clips": speed_clips,
-            "stop_line_clips": stop_line_clips,
-            "standstill_clips": standstill_clips,
-            "stop_line_upper": stop_line_upper,
-        }
-        return payload
-
-    def _compute_reach_flow_payload(self, lon_positions=None, skip_lateral=False):
-        flow_python = os.environ.get(
-            "CRREPAIR_REACH_FLOW_PYTHON",
-            "/data_linux/conda-envs/repairverse_lin2025/bin/python",
-        )
-        worker = Path(__file__).resolve().parents[3] / "evaluation/reach_flow_constraint_adapter.py"
-        reference_path = np.asarray(self.reach_config.planning.reference_path).tolist()
-        route = getattr(self.reach_config.planning, "route", None)
-        lanelet_ids = list(
-            getattr(route, "list_ids_lanelets", None)
-            or getattr(route, "lanelet_ids", None)
-            or []
-        )
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as stream:
-            json.dump({"reference_path": reference_path, "lanelet_ids": lanelet_ids}, stream)
-            stream.flush()
-            command = [
-                flow_python, str(worker),
-                "--scenario", self._config_repair.general.path_scenario,
-                "--ego-id", str(self._ego_id),
-                "--start-step", str(self._tc_obj.tc_time_step),
-                "--horizon", str(self._nr_ts),
-                "--reference-path-file", stream.name,
-                "--wb-ra", str(self._veh_config.wb_ra),
-                "--wb-fa", str(self._veh_config.wb_fa),
-            ]
-            specifications = self._flow_specifications()
-            command += ["--specification", " & ".join(f"({item})" for item in specifications)]
-            if lon_positions is not None:
-                flow_lon_positions = lon_positions
-                if self._flow_s_offset is not None:
-                    flow_lon_positions = [
-                        float(value) - self._flow_s_offset for value in lon_positions
-                    ]
-                command += ["--lon-positions", json.dumps(flow_lon_positions)]
-            if skip_lateral:
-                command.append("--skip-lateral")
-            completed = subprocess.run(
-                command, capture_output=True, text=True, timeout=25, check=False
-            )
-        if completed.returncode:
-            raise RuntimeError(
-                "Reach-Flow adapter failed: "
-                + (completed.stderr[-6000:] or completed.stdout[-6000:])
-            )
-        payload = json.loads(completed.stdout.splitlines()[0])
-        cut_off_time_step = self._tc_obj.tc_time_step
-        if cut_off_time_step == self._ego_vehicle_cr.initial_state.time_step:
-            cut_state = self._ego_vehicle_cr.initial_state
-        else:
-            cut_state = self._ini_traj.state_at_time_step(cut_off_time_step)
-        rear_position = np.asarray(cut_state.position, dtype=float) - self._veh_config.wb_ra * np.array(
-            [math.cos(cut_state.orientation), math.sin(cut_state.orientation)],
-            dtype=float,
-        )
-        legacy_initial_s = self.reach_config.planning.CLCS.convert_to_curvilinear_coords(
-            float(rear_position[0]), float(rear_position[1])
-        )[0]
-        flow_initial = payload["bounds"][0]
-        flow_initial_s = 0.5 * (flow_initial["s_min"] + flow_initial["s_max"])
-        self._flow_s_offset = float(legacy_initial_s - flow_initial_s)
-        for row in payload["bounds"]:
-            row["s_min"] += self._flow_s_offset
-            row["s_max"] += self._flow_s_offset
-        payload["legacy_s_offset"] = self._flow_s_offset
-        self._apply_flow_post_constraints(payload)
-        print(
-            "* \t<TSolver>: Reach-Flow",
-            payload["route_source"], payload["specification"],
-            f"{payload['reach_and_corridor_time_s']:.3f}s",
-            payload["post_constraints"],
-        )
-        return payload

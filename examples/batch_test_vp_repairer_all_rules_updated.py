@@ -65,7 +65,6 @@ IN3_RULE_VARIANTS = ("full", "hand_draft")
 BATCH_CASE_OUTPUT_ROOT_ENV = "CRREPAIR_BATCH_CASE_OUTPUT_ROOT"
 LIN2025_PAPER_CONFIG_ENV = "CRREPAIR_LIN2025_PAPER_CONFIG"
 USE_MPR_ENV = "CRREPAIR_USE_MPR"
-SMT_SAT_SOLVER_MODE_ENV = "CRREPAIR_SMT_SAT_SOLVER_MODE"
 # Exercise both baseline planner modes and both constraint implementations.
 # The reachability constraints remain the primary configuration; manual
 # constraints are the semantic fallback when reach extraction cannot represent
@@ -83,7 +82,6 @@ RULE_SPECS = {
         "scenario_root": HIGH_D_ROOT,
         "vp_planner": 1,
         "vp_constraint_mode": 1,
-        "smt_sat_solver_mode": "domain_dpll",
     },
     # The paper's interstate timing figures merge these 93 MONA RG1 cases
     # with the 100 highD RG1 cases.  Keep this as an explicitly selected
@@ -95,7 +93,6 @@ RULE_SPECS = {
         "scenario_root": MONA_ROOT,
         "vp_planner": 1,
         "vp_constraint_mode": 1,
-        "smt_sat_solver_mode": "domain_dpll",
         "repairer_type_filter": "vp",
     },
     "rg2": {
@@ -105,7 +102,6 @@ RULE_SPECS = {
         "scenario_root": HIGH_D_ROOT,
         "vp_planner": 1,
         "vp_constraint_mode": 1,
-        "smt_sat_solver_mode": "domain_dpll",
         "populate_acceleration": True,
     },
     "rg3": {
@@ -115,7 +111,6 @@ RULE_SPECS = {
         "scenario_root": HIGH_D_ROOT,
         "vp_planner": 1,
         "vp_constraint_mode": 1,
-        "smt_sat_solver_mode": "domain_dpll",
     },
     "rg1_rg3": {
         "rule_label": "R_G1_R_G3",
@@ -124,7 +119,6 @@ RULE_SPECS = {
         "scenario_root": HIGH_D_ROOT,
         "vp_planner": 1,
         "vp_constraint_mode": 1,
-        "smt_sat_solver_mode": "domain_dpll",
     },
     "in1": {
         "rule_label": "R_IN1",
@@ -341,13 +335,9 @@ def solver_mode(group, repairer_type):
                 f"expected one of {VP_SAT_SOLVER_MODES}"
             )
         return mode
-    mode = os.environ.get(
-        SMT_SAT_SOLVER_MODE_ENV,
-        RULE_SPECS[group].get("smt_sat_solver_mode", "dpll"),
-    )
-    if mode not in {"dpll", "domain_dpll"}:
-        raise ValueError(f"Unsupported SMT SAT solver mode {mode!r}")
-    return mode
+    # The SMT repairer uses its original plain DPLL search. Domain-guided DPLL
+    # is evaluated only by the VP repairer configurations above.
+    return "dpll"
 
 
 def extend_acceleration_reference_path_enabled():

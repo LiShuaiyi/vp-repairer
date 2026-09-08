@@ -105,14 +105,6 @@ class MIQPPlannerRepair(MIQPPlanner):
             self._vehicle_configuration.CLCS = self._constraints.reach_config.planning.CLCS
             self._vehicle_configuration.reference_path = self._constraints.reach_config.planning.reference_path
 
-            # Reach-Flow already computes a feasible semantic corridor.  A
-            # shared longitudinal slack would allow the optimizer to leave
-            # that corridor (notably past a stop line), producing a trajectory
-            # which succeeds in Gurobi but fails the rule monitor afterwards.
-            # Keep the historical soft-corridor behavior for legacy Reach.
-            if self._constraints._use_reach_flow:
-                self.config.miqp_planner.slack_long = False
-
         # initialize the MIQP planner
         super().__init__(config)
 
