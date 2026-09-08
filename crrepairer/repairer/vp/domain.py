@@ -17,6 +17,7 @@ from crrepairer.repairer.vp.temporal import expand_temporal_expression
 from crrepairer.smt.vp_proposition_capabilities import (
     VPConstraintKind,
     proposition_constraint_kind,
+    supported_constraint_kinds,
 )
 
 
@@ -241,6 +242,7 @@ class VPPredicateEstimation:
         hard_priority_vars = set()
         unsupported_polarity_hard_vars = []
         repair_literals = []
+        deferred_region_repair_literals = []
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
         acceleration_reachability = {}
         acceleration_diagnostics = {}
@@ -249,17 +251,20 @@ class VPPredicateEstimation:
         deceleration_diagnostics = {}
         deceleration_reachability_time = 0.0
         constraint_repair_analysis_complete = True
+        repair_value = 1 if is_in1 else 0
         constraint_props = [
             prop_node
             for prop_node in self.sat_solver._prop_nodes
             if (
-                proposition_constraint_kind(prop_node)
-                in {
-                    VPConstraintKind.STOP_LINE_UPPER,
-                    VPConstraintKind.STANDSTILL_VELOCITY,
-                }
+                proposition_constraint_kind(
+                    prop_node, desired_value=repair_value
+                )
+                == VPConstraintKind.STOP_LINE_UPPER
                 if is_in1
-                else "in_intersection_conflict_area__0_1" in prop_node.name
+                else proposition_constraint_kind(
+                    prop_node, desired_value=repair_value
+                )
+                == VPConstraintKind.OUTSIDE_EGO_CONFLICT
             )
         ]
         if repair_mode == "deceleration":
@@ -341,24 +346,12 @@ class VPPredicateEstimation:
             alphabet = prop_node.alphabet[-1]
             name = prop_node.name
             current_value = float(prop_node.ttv_value) > 0.0
-            if is_in1:
-                extractable = proposition_constraint_kind(prop_node) in {
-                    VPConstraintKind.STOP_LINE_UPPER,
-                    VPConstraintKind.STANDSTILL_VELOCITY,
-                }
-            elif use_critical_hybrid:
-                # A negative ego-conflict literal is VP-controllable whenever
-                # its future reachable envelope can touch the conflict region.
-                # Its value at t_c alone cannot prove otherwise.
-                extractable = "in_intersection_conflict_area__0_1" in name
-            else:
-                # Preserve the original committed baseline exactly: it treats
-                # the current monitored truth value as fixed and only exposes
-                # a currently-true ego-conflict predicate to VP.
-                extractable = (
-                    "in_intersection_conflict_area__0_1" in name
-                    and current_value
-                )
+            constraint_kind = proposition_constraint_kind(
+                prop_node, desired_value=repair_value
+            )
+            extractable = constraint_kind in supported_constraint_kinds(
+                self.config.repair.rules
+            )
             if (
                 extractable
                 and repair_mode == "deceleration"
@@ -411,13 +404,30 @@ class VPPredicateEstimation:
                     # making the ego-conflict proposition false.
                     repair_value = 1 if is_in1 else 0
                     if repair_value in initial_domains[alphabet]:
-                        repair_literals.append(
-                            alphabet if repair_value else f"~{alphabet}"
-                        )
+                        literal = alphabet if repair_value else f"~{alphabet}"
+                        if constraint_kind in {
+                            VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
+                            VPConstraintKind.OUTSIDE_INTERSECTION,
+                        }:
+                            # These semantic-region actions extend VP's
+                            # controllable set.  Keep the established
+                            # ego-conflict action first, and try these only as
+                            # fallbacks; otherwise merely adding a capability
+                            # changes the first SAT model of existing cases.
+                            deferred_region_repair_literals.append(literal)
+                        else:
+                            repair_literals.append(literal)
                 continue
 
             if extractable:
-                repair_literals.append(alphabet if is_in1 else f"~{alphabet}")
+                literal = alphabet if is_in1 else f"~{alphabet}"
+                if constraint_kind in {
+                    VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
+                    VPConstraintKind.OUTSIDE_INTERSECTION,
+                }:
+                    deferred_region_repair_literals.append(literal)
+                else:
+                    repair_literals.append(literal)
             else:
                 initial_domains[alphabet] = {int(current_value)}
                 # Legacy behavior: these names used to hard-fix the whole
@@ -436,9 +446,9 @@ class VPPredicateEstimation:
         # guidance.  If this list is empty, Boolean models in the current
         # repair phase cannot produce any trajectory constraint and therefore
         # cannot repair an already violating trajectory.
-        self._constraint_repair_literals = list(
-            dict.fromkeys(repair_literals)
-        )
+        self._constraint_repair_literals = list(dict.fromkeys(
+            repair_literals + deferred_region_repair_literals
+        ))
         self._constraint_repair_analysis_complete = (
             constraint_repair_analysis_complete
         )
@@ -464,6 +474,11 @@ class VPPredicateEstimation:
                     alphabet if current_value else f"~{alphabet}"
                 )
                 current_value_guidance_count += 1
+
+        # Retain the new executable polarities in the branch order, but after
+        # the current-value preference above.  The domains stay {0, 1}, so SAT
+        # can still reach and execute these fallbacks when required.
+        repair_literals.extend(deferred_region_repair_literals)
 
         self._hard_domain_vars = hard_priority_vars
         self._repair_literals = repair_literals

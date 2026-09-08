@@ -8,6 +8,7 @@ Boolean operand can be decomposed into independently executable VP literals.
 
 from __future__ import annotations
 
+import os
 import re
 from enum import Enum
 from typing import Iterable, Optional
@@ -16,6 +17,9 @@ from typing import Iterable, Optional
 class VPConstraintKind(str, Enum):
     STOP_LINE_UPPER = "stop_line_upper"
     STANDSTILL_VELOCITY = "standstill_velocity"
+    OUTSIDE_EGO_CONFLICT = "outside_ego_conflict"
+    OUTSIDE_CAUSES_BRAKING = "outside_causes_braking"
+    OUTSIDE_INTERSECTION = "outside_intersection"
 
 
 _PREDICATE_CAPABILITIES = {
@@ -23,8 +27,40 @@ _PREDICATE_CAPABILITIES = {
     "in_standstill": VPConstraintKind.STANDSTILL_VELOCITY,
 }
 
+_NEGATED_PREDICATE_CAPABILITIES = {
+    "in_intersection_conflict_area": VPConstraintKind.OUTSIDE_EGO_CONFLICT,
+    "causes_braking_intersection": VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
+    "on_lanelet_with_type_intersection": VPConstraintKind.OUTSIDE_INTERSECTION,
+}
+
+ADDITIONAL_CONSTRAINT_EXTRACTION_ENV = (
+    "CRREPAIR_VP_ENABLE_ADDITIONAL_CONSTRAINT_EXTRACTION"
+)
+_ADDITIONAL_CONSTRAINT_KINDS = frozenset(
+    {
+        VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
+        VPConstraintKind.OUTSIDE_INTERSECTION,
+    }
+)
+
+
+def additional_constraint_extraction_enabled() -> bool:
+    """Whether the two additional IN predicate constraints are extracted.
+
+    They are disabled by default to avoid their additional predicate-estimate,
+    SAT-search, and constraint-extraction cost.  This also preserves the
+    original experiment setup.  Set
+    ``CRREPAIR_VP_ENABLE_ADDITIONAL_CONSTRAINT_EXTRACTION=1`` for the A/B setup.
+    """
+    value = os.environ.get(ADDITIONAL_CONSTRAINT_EXTRACTION_ENV, "0")
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
 _RULE_CAPABILITIES = {
     "R_IN1": frozenset(_PREDICATE_CAPABILITIES.values()),
+    "R_IN3": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
+    "R_IN3_hand_draft": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
+    "R_IN4": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
+    "R_IN5": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
 }
 
 # Only conjunctions whose leaves all occur here may be relaxed by distributing
@@ -55,7 +91,9 @@ def proposition_predicate_names(proposition) -> frozenset[str]:
             if candidate is None:
                 continue
             base_name = predicate_base_name(candidate)
-            if base_name in _PREDICATE_CAPABILITIES:
+            if base_name in (
+                _PREDICATE_CAPABILITIES | _NEGATED_PREDICATE_CAPABILITIES
+            ):
                 result.add(base_name)
                 break
 
@@ -68,12 +106,16 @@ def proposition_predicate_names(proposition) -> frozenset[str]:
         result.update(
             base_name
             for token in tokens
-            if (base_name := predicate_base_name(token)) in _PREDICATE_CAPABILITIES
+            if (base_name := predicate_base_name(token))
+            in (_PREDICATE_CAPABILITIES | _NEGATED_PREDICATE_CAPABILITIES)
         )
     return frozenset(result)
 
 
-def proposition_constraint_kind(proposition) -> Optional[VPConstraintKind]:
+def proposition_constraint_kind(
+    proposition,
+    desired_value: Optional[bool] = None,
+) -> Optional[VPConstraintKind]:
     """Return the unique executable positive VP action of a proposition.
 
     The registered bounds implement positive atomic predicates.  A selected
@@ -81,15 +123,32 @@ def proposition_constraint_kind(proposition) -> Optional[VPConstraintKind]:
     negated (for example ``previous(not(stop_line_in_front))``), is not the
     same action and must not be classified as extractable.
     """
-    if str(getattr(proposition, "alphabet", "")).startswith("~"):
-        return None
+    negative = (
+        str(getattr(proposition, "alphabet", "")).startswith("~")
+        if desired_value is None
+        else not bool(desired_value)
+    )
     expression = str(getattr(proposition, "name", proposition))
     if re.search(r"\bnot\s*\(", expression, flags=re.IGNORECASE):
         return None
     names = proposition_predicate_names(proposition)
     if len(names) != 1:
         return None
-    return _PREDICATE_CAPABILITIES[next(iter(names))]
+    name = next(iter(names))
+    if negative:
+        kind = _NEGATED_PREDICATE_CAPABILITIES.get(name)
+        if (
+            kind == VPConstraintKind.OUTSIDE_EGO_CONFLICT
+            and "__0_1" not in expression
+        ):
+            return None
+        if (
+            kind in _ADDITIONAL_CONSTRAINT_KINDS
+            and not additional_constraint_extraction_enabled()
+        ):
+            return None
+        return kind
+    return _PREDICATE_CAPABILITIES.get(name)
 
 
 def has_constraint_kind(proposition, kinds: Iterable[VPConstraintKind]) -> bool:
@@ -101,4 +160,6 @@ def supported_constraint_kinds(rules: Iterable[str]) -> frozenset[VPConstraintKi
     result = set()
     for rule in rules:
         result.update(_RULE_CAPABILITIES.get(rule, ()))
+    if not additional_constraint_extraction_enabled():
+        result.difference_update(_ADDITIONAL_CONSTRAINT_KINDS)
     return frozenset(result)

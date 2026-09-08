@@ -609,7 +609,42 @@ class VPConstraintExtraction:
                         prop_debug_recorded = True
                     continue
 
-                if supported_constraint_kinds(self.config.repair.rules):
+                if constraint_kind in {
+                    VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
+                    VPConstraintKind.OUTSIDE_INTERSECTION,
+                }:
+                    branch, boundary, region_source = (
+                        self._apply_negative_semantic_region_constraint(
+                            proposition=prop,
+                            constraint_kind=constraint_kind,
+                            time_step=time_step,
+                            start_s=float(first_plan_s_trajectory),
+                            trajectory_s_min_cap=trajectory_s_min_cap,
+                            trajectory_s_max_cap=trajectory_s_max_cap,
+                            index=idx,
+                        )
+                    )
+                    if not prop_debug_recorded:
+                        self._last_extraction_debug.append(
+                            {
+                                "proposition": prop.name,
+                                "kind": str(constraint_kind.value),
+                                "start_s": float(first_plan_s_trajectory),
+                                "boundary": boundary,
+                                "repair_mode": getattr(
+                                    self, "_vp_repair_mode", "deceleration"
+                                ),
+                                "branch": branch,
+                                "region_source": region_source,
+                            }
+                        )
+                        prop_debug_recorded = True
+                    continue
+
+                if (
+                    supported_constraint_kinds(self.config.repair.rules)
+                    and constraint_kind != VPConstraintKind.OUTSIDE_EGO_CONFLICT
+                ):
                     # This rule has an explicit capability registry, but the
                     # selected proposition has no executable VP action.
                     continue
@@ -765,6 +800,112 @@ class VPConstraintExtraction:
         
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
 
+    @staticmethod
+    def _proposition_predicate_evaluator(proposition, predicate_name):
+        """Return the atomic evaluator which owns a registered VP action."""
+        for predicate in getattr(proposition, "children", ()):
+            candidates = (
+                getattr(predicate, "base_name", None),
+                getattr(predicate, "name", None),
+                getattr(
+                    getattr(predicate, "evaluator", None),
+                    "predicate_name",
+                    None,
+                ),
+            )
+            if any(
+                candidate is not None
+                and predicate_base_name(candidate) == predicate_name
+                for candidate in candidates
+            ):
+                return getattr(predicate, "evaluator", None)
+        return None
+
+    def _apply_negative_semantic_region_constraint(
+        self,
+        *,
+        proposition,
+        constraint_kind,
+        time_step,
+        start_s,
+        trajectory_s_min_cap,
+        trajectory_s_max_cap,
+        index,
+    ):
+        """Keep the ego outside a certified predicate-true ``s`` region.
+
+        ``outer_true`` is an over-approximation of every path position where
+        the monitor predicate may be true.  Constraining the LP strictly before
+        or after that set therefore guarantees the selected negative literal.
+        """
+        predicate_names = {
+            VPConstraintKind.OUTSIDE_CAUSES_BRAKING:
+                "causes_braking_intersection",
+            VPConstraintKind.OUTSIDE_INTERSECTION:
+                "on_lanelet_with_type_intersection",
+        }
+        predicate_name = predicate_names[constraint_kind]
+        evaluator = self._proposition_predicate_evaluator(
+            proposition, predicate_name
+        )
+        if evaluator is None:
+            raise UnsupportedVPCandidateError(
+                f"{predicate_name} proposition has no predicate evaluator: "
+                f"{proposition.name}."
+            )
+
+        try:
+            builder, _ = self._ensure_semantic_in_region_builder()
+            if constraint_kind == VPConstraintKind.OUTSIDE_INTERSECTION:
+                region = builder.region_for(
+                    evaluator, str(proposition.name), int(time_step)
+                )
+            else:
+                estimate = builder.estimate_frame(
+                    evaluator,
+                    str(proposition.name),
+                    int(time_step),
+                    reachable=(float(start_s), float(start_s)),
+                )
+                region = estimate.region
+        except Exception as exc:
+            raise UnsupportedVPCandidateError(
+                f"Cannot construct {predicate_name} VP region at "
+                f"time_step={time_step}: {exc}"
+            ) from exc
+
+        if region is None or not region.complete:
+            source = None if region is None else region.source
+            raise UnsupportedVPCandidateError(
+                f"Incomplete {predicate_name} VP region at "
+                f"time_step={time_step}: {source}."
+            )
+        intervals = tuple(region.outer_true)
+        if not intervals:
+            return "fixed_false_no_constraint", None, region.source
+
+        margin = 1.0e-6
+        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        if repair_mode == "acceleration":
+            boundary = max(float(item.upper) for item in intervals) + margin
+            if float(start_s) >= boundary:
+                return "already_after_region", boundary, region.source
+            trajectory_s_min_cap[index] = max(
+                trajectory_s_min_cap[index], boundary
+            )
+            return "after_region_lower", boundary, region.source
+
+        future_intervals = [
+            item for item in intervals if float(item.upper) >= float(start_s)
+        ]
+        if not future_intervals:
+            return "already_after_region", None, region.source
+        boundary = min(float(item.lower) for item in future_intervals) - margin
+        trajectory_s_max_cap[index] = min(
+            trajectory_s_max_cap[index], boundary
+        )
+        return "before_region_upper", boundary, region.source
+
     def _get_intersection_conflict_trajectory_interval(
         self,
         lanelet_clcs,
@@ -879,7 +1020,20 @@ class VPConstraintExtraction:
             interval = temporal_steps[id(prop)]
             if interval.count == 0:
                 continue
-            if registered_kinds and proposition_constraint_kind(prop) not in registered_kinds:
+            constraint_kind = proposition_constraint_kind(prop)
+            if (
+                constraint_kind is None
+                and "in_intersection_conflict_area__0_1" in str(prop.name)
+                and not str(prop.alphabet).startswith("~")
+            ):
+                # Preserve the established intersection behavior for a
+                # positive conflict literal carried as an extra member of a
+                # complete SAT model.  VP does not actively drive into a
+                # conflict region; another selected, executable literal must
+                # provide the trajectory constraint and the final STL monitor
+                # remains the acceptance criterion.
+                continue
+            if registered_kinds and constraint_kind not in registered_kinds:
                 self._last_extraction_debug.append(
                     {
                         "proposition": prop.name,
@@ -891,9 +1045,7 @@ class VPConstraintExtraction:
                     f"constraint: {prop.name} ({prop.alphabet})."
                 )
             if (
-                not registered_kinds
-                and "in_intersection_conflict_area__0_1" in prop.name
-                and prop.alphabet.startswith("~")
+                constraint_kind == VPConstraintKind.OUTSIDE_EGO_CONFLICT
                 and conflict_trajectory_interval is None
             ):
                 self._last_extraction_debug.append(
