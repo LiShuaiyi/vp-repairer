@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from typing import Optional
 
@@ -15,6 +16,7 @@ from commonroad_qp_planner.configuration import PlanningConfigurationVehicle
 from commonroad_qp_planner.initialization import (
     set_up,
     convert_pos_curvilinear,
+    compute_initial_state,
     create_optimization_configuration_vehicle,
 )
 from commonroad_qp_planner.trajectory import Trajectory as QPTrajectory
@@ -49,9 +51,76 @@ import yaml
 import os
 import time
 import sys
+from types import MethodType
 
 qp_long_planner_module.GUROBI = qp_long_planner_module.OSQP
 qp_lat_planner_module.GUROBI = qp_lat_planner_module.OSQP
+
+
+def _tv_constraints_with_hard_rule_bounds(planner, c_long, c_ti):
+    """Apply collision bounds with slack and rule bounds without slack.
+
+    The upstream planner selects either ``s_soft_*`` or ``s_hard_*``.  Manual
+    intersection repair needs both: collision estimates can initially be
+    infeasible, while stop-line/conflict-entry bounds must never be crossed.
+    """
+    constraints = []
+    for k in range(planner.N):
+        constraints.append(
+            planner._x[:, k + 1]
+            == planner._A @ planner._x[:, k] + planner._B @ planner._u[:, k]
+        )
+        if c_long.s_soft_max[k] != np.inf:
+            constraints.append(
+                planner._x[0, k + 1] - planner._u[:, planner.N + 1]
+                <= c_long.s_soft_max[k]
+            )
+        if c_long.s_hard_max[k] != np.inf:
+            constraints.append(
+                planner._x[0, k + 1] <= c_long.s_hard_max[k]
+            )
+        if planner._safe_distance_modes is not None and planner._safe_distance_modes[k]:
+            pred_state = c_long.preceding_vehicle.get_lon_state(
+                k + c_long.tc_time_step
+            )
+            for velocity in planner._velocity_samples:
+                safe_distance_0 = qp_long_planner_module.calculate_safe_distance(
+                    velocity, pred_state.v, -10.5, -10, c_ti.react_time
+                )
+                safe_distance_derivative = (
+                    qp_long_planner_module.derivative_safe_distance(
+                        velocity, -10.0, c_ti.react_time
+                    )
+                )
+                safe_distance = safe_distance_0 + safe_distance_derivative * (
+                    planner._x[1, k + 1] - velocity
+                )
+                constraints.append(
+                    planner._x[0, k + 1]
+                    <= c_long.preceding_vehicle.rear_s(k + c_long.tc_time_step)
+                    - c_ti.length / 2
+                    - c_ti.wheelbase / 2
+                    - safe_distance
+                    - 1.0e-2
+                )
+        if c_long.s_soft_min[k] != -np.inf:
+            constraints.append(
+                planner._x[0, k + 1] + planner._u[:, planner.N]
+                >= c_long.s_soft_min[k]
+            )
+        if c_long.s_hard_min[k] != -np.inf:
+            constraints.append(
+                planner._x[0, k + 1] >= c_long.s_hard_min[k]
+            )
+        if c_long.v_max[k] != np.inf:
+            constraints.append(planner._x[1, k + 1] <= c_long.v_max[k])
+        if c_long.v_min[k] != -np.inf:
+            constraints.append(planner._x[1, k + 1] >= c_long.v_min[k])
+        if c_long.a_max[k] != np.inf:
+            constraints.append(planner._x[2, k + 1] <= c_long.a_max[k])
+        if c_long.a_min[k] != -np.inf:
+            constraints.append(planner._x[2, k + 1] >= c_long.a_min[k])
+    return constraints
 
 
 class QPPlannerRepair(QPPlanner):
@@ -114,6 +183,44 @@ class QPPlannerRepair(QPPlanner):
                 lanelets_leading_to_goal=ref_lane.contained_lanelets,
                 cosy=ref_lane.clcs,
             )
+        # The route planner can return an intersection reference path opposite
+        # to the monitor vehicle's travel direction.  Then a non-negative CR
+        # speed becomes negative in QP coordinates, while rule bounds are
+        # extracted from the monitor's forward CLCS.  Reuse the monitor lane
+        # only for that diagnosed mismatch; keep the normal Lin2022 route in
+        # every aligned case.
+        try:
+            projected_initial = compute_initial_state(
+                self._ego_vehicle.initial_state, self._qp_configuration
+            )
+        except (ValueError, AssertionError) as err:
+            message = str(err)
+            if not (
+                "outside of projection domain" in message
+                or "Provided velocity not valid" in message
+            ):
+                raise
+            projected_initial = None
+        if projected_initial is None or (
+            float(self._ego_vehicle.initial_state.velocity) >= 0.0
+            and float(projected_initial.v) < -1.0e-6
+        ):
+            ego_vehicle_world = rule_monitor.world.vehicle_by_id(
+                self._ego_vehicle.obstacle_id
+            )
+            ref_lane = self._select_fallback_reference_lane(ego_vehicle_world)
+            if ref_lane is not None:
+                self._qp_configuration = create_optimization_configuration_vehicle(
+                    self._scenario,
+                    self._planning_problem,
+                    self._settings["vehicle_settings"],
+                    route_planner=RoutePlanner(
+                        self._scenario.lanelet_network, self._planning_problem
+                    ),
+                    reference_path=np.array(ref_lane.clcs.reference_path()),
+                    lanelets_leading_to_goal=ref_lane.contained_lanelets,
+                    cosy=ref_lane.clcs,
+                )
         self.config = config
 
         self.reach_set_time = 0
@@ -182,6 +289,13 @@ class QPPlannerRepair(QPPlanner):
             qp_lat_parameters=self._settings["qp_planner"]["lateral_parameters"],
             verbose=verbose,
         )
+        if any(
+            rule in config.repair.rules
+            for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+        ):
+            self.lon_planner.tv_constraints = MethodType(
+                _tv_constraints_with_hard_rule_bounds, self.lon_planner
+            )
 
     @staticmethod
     def _select_fallback_reference_lane(ego_vehicle_world):
@@ -262,6 +376,14 @@ class QPPlannerRepair(QPPlanner):
         Initializes/resets configuration of the repairer for re-planning purposes
         """
 
+        # The selected branch is needed while constructing the initial QP state.
+        # Assign it before handling tc_object; the old order left reset-time
+        # normalization dependent on the previous iteration's branch.
+        if sel_proposition is not None:
+            self.sel_proposition = sel_proposition
+        if full_proposition is not None:
+            self.full_proposition = full_proposition
+
         if scenario is not None:
             self.scenario = scenario
             if not hasattr(scenario, 'dt'):
@@ -289,10 +411,10 @@ class QPPlannerRepair(QPPlanner):
             # !! update the initial state as the cut off state
             self._planning_problem.initial_state = InitialState(
                 position=self._cut_off_state.position,
-                velocity=self._cut_off_state.velocity,
+                velocity=self._normalized_initial_velocity(self.sel_proposition),
                 orientation=self._cut_off_state.orientation,
                 time_step=self._cut_off_state.time_step,
-                acceleration=getattr(self._cut_off_state, "acceleration", 0.0),
+                acceleration=self._normalized_initial_acceleration(self.sel_proposition),
                 # not needed but mandatory field
                 yaw_rate=0,
                 slip_angle=0,
@@ -300,10 +422,33 @@ class QPPlannerRepair(QPPlanner):
             self.lon_planner.set_time_step(self._N - self._cut_off_time_step)
             self.lat_planner.set_time_step(self._N - self._cut_off_time_step)
 
-        if sel_proposition is not None:
-            self.sel_proposition = sel_proposition
-        if full_proposition is not None:
-            self.full_proposition = full_proposition
+    def _selected_positive_standstill(self, selected):
+        return any(
+            not proposition.alphabet.startswith("~")
+            and proposition.name.count("not(") % 2 == 0
+            and "in_standstill__0" in proposition.name
+            for proposition in selected or ()
+        )
+
+    def _selected_negative_ego_conflict(self, selected):
+        return any(
+            proposition.alphabet.startswith("~")
+            and "in_intersection_conflict_area__0_1" in proposition.name
+            for proposition in selected or ()
+        )
+
+    def _normalized_initial_velocity(self, selected):
+        velocity = float(self._cut_off_state.velocity)
+        if self._selected_positive_standstill(selected) and abs(velocity) <= 0.05:
+            return 0.0
+        return velocity
+
+    def _normalized_initial_acceleration(self, selected):
+        if self._selected_positive_standstill(selected) and abs(
+            float(self._cut_off_state.velocity)
+        ) <= 0.05:
+            return 0.0
+        return getattr(self._cut_off_state, "acceleration", 0.0)
 
 
     @property
@@ -336,6 +481,7 @@ class QPPlannerRepair(QPPlanner):
                 self._qp_configuration
             )
         except Exception as e:
+            self.reach_set_time = time.time() - start_time_lon_constr
             print(f"Error in constructing longitudinal constraints: {e}")
             return None
         reference_lon = self.construct_s_reference(long_constr)
@@ -345,19 +491,61 @@ class QPPlannerRepair(QPPlanner):
         )
 
         start_time_lon = time.time()
+        # Rule-constraint construction can refresh shared planning state.  Apply
+        # the narrow standstill normalization at the final hand-off to QP too.
+        qp_initial_state = copy.deepcopy(self._planning_problem.initial_state)
         self.step(
-            self._planning_problem.initial_state,
-            self._planning_problem.initial_state.velocity,
+            qp_initial_state,
+            qp_initial_state.velocity,
         )
+        # CommonRoad stores scalar speed as a non-negative magnitude.  A
+        # locally reversed/intersection CLCS can make its cosine projection
+        # negative, although this QP formulation and all extracted bounds use
+        # forward speed v >= 0 and increasing progress.  Normalize that
+        # representation mismatch at the final hand-off; acceleration keeps
+        # its physical sign (negative still means braking).
+        if (
+            hasattr(self, "initial_state")
+            and
+            float(qp_initial_state.velocity) >= 0.0
+            and float(self.initial_state.v) < 0.0
+        ):
+            self.initial_state._v = abs(float(self.initial_state.v))
+        # Standstill is longitudinal.  Normalize after Cartesian-to-CLCS
+        # projection, since a vehicle with nonzero scalar speed can still have
+        # near-zero longitudinal speed on a noisy/misaligned first frame.
+        if (
+            self._selected_positive_standstill(self.sel_proposition)
+            and abs(float(self.initial_state.v)) <= 0.05
+        ):
+            # TrajPoint's public v/a setters are intentionally no-ops in the
+            # upstream planner, so update its backing fields.
+            self.initial_state._v = 0.0
+            self.initial_state._a = 0.0
+            self.set_desired_velocity(0.0)
+        elif (
+            self._selected_negative_ego_conflict(self.sel_proposition)
+            and self._tc_object.tc_time_step == self._start_time_step
+        ):
+            # Match VP's repair-prefix semantics: at TC=0 the first optimized
+            # sample is reconstructed, rather than treated as an immutable
+            # predecessor with its noisy/original v and a.  This permits the
+            # emergency hold used by VP when the ego is immediately before a
+            # conflict entrance; all following samples still obey QP dynamics.
+            self.initial_state._v = 0.0
+            self.initial_state._a = 0.0
+            self.set_desired_velocity(0.0)
 
         traj_lon, status = self.longitudinal_trajectory_planning(
             long_constr, reference_lon
         )
         long_optimization_time = time.time() - start_time_lon
+        self.reach_set_time = long_constr_construction_time
+        self.opti_plan_time = long_optimization_time
         print(
             "* \t\t -- longi optimization time {} s --".format(round(long_optimization_time, 3))
         )
-        if status is not "optimal":
+        if status != "optimal":
             return None
             # raise ValueError('<QPPlannerRepair/_longitudinal_trajectory_planning>: failed')
         print("* \t\t Lateral optimization")
@@ -370,6 +558,9 @@ class QPPlannerRepair(QPPlanner):
 
         lat_constr.select_proposition = long_constr.select_proposition
         lat_constr_construction_time = time.time() - start_time_lat_constr
+        self.reach_set_time = (
+            long_constr_construction_time + lat_constr_construction_time
+        )
         print(
             "* \t\t -- lateral constraint construction {} s --".format(round(lat_constr_construction_time, 3))
         )
@@ -379,6 +570,7 @@ class QPPlannerRepair(QPPlanner):
             traj_lon, lat_constr, d_ref=reference_lat
         )
         lat_optimization_time = time.time() - start_time_lat
+        self.opti_plan_time = long_optimization_time + lat_optimization_time
         print(
             "* \t\t -- lateral optimization time {} s --".format(round(lat_optimization_time, 3))
         )
@@ -387,7 +579,16 @@ class QPPlannerRepair(QPPlanner):
         self.opti_plan_time = long_optimization_time + lat_optimization_time
 
         # convert trajectory to cartesian space
-        if status is not "optimal":
+        if status != "optimal":
+            if (
+                self._selected_negative_ego_conflict(self.sel_proposition)
+                and self._is_standstill_longitudinal_trajectory(traj_lon)
+            ):
+                # The lateral QP is speed-parameterized and can become
+                # singular for a stationary longitudinal solution.  Only in
+                # that narrow case retain the fixed-path longitudinal result.
+                fixed_path_trajectory = self._fixed_path_trajectory(traj_lon)
+                return self.transform_merge_trajectory(fixed_path_trajectory)
             # print(f"[DEBUG] QP Planner Repair failed with status: {status}")
             return None
             # raise ValueError('<QPPlannerRepair/_lateral_trajectory_planning>: failed')
@@ -398,6 +599,30 @@ class QPPlannerRepair(QPPlanner):
 
         # plot_position_constraints(trajectory, (long_constr.s_hard_min, long_constr.s_hard_max), (lat_constr.d_hard_min, lat_constr.d_hard_max))
         return cr_trajectory
+
+    @staticmethod
+    def _is_standstill_longitudinal_trajectory(trajectory, tolerance=0.05):
+        return bool(trajectory.states) and all(
+            abs(float(state.v)) <= tolerance for state in trajectory.states
+        )
+
+    def _fixed_path_trajectory(self, longitudinal_trajectory):
+        """Attach the current lateral offset to a longitudinal QP result."""
+        lateral_offset = float(self.initial_state.position[1])
+        orientation = float(self.initial_state.orientation)
+        curvature = float(self.initial_state.kappa)
+        points = []
+        for longitudinal_state in longitudinal_trajectory.states:
+            point = copy.deepcopy(longitudinal_state)
+            point._position[1] = lateral_offset
+            point._orientation = orientation
+            point._kappa = curvature
+            point._kappa_dot = 0.0
+            points.append(point)
+        trajectory = QPTrajectory(points, TrajectoryType.FRENET)
+        trajectory._u_lon = longitudinal_trajectory.u_lon
+        trajectory._u_lat = np.zeros(max(0, len(points) - 1))
+        return trajectory
 
     def construct_s_reference(self, lon_constr: LonConstraints):
         """
@@ -495,8 +720,15 @@ class QPPlannerRepair(QPPlanner):
             vehicle_id=self._ego_vehicle.obstacle_id,
         )
 
+        # ``convert_to_cr_ego_vehicle`` already returns the QP initial state at
+        # relative time step 0.  At TC=0, prepending the CommonRoad initial
+        # state therefore created two states carrying ``time_step == 0``.  A
+        # CommonRoad Trajectory is index based, so the duplicate shifted every
+        # subsequent state by one and also made monitor traces one sample
+        # longer than traces of the other vehicles.  TC validation reports
+        # that structural mismatch as ``updated_tv = -inf``.
         if self._cut_off_time_step == 0:
-            remaining_states = [self._ego_vehicle.initial_state]
+            remaining_states = []
         else:
             remaining_states = [self._ego_vehicle.initial_state]
             prefix_begin = self._start_time_step + 1
@@ -508,6 +740,15 @@ class QPPlannerRepair(QPPlanner):
         remaining_states = [state for state in remaining_states if state is not None]
         for state in cr_traj_repaired.prediction.trajectory.state_list:
             state.time_step += self._cut_off_time_step
+        repaired_states = cr_traj_repaired.prediction.trajectory.state_list
+        # The input datasets (and the strict monitor) use forward-interval
+        # acceleration: a[t] belongs to the transition t -> t+1.  The QP
+        # exports its acceleration state at the interval end.  Shift that
+        # field back by one sample so reconstructed trajectory values use the
+        # exact same index as the constraint arrays.  Keep the final value;
+        # it is already constrained as x[N].
+        for state, next_state in zip(repaired_states, repaired_states[1:]):
+            state.acceleration = next_state.acceleration
         state_list = [
             CustomState(
                 time_step=state.time_step,
@@ -517,7 +758,7 @@ class QPPlannerRepair(QPPlanner):
                 acceleration=getattr(state, "acceleration", 0.0),
             )
             for state in remaining_states
-            + cr_traj_repaired.prediction.trajectory.state_list
+            + repaired_states
         ]
         cr_traj_repaired = Trajectory(self._start_time_step, state_list)
         return cr_traj_repaired

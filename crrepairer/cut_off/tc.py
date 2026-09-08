@@ -65,6 +65,7 @@ class TC(CutOffBase, ABC):
         self._mid = None
         self._search_mode = TCSearchMode.BINARY
         self.state_list_set = []
+        self._selected_conflict_avoidance_predicates = []
 
         # todo fix in params in crime
         yaml_file = os.path.join(
@@ -160,11 +161,21 @@ class TC(CutOffBase, ABC):
         )
         # check whether the rule_rob are of equal length, if not, should be a violation
         if not all(len(arr) == len(rule_rob[0]) for arr in rule_rob):
+            if os.environ.get("CRREPAIR_TC_DEBUG"):
+                print(
+                    "[CRRepair TC DEBUG] unequal robustness lengths: "
+                    f"{[len(arr) for arr in rule_rob]}"
+                )
             return -math.inf, None
         else:
             rule_rob = np.array(rule_rob)
         if np.any(rule_rob[:, 0] < 0):
             rule_idx = np.where(rule_rob[:, 0] < 0)[0][0]
+            if os.environ.get("CRREPAIR_TC_DEBUG"):
+                print(
+                    "[CRRepair TC DEBUG] negative initial robustness: "
+                    f"values={rule_rob[:, 0].tolist()}, rule_idx={rule_idx}"
+                )
             if other_ids[rule_idx][0] == ():
                 return -math.inf, None
             return -math.inf, other_ids[rule_idx][0][0]
@@ -175,6 +186,30 @@ class TC(CutOffBase, ABC):
             return math.inf, None  # no violation
         min_tv = np.min(tv_per_rule[tv_per_rule != 0])
         rule_idx = np.where(tv_per_rule == min_tv)[0][0]
+        if os.environ.get("CRREPAIR_TC_DEBUG"):
+            try:
+                prop_values = self.rule_monitor.prop_robust_all[
+                    rule_idx, min_tv, :
+                ]
+                prop_diag = [
+                    (
+                        node.alphabet,
+                        node.name,
+                        float(prop_values[index]),
+                    )
+                    for index, node in enumerate(
+                        self.rule_monitor.proposition_nodes
+                    )
+                ]
+                print(
+                    "[CRRepair TC DEBUG] updated violation predicates: "
+                    f"time_step={int(min_tv)}, values={prop_diag}"
+                )
+            except Exception as exc:
+                print(
+                    "[CRRepair TC DEBUG] predicate diagnostics failed: "
+                    f"{type(exc).__name__}: {exc}"
+                )
         if rule_idx == self.rule_monitor.min_rule_idx:
             if other_ids[rule_idx][min_tv] == ():
                 return min_tv * self.dT, self.ego_vehicle.obstacle_id
@@ -282,11 +317,30 @@ class TC(CutOffBase, ABC):
                 self.state_list_set.append(state_list[start_time:])
             check_elements_state_list(state_list, self.dT)
             try:
-                tv, _ = self.calc_tv_updated(
-                    state_list, self._mid
-                )  # which should be tv instead of ttm
+                if self._selected_conflict_avoidance_predicates:
+                    tv = self._calc_conflict_avoidance_tv(state_list)
+                else:
+                    tv, _ = self.calc_tv_updated(
+                        state_list, self._mid
+                    )  # which should be tv instead of ttm
             except AttributeError as e:
                 # Warn the user about the attribute error
                 warnings.warn(f"* \t<Tsolver>: AttributeError encountered: {e}")
                 tv = -math.inf
         return tv
+
+    def _calc_conflict_avoidance_tv(self, state_list):
+        """Validate a TC candidate against the selected repair branch only."""
+        update_ego_vehicle(
+            self.world.road_network, self._world_ego, state_list, 0, self.dT
+        )
+        start = self._world_ego.start_time
+        end = min(self._world_ego.end_time, max(state.time_step for state in state_list))
+        for time_step in range(start, end + 1):
+            for predicate in self._selected_conflict_avoidance_predicates:
+                robustness = predicate.evaluator.evaluate_robustness(
+                    self.world, time_step, [self._world_ego.id, self.rule_monitor.other_id]
+                )
+                if robustness >= 0.0:
+                    return time_step * self.dT
+        return math.inf

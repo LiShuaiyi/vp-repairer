@@ -73,26 +73,7 @@ class DomainDPLL:
 
     @staticmethod
     def get_literal(cnf, prop_nodes, tv_time_step: int):
-        def robustness_degree(alp):
-            rob_min_tv_h = 0
-            node = next((x for x in prop_nodes if x.alphabet[-1] == alp[-1]), None)
-            for predicate in node.children:
-                if predicate.agent_placeholders == (1, 0):
-                    rob_min_tv_h += 1
-            rob_min_tv_h += abs(node.ttv_h_min)
-            return rob_min_tv_h
-
-        literals = []
-        for sub in cnf:
-            split_cnf = sub.split()
-            for lit in split_cnf:
-                if lit[-1] not in literals and "~" + lit[-1] not in literals:
-                    literals.append(lit)
-
-        if prop_nodes is not None and tv_time_step is not math.inf:
-            return sorted(literals, key=robustness_degree)
-        else:
-            return literals
+        return DPLL.get_literal(cnf, prop_nodes, tv_time_step)
 
     @staticmethod
     def _assign_cnf(sympy_cnf):

@@ -9,8 +9,9 @@ and post-repair compliance validation:
 * constraint_extract_time: rule extraction plus coordinate conversion
 * vp_planning_time: trajectory CLCS, LP, and repaired trajectory construction
 
-SMT component fields are zero; only its repair-method total is reported.  SMT uses
-the same multi-configuration fallback idea as the existing batch runners.
+SMT reports SAT, time-to-compliance, reachability, and optimization components
+as well as its repair-method total.  SMT uses the same multi-configuration
+fallback idea as the existing batch runners.
 """
 
 import argparse
@@ -62,6 +63,9 @@ VP_EXTEND_ACCELERATION_REFERENCE_ENV = (
 IN3_RULE_VARIANT_ENV = "CRREPAIR_BATCH_IN3_RULE_VARIANT"
 IN3_RULE_VARIANTS = ("full", "hand_draft")
 BATCH_CASE_OUTPUT_ROOT_ENV = "CRREPAIR_BATCH_CASE_OUTPUT_ROOT"
+LIN2025_PAPER_CONFIG_ENV = "CRREPAIR_LIN2025_PAPER_CONFIG"
+USE_MPR_ENV = "CRREPAIR_USE_MPR"
+SMT_SAT_SOLVER_MODE_ENV = "CRREPAIR_SMT_SAT_SOLVER_MODE"
 # Exercise both baseline planner modes and both constraint implementations.
 # The reachability constraints remain the primary configuration; manual
 # constraints are the semantic fallback when reach extraction cannot represent
@@ -205,6 +209,10 @@ FIELDNAMES = [
     "sat_solver_mode",
     "extend_acceleration_reference_path",
     "attempted_smt_configurations",
+    "use_mpr",
+    "reach_mode",
+    "validation_mode",
+    "optimization_success",
     "success",
     "iterations",
     "successful_repair_mode",
@@ -305,7 +313,23 @@ def load_group_cases(group: str):
             if key not in path_index:
                 raise ValueError(f"Missing scenario-path index for {group} case {key}")
             case["scenario_path"] = path_index[key]
-    return cases
+    # Some historical input lists (notably highd_rg1_rg3.csv) contain the same
+    # scenario/ego pair twice.  Running and plotting those rows would silently
+    # overweight most of that cohort.
+    unique_cases = []
+    seen = set()
+    for case in cases:
+        key = (
+            case["scenario_id"],
+            case["scenario_path"],
+            case["ego_id"],
+            case["rule"],
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_cases.append(case)
+    return unique_cases
 
 
 def solver_mode(group, repairer_type):
@@ -317,7 +341,13 @@ def solver_mode(group, repairer_type):
                 f"expected one of {VP_SAT_SOLVER_MODES}"
             )
         return mode
-    return RULE_SPECS[group].get("smt_sat_solver_mode", "dpll")
+    mode = os.environ.get(
+        SMT_SAT_SOLVER_MODE_ENV,
+        RULE_SPECS[group].get("smt_sat_solver_mode", "dpll"),
+    )
+    if mode not in {"dpll", "domain_dpll"}:
+        raise ValueError(f"Unsupported SMT SAT solver mode {mode!r}")
+    return mode
 
 
 def extend_acceleration_reference_path_enabled():
@@ -343,6 +373,8 @@ def empty_result(group, case, repairer_type, planner, constraint_mode):
                 else ""
             ),
             "attempted_smt_configurations": "",
+            "use_mpr": "",
+            "reach_mode": "",
             "success": False,
             "iterations": 0,
             "successful_repair_mode": "",
@@ -397,11 +429,26 @@ def build_config(group, case, repairer_type, planner, constraint_mode):
     config.repair.ego_id = case["ego_id"]
     config.repair.planner = planner
     config.repair.constraint_mode = constraint_mode
+    # A benchmark row labelled planner=2 must really execute MIQP.  Silently
+    # replacing it with QP makes fixed-configuration timings and outcomes
+    # scientifically uninterpretable.  The library retains fallback by
+    # default; this unified benchmark runner opts into strict behavior.
+    config.repair.allow_planner_fallback = repairer_type != "smt"
     config.repair.sat_solver_mode = solver_mode(group, repairer_type)
     config.repair.extend_acceleration_reference_path = (
         extend_acceleration_reference_path_enabled()
     )
-    config.repair.use_mpr = False
+    lin2025_paper_config = (
+        repairer_type == "smt"
+        and os.environ.get(LIN2025_PAPER_CONFIG_ENV, "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    use_mpr_override = os.environ.get(USE_MPR_ENV)
+    config.repair.use_mpr = (
+        lin2025_paper_config
+        if use_mpr_override is None
+        else use_mpr_override.strip().lower() in {"1", "true", "yes", "on"}
+    )
     config.repair.use_mpr_derivative = False
     config.debug.show_plots = False
     if "scenario_type" in spec:
@@ -504,19 +551,35 @@ def collect_smt_total(result, repairer):
     # initial monitoring, and the external strict compliance check are excluded.
     sat_time = float(getattr(repairer, "sat_reasoning_time", 0.0) or 0.0)
     t_solver = getattr(repairer, "t_solver", None)
-    t_solver_total = float(getattr(t_solver, "total_runtime", 0.0) or 0.0)
-    result["core_total_time"] = sat_time + t_solver_total
-    # The paper comparison only decomposes the proposed VP method.  All SMT
-    # component and legacy timing fields deliberately remain zero.
+    tc_search_time = float(getattr(t_solver, "tc_search_time", 0.0) or 0.0)
+    reach_set_time = float(getattr(t_solver, "reach_set_time", 0.0) or 0.0)
+    optimization_time = float(getattr(t_solver, "opti_plan_time", 0.0) or 0.0)
+    result["sat_time"] = sat_time
+    result["tc_search_time"] = tc_search_time
+    result["reach_set_time"] = reach_set_time
+    result["optimization_time"] = optimization_time
+    result["core_total_time"] = (
+        sat_time + tc_search_time + reach_set_time + optimization_time
+    )
+    # The four VP-specific component columns remain zero.  SMT diagnostics use
+    # the legacy SAT/TC/reach/optimization fields above.
 
 
-def run_single_configuration(group, case, repairer_type, planner, constraint_mode):
+def run_single_configuration(
+    group, case, repairer_type, planner, constraint_mode, validation_mode="strict"
+):
     result = empty_result(group, case, repairer_type, planner, constraint_mode)
     wall_start = time.time()
     repairer = None
     try:
         config = build_config(
             group, case, repairer_type, planner, constraint_mode
+        )
+        result["use_mpr"] = bool(config.repair.use_mpr)
+        result["reach_mode"] = (
+            int(os.environ.get("CRREPAIR_SMT_REACH_MODE", "7"))
+            if repairer_type == "smt" and constraint_mode == 2
+            else ""
         )
         ego_vehicle = retrieve_ego_vehicle(config)
         if RULE_SPECS[group].get("populate_acceleration"):
@@ -538,7 +601,12 @@ def run_single_configuration(group, case, repairer_type, planner, constraint_mod
         )
         repairer = repairer_cls(rule_monitor, ego_vehicle, config)
         disable_visualization(repairer)
-        repaired_trajectory = repairer.repair()
+        if validation_mode not in {"lin", "strict"}:
+            raise ValueError(f"unsupported validation mode: {validation_mode}")
+        result["validation_mode"] = validation_mode
+        repaired_trajectory = repairer.repair(
+            check_flag=(repairer_type != "smt" or validation_mode == "strict")
+        )
 
         result["iterations"] = int(getattr(repairer, "nr_iter", 0) or 0)
         result["successful_repair_mode"] = (
@@ -561,6 +629,7 @@ def run_single_configuration(group, case, repairer_type, planner, constraint_mod
         else:
             collect_smt_total(result, repairer)
 
+        result["optimization_success"] = repaired_trajectory is not None
         if repaired_trajectory is None:
             result["error"] = "repair returned None"
             return result
@@ -611,7 +680,11 @@ def run_single_configuration(group, case, repairer_type, planner, constraint_mod
 
 def run_smt_with_fallback(group, case):
     attempts = []
-    for planner, constraint_mode in SMT_CONFIGURATIONS:
+    configurations = SMT_CONFIGURATIONS
+    fixed_configuration = os.environ.get("CRREPAIR_SMT_FIXED_CONFIG", "").lower()
+    if fixed_configuration == "p1c1":
+        configurations = ((1, 1),)
+    for planner, constraint_mode in configurations:
         attempt = run_single_configuration(
             group, case, "smt", planner, constraint_mode
         )
@@ -636,13 +709,9 @@ def run_smt_with_fallback(group, case):
         f"{'ok' if attempt['success'] else 'fail'}"
         for attempt in attempts
     )
-    selected["iterations"] = sum(int(attempt["iterations"] or 0) for attempt in attempts)
-    selected["core_total_time"] = sum(
-        float(attempt["core_total_time"] or 0.0) for attempt in attempts
-    )
-    selected["wall_time"] = sum(
-        float(attempt["wall_time"] or 0.0) for attempt in attempts
-    )
+    # Report only the selected configuration.  Earlier failed configurations
+    # remain visible in attempted_smt_configurations, but their iterations and
+    # timings are not part of the selected SMT result.
     return selected
 
 
@@ -859,6 +928,25 @@ def main():
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--case":
         case_result = run_case(sys.argv[2], json.loads(sys.argv[4]), sys.argv[3])
+        print(RESULT_PREFIX + json.dumps(case_result, default=str))
+    elif len(sys.argv) > 1 and sys.argv[1] == "--fixed-smt-case":
+        case_result = run_single_configuration(
+            sys.argv[2],
+            json.loads(sys.argv[5]),
+            "smt",
+            int(sys.argv[3]),
+            int(sys.argv[4]),
+        )
+        print(RESULT_PREFIX + json.dumps(case_result, default=str))
+    elif len(sys.argv) > 1 and sys.argv[1] == "--fixed-smt-case-mode":
+        case_result = run_single_configuration(
+            sys.argv[2],
+            json.loads(sys.argv[6]),
+            "smt",
+            int(sys.argv[3]),
+            int(sys.argv[4]),
+            validation_mode=sys.argv[5],
+        )
         print(RESULT_PREFIX + json.dumps(case_result, default=str))
     else:
         main()

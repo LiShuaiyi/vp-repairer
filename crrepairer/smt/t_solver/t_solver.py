@@ -1,3 +1,4 @@
+import copy
 import math
 import time
 import torch
@@ -47,6 +48,9 @@ class TSolver:
 
         self.verbose = True
         self.config = config
+        self.requested_planner = config.repair.planner
+        self.effective_planner = config.repair.planner
+        self.planner_fallback_reason = ""
 
         # todo: same for QP
         if config.repair.planner == 1:
@@ -66,8 +70,14 @@ class TSolver:
                     self.config
                 )
             except GurobiError as err:
+                if not getattr(config.repair, "allow_planner_fallback", True):
+                    raise RuntimeError(
+                        "requested MIQP planner is unavailable; refusing to "
+                        f"substitute QP in a fixed-configuration run: {err}"
+                    ) from err
                 print(f"* \t<TSolver>: MIQP planner is unavailable ({err}); falling back to QP planner.")
-                self.config.repair.planner = 1
+                self.effective_planner = 1
+                self.planner_fallback_reason = str(err)
                 self._planner = QPPlannerRepair(
                     self._rule_monitor,
                     self._tc_obj,
@@ -99,6 +109,48 @@ class TSolver:
     def compliant_maneuvers(self):
         return self._compliant_maneuvers
 
+    @property
+    def selected_propositions(self):
+        return tuple(self._sel_prop or ())
+
+    def failed_semantic_core(self):
+        """Return a small failed core for repeated equivalent theory models."""
+        conflict_literals = [
+            proposition.alphabet
+            for proposition in self.selected_propositions
+            if proposition.alphabet.startswith("~")
+            and "in_intersection_conflict_area__0_1" in proposition.name
+        ]
+        if not conflict_literals:
+            # If none of the violated literals has an implemented maneuver,
+            # changing unrelated SAT facts cannot make this literal executable.
+            # Block one such literal as a capability-level core so DPLL moves
+            # on instead of enumerating all combinations around it.
+            if self._compliant_maneuvers == [] and self.selected_propositions:
+                return [
+                    min(
+                        self.selected_propositions,
+                        key=lambda proposition: (
+                            abs(float(proposition.ttv_h_min)), proposition.name
+                        ),
+                    ).alphabet
+                ]
+            return None
+        # Prefer the direct conflict proposition over temporal duplicates.
+        return [
+            min(
+                conflict_literals,
+                key=lambda literal: next(
+                    (
+                        proposition.name.count("once")
+                        for proposition in self.selected_propositions
+                        if proposition.alphabet == literal
+                    ),
+                    999,
+                ),
+            )
+        ]
+
     def assign_proposition(self, propositions: List[PropositionNode], model: list, use_mpr_derivative: bool):
         """
         Assigns propositions to the T-solver.
@@ -111,11 +163,25 @@ class TSolver:
                 if (prop.ttv_value < 0 and prop.alphabet[0] != "~") or (
                     prop.ttv_value > 0 and prop.alphabet[0] == "~"
                 ):
-                    self._sel_prop.append(prop)
+                    # PropositionNode instances are reused for both polarities by
+                    # the SAT layer.  Freeze the selected literal here; otherwise
+                    # a later occurrence can mutate ``alphabet`` and silently
+                    # invert the branch seen by TC/constraint extraction.
+                    selected_prop = copy.copy(prop)
+                    selected_prop.alphabet = prop.alphabet
+                    self._sel_prop.append(selected_prop)
                     if self.verbose:
                         print(
-                            f"* \t<TSolver>: selected propositions: {prop.alphabet[-1]} {prop.name} = {prop.ttv_value}"
+                            f"* \t<TSolver>: selected propositions: {selected_prop.alphabet} "
+                            f"{selected_prop.name} = {selected_prop.ttv_value}"
                         )
+        self._tc_obj._selected_conflict_avoidance_predicates = [
+            predicate
+            for prop in self._sel_prop
+            if prop.alphabet.startswith("~")
+            and "in_intersection_conflict_area__0_1" in prop.name
+            for predicate in prop.children
+        ]
         self._compliant_maneuvers = self.set_compliant_maneuver(use_mpr_derivative)
 
     def set_compliant_maneuver(self, use_mpr_derivative: bool):
@@ -128,7 +194,10 @@ class TSolver:
         )
         compliant_maneuver = list()
         for prop_node in self._sel_prop:
-            if prop_node.name.startswith("previous") or "historically" in prop_node.name:
+            if prop_node.name.startswith("previous") or (
+                "historically" in prop_node.name
+                and getattr(prop_node, "vp_decomposition_group", None) is None
+            ):
                 continue
             for predicate in prop_node.children:
                 if not hasattr(predicate, "evaluator"):
@@ -271,6 +340,80 @@ class TSolver:
         """
         if self._compliant_maneuvers is None:
             return -math.inf  # marked as not repairable
+        # Avoiding entry is a prefix property: once this branch is selected the
+        # optimizer must be allowed to act from the first reparable state.  A
+        # maneuver simulation cannot certify it reliably at tv=1 because that
+        # state is part of the immutable monitor prefix.
+        if self._tc_obj._selected_conflict_avoidance_predicates:
+            self._tc_obj._tc = self._tc_obj.ego_vehicle.initial_state.time_step * self._tc_obj.dT
+            return self._tc_obj._tc
+        # ``not brakes_abruptly`` constrains the acceleration signal itself.
+        # If TC is chosen after the first abrupt sample, that immutable prefix
+        # still violates R_G2 even when the suffix QP is feasible.  Start the
+        # direct avoidance branch at the first reparable state; the alternate
+        # logical branch (a justified abrupt brake) remains untouched.
+        if any(
+            prop.source_rule == "R_G2"
+            and prop.alphabet.startswith("~")
+            and prop.name == "brakes_abruptly__0"
+            for prop in self._sel_prop
+        ):
+            self._tc_obj._tc = (
+                self._tc_obj.ego_vehicle.initial_state.time_step
+                * self._tc_obj.dT
+            )
+            return self._tc_obj._tc
+        # A positive safe-distance branch must be able to shape the complete
+        # approach to the preceding vehicle.  Legacy maneuver-based TC search
+        # often returned TV-1, leaving one QP interval and making otherwise
+        # avoidable RG1 violations infeasible.  Start only this direct safety
+        # branch at the first reparable state; alternative RG1 logic remains
+        # governed by the original TC search.
+        if any(
+            prop.source_rule == "R_G1"
+            and not prop.alphabet.startswith("~")
+            and prop.name == "keeps_safe_distance_prec__0_1"
+            for prop in self._sel_prop
+        ):
+            self._tc_obj._tc = (
+                self._tc_obj.ego_vehicle.initial_state.time_step
+                * self._tc_obj.dT
+            )
+            return self._tc_obj._tc
+        # Keeping the stop line in front is likewise a prefix property.  If
+        # this direct R_IN1 branch is selected, delaying TC until close to TV
+        # can leave an immutable crossing (or an unnecessarily ill-conditioned
+        # emergency stop) before the QP-controlled suffix.
+        if any(
+            prop.source_rule == "R_IN1"
+            and not prop.alphabet.startswith("~")
+            and prop.name == "stop_line_in_front__0"
+            for prop in self._sel_prop
+        ):
+            self._tc_obj._tc = (
+                self._tc_obj.ego_vehicle.initial_state.time_step
+                * self._tc_obj.dT
+            )
+            return self._tc_obj._tc
+        # IN1's positive historical standstill literal is stronger than the
+        # instantaneous stop-line violation used by the legacy TC search.  A
+        # TC close to TV can still avoid crossing the line, while leaving only
+        # one sample before the required three-second zero-speed window.  The
+        # resulting QP is then infeasible even though braking from the start of
+        # the reparable trajectory is feasible.  Start this specific prefix
+        # repair at the first state; all other Lin2022 TC decisions are kept.
+        if any(
+            prop.source_rule == "R_IN1"
+            and not prop.alphabet.startswith("~")
+            and "historically" in prop.name
+            and "in_standstill" in prop.name
+            for prop in self._sel_prop
+        ):
+            self._tc_obj._tc = (
+                self._tc_obj.ego_vehicle.initial_state.time_step
+                * self._tc_obj.dT
+            )
+            return self._tc_obj._tc
         tc = self.tc_object.generate(self._compliant_maneuvers, use_dummy_tc)
         return tc
 
@@ -279,14 +422,14 @@ class TSolver:
         Initializes the qp planner and uses it for trajectory repairing.
         """
         start_time = time.time()
-        if self.config.repair.planner == 1:
+        if self.effective_planner == 1:
             self._planner.reset(scenario=self.tc_object.scenario,
                                 tc_object=self.tc_object,
                                 sel_proposition=self._sel_prop,
                                 full_proposition=self._prop_full)
             self._planner.construct_constraints(self._sel_prop, self._prop_full)
             print("* \t<TSolver>: QP planner is invoked")
-        elif self.config.repair.planner == 2:
+        elif self.effective_planner == 2:
             self._planner.reset(tc_object=self.tc_object,
                                 rule_monitor=self._rule_monitor)
             suc = self._planner.construct_constraints(self._sel_prop, self._prop_full)
@@ -304,15 +447,14 @@ class TSolver:
         print(f"* \t<TSolver>: initialization time {self.reach_set_time:.3f}s")
         start_time = time.time()
 
-        repaired_trajectory = self._planner.plan()
-        # repaired_trajectory = self._miqp_planner.plan()
-        if self.config.repair.planner == 2 or self.config.repair.planner == 1:
-        # if self.config.repair.planner in [1, 2]:
+        try:
+            repaired_trajectory = self._planner.plan()
+        finally:
+            # Preserve work performed on failed/exceptional planner paths too.
+            # QPPlannerRepair used to expose zero here whenever longitudinal
+            # optimization returned early, creating artificial fast failures.
             self.reach_set_time = self._planner.reach_set_time
             self.opti_plan_time = self._planner.opti_plan_time
-        else:
-            self.reach_set_time = 0
-            self.opti_plan_time = self._planner.rrt_time
         print(f"* \t<TSolver>: solving time {time.time() - start_time:.3f}s")
         return repaired_trajectory
 

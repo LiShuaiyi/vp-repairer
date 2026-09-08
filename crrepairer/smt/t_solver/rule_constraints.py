@@ -1,3 +1,6 @@
+import math
+import os
+import re
 import numpy as np
 from typing import List, Optional, Union
 from collections import defaultdict
@@ -27,6 +30,7 @@ from crmonitor.predicates.velocity import (
     PredFovSpeedLimit,
     PredBrSpeedLimit,
     PredTypeSpeedLimit,
+    PredInStandStill,
 )
 from crmonitor.predicates.general import PredCutIn
 from crmonitor.predicates.acceleration import PredAbruptBreaking, PredRelAbruptBreaking
@@ -47,6 +51,15 @@ class RuleConstraintsManual:
     """
     Class for traffic rule constraints
     """
+
+    # The STL predicates use strict sign semantics: zero robustness is not a
+    # robustly satisfied negation.  Keeping the QP exactly on the predicate
+    # boundary also lets normal OSQP feasibility residuals turn a nominally
+    # compliant acceleration into an abrupt-braking violation after trajectory
+    # reconstruction.  Use a small physical-unit margin around that boundary.
+    _STRICT_ACCELERATION_MARGIN = 1e-2
+    _CONFLICT_ENTRY_MARGIN = 5e-2
+    _STOP_LINE_MARGIN = 5e-2
 
     def __init__(
         self,
@@ -112,6 +125,7 @@ class RuleConstraintsManual:
         self.s_circle_center_rear = None
         self.conflict_line_front = None
         self.conflict_line_rear = None
+        self._avoid_conflict_upper_bound = None
         # TODO: maybe have some error in qp planner
         # add conflict area parameters
         for proposition in proposition_full:
@@ -136,6 +150,7 @@ class RuleConstraintsManual:
 
         if tc_object is not None:
             self._tc_obj = tc_object
+            self._avoid_conflict_upper_bound = None
             self._compliant_maneuver = tc_object.compliant_maneuver
             self._safe_dis_mode = [
                 False for _ in range(tc_object.N -tc_object.tc_time_step + 1)
@@ -175,6 +190,63 @@ class RuleConstraintsManual:
     def safe_distance_modes(self):
         return self._safe_dis_mode
 
+    def _selected_literal(self, proposition):
+        return next(
+            (
+                candidate
+                for candidate in self._sel_prop_full or ()
+                if candidate.name == proposition.name
+                and candidate.source_rule == proposition.source_rule
+            ),
+            None,
+        )
+
+    @staticmethod
+    def _predicate_assignment(proposition, selected):
+        """Map a SAT literal through explicit ``not(...)`` proposition wrappers."""
+        assignment = -1.0 if selected.alphabet.startswith("~") else 1.0
+        if proposition.name.count("not(") % 2:
+            assignment *= -1.0
+        return assignment
+
+    def _historical_witness_window_contains(self, proposition, time_step):
+        """Return whether a positive historical leaf constrains this step.
+
+        The unbounded outer ``once`` requires one witness window.  Use the
+        latest complete window in the finite repair horizon so every sampled
+        state in ``historically[0,T]`` is constrained consecutively.
+        """
+        selected = self._selected_literal(proposition)
+        if selected is None or selected.alphabet.startswith("~"):
+            return False
+        match = re.search(
+            r"historically\[\s*0\s*,\s*([0-9]+(?:/[0-9]+|\.[0-9]+)?)\s*\]",
+            proposition.name,
+        )
+        if match is None:
+            return time_step >= self._tc_obj.tv_time_step
+        value = match.group(1)
+        if "/" in value:
+            numerator, denominator = value.split("/", 1)
+            duration = float(numerator) / float(denominator)
+        else:
+            duration = float(value)
+        interval_count = int(math.ceil(duration / self._world_state.dt - 1e-9))
+        window_start = self._tc_obj.N - interval_count
+        return max(self._tc_obj.tc_time_step + 1, window_start) <= time_step <= self._tc_obj.N
+
+    def _selected_negative_ego_conflict(self, proposition):
+        selected = self._selected_literal(proposition)
+        return (
+            selected is not None
+            and selected.alphabet.startswith("~")
+            and "in_intersection_conflict_area__0_1" in proposition.name
+            and any(
+                rule in self._rule_monitor._rules
+                for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+            )
+        )
+
     @property
     def target_lanes(self) -> dict:
         return self._target_lanes
@@ -201,26 +273,27 @@ class RuleConstraintsManual:
             v_limit = [0, np.inf]
             a_limit = [-np.inf, np.inf]
             for idx, proposition in enumerate(self._rule_monitor.proposition_nodes):
+                selected = self._selected_literal(proposition)
+                if selected is None:
+                    continue
                 try:
-                    prop_assignment = total_assignment[
-                        total_assignment == total_assignment
-                    ][idx]
+                    total_assignment[total_assignment == total_assignment][idx]
                 except:
                     # no assignment can be found
                     continue
+                # Constraint polarity comes from the SAT model, not from a
+                # robustness sample at TV.  The latter was unreliable at zero
+                # robustness and made unselected formula leaves constrain ego.
+                prop_assignment = self._predicate_assignment(proposition, selected)
+                if (
+                    "historically" in proposition.name
+                    and not self._historical_witness_window_contains(
+                        proposition, k
+                    )
+                ):
+                    continue
                 for predicate in proposition.children:
-                    if (
-                        proposition in self._prop_full
-                        and k >= self._tc_obj.tv_time_step
-                    ):
-                        # proposition to be repaired (greater than the time-to-violation)
-                        robs_at_tv = self._rule_monitor.prop_robust_all[
-                            :, self._tc_obj.tv_time_step
-                        ]
-                        prop_assignment = robs_at_tv[robs_at_tv == robs_at_tv][idx]
-                        if proposition in self._sel_prop_full:
-                            prop_assignment = -prop_assignment
-                    if k < self._tc_obj.tv_time_step or proposition in self._prop_full:
+                    if proposition in self._prop_full:
                         if not hasattr(predicate, "base_name"):
                             continue
                         if predicate.base_name == PredInSameLane.predicate_name:
@@ -255,7 +328,9 @@ class RuleConstraintsManual:
                             PredRelAbruptBreaking.predicate_name,
                         ):
                             a_abruptly = predicate.evaluator.config["a_abrupt"]
-                            a_constr = self.ConstrAccNotAbruptly(a_abruptly)
+                            a_constr = self.ConstrAbruptBreaking(
+                                a_abruptly, prop_assignment
+                            )
                             a_limit = self._get_overlap(a_constr, a_limit)
                         # --------------------------------------------------------------------------------------------#
                         elif predicate.base_name in (
@@ -263,12 +338,49 @@ class RuleConstraintsManual:
                         ):
                             s_constr = self.ConstrStopLine(k, prop_assignment)
                             s_limit = self._get_overlap(s_limit, s_constr)
+                        elif predicate.base_name == PredInStandStill.predicate_name:
+                            if prop_assignment < 0:
+                                continue
+                            config = getattr(predicate.evaluator, "config", {})
+                            epsilon = float(config.get("standstill_error", 0.01))
+                            numerical_margin = min(
+                                1.0e-6, max(1.0e-9, epsilon * 1.0e-3)
+                            )
+                            v_limit = self._get_overlap(
+                                v_limit,
+                                [0.0, max(0.0, epsilon - numerical_margin)],
+                            )
                         elif predicate.base_name in (
                             PredInIntersectionConflictArea.predicate_name,
                         ):
-                            s_constr = self.ConstrInIntersectionConflictAreaEgo(
-                                k, prop_assignment
-                            )
+                            if self._selected_negative_ego_conflict(proposition):
+                                # Once this SAT branch chooses ``not in the
+                                # conflict area``, keep every optimizable state
+                                # before the entrance.  Waiting until TV lets
+                                # an earlier QP state enter the region and makes
+                                # the later longitudinal bound irrecoverable.
+                                s_constr = self.ConstrAvoidIntersectionConflictArea(
+                                    predicate
+                                )
+                            elif any(
+                                rule in self._rule_monitor._rules
+                                for rule in (
+                                    "R_IN3",
+                                    "R_IN3_hand_draft",
+                                    "R_IN4",
+                                    "R_IN5",
+                                )
+                            ):
+                                # Other conflict predicates in these formulas
+                                # refer to the target vehicle or to unselected
+                                # alternatives.  Converting their truth value
+                                # into an ego position bound created the stale
+                                # 46.23 m constraint seen before the violation.
+                                s_constr = [-np.inf, np.inf]
+                            else:
+                                s_constr = self.ConstrInIntersectionConflictAreaEgo(
+                                    k, prop_assignment
+                                )
                             s_limit = self._get_overlap(s_limit, s_constr)
                         # elif predicate.base_name in (PredOnLaneletWithTypeIntersection.predicate_name,):
                         #     s_constr = self.ConstrOnLaneletWithTypeIntersection(k)
@@ -289,6 +401,13 @@ class RuleConstraintsManual:
         """
         # add general constraints
         self.add()
+        # Rule-derived position bounds are semantic requirements.  Collision
+        # bounds are added below and may need slack when the recorded initial
+        # state already violates them, so retain the pre-collision array for
+        # the QP's independent hard-bound channel.
+        rule_distance_constraints = np.array(
+            self._lon_dis_constraints, dtype=float, copy=True
+        )
         # add collision constraints (implicitly)
         if self._rule_monitor.scenario_type == "interstate":
             self.ConstrCollisionFree()
@@ -300,12 +419,17 @@ class RuleConstraintsManual:
         return LonConstraints.construct_constraints(
             longitudinal_distance_constraints[1:, 0],
             longitudinal_distance_constraints[1:, 1],
-            longitudinal_distance_constraints[1:, 0],
-            longitudinal_distance_constraints[1:, 1],
+            rule_distance_constraints[1:, 0],
+            rule_distance_constraints[1:, 1],
             v_min=longitudinal_velocity_constraints[1:, 0],
             v_max=longitudinal_velocity_constraints[1:, 1],
-            a_min=longitudinal_acceleration_constraints[1:, 0],
-            a_max=longitudinal_acceleration_constraints[1:, 1],
+            # Acceleration in the benchmark trajectories is attached to the
+            # beginning of an interval (a[t] describes t -> t+1).  QP x[:, 0]
+            # is fixed, while x[:, k+1] is the first optimizable acceleration.
+            # Therefore constraint time t maps to QP state k+1, rather than
+            # dropping the TC constraint and shifting every bound forward.
+            a_min=longitudinal_acceleration_constraints[:-1, 0],
+            a_max=longitudinal_acceleration_constraints[:-1, 1],
             prec_veh=self._target_vehicle,
             tc_time_step=self._tc_obj.tc_time_step,
             select_proposition=self._sel_prop_full,
@@ -456,8 +580,22 @@ class RuleConstraintsManual:
     def ConstrSpeedLimit(self, speed_limit):
         return [0, speed_limit]
 
+    def ConstrAbruptBreaking(self, a_abrupt, prop_assignment):
+        """Encode either sign of the abrupt-braking proposition.
+
+        ``PredAbruptBreaking`` is positive iff ``acceleration < a_abrupt``.
+        The old implementation always imposed ``acceleration >= a_abrupt``,
+        ignored the SAT assignment, and placed the solution directly on a
+        strict monitor boundary.
+        """
+        margin = self._STRICT_ACCELERATION_MARGIN
+        if prop_assignment > 0:
+            return [-np.inf, a_abrupt - margin]
+        return [a_abrupt + margin, np.inf]
+
     def ConstrAccNotAbruptly(self, a_abrupt):
-        return [a_abrupt, np.inf]
+        """Backward-compatible wrapper for callers enforcing the negation."""
+        return [a_abrupt + self._STRICT_ACCELERATION_MARGIN, np.inf]
 
     def ConstrCollisionFree(self):
         for k in range(self._tc_obj.tc_time_step, self._tc_obj.N + 1):
@@ -628,25 +766,67 @@ class RuleConstraintsManual:
 
     def ConstrStopLine(self, time_step: int, prop_assignment: float):
         # TODO: check in qp planner
+        # The complement of "stop line in front" is non-convex: the vehicle
+        # may be either too far before it or already beyond it.  Do not encode
+        # that negative predicate as the positive stop-line upper bound.
+        if prop_assignment < 0:
+            return [-np.inf, np.inf]
         wold = self._rule_monitor.world
+        # Measure the monitor's foremost rectangle vertex relative to the
+        # actual QP reference point in the QP CLCS.  A scalar
+        # ``wb_ra + front_extent`` is only valid when vehicle heading and CLCS
+        # direction agree.  Intersection paths can be oppositely oriented;
+        # there it double-counted almost the whole vehicle length.
+        state = self._ego_vehicle.states_cr.get(self._tc_obj.tc_time_step)
+        if state is None:
+            state = self._ego_vehicle.states_cr[min(self._ego_vehicle.states_cr)]
+        heading = np.array(
+            [np.cos(state.orientation), np.sin(state.orientation)], dtype=float
+        )
+        lateral = np.array([-heading[1], heading[0]], dtype=float)
+        center = np.asarray(state.position, dtype=float)
+        qp_reference = center - self._veh_config.wb_ra * heading
+        try:
+            qp_reference_s = self._veh_config.CLCS.convert_to_curvilinear_coords(
+                *qp_reference
+            )[0]
+        except ValueError:
+            return [-np.inf, np.inf]
+        monitor_lane = self._ego_vehicle.ref_path_lane
+        monitor_front_s = self._ego_vehicle.front_s(
+            self._tc_obj.tc_time_step, monitor_lane
+        )
+        if monitor_front_s is None:
+            return [-np.inf, np.inf]
         upper_bound = np.inf
         for lanelet_id in self._ego_vehicle.lanelets_dir:
             lanelet = wold.road_network.lanelet_network.find_lanelet_by_id(lanelet_id)
             if lanelet.stop_line is not None:
-                stop_line_s = min(
-                    self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                        *lanelet.stop_line.start
-                    )[0],
-                    self._ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                        *lanelet.stop_line.end
-                    )[0],
-                )
+                monitor_progress = []
+                for point in (
+                    lanelet.stop_line.start,
+                    lanelet.stop_line.end,
+                ):
+                    try:
+                        monitor_progress.append(
+                            monitor_lane.clcs.convert_to_curvilinear_coords(*point)[0]
+                        )
+                    except ValueError:
+                        # A transverse stop-line endpoint can lie just outside
+                        # the QP CLCS lateral projection domain while the other
+                        # endpoint still defines the same longitudinal line.
+                        # Do not discard an otherwise usable stop line.
+                        continue
+                if not monitor_progress:
+                    continue
+                # Preserve exactly the signed front-to-line distance used by
+                # PredStopLineInFront, but express it around the QP reference
+                # coordinate.  This avoids mixing CLCS origins and vehicle
+                # reference conventions at intersections.
+                distance_to_line = min(monitor_progress) - monitor_front_s
                 upper_bound = min(
                     upper_bound,
-                    stop_line_s
-                    - self._ego_vehicle.circle_radius
-                    - self._veh_config.length / 3
-                    - self._veh_config.wheelbase / 2,
+                    qp_reference_s + distance_to_line - self._STOP_LINE_MARGIN,
                 )
         return [-np.inf, upper_bound]
 
@@ -712,10 +892,112 @@ class RuleConstraintsManual:
         else:
             return [-np.inf, np.inf]
 
+    def ConstrAvoidIntersectionConflictArea(self, predicate=None):
+        """Keep ego before the geometrically expanded conflict entrance."""
+        if self._avoid_conflict_upper_bound is not None:
+            return [-np.inf, self._avoid_conflict_upper_bound]
+
+        # ``create_conflict_area_parameter`` intersects the ego path with a
+        # conflict polygon expanded by the ego circle radius.  Its front value
+        # is therefore already a safe vehicle-center boundary.  Convert it to
+        # the QP rear-axle reference exactly once and retain a numerical margin.
+        if self.s_circle_center_front is not None and np.isfinite(
+            self.s_circle_center_front
+        ):
+            geometric_upper_bound = float(
+                self.s_circle_center_front
+                - self._veh_config.wb_ra
+                - self._CONFLICT_ENTRY_MARGIN
+            )
+            # The circle approximation and the monitor predicate use slightly
+            # different vehicle reference geometries.  Near the entrance this
+            # can put the converted rear-axle bound a few decimetres behind an
+            # initial state which the predicate still classifies as outside.
+            # Requiring that fixed state to move backwards makes the first QP
+            # transition infeasible.  It is sound to retain the initial pose
+            # as the limiting bound when the predicate itself confirms that
+            # pose is outside the conflict area.
+            initial_qp_s = None
+            initially_outside = False
+            if predicate is not None:
+                try:
+                    initial_step = self._start_time_step
+                    robustness = predicate.evaluator.evaluate_robustness(
+                        self._world_state,
+                        initial_step,
+                        [self._ego_id, self._other_id],
+                    )
+                    initially_outside = robustness < 0.0
+                    initial_state = self._ego_vehicle.states_cr[initial_step]
+                    initial_qp_s = convert_pos_curvilinear(
+                        initial_state, self._veh_config
+                    )[0]
+                except Exception:
+                    pass
+            if initially_outside and initial_qp_s is not None:
+                geometric_upper_bound = max(
+                    geometric_upper_bound,
+                    float(initial_qp_s) + self._CONFLICT_ENTRY_MARGIN,
+                )
+            self._avoid_conflict_upper_bound = geometric_upper_bound
+            return [-np.inf, self._avoid_conflict_upper_bound]
+
+        # Fall back to direct predicate evaluation if map geometry is
+        # incomplete.  This is preferable to using the rule TV, which need not
+        # be the conflict predicate's own entrance time.
+        if predicate is not None:
+            first_conflict_step = None
+            for step in range(self._start_time_step, self._tc_obj.N + 1):
+                try:
+                    robustness = predicate.evaluator.evaluate_robustness(
+                        self._world_state, step, [self._ego_id, self._other_id]
+                    )
+                except Exception:
+                    continue
+                if robustness >= 0.0:
+                    first_conflict_step = step
+                    break
+            if first_conflict_step is not None:
+                safe_step = max(self._start_time_step, first_conflict_step - 1)
+                safe_state = self._ini_traj.state_at_time_step(safe_step)
+                if safe_state is None and safe_step == self._start_time_step:
+                    safe_state = self._ego_vehicle.states_cr[safe_step]
+                if safe_state is not None:
+                    safe_s = convert_pos_curvilinear(
+                        safe_state, self._veh_config
+                    )[0]
+                    self._avoid_conflict_upper_bound = (
+                        float(safe_s) - self._CONFLICT_ENTRY_MARGIN
+                    )
+                    return [-np.inf, self._avoid_conflict_upper_bound]
+
+        # Last-resort sampled boundary for malformed/truncated predicate data.
+        if all(
+            hasattr(self, attribute)
+            for attribute in ("_start_time_step", "_tc_obj", "_ini_traj")
+        ):
+            safe_step = max(
+                self._start_time_step, int(self._tc_obj.tv_time_step) - 1
+            )
+            safe_state = self._ini_traj.state_at_time_step(safe_step)
+            if safe_state is None and safe_step == self._start_time_step:
+                safe_state = self._ego_vehicle.states_cr[safe_step]
+            if safe_state is not None:
+                safe_s = convert_pos_curvilinear(safe_state, self._veh_config)[0]
+                self._avoid_conflict_upper_bound = (
+                    float(safe_s) - self._CONFLICT_ENTRY_MARGIN
+                )
+                return [-np.inf, self._avoid_conflict_upper_bound]
+
+        raise ValueError("No finite ego conflict-area entrance is available")
+
     def create_conflict_area_parameter(self):
         ego_vehicle = self._ego_vehicle
         target_vehicle = self._target_vehicle
         road_network = self._rule_monitor.world.road_network
+
+        def qp_progress(point):
+            return self._conflict_point_qp_progress(point, ego_vehicle)
 
         # offset conflict lanelets
         conflict_lanelets_shape = list()
@@ -736,12 +1018,8 @@ class RuleConstraintsManual:
         )
         if conflict_circle_center_right is not None:
             s_circle_center_right = [
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *conflict_circle_center_right[0]
-                )[0],
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *conflict_circle_center_right[1]
-                )[0],
+                qp_progress(conflict_circle_center_right[0]),
+                qp_progress(conflict_circle_center_right[1]),
             ]
             s_circle_center_right = np.sort(s_circle_center_right)
         else:
@@ -755,12 +1033,8 @@ class RuleConstraintsManual:
         )
         if conflict_circle_center_left is not None:
             s_circle_center_left = [
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *conflict_circle_center_left[0]
-                )[0],
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *conflict_circle_center_left[1]
-                )[0],
+                qp_progress(conflict_circle_center_left[0]),
+                qp_progress(conflict_circle_center_left[1]),
             ]
             s_circle_center_left = np.sort(s_circle_center_left)
         else:
@@ -773,12 +1047,8 @@ class RuleConstraintsManual:
         )
         if conflict_circle_center_center is not None:
             s_circle_center_center = [
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *conflict_circle_center_center[0]
-                )[0],
-                ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
-                    *conflict_circle_center_center[1]
-                )[0],
+                qp_progress(conflict_circle_center_center[0]),
+                qp_progress(conflict_circle_center_center[1]),
             ]
             s_circle_center_center = np.sort(s_circle_center_center)
         else:
@@ -831,7 +1101,36 @@ class RuleConstraintsManual:
             ]
         )
 
+        if os.environ.get("CRREPAIR_CONFLICT_DEBUG"):
+            try:
+                initial_state = self._ego_vehicle.states_cr[self._start_time_step]
+                initial_qp_s = convert_pos_curvilinear(
+                    initial_state, self._veh_config
+                )[0]
+            except Exception:
+                initial_qp_s = None
+            print(
+                "[CRRepair CONFLICT GEOM] "
+                f"start={self._start_time_step}, initial_qp_s={initial_qp_s}, "
+                f"right={s_circle_center_right.tolist()}, "
+                f"left={s_circle_center_left.tolist()}, "
+                f"center={s_circle_center_center.tolist()}, "
+                f"selected=({s_circle_center_front}, {s_circle_center_rear})"
+            )
+
         return s_circle_center_front, s_circle_center_rear
+
+    def _conflict_point_qp_progress(self, point, ego_vehicle):
+        """Project a Cartesian conflict point into the QP longitudinal frame."""
+        x, y = float(point[0]), float(point[1])
+        try:
+            return self._veh_config.CLCS.convert_to_curvilinear_coords(x, y)[0]
+        except Exception:
+            # Retain compatibility with finite QP paths that do not cover the
+            # complete intersection geometry.
+            return ego_vehicle.ref_path_lane.clcs.convert_to_curvilinear_coords(
+                x, y
+            )[0]
 
     @staticmethod
     def find_conflict_points(

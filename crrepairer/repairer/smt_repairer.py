@@ -75,15 +75,24 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
         nr = 1
         print("******** Trajectory Repairing starts! ********")
         start_time = time.time()
-        while self.sat_solver.solve() == sat:
+        while True:
+            # Account for the actual SAT call as well as model extraction.  The
+            # previous implementation timed only ``model()``, which
+            # systematically under-reported SMT runtime and omitted the final
+            # UNSAT check after an unsuccessful theory-solver attempt.
+            sat_start_time = time.perf_counter()
+            sat_status = self.sat_solver.solve()
+            if sat_status != sat:
+                self.sat_reasoning_time += time.perf_counter() - sat_start_time
+                break
             self.nr_iter += 1
             print("* {}. iteration...".format(nr))
             if self.rule_monitor.proposition_nodes is None:
+                self.sat_reasoning_time += time.perf_counter() - sat_start_time
                 return None
-            sat_start_time = time.time()
             select_proposition, self._model = self.sat_solver.model()
             print(f'selected proposition: {select_proposition}')
-            self.sat_reasoning_time += time.time() - sat_start_time
+            self.sat_reasoning_time += time.perf_counter() - sat_start_time
             print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(self.sat_reasoning_time))
             repairability, repaired_traj = self.t_solver.check(
                 select_proposition,
@@ -93,6 +102,19 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
             )
             self._tc = self.t_solver.tc_object.tc_time_step
             if repairability and repaired_traj is not None:
+                updated_tv = math.inf
+                if check_flag:
+                    updated_tv, _ = self.t_solver.tc_object.calc_tv_updated(
+                        repaired_traj.state_list, int(self._tc)
+                    )
+                if check_flag and updated_tv != math.inf:
+                    print(
+                        "*** Optimization succeeded but validation failed "
+                        f"(updated_tv={updated_tv}); trying the next SAT model. ***"
+                    )
+                    self.sat_solver.update_formula()
+                    nr += 1
+                    continue
                 print(f"----- Computation Time: {time.time() - start_time:.3f}s -----")
                 print(f"*****  Successfully Repaired in {self.nr_iter} iteration(s)! •ᴗ•  *****")
                 print(f"----- Time details ----- \n***** SAT: {self.sat_reasoning_time:.6f}s"
@@ -109,7 +131,8 @@ class SMTTrajectoryRepairer(TrajectoryRepair, ABC):
                 #     return repaired_traj
                 # else:
                 #     print("*** Reparable but Solver Failed ಠ_ಠ  ***")
-            self.sat_solver.update_formula()
+            semantic_core = self.t_solver.failed_semantic_core()
+            self.sat_solver.update_formula(blocking_literals=semantic_core)
             nr += 1
         print(f"*******   Repairing Failed ಠ_ಠ with {nr} iteration(s)  *******")
         return None

@@ -131,7 +131,7 @@ class SATSolver:
         print("* \t<SATSolver>: model is {}".format(self._dpll_model))
         return prop_list, self._dpll_model
 
-    def update_formula(self):
+    def update_formula(self, blocking_literals=None):
         """
         Based on the syntax for sympy, the SAT formula is updated by negating the unsatisfiable abstraction:
         phi_SAT = phi_SAT and (not abs)
@@ -141,12 +141,19 @@ class SATSolver:
         # Block exactly the failed SAT model.  DomainDPLL may then relax only
         # the domain variables which occur in this model, leaving all other
         # domain restrictions active for the next search.
-        model = list(self._dpll_model)
-        counter_ex = "~" + model[0]
+        model = list(
+            self._dpll_model if blocking_literals is None else blocking_literals
+        )
+        if not model:
+            return
+        def negate_literal(literal):
+            return literal[1:] if literal.startswith("~") else "~" + literal
+
+        counter_ex = negate_literal(model[0])
         if len(model) > 1:
             counter_ex = "(" + counter_ex
             for atom in model[1:]:
-                counter_ex += " | ~" + atom
+                counter_ex += " | " + negate_literal(atom)
             counter_ex += ")"
         self._formula += " & " + counter_ex
         print("* \t<SATSolver>: the formula is updated to {}".format(self._formula))
