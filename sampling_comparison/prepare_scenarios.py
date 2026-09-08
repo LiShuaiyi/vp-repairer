@@ -19,6 +19,7 @@ except ImportError:
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
+GENERATED_SCENARIOS = REPO_ROOT / "scenarios/experiment_scenarios/generated_sampling"
 EXAMPLES = REPO_ROOT / "examples"
 if str(EXAMPLES) not in sys.path:
     sys.path.insert(0, str(EXAMPLES))
@@ -38,7 +39,7 @@ def missing_cases(group):
                 continue
             seen.add(key)
             declared = Path(row.get("scenario_path", ""))
-            generated = HERE / "generated_scenarios" / group / f"{key[0]}.xml"
+            generated = GENERATED_SCENARIOS / group / f"{key[0]}.xml"
             fallback = spec["scenario_dir"] / f"{key[0]}.xml"
             if declared.is_file() or generated.is_file() or fallback.is_file():
                 continue
@@ -55,7 +56,7 @@ def prepare_group(group):
     api = converter.import_converter(converter.DEFAULT_CONVERTER_ROOT)
     args = SimpleNamespace(
         input_dir=converter.DEFAULT_INPUT_DIR,
-        output_dir=HERE / "generated_scenarios",
+        output_dir=GENERATED_SCENARIOS,
         raw_window_length=100,
         downsample=5,
     )
@@ -84,7 +85,7 @@ def prepare_group(group):
             raise ValueError(
                 f"Expected {item['scenario_id']}, converter produced {item['generated_scenario_id']}"
             )
-    converter.write_manifest(candidates, HERE / "generated_scenarios" / f"{group}_manifest.csv")
+    converter.write_manifest(candidates, GENERATED_SCENARIOS / f"{group}_manifest.csv")
     return group, len(candidates)
 
 

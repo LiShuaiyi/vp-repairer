@@ -103,7 +103,7 @@ def metric_row(group, rows):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--groups", default="all")
-    parser.add_argument("--results-dir", type=Path, default=HERE / "results/latest")
+    parser.add_argument("--results-dir", type=Path, default=HERE / "results/latest_full")
     args = parser.parse_args()
     case_rows, summary_rows, sampling_rows = [], [], []
     for group in parse_groups(args.groups):

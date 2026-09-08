@@ -17,13 +17,14 @@ except ImportError:  # direct script execution
 
 
 HERE = Path(__file__).resolve().parent
+GENERATED_SCENARIOS = HERE.parent / "scenarios/experiment_scenarios/generated_sampling"
 DEFAULT_PYTHON = Path("/data_linux/conda-envs/repairverse310_gpu/bin/python")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--groups", default="all", help="Comma list, or all")
-    parser.add_argument("--results-dir", type=Path, default=HERE / "results/latest")
+    parser.add_argument("--results-dir", type=Path, default=HERE / "results/latest_full")
     parser.add_argument("--python", type=Path, default=DEFAULT_PYTHON)
     parser.add_argument("--jobs", type=int, default=1, help="Parallel rule cohorts")
     parser.add_argument("--limit", type=int)
@@ -55,7 +56,7 @@ def command_for(args, group):
         "--in1-strategy", args.in1_strategy,
         "--offset", str(args.offset), "--repeat", str(args.repeat),
     ]
-    generated = HERE / "generated_scenarios" / group
+    generated = GENERATED_SCENARIOS / group
     if generated.is_dir():
         cmd += ["--scenario-dir", str(generated)]
     if args.limit is not None:

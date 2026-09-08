@@ -5,6 +5,7 @@
 output/
 evaluation/img
 *.out
+/scenarios/experiment_scenarios/**/*.xml
 
 ## Python
 # Byte-compiled / optimized / DLL files

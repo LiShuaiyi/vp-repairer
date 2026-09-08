@@ -19,17 +19,12 @@ MICP 在路线 CLCS 中同时优化 longitudinal 与 lateral 状态；reference 
 - `runner.py`：批量实验、分阶段计时与 monitor 验证；
 - `analyze.py`：与 VP 结果的配对统计；
 - `tests/`：规则映射和输出口径测试；
-- `results/`：原始结果与报告。
+- `results/latest_full/`：最新完整结果与报告。
 
-当前全量结果与规则审计见
-[RULE_AUDIT_2026-09-04.md](RULE_AUDIT_2026-09-04.md)。运行单个 batch：
-
-调整后的 R_IN1（允许不编码静止保持 3 秒）全量结果见
-[`results/in1_temporal_v8_full_2026-09-04/RESULTS.md`](results/in1_temporal_v8_full_2026-09-04/RESULTS.md)。
-
-注意：该 pilot 报告是修复动力学和规则等价性之前的历史结果，不能代表当前实现。
-当前分层小回归保存在 `results/regression_v5_smoke_2026-09-04/`；后续应以扩大后的
-5–10 例/分层回归为准。
+当前 704 个 VP 对齐 case 的完整结果见
+[`results/latest_full/RESULTS.md`](results/latest_full/RESULTS.md)。旧回归、smoke、
+分片和诊断结果均已清理。实验场景统一保存在
+`scenarios/experiment_scenarios/`。
 
 runner 默认使用 `standard`（原始 `stlpy.GurobiMICPSolver`）作为 Lin2025
 复现基线。可通过 `--encoding fewer_binary` 在完全相同的动力学、规则和时域上
@@ -47,8 +42,8 @@ GRB_LICENSE_FILE=/data_linux/planning-sim/repairer/commonroad-repairer-vp/autowa
 /data_linux/conda-envs/repair-autoware/bin/python \
   -m micp_comparison.runner --dataset highd \
   --input evaluation/config/vp_temporal_full/vp_repairer_rg1_batch_result_updated.csv \
-  --scenario-dir /data_linux/Lab/highD-cr-scenarios/highD-repair \
-  --output micp_comparison/results/rg1.csv --rule R_G1 --quiet
+  --scenario-dir scenarios/experiment_scenarios/highd \
+  --output /tmp/micp_rg1.csv --rule R_G1 --quiet
 ```
 
 并行全量回归可用 `micp_comparison.regression` 的 `--all-cases`、`--workers`

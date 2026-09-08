@@ -1,0 +1,119 @@
+scenario_id,scenario_path,ego_id,rule,repeat,num_steps,mode,lin2025_replanable,planner_returned,monitor_compliant,success,setup_time,planning_time,core_total_time,validation_time,fixed_other_id,updated_tv,error,rule_candidates_checked,rule_candidate_limit,in1_strategy
+DEU_AachenFrankenburg-1_265260_T-5279,scenarios/experiment_scenarios/ind_2024/DEU_AachenFrankenburg-1_265260_T-5279.xml,10453,R_IN4,0,19,rule_filtered,True,True,True,True,4.477941496003041,0.2081144570001925,0.2081144570001925,0.18862880699816742,10454,inf,,14,0,paper_example
+DEU_AachenFrankenburg-1_206020_T-6039,scenarios/experiment_scenarios/ind_2024/DEU_AachenFrankenburg-1_206020_T-6039.xml,10462,R_IN4,0,19,rule_filtered,False,False,False,False,4.643269448002684,0.42811366399837425,0.42811366399837425,,10457,,,0,0,paper_example
+DEU_AachenBendplatz-1_13720_T-739,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_13720_T-739.xml,10057,R_IN4,0,19,rule_filtered,True,False,False,False,5.398399392997817,3.4101232229986636,3.4101232229986636,,10054,,,340,0,paper_example
+DEU_AachenFrankenburg-1_2120_T-39,scenarios/experiment_scenarios/ind_2024/DEU_AachenFrankenburg-1_2120_T-39.xml,10023,R_IN4,0,19,rule_filtered,False,False,False,False,4.339830032000464,0.36889433699980145,0.36889433699980145,,10000,,,0,0,paper_example
+DEU_AachenBendplatz-1_83000_T-3019,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_83000_T-3019.xml,10226,R_IN4,0,19,rule_filtered,True,True,True,True,5.217723190002289,0.14536417499766685,0.14536417499766685,0.4840562770004908,10231,inf,,8,0,paper_example
+DEU_AachenFrankenburg-1_232260_T-2279,scenarios/experiment_scenarios/ind_2024/DEU_AachenFrankenburg-1_232260_T-2279.xml,10208,R_IN4,0,19,rule_filtered,False,False,False,False,4.786090524998144,0.4783720350023941,0.4783720350023941,,10224,,,0,0,paper_example
+DEU_AachenBendplatz-1_92340_T-2359,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_92340_T-2359.xml,10140,R_IN4,0,19,rule_filtered,True,True,True,True,5.449074590000237,0.10182460199939669,0.10182460199939669,0.4717743770015659,10143,inf,,1,0,paper_example
+DEU_AachenFrankenburg-1_264440_T-4459,scenarios/experiment_scenarios/ind_2024/DEU_AachenFrankenburg-1_264440_T-4459.xml,10391,R_IN4,0,19,rule_filtered,False,False,False,False,4.628144198999507,0.5444947040014085,0.5444947040014085,,10394,,,0,0,paper_example
+DEU_AachenBendplatz-1_1740_T-59,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_1740_T-59.xml,10003,R_IN4,0,19,rule_filtered,True,True,True,True,5.480308400998183,0.6306331790001423,0.6306331790001423,0.5195360709985835,10013,inf,,8,0,paper_example
+DEU_AachenBendplatz-1_15160_T-179,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_15160_T-179.xml,10016,R_IN4,0,19,rule_filtered,True,True,True,True,5.616641744996741,0.2877819509994879,0.2877819509994879,0.5530563159991289,10019,inf,,18,0,paper_example
+DEU_AachenBendplatz-1_152620_T-2639,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_152620_T-2639.xml,10164,R_IN4,0,19,rule_filtered,True,True,True,True,5.37777243399978,0.6149464230002195,0.6149464230002195,0.5350630190005177,10170,inf,,24,0,paper_example
+DEU_AachenBendplatz-1_8340_T-359,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_8340_T-359.xml,10030,R_IN4,0,19,rule_filtered,False,False,False,False,5.521175173998927,0.5297904840008414,0.5297904840008414,,10029,,,0,0,paper_example
+DEU_AachenBendplatz-1_93620_T-3639,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_93620_T-3639.xml,10217,R_IN4,0,19,rule_filtered,True,True,True,True,5.522000682998623,3.217395044001023,3.217395044001023,0.5450913290005701,10215,inf,,196,0,paper_example
+DEU_AachenBendplatz-1_163680_T-3699,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_163680_T-3699.xml,10267,R_IN4,0,19,rule_filtered,True,False,False,False,6.24581495700113,1.008298807999381,1.008298807999381,,10268,,,8,0,paper_example
+DEU_AachenBendplatz-1_162280_T-2299,scenarios/experiment_scenarios/ind_2024/DEU_AachenBendplatz-1_162280_T-2299.xml,10179,R_IN4,0,19,rule_filtered,True,False,False,False,6.121842906002712,1.4006271079997532,1.4006271079997532,,10180,,,32,0,paper_example
+DEU_AachenBendplatz-1_131080_T-1099,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_131080_T-1099.xml,10082,R_IN4,0,19,rule_filtered,False,False,False,False,6.395886017999146,0.5717185229987081,0.5717185229987081,,10083,,,0,0,paper_example
+DEU_AachenBendplatz-1_151160_T-1179,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_151160_T-1179.xml,10079,R_IN4,0,19,rule_filtered,True,True,True,True,5.824112456000876,0.31535953500133473,0.31535953500133473,0.5493438509984117,10087,inf,,14,0,paper_example
+DEU_AachenBendplatz-1_151840_T-1859,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_151840_T-1859.xml,10123,R_IN4,0,19,rule_filtered,True,False,False,False,5.8102821330030565,3.080566993998218,3.080566993998218,,10124,,,157,0,paper_example
+DEU_AachenBendplatz-1_152880_T-2899,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_152880_T-2899.xml,10190,R_IN4,0,18,rule_filtered,False,False,False,False,7.639154052998492,0.9047130969993304,0.9047130969993304,,10192,,,0,0,paper_example
+DEU_AachenBendplatz-1_173820_T-3839,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_173820_T-3839.xml,10275,R_IN4,0,19,rule_filtered,False,False,False,False,7.525717238000652,0.9888776270017843,0.9888776270017843,,10277,,,0,0,paper_example
+DEU_AachenBendplatz-1_174300_T-4319,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_174300_T-4319.xml,10316,R_IN4,0,14,rule_filtered,False,False,False,False,7.187473144000251,0.7550653950020205,0.7550653950020205,,10318,,,0,0,paper_example
+DEU_AachenBendplatz-1_72340_T-2359,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_72340_T-2359.xml,10096,R_IN4,0,19,rule_filtered,True,True,True,True,7.509232521999365,0.25042525800017756,0.25042525800017756,0.7586950549994071,10097,inf,,1,0,paper_example
+DEU_AachenBendplatz-1_83420_T-3439,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_83420_T-3439.xml,10259,R_IN4,0,19,rule_filtered,True,True,True,True,7.2199582920002285,1.7858910329996434,1.7858910329996434,0.7533835510002973,10262,inf,,39,0,paper_example
+DEU_AachenBendplatz-1_92260_T-2279,scenarios/experiment_scenarios/ind_converter_2026/DEU_AachenBendplatz-1_92260_T-2279.xml,10121,R_IN4,0,19,rule_filtered,True,True,True,True,7.0141593309999735,1.485865749000368,1.485865749000368,0.7451734149981348,10129,inf,,59,0,paper_example
+DEU_AachenBendplatz-1_162278_T-2297,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_162278_T-2297.xml,10179,R_IN4,0,19,rule_filtered,False,False,False,False,7.266441894000309,1.5021102149985381,1.5021102149985381,,10180,,,0,0,paper_example
+DEU_AachenBendplatz-1_162279_T-2298,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_162279_T-2298.xml,10179,R_IN4,0,19,rule_filtered,False,False,False,False,7.586199310000666,1.1389920889996574,1.1389920889996574,,10180,,,0,0,paper_example
+DEU_AachenBendplatz-1_162281_T-2300,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_162281_T-2300.xml,10179,R_IN4,0,19,rule_filtered,True,False,False,False,7.650823697000305,2.2053618099998857,2.2053618099998857,,10180,,,46,0,paper_example
+DEU_AachenBendplatz-1_162282_T-2301,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_162282_T-2301.xml,10179,R_IN4,0,19,rule_filtered,True,False,False,False,7.423347515999922,2.6382556870012195,2.6382556870012195,,10180,,,100,0,paper_example
+DEU_AachenBendplatz-1_162283_T-2302,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_162283_T-2302.xml,10179,R_IN4,0,19,rule_filtered,True,False,False,False,7.68144422000114,3.6609045370023523,3.6609045370023523,,10180,,,179,0,paper_example
+DEU_AachenBendplatz-1_162284_T-2303,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_162284_T-2303.xml,10179,R_IN4,0,19,rule_filtered,True,False,False,False,7.631528083002195,5.5151922709992505,5.5151922709992505,,10180,,,305,0,paper_example
+DEU_AachenBendplatz-1_162285_T-2304,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_162285_T-2304.xml,10179,R_IN4,0,19,rule_filtered,True,False,False,False,7.2623093760012125,5.375477034998767,5.375477034998767,,10180,,,372,0,paper_example
+DEU_AachenBendplatz-1_151155_T-1174,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151155_T-1174.xml,10079,R_IN4,0,19,rule_filtered,True,True,True,True,7.168141400001332,0.2829311079985928,0.2829311079985928,0.8946316630026558,10087,inf,,1,0,paper_example
+DEU_AachenBendplatz-1_151156_T-1175,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151156_T-1175.xml,10079,R_IN4,0,19,rule_filtered,False,False,False,False,7.034356267999101,,,,10087,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example
+DEU_AachenBendplatz-1_151157_T-1176,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151157_T-1176.xml,10079,R_IN4,0,19,rule_filtered,False,False,False,False,7.888782824997179,,,,10087,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example
+DEU_AachenBendplatz-1_151158_T-1177,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151158_T-1177.xml,10079,R_IN4,0,19,rule_filtered,False,False,False,False,8.226294283998868,,,,10087,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example
+DEU_AachenBendplatz-1_151159_T-1178,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151159_T-1178.xml,10079,R_IN4,0,19,rule_filtered,False,False,False,False,8.37254158200085,,,,10087,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example
+DEU_AachenBendplatz-1_151161_T-1180,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151161_T-1180.xml,10079,R_IN4,0,19,rule_filtered,True,True,True,True,8.477539843999693,0.40790086000197334,0.40790086000197334,0.8644393819995457,10087,inf,,5,0,paper_example
+DEU_AachenBendplatz-1_151162_T-1181,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151162_T-1181.xml,10079,R_IN4,0,19,rule_filtered,True,True,True,True,8.382232541000121,2.4827869170003396,2.4827869170003396,0.9101550339983078,10087,inf,,51,0,paper_example
+DEU_AachenBendplatz-1_151163_T-1182,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151163_T-1182.xml,10079,R_IN4,0,19,rule_filtered,True,True,True,True,7.811174464000942,2.119936835999397,2.119936835999397,0.9804308970014972,10087,inf,,58,0,paper_example
+DEU_AachenBendplatz-1_151164_T-1183,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151164_T-1183.xml,10079,R_IN4,0,19,rule_filtered,True,True,True,True,7.315260205999948,1.9383547850011382,1.9383547850011382,0.7648101819977455,10087,inf,,84,0,paper_example
+DEU_AachenBendplatz-1_151165_T-1184,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151165_T-1184.xml,10079,R_IN4,0,19,rule_filtered,True,True,True,True,6.304452365002362,0.3313396659978025,0.3313396659978025,0.7646712850000768,10087,inf,,8,0,paper_example
+DEU_AachenBendplatz-1_92261_T-2280,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_92261_T-2280.xml,10121,R_IN4,0,19,rule_filtered,True,True,True,True,6.242580220998207,0.4620145160006359,0.4620145160006359,0.78185800600113,10129,inf,,15,0,paper_example
+DEU_AachenBendplatz-1_92262_T-2281,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_92262_T-2281.xml,10121,R_IN4,0,19,rule_filtered,False,False,False,False,6.232804134000617,,,,10129,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example
+DEU_AachenBendplatz-1_92263_T-2282,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_92263_T-2282.xml,10121,R_IN4,0,19,rule_filtered,False,False,False,False,6.302080659999774,,,,10129,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example
+DEU_AachenBendplatz-1_92264_T-2283,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_92264_T-2283.xml,10121,R_IN4,0,19,rule_filtered,False,False,False,False,6.255023380002967,,,,10129,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example
+DEU_AachenBendplatz-1_92265_T-2284,scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_92265_T-2284.xml,10121,R_IN4,0,19,rule_filtered,False,False,False,False,5.934028684001532,,,,10129,,"Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+Traceback (most recent call last):
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/benchmark.py"", line 564, in evaluate
+    optimal = planner.plan()
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 652, in plan
+    self.x_0_cl = self._compute_initial_states(self.x_0)
+  File ""/data_linux/Lab/commonroad-repairer-vp/sampling_comparison/vendor/reactive_planner_ab96a839/commonroad_rp/reactive_planner.py"", line 555, in _compute_initial_states
+    raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
+Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
+",,0,paper_example

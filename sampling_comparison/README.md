@@ -30,9 +30,9 @@ R_IN1 默认使用论文批处理脚本的 velocity-keeping 配置（`--in1-stra
 
 `--jobs 2` 或更高可并行 cohort，但会改变 wall-clock 竞争条件；方法时间使用 `perf_counter`。默认不设置候选检查上限，与论文批处理一致。可用 `--max-rule-candidates N` 做明确预算下的消融实验，但这类成功率不能直接与论文的无上限结果比较。
 
-输出全部位于 `sampling_comparison/results/<run>/`：逐组原始 CSV、日志、逐 case join、汇总 CSV 和 `REPORT.md`。
+当前保留的最新完整结果位于 `sampling_comparison/results/latest_full/`：逐组原始 CSV、逐 case join、汇总 CSV、`REPORT.md` 和 `RUN.md`。
 
-若 VP cohort 引用了已清理的 `/tmp` inD time-shift 场景，调度器会先四路并行调用官方 dataset converter，并把精确重建的 XML 与 manifest 保存到 `sampling_comparison/generated_scenarios/`。可用 `--skip-prepare` 显式关闭。
+若 VP cohort 引用了已清理的 `/tmp` inD time-shift 场景，调度器会调用官方 dataset converter，并把重建的 XML 保存到 `scenarios/experiment_scenarios/generated_sampling/`。所有实验场景的统一索引见 `scenarios/experiment_scenarios/manifest.csv`。可用 `--skip-prepare` 显式关闭。
 
 ## 依赖与复现说明
 
