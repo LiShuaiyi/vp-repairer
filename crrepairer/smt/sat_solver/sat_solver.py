@@ -65,14 +65,20 @@ class SATSolver:
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
 
     def add_temporal_witness_selectors(self, witness_plans):
-        """Encode finite existential witness alternatives in the SAT CNF.
+        """Encode finite existential witnesses with local Tseitin clauses.
 
-        A selector is a Boolean-only witness choice.  Each member of the
-        selected temporal conjunction gets its own theory atom, so no atom
-        handed to VP contains a hidden Boolean conjunction.  For witness ``w``
-        the encoding is ``z_w -> (q_w_1 & ... & q_w_n)``; the original parent
-        conjunction is replaced by ``z_1 | ... | z_k``.  Pairwise exclusion
-        keeps one common witness active at a time.
+        The original compound proposition ``p`` remains in the rule CNF.  For
+        each witness ``w``, a fresh ``z_w`` represents the conjunction of its
+        atomic VP obligations, and ``p`` represents the disjunction of all
+        witnesses::
+
+            z_w <-> (q_w_1 & ... & q_w_n)
+            p   <-> (z_1 | ... | z_k)
+
+        The corresponding definitional clauses are already CNF, so this path
+        never asks SymPy to distribute the expanded witness expression.
+        Pairwise exclusion retains the repairer's one-common-witness search
+        policy.
         """
         used = {
             str(node.alphabet).lstrip("~")
@@ -89,17 +95,15 @@ class SATSolver:
         )
         available = [character for character in symbol_pool if character not in used]
         synthetic_nodes = []
-        replacements = {}
         selector_debug = {}
         linking_clauses = []
+        witness_parent_nodes = []
 
         for group, plan in witness_plans.items():
+            parent = plan.get("parent")
             members = tuple(plan.get("children", ()))
-            member_vars = tuple(
-                str(member.alphabet).lstrip("~") for member in members
-            )
             candidates = tuple(plan.get("candidates", ()))
-            if not members:
+            if parent is None or not members:
                 continue
             if len(available) < len(candidates):
                 raise RuntimeError(
@@ -162,26 +166,36 @@ class SATSolver:
                             sp.Symbol(obligation_variable),
                         )
                     )
-                    # The obligation is a witness-local theory atom.  Making
-                    # the gate bidirectional gives it a canonical false value
-                    # whenever its witness is inactive, instead of leaving an
-                    # irrelevant Boolean degree of freedom in failed models.
-                    linking_clauses.append(
-                        sp.Or(
-                            sp.Not(sp.Symbol(obligation_variable)),
-                            sp.Symbol(variable),
-                        )
-                    )
                 selector.vp_witness_obligations = tuple(obligations)
-            parent_conjunction = sp.And(
-                *(sp.Symbol(variable) for variable in member_vars)
+                # Complete the Tseitin equivalence
+                # z_w <-> (q_w_1 & ... & q_w_n).  The clauses above encode
+                # z_w -> q_w_i; this one encodes the reverse implication.
+                linking_clauses.append(
+                    sp.Or(
+                        sp.Symbol(variable),
+                        *(
+                            sp.Not(sp.Symbol(obligation_variable))
+                            for obligation_variable in obligation_variables
+                        ),
+                    )
+                )
+            parent_variable = str(parent.alphabet).lstrip("~")
+            parent_symbol = sp.Symbol(parent_variable)
+            # p -> OR(z_w).  With no dynamically possible witness this reduces
+            # to ~p, which is the exact finite-trace result.
+            linking_clauses.append(
+                sp.Or(
+                    sp.Not(parent_symbol),
+                    *(sp.Symbol(variable) for variable in selectors),
+                )
             )
-            witness_disjunction = (
-                sp.Or(*(sp.Symbol(variable) for variable in selectors))
-                if selectors
-                else sp.false
-            )
-            replacements[parent_conjunction] = witness_disjunction
+            # Each witness implies the original existential proposition.
+            for variable in selectors:
+                linking_clauses.append(
+                    sp.Or(parent_symbol, sp.Not(sp.Symbol(variable)))
+                )
+            parent.vp_witness_parent_auxiliary = True
+            witness_parent_nodes.append(parent)
             selector_debug[group] = tuple(
                 (
                     selector.alphabet,
@@ -202,27 +216,28 @@ class SATSolver:
                         sp.Or(sp.Not(sp.Symbol(left)), sp.Not(sp.Symbol(right)))
                     )
 
-        if not replacements:
+        if not selector_debug:
             return {}
-        source_expression = (
-            sp.sympify(stl2sympy(self._source_formula))
-            if isinstance(self._source_formula, str)
-            else sp.sympify(self._source_formula)
-        )
-        expanded_expression = source_expression.xreplace(replacements)
-        if expanded_expression == source_expression:
-            missing = ", ".join(str(item) for item in replacements)
-            raise RuntimeError(
-                "Could not locate decomposed temporal conjunction(s) in the "
-                f"SAT source formula: {missing}."
-            )
-        if linking_clauses:
-            expanded_expression = sp.And(
-                expanded_expression, *linking_clauses
-            )
+        # ``self._formula`` is already CNF.  Every definitional item above is
+        # one CNF clause, hence their conjunction is CNF without ``to_cnf``.
+        base_expression = sp.sympify(stl2sympy(self._formula))
+        expanded_expression = sp.And(base_expression, *linking_clauses)
+        if not sp.logic.boolalg.is_cnf(expanded_expression):
+            raise RuntimeError("Local temporal Tseitin encoding is not CNF.")
+        parent_variables = {
+            str(parent.alphabet).lstrip("~") for parent in witness_parent_nodes
+        }
         self._prop_nodes = list(self._prop_nodes) + synthetic_nodes
         self._dpll_solver._prop_nodes = self._prop_nodes
-        self._formula = str(sp.to_cnf(expanded_expression))
+        for variable in parent_variables:
+            self._domain_dict.pop(variable, None)
+            self._hard_domain_vars.discard(variable)
+        self._repair_literals = [
+            literal
+            for literal in self._repair_literals
+            if literal.lstrip("~") not in parent_variables
+        ]
+        self._formula = str(expanded_expression)
         self._temporal_witness_selectors = selector_debug
         self._expanded_decomposition_groups.update(selector_debug)
         # In exact witness mode each positive selector denotes an immediately

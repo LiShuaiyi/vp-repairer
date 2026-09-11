@@ -70,6 +70,7 @@ class VPConstraintExtraction:
                     for prop in selected
                     if not getattr(prop, "vp_witness_auxiliary", False)
                     and not getattr(prop, "vp_witness_obligation", False)
+                    and not getattr(prop, "vp_witness_parent_auxiliary", False)
                 ]
             self.once_group_ever_activated = True
             active_selector_vars = {
@@ -80,6 +81,7 @@ class VPConstraintExtraction:
                 for prop in selected
                 if not getattr(prop, "vp_witness_auxiliary", False)
                 and not getattr(prop, "vp_witness_obligation", False)
+                and not getattr(prop, "vp_witness_parent_auxiliary", False)
                 and getattr(prop, "vp_decomposition_group", None) is None
             ]
             seen = {id(prop) for prop in result}
@@ -146,28 +148,20 @@ class VPConstraintExtraction:
             str(literal).lstrip("~"): not str(literal).startswith("~")
             for literal in (getattr(self, "_model", None) or ())
         }
-        all_group_members = {}
-        for prop in self.rule_monitor.proposition_nodes:
-            group = getattr(prop, "vp_decomposition_group", None)
-            if group is not None:
-                all_group_members.setdefault(group, []).append(prop)
         groups = {}
         for prop in propositions:
-            group = getattr(prop, "vp_decomposition_group", None)
-            members = all_group_members.get(group, ())
+            members = tuple(getattr(prop, "vp_temporal_members", ()) or ())
+            group = prop.name if members else None
             group_is_true = members and (
                 not require_selected_group
-                or all(
-                    model_values.get(str(member.alphabet).lstrip("~"), False)
-                    for member in members
-                )
+                or model_values.get(str(prop.alphabet).lstrip("~"), False)
             )
             if (
                 group is not None
                 and group_is_true
                 and not str(prop.alphabet).startswith("~")
             ):
-                groups.setdefault(group, []).append(prop)
+                groups[group] = (prop, members)
         if not groups:
             return {}
 
@@ -176,7 +170,7 @@ class VPConstraintExtraction:
         trajectory_end = int(all_states[-1].time_step)
         dt = float(self.config.scenario.dt)
         plans = {}
-        for group, children in groups.items():
+        for group, (parent, children) in groups.items():
             duration = self._once_historically_duration(group)
             evaluators = []
             for prop in children:
@@ -220,6 +214,7 @@ class VPConstraintExtraction:
 
             candidates.sort(key=lambda interval: interval[1], reverse=True)
             plans[group] = {
+                "parent": parent,
                 "children": tuple(children),
                 "duration": duration,
                 "duration_steps": duration_steps,
@@ -243,9 +238,9 @@ class VPConstraintExtraction:
         """
         groups = {}
         for prop in propositions:
-            group = getattr(prop, "vp_decomposition_group", None)
-            if group is not None and not str(prop.alphabet).startswith("~"):
-                groups.setdefault(group, []).append(prop)
+            children = tuple(getattr(prop, "vp_temporal_members", ()) or ())
+            if children and not str(prop.alphabet).startswith("~"):
+                groups[prop.name] = (prop, children)
         if not groups:
             return {}
 
@@ -253,7 +248,7 @@ class VPConstraintExtraction:
         trajectory_end = int(all_states[-1].time_step)
         dt = float(self.config.scenario.dt)
         plans = {}
-        for group, children in groups.items():
+        for group, (parent, children) in groups.items():
             duration = self._once_historically_duration(group)
             if duration is None:
                 continue
@@ -264,6 +259,7 @@ class VPConstraintExtraction:
                 for witness in range(trajectory_end, first_witness - 1, -1)
             )
             plans[group] = {
+                "parent": parent,
                 "children": tuple(children),
                 "duration": duration,
                 "duration_steps": duration_steps,
@@ -284,7 +280,7 @@ class VPConstraintExtraction:
         grouped = [
             prop
             for prop in self.rule_monitor.proposition_nodes
-            if getattr(prop, "vp_decomposition_group", None) is not None
+            if getattr(prop, "vp_temporal_members", ())
         ]
         if not grouped:
             return {}
