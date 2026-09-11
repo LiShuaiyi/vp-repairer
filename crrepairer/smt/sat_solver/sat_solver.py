@@ -64,20 +64,20 @@ class SATSolver:
         self._hard_domain_vars = set(hard_domain_vars or ())
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
 
-    def add_temporal_witness_selectors(self, witness_plans):
-        """Encode finite existential witnesses with local Tseitin clauses.
+    def add_once_time_selectors(self, once_time_plans):
+        """Encode finite existential time alternatives with local Tseitin clauses.
 
         The original compound proposition ``p`` remains in the rule CNF.  For
-        each witness ``w``, a fresh ``z_w`` represents the conjunction of its
+        each discrete end time ``w``, a fresh ``z_w`` represents the conjunction of its
         atomic VP obligations, and ``p`` represents the disjunction of all
-        witnesses::
+        time alternatives::
 
             z_w <-> (q_w_1 & ... & q_w_n)
             p   <-> (z_1 | ... | z_k)
 
         The corresponding definitional clauses are already CNF, so this path
-        never asks SymPy to distribute the expanded witness expression.
-        Pairwise exclusion retains the repairer's one-common-witness search
+        never asks SymPy to distribute the expanded temporal expression.
+        Pairwise exclusion retains the repairer's one-common-time search
         policy.
         """
         used = {
@@ -85,7 +85,7 @@ class SATSolver:
             for node in self._prop_nodes
         }
         # The in-tree DPLL representation uses single-character atoms.  A
-        # plain-DPLL baseline expands every temporal witness, which can exceed
+        # plain-DPLL baseline expands every discrete time alternative, which can exceed
         # the 26 Latin lowercase symbols; use additional Unicode identifier
         # characters rather than silently applying estimate-based pruning.
         symbol_pool = (
@@ -97,9 +97,9 @@ class SATSolver:
         synthetic_nodes = []
         selector_debug = {}
         linking_clauses = []
-        witness_parent_nodes = []
+        once_parent_nodes = []
 
-        for group, plan in witness_plans.items():
+        for group, plan in once_time_plans.items():
             parent = plan.get("parent")
             members = tuple(plan.get("children", ()))
             candidates = tuple(plan.get("candidates", ()))
@@ -107,7 +107,7 @@ class SATSolver:
                 continue
             if len(available) < len(candidates):
                 raise RuntimeError(
-                    "SAT witness expansion exhausted the single-character "
+                    "SAT once-time expansion exhausted the single-character "
                     "DPLL symbol pool."
                 )
 
@@ -116,12 +116,12 @@ class SATSolver:
             for window in candidates:
                 if len(available) < 1 + len(members):
                     raise RuntimeError(
-                        "SAT witness expansion exhausted the current "
+                        "SAT once-time expansion exhausted the current "
                         "single-character DPLL symbol pool."
                     )
                 variable = available.pop(0)
                 selector = PropositionNode(
-                    name=f"vp_witness[{window[1]}]({group})",
+                    name=f"vp_once_time[{window[1]}]({group})",
                     alphabet=variable,
                     source_rule=members[0].source_rule,
                     children=[],
@@ -130,9 +130,9 @@ class SATSolver:
                     ttv_value=-1.0,
                     ttv_h_min=-1.0,
                 )
-                selector.vp_witness_group = group
-                selector.vp_witness_window = tuple(window)
-                selector.vp_witness_auxiliary = True
+                selector.vp_once_group = group
+                selector.vp_once_interval = tuple(window)
+                selector.vp_once_time_auxiliary = True
                 synthetic_nodes.append(selector)
                 selectors.append(variable)
                 selector_nodes.append(selector)
@@ -143,7 +143,7 @@ class SATSolver:
                     obligation_variable = available.pop(0)
                     obligation = PropositionNode(
                         name=(
-                            f"vp_witness_leaf[{window[1]}]("
+                            f"vp_once_obligation[{window[1]}]("
                             f"{member.name})"
                         ),
                         alphabet=obligation_variable,
@@ -152,11 +152,11 @@ class SATSolver:
                         ttv_value=member.ttv_value,
                         ttv_h_min=member.ttv_h_min,
                     )
-                    obligation.vp_witness_group = group
-                    obligation.vp_witness_window = tuple(window)
-                    obligation.vp_witness_obligation = True
-                    obligation.vp_witness_selector = variable
-                    obligation.vp_witness_source = member
+                    obligation.vp_once_group = group
+                    obligation.vp_once_interval = tuple(window)
+                    obligation.vp_once_obligation = True
+                    obligation.vp_once_selector = variable
+                    obligation.vp_once_source = member
                     synthetic_nodes.append(obligation)
                     obligations.append(obligation)
                     obligation_variables.append(obligation_variable)
@@ -166,7 +166,7 @@ class SATSolver:
                             sp.Symbol(obligation_variable),
                         )
                     )
-                selector.vp_witness_obligations = tuple(obligations)
+                selector.vp_once_obligations = tuple(obligations)
                 # Complete the Tseitin equivalence
                 # z_w <-> (q_w_1 & ... & q_w_n).  The clauses above encode
                 # z_w -> q_w_i; this one encodes the reverse implication.
@@ -181,7 +181,7 @@ class SATSolver:
                 )
             parent_variable = str(parent.alphabet).lstrip("~")
             parent_symbol = sp.Symbol(parent_variable)
-            # p -> OR(z_w).  With no dynamically possible witness this reduces
+            # p -> OR(z_w).  With no dynamically possible end time this reduces
             # to ~p, which is the exact finite-trace result.
             linking_clauses.append(
                 sp.Or(
@@ -189,26 +189,26 @@ class SATSolver:
                     *(sp.Symbol(variable) for variable in selectors),
                 )
             )
-            # Each witness implies the original existential proposition.
+            # Each selected end time implies the original existential proposition.
             for variable in selectors:
                 linking_clauses.append(
                     sp.Or(parent_symbol, sp.Not(sp.Symbol(variable)))
                 )
-            parent.vp_witness_parent_auxiliary = True
-            witness_parent_nodes.append(parent)
+            parent.vp_once_parent_auxiliary = True
+            once_parent_nodes.append(parent)
             selector_debug[group] = tuple(
                 (
                     selector.alphabet,
-                    tuple(selector.vp_witness_window),
+                    tuple(selector.vp_once_interval),
                     tuple(
                         obligation.alphabet
-                        for obligation in selector.vp_witness_obligations
+                        for obligation in selector.vp_once_obligations
                     ),
                 )
                 for selector in selector_nodes
             )
 
-            # Selecting several witnesses is logically unnecessary and would
+            # Selecting several end times is logically unnecessary and would
             # ask VP to enforce several distinct historical windows at once.
             for left_index, left in enumerate(selectors):
                 for right in selectors[left_index + 1 :]:
@@ -225,7 +225,7 @@ class SATSolver:
         if not sp.logic.boolalg.is_cnf(expanded_expression):
             raise RuntimeError("Local temporal Tseitin encoding is not CNF.")
         parent_variables = {
-            str(parent.alphabet).lstrip("~") for parent in witness_parent_nodes
+            str(parent.alphabet).lstrip("~") for parent in once_parent_nodes
         }
         self._prop_nodes = list(self._prop_nodes) + synthetic_nodes
         self._dpll_solver._prop_nodes = self._prop_nodes
@@ -238,9 +238,9 @@ class SATSolver:
             if literal.lstrip("~") not in parent_variables
         ]
         self._formula = str(expanded_expression)
-        self._temporal_witness_selectors = selector_debug
+        self._once_time_selectors = selector_debug
         self._expanded_decomposition_groups.update(selector_debug)
-        # In exact witness mode each positive selector denotes an immediately
+        # In exact once-time mode each positive selector denotes an immediately
         # executable VP candidate.  Prefer these candidates to arbitrary
         # completions of the surrounding Boolean formula.
         self._repair_literals = list(
@@ -298,6 +298,20 @@ class SATSolver:
             )
         )
 
+    def add_hard_false_units(self, variables):
+        """Conjoin certified-false auxiliary variables as root CNF units."""
+        variables = tuple(sorted(set(variables)))
+        if not variables:
+            return
+        expression = sp.sympify(stl2sympy(self._formula))
+        expression = sp.And(
+            expression,
+            *(sp.Not(sp.Symbol(variable)) for variable in variables),
+        )
+        if not sp.logic.boolalg.is_cnf(expression):
+            raise RuntimeError("Hard auxiliary units did not preserve CNF.")
+        self._formula = str(expression)
+
     def solve(self):
         """
         SAT Solver.
@@ -331,16 +345,16 @@ class SATSolver:
         """
         self._dpll_model = list(self._dpll_solver.model)
         # DomainDPLL intentionally returns a partial model and can omit unit-
-        # propagated literals.  For an active temporal witness those implied
+        # propagated literals.  For an active once-time choice those implied
         # literals are precisely the theory obligations which VP must enforce,
-        # so materialize them explicitly.  Inactive witness obligations are
+        # so materialize them explicitly.  Inactive time-local obligations are
         # removed; q <-> z in the expanded CNF fixes them to false anyway.
-        active_witness_selectors = {
+        active_once_selectors = {
             literal
             for literal in self._dpll_model
             if not literal.startswith("~")
             and any(
-                getattr(prop, "vp_witness_auxiliary", False)
+                getattr(prop, "vp_once_time_auxiliary", False)
                 and prop.alphabet[-1] == literal[-1]
                 for prop in self._prop_nodes
             )
@@ -349,22 +363,22 @@ class SATSolver:
             literal
             for literal in self._dpll_model
             if not any(
-                getattr(prop, "vp_witness_obligation", False)
+                getattr(prop, "vp_once_obligation", False)
                 and prop.alphabet[-1] == literal[-1]
                 for prop in self._prop_nodes
             )
         ]
-        assigned_witness_obligations = set()
+        assigned_once_obligations = set()
         for prop in self._prop_nodes:
             if (
-                getattr(prop, "vp_witness_obligation", False)
-                and getattr(prop, "vp_witness_selector", None)
-                in active_witness_selectors
+                getattr(prop, "vp_once_obligation", False)
+                and getattr(prop, "vp_once_selector", None)
+                in active_once_selectors
             ):
                 variable = prop.alphabet[-1]
-                if variable not in assigned_witness_obligations:
+                if variable not in assigned_once_obligations:
                     self._dpll_model.append(variable)
-                    assigned_witness_obligations.add(variable)
+                    assigned_once_obligations.add(variable)
         # A DPLL model is intentionally partial: once one literal satisfies a
         # clause, unrelated variables may be absent.  For a proposition which
         # VP split into independently executable children, however, blocking

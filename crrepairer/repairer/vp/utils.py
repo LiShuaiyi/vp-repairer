@@ -49,7 +49,7 @@ class VPUtils:
                 requires_temporal_maintenance = (
                     not prop.alphabet.startswith("~")
                     and (
-                        getattr(prop, "vp_witness_obligation", False)
+                        getattr(prop, "vp_once_obligation", False)
                         or proposition_constraint_kind(prop)
                         == VPConstraintKind.STOP_LINE_BEFORE_REGION
                     )

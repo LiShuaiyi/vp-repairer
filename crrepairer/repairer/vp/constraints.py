@@ -48,29 +48,29 @@ class VPConstraintExtraction:
     """Extracts longitudinal position and velocity constraints for VP repair."""
 
     @staticmethod
-    def _once_witness_mode():
-        """Use SAT-visible exact witness alternatives for existential windows."""
+    def _once_time_mode():
+        """Use SAT-visible discrete end-time alternatives for once windows."""
         return "estimate_or_sat"
 
     def _constraint_propositions(self):
-        """Return selected propositions plus siblings sharing an active witness."""
+        """Return selected propositions plus obligations sharing an end time."""
         selected = list(getattr(self, "_sel_prop", None) or ())
-        if self._once_witness_mode() == "legacy":
+        if self._once_time_mode() == "legacy":
             return selected
-        if self._once_witness_mode() == "estimate_or_sat":
+        if self._once_time_mode() == "estimate_or_sat":
             selectors = [
                 prop
                 for prop in selected
-                if getattr(prop, "vp_witness_auxiliary", False)
+                if getattr(prop, "vp_once_time_auxiliary", False)
                 and not str(prop.alphabet).startswith("~")
             ]
             if not selectors:
                 return [
                     prop
                     for prop in selected
-                    if not getattr(prop, "vp_witness_auxiliary", False)
-                    and not getattr(prop, "vp_witness_obligation", False)
-                    and not getattr(prop, "vp_witness_parent_auxiliary", False)
+                    if not getattr(prop, "vp_once_time_auxiliary", False)
+                    and not getattr(prop, "vp_once_obligation", False)
+                    and not getattr(prop, "vp_once_parent_auxiliary", False)
                 ]
             self.once_group_ever_activated = True
             active_selector_vars = {
@@ -79,16 +79,16 @@ class VPConstraintExtraction:
             result = [
                 prop
                 for prop in selected
-                if not getattr(prop, "vp_witness_auxiliary", False)
-                and not getattr(prop, "vp_witness_obligation", False)
-                and not getattr(prop, "vp_witness_parent_auxiliary", False)
+                if not getattr(prop, "vp_once_time_auxiliary", False)
+                and not getattr(prop, "vp_once_obligation", False)
+                and not getattr(prop, "vp_once_parent_auxiliary", False)
                 and getattr(prop, "vp_decomposition_group", None) is None
             ]
             seen = {id(prop) for prop in result}
             for prop in selected:
                 if (
-                    getattr(prop, "vp_witness_obligation", False)
-                    and getattr(prop, "vp_witness_selector", None)
+                    getattr(prop, "vp_once_obligation", False)
+                    and getattr(prop, "vp_once_selector", None)
                     in active_selector_vars
                     and not str(prop.alphabet).startswith("~")
                     and id(prop) not in seen
@@ -137,13 +137,14 @@ class VPConstraintExtraction:
             return None
         return float(Fraction(match.group(1)))
 
-    def _estimate_once_witness_groups(
+    def _estimate_once_time_groups(
         self,
         all_states,
         propositions,
         require_selected_group=True,
+        record_candidate_counts=True,
     ):
-        """Build estimate-pruned common witness windows for temporal groups."""
+        """Classify possible common end-time intervals for temporal groups."""
         model_values = {
             str(literal).lstrip("~"): not str(literal).startswith("~")
             for literal in (getattr(self, "_model", None) or ())
@@ -186,8 +187,8 @@ class VPConstraintExtraction:
             # Enumerate the complete finite-trace semantics.  A window may
             # start at the fixed initial state; whether that fixed prefix can
             # satisfy the obligation is decided by the predicate estimate,
-            # not by deleting the witness a priori.
-            first_witness = trace_start + duration_steps
+            # not by deleting the time alternative a priori.
+            first_end_step = trace_start + duration_steps
             candidates = []
             rejected = []
             frame_cache = {}
@@ -200,17 +201,17 @@ class VPConstraintExtraction:
                     ).domain
                 return 1 in frame_cache[key]
 
-            for witness in range(first_witness, trajectory_end + 1):
-                window_start = witness - duration_steps
+            for end_step in range(first_end_step, trajectory_end + 1):
+                window_start = end_step - duration_steps
                 possible = all(
                     can_be_true(evaluator, prop.name, step)
                     for prop, evaluator in zip(children, evaluators)
-                    for step in range(window_start, witness + 1)
+                    for step in range(window_start, end_step + 1)
                 )
                 if possible:
-                    candidates.append((window_start, witness))
+                    candidates.append((window_start, end_step))
                 else:
-                    rejected.append(witness)
+                    rejected.append(end_step)
 
             candidates.sort(key=lambda interval: interval[1], reverse=True)
             plans[group] = {
@@ -219,22 +220,23 @@ class VPConstraintExtraction:
                 "duration": duration,
                 "duration_steps": duration_steps,
                 "candidates": tuple(candidates),
-                "rejected_witnesses": tuple(rejected),
+                "rejected_end_steps": tuple(rejected),
             }
         if plans:
             if require_selected_group:
                 self.once_group_ever_activated = True
-            self.once_witness_candidate_counts.extend(
-                len(plan["candidates"]) for plan in plans.values()
-            )
+            if record_candidate_counts:
+                self.once_time_candidate_counts.extend(
+                    len(plan["candidates"]) for plan in plans.values()
+                )
         return plans
 
-    def _all_once_witness_groups(self, all_states, propositions):
-        """Build the unpruned finite witness set for the plain-DPLL baseline.
+    def _all_once_time_groups(self, all_states, propositions):
+        """Build all finite once-time alternatives for the plain-DPLL baseline.
 
         This uses only the temporal bounds and planning horizon.  In
         particular it does not query predicate estimates, so it represents
-        every legal witness of O(H[0,T](...)) in the SAT formula.
+        every legal end time of O(H[0,T](...)) in the SAT formula.
         """
         groups = {}
         for prop in propositions:
@@ -253,10 +255,10 @@ class VPConstraintExtraction:
             if duration is None:
                 continue
             duration_steps = int(math.ceil(duration / dt - 1e-9))
-            first_witness = trace_start + duration_steps
+            first_end_step = trace_start + duration_steps
             candidates = tuple(
-                (witness - duration_steps, witness)
-                for witness in range(trajectory_end, first_witness - 1, -1)
+                (end_step - duration_steps, end_step)
+                for end_step in range(trajectory_end, first_end_step - 1, -1)
             )
             plans[group] = {
                 "parent": parent,
@@ -264,18 +266,24 @@ class VPConstraintExtraction:
                 "duration": duration,
                 "duration_steps": duration_steps,
                 "candidates": candidates,
-                "rejected_witnesses": (),
+                "rejected_end_steps": (),
                 "predicate_estimate_pruned": False,
             }
         if plans:
-            self.once_witness_candidate_counts.extend(
+            self.once_time_candidate_counts.extend(
                 len(plan["candidates"]) for plan in plans.values()
             )
         return plans
 
-    def _install_sat_once_witness_expansion(self):
-        """Expose estimate-pruned common witnesses as ordinary SAT choices."""
-        if self._once_witness_mode() != "estimate_or_sat":
+    def _install_sat_once_time_expansion(self):
+        """Expose every legal end time, using estimates only as SAT domains.
+
+        Formula construction is independent of predicate estimation: plain
+        DPLL and DomainDPLL receive the same time variables and clauses.
+        An end time proved impossible by the reachability estimate remains in
+        the CNF but is hard-fixed false for DomainDPLL.
+        """
+        if self._once_time_mode() != "estimate_or_sat":
             return {}
         grouped = [
             prop
@@ -285,32 +293,60 @@ class VPConstraintExtraction:
         if not grouped:
             return {}
         all_states = self._get_states_with_initial()
-        if self.sat_solver.solver_mode == "dpll":
-            plans = self._all_once_witness_groups(all_states, grouped)
-        else:
-            plans = self._estimate_once_witness_groups(
+        plans = self._all_once_time_groups(all_states, grouped)
+        estimated_plans = {}
+        if self.sat_solver.solver_mode == "domain_dpll":
+            estimated_plans = self._estimate_once_time_groups(
                 all_states,
                 grouped,
                 require_selected_group=False,
+                record_candidate_counts=False,
             )
-        self._sat_once_witness_plans = plans
-        return self.sat_solver.add_temporal_witness_selectors(plans)
+        self._sat_once_time_plans = plans
+        selectors = self.sat_solver.add_once_time_selectors(plans)
 
-    def _advance_once_witness_choice(self):
+        rejected_selector_vars = set()
+        for group, selector_entries in selectors.items():
+            rejected_end_steps = set(
+                estimated_plans.get(group, {}).get("rejected_end_steps", ())
+            )
+            for selector, window, _obligations in selector_entries:
+                if int(window[1]) in rejected_end_steps:
+                    rejected_selector_vars.add(str(selector).lstrip("~"))
+
+        for variable in rejected_selector_vars:
+            self.domain_dict[variable] = {0}
+            self._hard_domain_vars.add(variable)
+            self.sat_solver._domain_dict[variable] = {0}
+            self.sat_solver._hard_domain_vars.add(variable)
+        if rejected_selector_vars:
+            # DomainDPLL's singleton checks happen during branching.  Put
+            # certified-impossible once-time choices at the CNF root as well,
+            # so ordinary unit propagation simplifies their Tseitin clauses
+            # before any unrelated proposition is selected.
+            self.sat_solver.add_hard_false_units(rejected_selector_vars)
+            self.sat_solver._repair_literals = [
+                literal
+                for literal in self.sat_solver._repair_literals
+                if literal.lstrip("~") not in rejected_selector_vars
+            ]
+        return selectors
+
+    def _advance_once_time_choice(self):
         """Advance one local disjunct without asking the main SAT for a model."""
-        if self._once_witness_mode() != "estimate_or":
+        if self._once_time_mode() != "estimate_or":
             return False
-        plans = getattr(self, "_once_witness_plans", {}) or {}
-        choices = getattr(self, "_once_witness_choice", None)
+        plans = getattr(self, "_once_time_plans", {}) or {}
+        choices = getattr(self, "_once_time_choice", None)
         if choices is None:
-            choices = self._once_witness_choice = {}
+            choices = self._once_time_choice = {}
         for group, plan in plans.items():
             current = int(choices.get(group, 0))
             if current + 1 < len(plan.get("candidates", ())):
                 choices[group] = current + 1
                 self._temporal_constraint_steps_cache = {}
-                self.once_witness_attempts = int(
-                    getattr(self, "once_witness_attempts", 1)
+                self.once_time_attempts = int(
+                    getattr(self, "once_time_attempts", 1)
                 ) + 1
                 return True
         return False
@@ -546,27 +582,27 @@ class VPConstraintExtraction:
 
         active_steps = {}
         diagnostics = []
-        once_mode = self._once_witness_mode()
+        once_mode = self._once_time_mode()
         once_plans = (
-            self._estimate_once_witness_groups(all_states, propositions)
+            self._estimate_once_time_groups(all_states, propositions)
             if once_mode in {"estimate_hj", "estimate_or"}
             and getattr(self, "_model", None) is not None
             else {}
         )
-        self._once_witness_plans = once_plans
-        once_choice = getattr(self, "_once_witness_choice", None)
+        self._once_time_plans = once_plans
+        once_choice = getattr(self, "_once_time_choice", None)
         if once_choice is None:
-            once_choice = self._once_witness_choice = {}
+            once_choice = self._once_time_choice = {}
         for prop in propositions:
-            direct_witness_window = getattr(prop, "vp_witness_window", None)
+            direct_once_interval = getattr(prop, "vp_once_interval", None)
             if (
                 once_mode == "estimate_or_sat"
-                and getattr(prop, "vp_witness_obligation", False)
-                and direct_witness_window is not None
+                and getattr(prop, "vp_once_obligation", False)
+                and direct_once_interval is not None
             ):
-                window_start, witness = direct_witness_window
+                window_start, end_step = direct_once_interval
                 interval = TemporalConstraintSteps(
-                    frozenset(range(window_start, witness + 1))
+                    frozenset(range(window_start, end_step + 1))
                 )
                 active_steps[id(prop)] = interval
                 diagnostics.append(
@@ -576,23 +612,23 @@ class VPConstraintExtraction:
                         "active_start": interval.start,
                         "active_end": interval.end,
                         "active_count": interval.count,
-                        "once_witness_mode": once_mode,
-                        "selected_windows": (tuple(direct_witness_window),),
+                        "once_time_mode": once_mode,
+                        "selected_windows": (tuple(direct_once_interval),),
                         "decomposition_group": getattr(
-                            prop, "vp_witness_group", None
+                            prop, "vp_once_group", None
                         ),
-                        "atomic_witness_obligation": True,
+                        "atomic_once_obligation": True,
                     }
                 )
                 continue
             group = getattr(prop, "vp_decomposition_group", None)
             forced_window = getattr(
-                self, "_active_sat_witness_windows", {}
+                self, "_active_sat_once_intervals", {}
             ).get(group)
             if once_mode == "estimate_or_sat" and forced_window is not None:
-                window_start, witness = forced_window
+                window_start, end_step = forced_window
                 interval = TemporalConstraintSteps(
-                    frozenset(range(window_start, witness + 1))
+                    frozenset(range(window_start, end_step + 1))
                 )
                 active_steps[id(prop)] = interval
                 diagnostics.append(
@@ -602,7 +638,7 @@ class VPConstraintExtraction:
                         "active_start": interval.start,
                         "active_end": interval.end,
                         "active_count": interval.count,
-                        "once_witness_mode": once_mode,
+                        "once_time_mode": once_mode,
                         "selected_windows": (forced_window,),
                         "decomposition_group": group,
                     }
@@ -614,21 +650,21 @@ class VPConstraintExtraction:
                 if not candidates:
                     raise UnsupportedVPCandidateError(
                         "Predicate estimate proves that no complete historical "
-                        f"witness window can satisfy {group}."
+                        f"once interval can satisfy {group}."
                     )
                 if once_mode == "estimate_hj":
                     steps = {
                         step
-                        for window_start, witness in candidates
-                        for step in range(window_start, witness + 1)
+                        for window_start, end_step in candidates
+                        for step in range(window_start, end_step + 1)
                     }
                     selected_windows = candidates
                 else:
                     choice = min(int(once_choice.get(group, 0)), len(candidates) - 1)
                     once_choice[group] = choice
-                    window_start, witness = candidates[choice]
-                    steps = set(range(window_start, witness + 1))
-                    selected_windows = ((window_start, witness),)
+                    window_start, end_step = candidates[choice]
+                    steps = set(range(window_start, end_step + 1))
+                    selected_windows = ((window_start, end_step),)
                 interval = TemporalConstraintSteps(frozenset(steps))
                 active_steps[id(prop)] = interval
                 diagnostics.append(
@@ -638,9 +674,9 @@ class VPConstraintExtraction:
                         "active_start": interval.start,
                         "active_end": interval.end,
                         "active_count": interval.count,
-                        "once_witness_mode": once_mode,
-                        "possible_witness_count": len(candidates),
-                        "rejected_witness_count": len(plan["rejected_witnesses"]),
+                        "once_time_mode": once_mode,
+                        "possible_end_time_count": len(candidates),
+                        "rejected_end_time_count": len(plan["rejected_end_steps"]),
                         "selected_windows": selected_windows,
                         "decomposition_group": group,
                     }
@@ -725,7 +761,7 @@ class VPConstraintExtraction:
         v_min = np.zeros(horizon)
         v_max = np.ones(horizon) * math.inf
         speed_limits = self._extract_speed_limit_values() 
-        if self._once_witness_mode() == "legacy":
+        if self._once_time_mode() == "legacy":
             constraint_propositions = self._sel_prop
             temporal_steps = self._temporal_constraint_steps(all_states)
         else:
@@ -909,7 +945,7 @@ class VPConstraintExtraction:
 
         wheelbase = self._get_planner_wheelbase()
         final_time_step = all_states[-1].time_step
-        if self._once_witness_mode() == "legacy":
+        if self._once_time_mode() == "legacy":
             constraint_propositions = self._sel_prop
             temporal_steps = self._temporal_constraint_steps(all_states)
         else:
@@ -957,8 +993,8 @@ class VPConstraintExtraction:
                 constraint_kind = proposition_constraint_kind(prop)
                 if constraint_kind == VPConstraintKind.STOP_LINE_UPPER:
                     forced_window = (
-                        getattr(prop, "vp_witness_window", None)
-                        if getattr(prop, "vp_witness_obligation", False)
+                        getattr(prop, "vp_once_interval", None)
+                        if getattr(prop, "vp_once_obligation", False)
                         else None
                     )
                     if forced_window is not None:
@@ -1527,7 +1563,7 @@ class VPConstraintExtraction:
     ):
         """Return certified trajectory-CLCS bounds for a stop-line literal.
 
-        Positive witness obligations use an inner true interval.  A positive
+        Positive once-time obligations use an inner true interval.  A positive
         ``previous(not(stop_line_in_front))`` repair action uses the boundary
         immediately before the next outer true interval, so the negated atom
         is guaranteed without changing route or lateral behavior.

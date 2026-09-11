@@ -49,7 +49,7 @@ class PropositionNode:
     # VP-only atomic views of a compound temporal proposition.  These are
     # metadata, not propositions in the monitor/SAT abstraction.  Keeping
     # them on the parent prevents O(H(a & b)) from being rewritten into
-    # O(H(a)) & O(H(b)) before the common-witness SAT encoding is installed.
+    # O(H(a)) & O(H(b)) before the common-time SAT encoding is installed.
     vp_temporal_members: Tuple['PropositionNode', ...] = field(default_factory=tuple)
 
     def set_ttv_values(self, ttv_value: float, ttv_h_min: float):
@@ -392,7 +392,7 @@ class STLRuleMonitor:
         # Register VP-only atomic views of supported compound temporal
         # propositions.  This deliberately does not modify the monitor
         # abstraction or SAT formula: the original parent proposition remains
-        # intact until SAT replaces it with exact common-witness selectors.
+        # intact until SAT adds exact discrete-time selectors.
         self._vp_temporal_member_sequences = {}
         self._register_vp_temporal_members()
         print("===== formula in NNF: ", self.sat_formula)

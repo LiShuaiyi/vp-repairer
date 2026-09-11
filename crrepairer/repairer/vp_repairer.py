@@ -83,14 +83,14 @@ class VPTrajectoryRepairer(
         self._in_reachability_context_cache = None
         self._acceleration_lp_template_cache = {}
         self._acceleration_curvature_cache = {}
-        self._once_witness_plans = {}
-        self._once_witness_choice = {}
-        self.once_witness_attempts = 0
+        self._once_time_plans = {}
+        self._once_time_choice = {}
+        self.once_time_attempts = 0
         self.once_group_ever_activated = False
-        self.once_witness_candidate_counts = []
-        self._active_sat_witness_windows = {}
-        self._sat_once_witness_plans = {}
-        self.sat_witness_windows_tried = []
+        self.once_time_candidate_counts = []
+        self._active_sat_once_intervals = {}
+        self._sat_once_time_plans = {}
+        self.sat_once_intervals_tried = []
 
     @property
     def tv(self):
@@ -154,29 +154,29 @@ class VPTrajectoryRepairer(
         self._constraint_repair_analysis_complete = False
         self._in_reachability_context_cache = None
         self._semantic_in_region_builder = None
-        self._once_witness_plans = {}
-        self._once_witness_choice = {}
-        self._active_sat_witness_windows = {}
-        self._sat_once_witness_plans = {}
-        self.sat_witness_windows_tried = []
+        self._once_time_plans = {}
+        self._once_time_choice = {}
+        self._active_sat_once_intervals = {}
+        self._sat_once_time_plans = {}
+        self.sat_once_intervals_tried = []
         # Failed deceleration models are valid candidates for the alternative
         # exit branch, so the acceleration phase must start from the original
         # CNF rather than the formula containing deceleration blocking clauses.
         self.sat_solver = SATSolver(self.rule_monitor, self.config)
         if self.sat_solver.solver_mode == "domain_dpll":
             self.ensure_domain_dict_initialized()
-        witness_estimate_start = time.time()
-        self._install_sat_once_witness_expansion()
+        once_time_estimate_start = time.time()
+        self._install_sat_once_time_expansion()
         self.sat_solver.sort_domain_repair_literals()
         # Temporal expansion may add (and optionally reorder) executable SAT
-        # witness selectors.  Keep the repairer's copy synchronized so a
+        # once-time selectors.  Keep the repairer's copy synchronized so a
         # later domain relaxation does not overwrite that guidance with the
         # pre-expansion list.
         self._repair_literals = list(self.sat_solver._repair_literals)
-        witness_estimate_elapsed = time.time() - witness_estimate_start
-        self.domain_dict_time += witness_estimate_elapsed
+        once_time_estimate_elapsed = time.time() - once_time_estimate_start
+        self.domain_dict_time += once_time_estimate_elapsed
         if getattr(self, "runtime_breakdown", None) is not None:
-            self.runtime_breakdown["domain_dict"] += witness_estimate_elapsed
+            self.runtime_breakdown["domain_dict"] += once_time_estimate_elapsed
         return not (
             self._supports_acceleration_fallback()
             and self.sat_solver.solver_mode == "domain_dpll"
@@ -197,14 +197,14 @@ class VPTrajectoryRepairer(
         self._in_reachability_context_cache = None
         self._acceleration_lp_template_cache = {}
         self._acceleration_curvature_cache = {}
-        self._once_witness_plans = {}
-        self._once_witness_choice = {}
-        self.once_witness_attempts = 0
+        self._once_time_plans = {}
+        self._once_time_choice = {}
+        self.once_time_attempts = 0
         self.once_group_ever_activated = False
-        self.once_witness_candidate_counts = []
-        self._active_sat_witness_windows = {}
-        self._sat_once_witness_plans = {}
-        self.sat_witness_windows_tried = []
+        self.once_time_candidate_counts = []
+        self._active_sat_once_intervals = {}
+        self._sat_once_time_plans = {}
+        self.sat_once_intervals_tried = []
         self._tv = self.rule_monitor.tv_time_step
         if self._tv in (-math.inf, math.inf):
             return None
@@ -294,27 +294,27 @@ class VPTrajectoryRepairer(
                 self.runtime_breakdown["sat"] += sat_elapsed
                 print("* \t<SATSolver>: SAT reasoning time: {:.3f}s".format(self.sat_reasoning_time))
 
-                # A new Boolean model starts a new local witness disjunction.
+                # A new Boolean model starts a new local once-time disjunction.
                 # Choices are retained only while retrying the same model.
-                self._once_witness_plans = {}
-                self._once_witness_choice = {}
-                self._active_sat_witness_windows = {}
+                self._once_time_plans = {}
+                self._once_time_choice = {}
+                self._active_sat_once_intervals = {}
                 self._assign_proposition(
                     select_proposition,
                     list(self._model),
                 )
-                selected_witnesses = [
+                selected_once_times = [
                     prop
                     for prop in self._sel_prop
-                    if getattr(prop, "vp_witness_auxiliary", False)
+                    if getattr(prop, "vp_once_time_auxiliary", False)
                     and not str(prop.alphabet).startswith("~")
                 ]
-                if selected_witnesses:
+                if selected_once_times:
                     self.once_group_ever_activated = True
-                    self.once_witness_attempts += 1
-                    self.sat_witness_windows_tried.extend(
-                        tuple(prop.vp_witness_window)
-                        for prop in selected_witnesses
+                    self.once_time_attempts += 1
+                    self.sat_once_intervals_tried.extend(
+                        tuple(prop.vp_once_interval)
+                        for prop in selected_once_times
                     )
             else:
                 # CLCS preprocessing and monitor-aligned geometry are
@@ -360,10 +360,10 @@ class VPTrajectoryRepairer(
                     }
                 )
                 repaired_traj = None
-                if self._advance_once_witness_choice():
+                if self._advance_once_time_choice():
                     print(
                         "* \t<VPRepairer>: retrying the same SAT model with "
-                        "the next estimate-pruned once witness"
+                        "the next estimate-pruned once end time"
                     )
                     reuse_sat_model = True
                     nr += 1
@@ -488,10 +488,10 @@ class VPTrajectoryRepairer(
                     f"(updated TV={candidate_tv}); trying another SAT model"
                 )
 
-                if self._advance_once_witness_choice():
+                if self._advance_once_time_choice():
                     print(
                         "* \t<VPRepairer>: retrying the same SAT model with "
-                        "the next estimate-pruned once witness"
+                        "the next estimate-pruned once end time"
                     )
                     reuse_sat_model = True
                     nr += 1
@@ -525,34 +525,36 @@ class VPTrajectoryRepairer(
                     continue
 
             self._use_monitor_conflict_geometry = False
-            # A witness selector denotes the conjunction of its per-leaf
+            # A once-time selector denotes the conjunction of its per-leaf
             # temporal obligations.  Preserve any ordinary literals selected
             # in the same partial model: failure of (z_w & a) does not prove
-            # that (z_w & ~a) is infeasible.  Witness-local obligation atoms
-            # need not appear separately because q_w_i <-> z_w in the CNF;
+            # that (z_w & ~a) is infeasible.  Time-local obligation atoms
+            # need not appear separately because the selected z_w implies
+            # every q_w_i in the CNF;
             # inactive selectors are likewise irrelevant to this candidate.
-            active_witness_literals = [
+            active_once_time_literals = [
                 str(prop.alphabet)
                 for prop in (getattr(self, "_sel_prop", None) or [])
-                if getattr(prop, "vp_witness_auxiliary", False)
+                if getattr(prop, "vp_once_time_auxiliary", False)
                 and not str(prop.alphabet).startswith("~")
             ]
             ordinary_model_literals = [
                 str(prop.alphabet)
                 for prop in (getattr(self, "_sel_prop", None) or [])
                 if prop is not None
-                and not getattr(prop, "vp_witness_auxiliary", False)
-                and not getattr(prop, "vp_witness_obligation", False)
+                and not getattr(prop, "vp_once_time_auxiliary", False)
+                and not getattr(prop, "vp_once_obligation", False)
+                and not getattr(prop, "vp_once_parent_auxiliary", False)
             ]
-            witness_candidate_literals = list(
+            once_time_candidate_literals = list(
                 dict.fromkeys(
-                    active_witness_literals + ordinary_model_literals
+                    active_once_time_literals + ordinary_model_literals
                 )
             )
             self.sat_solver.update_formula(
                 blocking_literals=(
-                    witness_candidate_literals
-                    if active_witness_literals
+                    once_time_candidate_literals
+                    if active_once_time_literals
                     else None
                 )
             )
