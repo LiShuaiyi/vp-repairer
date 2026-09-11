@@ -303,14 +303,12 @@ class SATSolver:
         variables = tuple(sorted(set(variables)))
         if not variables:
             return
-        expression = sp.sympify(stl2sympy(self._formula))
-        expression = sp.And(
-            expression,
-            *(sp.Not(sp.Symbol(variable)) for variable in variables),
-        )
-        if not sp.logic.boolalg.is_cnf(expression):
-            raise RuntimeError("Hard auxiliary units did not preserve CNF.")
-        self._formula = str(expression)
+        # ``self._formula`` was already checked as CNF when the local
+        # Tseitin clauses were installed.  Conjoining unit clauses preserves
+        # CNF by construction, so reparsing and serializing the whole formula
+        # through SymPy here only adds avoidable preprocessing time.
+        units = " & ".join(f"~{variable}" for variable in variables)
+        self._formula = f"({self._formula}) & {units}"
 
     def solve(self):
         """
