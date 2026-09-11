@@ -16,6 +16,7 @@ from typing import Iterable, Optional
 
 class VPConstraintKind(str, Enum):
     STOP_LINE_UPPER = "stop_line_upper"
+    STOP_LINE_BEFORE_REGION = "stop_line_before_region"
     STANDSTILL_VELOCITY = "standstill_velocity"
     OUTSIDE_EGO_CONFLICT = "outside_ego_conflict"
     OUTSIDE_CAUSES_BRAKING = "outside_causes_braking"
@@ -56,7 +57,9 @@ def additional_constraint_extraction_enabled() -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 _RULE_CAPABILITIES = {
-    "R_IN1": frozenset(_PREDICATE_CAPABILITIES.values()),
+    "R_IN1": frozenset(
+        (*_PREDICATE_CAPABILITIES.values(), VPConstraintKind.STOP_LINE_BEFORE_REGION)
+    ),
     "R_IN3": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
     "R_IN3_hand_draft": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
     "R_IN4": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
@@ -129,12 +132,26 @@ def proposition_constraint_kind(
         else not bool(desired_value)
     )
     expression = str(getattr(proposition, "name", proposition))
-    if re.search(r"\bnot\s*\(", expression, flags=re.IGNORECASE):
-        return None
     names = proposition_predicate_names(proposition)
     if len(names) != 1:
         return None
     name = next(iter(names))
+    if re.search(r"\bnot\s*\(", expression, flags=re.IGNORECASE):
+        # A past predicate derived from the negation of a controllable
+        # stop-line atom is not a fixed fact.  In a deceleration phase VP can
+        # realize it by remaining on the before-region side.  Classify this
+        # structurally rather than tying the action to a particular rule.
+        if (
+            not negative
+            and name == "stop_line_in_front"
+            and re.match(
+                r"^\s*(previous|prev|pre)\s*\(\s*not\s*\(",
+                expression,
+                flags=re.IGNORECASE,
+            )
+        ):
+            return VPConstraintKind.STOP_LINE_BEFORE_REGION
+        return None
     if negative:
         kind = _NEGATED_PREDICATE_CAPABILITIES.get(name)
         if (

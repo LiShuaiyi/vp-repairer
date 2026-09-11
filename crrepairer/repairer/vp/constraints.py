@@ -2,7 +2,9 @@
 
 import math
 import os
+import re
 import time
+from fractions import Fraction
 from typing import List, Union
 
 import numpy as np
@@ -22,6 +24,7 @@ from crrepairer.repairer.vp.semantic_predicate_regions import (
     _project_points_to_s,
 )
 from crrepairer.repairer.vp.temporal import (
+    TemporalConstraintSteps,
     constraint_steps_for_anchors,
     constraint_time_interval,
 )
@@ -43,6 +46,278 @@ class AccelerationExitStepInfeasibleError(RuntimeError):
 
 class VPConstraintExtraction:
     """Extracts longitudinal position and velocity constraints for VP repair."""
+
+    @staticmethod
+    def _once_witness_mode():
+        """Use SAT-visible exact witness alternatives for existential windows."""
+        return "estimate_or_sat"
+
+    def _constraint_propositions(self):
+        """Return selected propositions plus siblings sharing an active witness."""
+        selected = list(getattr(self, "_sel_prop", None) or ())
+        if self._once_witness_mode() == "legacy":
+            return selected
+        if self._once_witness_mode() == "estimate_or_sat":
+            selectors = [
+                prop
+                for prop in selected
+                if getattr(prop, "vp_witness_auxiliary", False)
+                and not str(prop.alphabet).startswith("~")
+            ]
+            if not selectors:
+                return [
+                    prop
+                    for prop in selected
+                    if not getattr(prop, "vp_witness_auxiliary", False)
+                    and not getattr(prop, "vp_witness_obligation", False)
+                ]
+            self.once_group_ever_activated = True
+            active_selector_vars = {
+                str(prop.alphabet).lstrip("~") for prop in selectors
+            }
+            result = [
+                prop
+                for prop in selected
+                if not getattr(prop, "vp_witness_auxiliary", False)
+                and not getattr(prop, "vp_witness_obligation", False)
+                and getattr(prop, "vp_decomposition_group", None) is None
+            ]
+            seen = {id(prop) for prop in result}
+            for prop in selected:
+                if (
+                    getattr(prop, "vp_witness_obligation", False)
+                    and getattr(prop, "vp_witness_selector", None)
+                    in active_selector_vars
+                    and not str(prop.alphabet).startswith("~")
+                    and id(prop) not in seen
+                ):
+                    result.append(prop)
+                    seen.add(id(prop))
+            return result
+        model_values = {
+            str(literal).lstrip("~"): not str(literal).startswith("~")
+            for literal in (getattr(self, "_model", None) or ())
+        }
+        group_members = {}
+        for prop in self.rule_monitor.proposition_nodes:
+            group = getattr(prop, "vp_decomposition_group", None)
+            if group is not None:
+                group_members.setdefault(group, []).append(prop)
+        active_groups = {
+            group
+            for group, members in group_members.items()
+            if members
+            and all(model_values.get(str(prop.alphabet).lstrip("~"), False) for prop in members)
+        }
+        if not active_groups:
+            return selected
+        seen = {id(prop) for prop in selected}
+        for prop in self.rule_monitor.proposition_nodes:
+            group = getattr(prop, "vp_decomposition_group", None)
+            if group not in active_groups or id(prop) in seen:
+                continue
+            if not model_values.get(str(prop.alphabet).lstrip("~"), False):
+                continue
+            selected.append(prop)
+            seen.add(id(prop))
+        return selected
+
+    @staticmethod
+    def _once_historically_duration(expression):
+        """Parse O(H[0,T](...)); return T seconds or None."""
+        match = re.match(
+            r"^\s*once\s*\(\s*historically\[\s*0\s*,\s*"
+            r"([0-9]+(?:/[0-9]+|\.[0-9]+)?)\s*\]\s*\(",
+            str(expression),
+            flags=re.IGNORECASE,
+        )
+        if match is None:
+            return None
+        return float(Fraction(match.group(1)))
+
+    def _estimate_once_witness_groups(
+        self,
+        all_states,
+        propositions,
+        require_selected_group=True,
+    ):
+        """Build estimate-pruned common witness windows for temporal groups."""
+        model_values = {
+            str(literal).lstrip("~"): not str(literal).startswith("~")
+            for literal in (getattr(self, "_model", None) or ())
+        }
+        all_group_members = {}
+        for prop in self.rule_monitor.proposition_nodes:
+            group = getattr(prop, "vp_decomposition_group", None)
+            if group is not None:
+                all_group_members.setdefault(group, []).append(prop)
+        groups = {}
+        for prop in propositions:
+            group = getattr(prop, "vp_decomposition_group", None)
+            members = all_group_members.get(group, ())
+            group_is_true = members and (
+                not require_selected_group
+                or all(
+                    model_values.get(str(member.alphabet).lstrip("~"), False)
+                    for member in members
+                )
+            )
+            if (
+                group is not None
+                and group_is_true
+                and not str(prop.alphabet).startswith("~")
+            ):
+                groups.setdefault(group, []).append(prop)
+        if not groups:
+            return {}
+
+        builder, _ = self._ensure_semantic_in_region_builder()
+        trace_start = int(all_states[0].time_step)
+        trajectory_end = int(all_states[-1].time_step)
+        dt = float(self.config.scenario.dt)
+        plans = {}
+        for group, children in groups.items():
+            duration = self._once_historically_duration(group)
+            evaluators = []
+            for prop in children:
+                child_nodes = list(getattr(prop, "children", ()) or ())
+                evaluators.append(
+                    getattr(child_nodes[0], "evaluator", None)
+                    if len(child_nodes) == 1
+                    else None
+                )
+            if duration is None or not evaluators or any(item is None for item in evaluators):
+                continue
+            duration_steps = int(math.ceil(duration / dt - 1e-9))
+            # Enumerate the complete finite-trace semantics.  A window may
+            # start at the fixed initial state; whether that fixed prefix can
+            # satisfy the obligation is decided by the predicate estimate,
+            # not by deleting the witness a priori.
+            first_witness = trace_start + duration_steps
+            candidates = []
+            rejected = []
+            frame_cache = {}
+
+            def can_be_true(evaluator, proposition_name, step):
+                key = (id(evaluator), proposition_name, int(step))
+                if key not in frame_cache:
+                    frame_cache[key] = builder.estimate_frame(
+                        evaluator, proposition_name, int(step)
+                    ).domain
+                return 1 in frame_cache[key]
+
+            for witness in range(first_witness, trajectory_end + 1):
+                window_start = witness - duration_steps
+                possible = all(
+                    can_be_true(evaluator, prop.name, step)
+                    for prop, evaluator in zip(children, evaluators)
+                    for step in range(window_start, witness + 1)
+                )
+                if possible:
+                    candidates.append((window_start, witness))
+                else:
+                    rejected.append(witness)
+
+            candidates.sort(key=lambda interval: interval[1], reverse=True)
+            plans[group] = {
+                "children": tuple(children),
+                "duration": duration,
+                "duration_steps": duration_steps,
+                "candidates": tuple(candidates),
+                "rejected_witnesses": tuple(rejected),
+            }
+        if plans:
+            if require_selected_group:
+                self.once_group_ever_activated = True
+            self.once_witness_candidate_counts.extend(
+                len(plan["candidates"]) for plan in plans.values()
+            )
+        return plans
+
+    def _all_once_witness_groups(self, all_states, propositions):
+        """Build the unpruned finite witness set for the plain-DPLL baseline.
+
+        This uses only the temporal bounds and planning horizon.  In
+        particular it does not query predicate estimates, so it represents
+        every legal witness of O(H[0,T](...)) in the SAT formula.
+        """
+        groups = {}
+        for prop in propositions:
+            group = getattr(prop, "vp_decomposition_group", None)
+            if group is not None and not str(prop.alphabet).startswith("~"):
+                groups.setdefault(group, []).append(prop)
+        if not groups:
+            return {}
+
+        trace_start = int(all_states[0].time_step)
+        trajectory_end = int(all_states[-1].time_step)
+        dt = float(self.config.scenario.dt)
+        plans = {}
+        for group, children in groups.items():
+            duration = self._once_historically_duration(group)
+            if duration is None:
+                continue
+            duration_steps = int(math.ceil(duration / dt - 1e-9))
+            first_witness = trace_start + duration_steps
+            candidates = tuple(
+                (witness - duration_steps, witness)
+                for witness in range(trajectory_end, first_witness - 1, -1)
+            )
+            plans[group] = {
+                "children": tuple(children),
+                "duration": duration,
+                "duration_steps": duration_steps,
+                "candidates": candidates,
+                "rejected_witnesses": (),
+                "predicate_estimate_pruned": False,
+            }
+        if plans:
+            self.once_witness_candidate_counts.extend(
+                len(plan["candidates"]) for plan in plans.values()
+            )
+        return plans
+
+    def _install_sat_once_witness_expansion(self):
+        """Expose estimate-pruned common witnesses as ordinary SAT choices."""
+        if self._once_witness_mode() != "estimate_or_sat":
+            return {}
+        grouped = [
+            prop
+            for prop in self.rule_monitor.proposition_nodes
+            if getattr(prop, "vp_decomposition_group", None) is not None
+        ]
+        if not grouped:
+            return {}
+        all_states = self._get_states_with_initial()
+        if self.sat_solver.solver_mode == "dpll":
+            plans = self._all_once_witness_groups(all_states, grouped)
+        else:
+            plans = self._estimate_once_witness_groups(
+                all_states,
+                grouped,
+                require_selected_group=False,
+            )
+        self._sat_once_witness_plans = plans
+        return self.sat_solver.add_temporal_witness_selectors(plans)
+
+    def _advance_once_witness_choice(self):
+        """Advance one local disjunct without asking the main SAT for a model."""
+        if self._once_witness_mode() != "estimate_or":
+            return False
+        plans = getattr(self, "_once_witness_plans", {}) or {}
+        choices = getattr(self, "_once_witness_choice", None)
+        if choices is None:
+            choices = self._once_witness_choice = {}
+        for group, plan in plans.items():
+            current = int(choices.get(group, 0))
+            if current + 1 < len(plan.get("candidates", ())):
+                choices[group] = current + 1
+                self._temporal_constraint_steps_cache = {}
+                self.once_witness_attempts = int(
+                    getattr(self, "once_witness_attempts", 1)
+                ) + 1
+                return True
+        return False
 
     def _reject_unsupported_vp_candidates(self):
         """Return whether missing VP semantics must reject the SAT model.
@@ -245,7 +520,11 @@ class VPConstraintExtraction:
         planning_start = int(self._tc) + 1
         dt = float(self.config.scenario.dt)
         future_time_step = int(self.rule_monitor.future_time_step)
-        propositions = self._sel_prop if propositions is None else propositions
+        propositions = (
+            self._constraint_propositions()
+            if propositions is None
+            else propositions
+        )
         propositions = tuple(propositions or ())
         model_key = tuple(sorted(str(item) for item in (self._model or ())))
         cache_key = (
@@ -271,7 +550,106 @@ class VPConstraintExtraction:
 
         active_steps = {}
         diagnostics = []
+        once_mode = self._once_witness_mode()
+        once_plans = (
+            self._estimate_once_witness_groups(all_states, propositions)
+            if once_mode in {"estimate_hj", "estimate_or"}
+            and getattr(self, "_model", None) is not None
+            else {}
+        )
+        self._once_witness_plans = once_plans
+        once_choice = getattr(self, "_once_witness_choice", None)
+        if once_choice is None:
+            once_choice = self._once_witness_choice = {}
         for prop in propositions:
+            direct_witness_window = getattr(prop, "vp_witness_window", None)
+            if (
+                once_mode == "estimate_or_sat"
+                and getattr(prop, "vp_witness_obligation", False)
+                and direct_witness_window is not None
+            ):
+                window_start, witness = direct_witness_window
+                interval = TemporalConstraintSteps(
+                    frozenset(range(window_start, witness + 1))
+                )
+                active_steps[id(prop)] = interval
+                diagnostics.append(
+                    {
+                        "proposition": prop.name,
+                        "operators": ("once", "historically"),
+                        "active_start": interval.start,
+                        "active_end": interval.end,
+                        "active_count": interval.count,
+                        "once_witness_mode": once_mode,
+                        "selected_windows": (tuple(direct_witness_window),),
+                        "decomposition_group": getattr(
+                            prop, "vp_witness_group", None
+                        ),
+                        "atomic_witness_obligation": True,
+                    }
+                )
+                continue
+            group = getattr(prop, "vp_decomposition_group", None)
+            forced_window = getattr(
+                self, "_active_sat_witness_windows", {}
+            ).get(group)
+            if once_mode == "estimate_or_sat" and forced_window is not None:
+                window_start, witness = forced_window
+                interval = TemporalConstraintSteps(
+                    frozenset(range(window_start, witness + 1))
+                )
+                active_steps[id(prop)] = interval
+                diagnostics.append(
+                    {
+                        "proposition": prop.name,
+                        "operators": ("once", "historically"),
+                        "active_start": interval.start,
+                        "active_end": interval.end,
+                        "active_count": interval.count,
+                        "once_witness_mode": once_mode,
+                        "selected_windows": (forced_window,),
+                        "decomposition_group": group,
+                    }
+                )
+                continue
+            plan = once_plans.get(group)
+            if plan is not None:
+                candidates = plan["candidates"]
+                if not candidates:
+                    raise UnsupportedVPCandidateError(
+                        "Predicate estimate proves that no complete historical "
+                        f"witness window can satisfy {group}."
+                    )
+                if once_mode == "estimate_hj":
+                    steps = {
+                        step
+                        for window_start, witness in candidates
+                        for step in range(window_start, witness + 1)
+                    }
+                    selected_windows = candidates
+                else:
+                    choice = min(int(once_choice.get(group, 0)), len(candidates) - 1)
+                    once_choice[group] = choice
+                    window_start, witness = candidates[choice]
+                    steps = set(range(window_start, witness + 1))
+                    selected_windows = ((window_start, witness),)
+                interval = TemporalConstraintSteps(frozenset(steps))
+                active_steps[id(prop)] = interval
+                diagnostics.append(
+                    {
+                        "proposition": prop.name,
+                        "operators": ("once", "historically"),
+                        "active_start": interval.start,
+                        "active_end": interval.end,
+                        "active_count": interval.count,
+                        "once_witness_mode": once_mode,
+                        "possible_witness_count": len(candidates),
+                        "rejected_witness_count": len(plan["rejected_witnesses"]),
+                        "selected_windows": selected_windows,
+                        "decomposition_group": group,
+                    }
+                )
+                continue
             source_anchors = self._implication_active_source_anchors(
                 proposition=prop,
                 trajectory_start=trajectory_start,
@@ -351,7 +729,14 @@ class VPConstraintExtraction:
         v_min = np.zeros(horizon)
         v_max = np.ones(horizon) * math.inf
         speed_limits = self._extract_speed_limit_values() 
-        temporal_steps = self._temporal_constraint_steps(all_states)
+        if self._once_witness_mode() == "legacy":
+            constraint_propositions = self._sel_prop
+            temporal_steps = self._temporal_constraint_steps(all_states)
+        else:
+            constraint_propositions = self._constraint_propositions()
+            temporal_steps = self._temporal_constraint_steps(
+                all_states, propositions=constraint_propositions
+            )
 
         final_time_step = all_states[-1].time_step
         for time_step in range(int(self._tc) + 1, final_time_step + 1):
@@ -361,7 +746,7 @@ class VPConstraintExtraction:
             s_max_list = []
             s_min_list = []
 
-            for prop in self._sel_prop:
+            for prop in constraint_propositions:
                 if not temporal_steps[id(prop)].contains(time_step):
                     continue
                 if "distance" in prop.name:
@@ -528,10 +913,17 @@ class VPConstraintExtraction:
 
         wheelbase = self._get_planner_wheelbase()
         final_time_step = all_states[-1].time_step
-        temporal_steps = self._temporal_constraint_steps(all_states)
+        if self._once_witness_mode() == "legacy":
+            constraint_propositions = self._sel_prop
+            temporal_steps = self._temporal_constraint_steps(all_states)
+        else:
+            constraint_propositions = self._constraint_propositions()
+            temporal_steps = self._temporal_constraint_steps(
+                all_states, propositions=constraint_propositions
+            )
         self._last_extraction_debug = []
         selected_constraint_kinds = {
-            proposition_constraint_kind(prop) for prop in self._sel_prop
+            proposition_constraint_kind(prop) for prop in constraint_propositions
         }
         in1_trajectory_stop_cap = None
         if VPConstraintKind.STOP_LINE_UPPER in selected_constraint_kinds:
@@ -560,7 +952,7 @@ class VPConstraintExtraction:
             conflict_trajectory_interval=conflict_trajectory_interval,
         )
 
-        for prop in self._sel_prop:
+        for prop in constraint_propositions:
             prop_debug_recorded = False
             for time_step in range(int(self._tc) + 1, final_time_step + 1):
                 if not temporal_steps[id(prop)].contains(time_step):
@@ -568,6 +960,36 @@ class VPConstraintExtraction:
                 idx = time_step - int(self._tc) - 1
                 constraint_kind = proposition_constraint_kind(prop)
                 if constraint_kind == VPConstraintKind.STOP_LINE_UPPER:
+                    forced_window = (
+                        getattr(prop, "vp_witness_window", None)
+                        if getattr(prop, "vp_witness_obligation", False)
+                        else None
+                    )
+                    if forced_window is not None:
+                        lower_bound, upper_bound = (
+                            self._semantic_stop_line_bounds(
+                                proposition=prop,
+                                start_s=float(first_plan_s_trajectory),
+                                require_true=True,
+                            )
+                        )
+                        trajectory_s_min_cap[idx] = max(
+                            trajectory_s_min_cap[idx], lower_bound
+                        )
+                        trajectory_s_max_cap[idx] = min(
+                            trajectory_s_max_cap[idx], upper_bound
+                        )
+                        if not prop_debug_recorded:
+                            self._last_extraction_debug.append(
+                                {
+                                    "proposition": prop.name,
+                                    "kind": "stop_line_true_region",
+                                    "lower_bound_trajectory_clcs": lower_bound,
+                                    "upper_bound_trajectory_clcs": upper_bound,
+                                }
+                            )
+                            prop_debug_recorded = True
+                        continue
                     upper_bound = self._constraint_stop_line(
                         self.rule_monitor.world,
                         self.rule_monitor.world.vehicle_by_id(self.config.repair.ego_id),
@@ -591,6 +1013,25 @@ class VPConstraintExtraction:
                                     if in1_trajectory_stop_cap is None
                                     else float(in1_trajectory_stop_cap)
                                 ),
+                            }
+                        )
+                        prop_debug_recorded = True
+                    continue
+                if constraint_kind == VPConstraintKind.STOP_LINE_BEFORE_REGION:
+                    _, upper_bound = self._semantic_stop_line_bounds(
+                        proposition=prop,
+                        start_s=float(first_plan_s_trajectory),
+                        require_true=False,
+                    )
+                    trajectory_s_max_cap[idx] = min(
+                        trajectory_s_max_cap[idx], upper_bound
+                    )
+                    if not prop_debug_recorded:
+                        self._last_extraction_debug.append(
+                            {
+                                "proposition": prop.name,
+                                "kind": "stop_line_before_region",
+                                "upper_bound_trajectory_clcs": upper_bound,
                             }
                         )
                         prop_debug_recorded = True
@@ -1016,7 +1457,7 @@ class VPConstraintExtraction:
         if not self._reject_unsupported_vp_candidates():
             return
         registered_kinds = supported_constraint_kinds(self.config.repair.rules)
-        for prop in self._sel_prop:
+        for prop in self._constraint_propositions():
             interval = temporal_steps[id(prop)]
             if interval.count == 0:
                 continue
@@ -1081,6 +1522,73 @@ class VPConstraintExtraction:
         raise UnsupportedVPCandidateError(
             f"Standstill proposition has no predicate evaluator: {prop.name}."
         )
+
+    def _semantic_stop_line_bounds(
+        self,
+        proposition,
+        start_s: float,
+        require_true: bool,
+    ):
+        """Return certified trajectory-CLCS bounds for a stop-line literal.
+
+        Positive witness obligations use an inner true interval.  A positive
+        ``previous(not(stop_line_in_front))`` repair action uses the boundary
+        immediately before the next outer true interval, so the negated atom
+        is guaranteed without changing route or lateral behavior.
+        """
+        evaluator = None
+        for child in getattr(proposition, "children", ()):
+            candidate = getattr(child, "evaluator", None)
+            names = (
+                getattr(child, "base_name", None),
+                getattr(child, "name", None),
+                getattr(candidate, "predicate_name", None),
+            )
+            if any(
+                name is not None
+                and predicate_base_name(name) == "stop_line_in_front"
+                for name in names
+            ):
+                evaluator = candidate
+                break
+        if evaluator is None:
+            raise UnsupportedVPCandidateError(
+                "Stop-line proposition has no predicate evaluator: "
+                f"{proposition.name}."
+            )
+
+        builder, _ = self._ensure_semantic_in_region_builder()
+        region = builder.region_for(evaluator, proposition.name)
+        intervals = region.inner_true if require_true else region.outer_true
+        if (not require_true and not region.complete) or not intervals:
+            raise UnsupportedVPCandidateError(
+                "Monitor-aligned stop-line region is unavailable for "
+                f"{proposition.name}."
+            )
+
+        # Prefer an interval which contains the first modifiable state, then
+        # the nearest interval ahead.  Deceleration cannot move to an interval
+        # which is already strictly behind the vehicle.
+        candidates = [item for item in intervals if item.upper >= start_s - 1e-9]
+        if not candidates:
+            if require_true:
+                raise UnsupportedVPCandidateError(
+                    "All certified stop-line true intervals are behind the vehicle."
+                )
+            # Remaining after every true interval already guarantees the
+            # negated predicate on a monotone fixed path.
+            return -math.inf, math.inf
+        interval = min(
+            candidates,
+            key=lambda item: (
+                0.0 if item.lower <= start_s <= item.upper else item.lower - start_s,
+                item.lower,
+            ),
+        )
+        if require_true:
+            return float(interval.lower), float(interval.upper)
+        strict_margin = max(1e-6, float(builder.uncertainty) * 1e-3)
+        return -math.inf, float(interval.lower) - strict_margin
 
     def _constraint_in_same_lane(
         self,

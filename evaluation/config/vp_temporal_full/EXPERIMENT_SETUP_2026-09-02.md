@@ -127,3 +127,20 @@ The direction-aligned DomainDPLL work tree was additionally rerun serially in
 iteration, phase, and error fields matched the retained DomainDPLL rows for
 every IN case, so the existing formal DomainDPLL rows were not replaced merely
 for timing noise.
+
+## Existential-witness refresh (2026-09-11)
+
+Starting from revision `5974218`, VP directly uses SAT-visible witness
+alternatives for supported formulas of the form
+`once(historically[0,T](a and b))`. Each witness selector implies atomic VP
+obligations for `a` and `b` over the same exact historical window. This is the
+normal behavior, not an environment-controlled experiment. DomainDPLL also
+always orders executable polarity changes first and then reuses the plain-DPLL
+literal order.
+
+The IN1 VP rows were rerun serially for all 91 formal cases with both
+DomainDPLL and plain DPLL. The IN3, IN4, and IN5 DomainDPLL rows were refreshed
+from serial runs of 68, 46 unique, and 50 cases respectively; duplicate IN4
+rows were updated from the same scenario/ego result. Existing SMT rows and the
+IN3/IN4/IN5 plain-DPLL rows were retained. All reported VP component and core
+times exclude the final STL compliance monitor.

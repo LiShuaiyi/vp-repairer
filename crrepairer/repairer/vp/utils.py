@@ -6,6 +6,11 @@ import os
 
 import numpy as np
 
+from crrepairer.smt.vp_proposition_capabilities import (
+    VPConstraintKind,
+    proposition_constraint_kind,
+)
+
 # from crrepairer.cut_off.utils import update_ego_vehicle
 from crmonitor.common.road_network import RoadNetwork
 from crmonitor.common.vehicle import Vehicle, CurvilinearStateManager
@@ -41,7 +46,17 @@ class VPUtils:
                     # It needs no VP constraint and, for a negative literal,
                     # must not accidentally invoke the positive extractor.
                     continue
-                if (prop.ttv_value < 0 and prop.alphabet[0] != "~") or (
+                requires_temporal_maintenance = (
+                    not prop.alphabet.startswith("~")
+                    and (
+                        getattr(prop, "vp_witness_obligation", False)
+                        or proposition_constraint_kind(prop)
+                        == VPConstraintKind.STOP_LINE_BEFORE_REGION
+                    )
+                )
+                if requires_temporal_maintenance or (
+                    prop.ttv_value < 0 and prop.alphabet[0] != "~"
+                ) or (
                     prop.ttv_value > 0 and prop.alphabet[0] == "~"
                 ):
                     self._sel_prop.append(prop)
