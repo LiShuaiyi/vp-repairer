@@ -1,0 +1,57 @@
+[
+  {
+    "rule": "R_IN1",
+    "n": 14,
+    "solver_feasible": 9,
+    "encoded_compliant": 9,
+    "success": 9,
+    "success_rate": 0.6428571428571429,
+    "timed_n": 14,
+    "mean_core_time": 0.2779074205001442,
+    "median_core_time": 0.1811348650016953
+  },
+  {
+    "rule": "R_IN3_hand_draft",
+    "n": 19,
+    "solver_feasible": 14,
+    "encoded_compliant": 13,
+    "success": 12,
+    "success_rate": 0.631578947368421,
+    "timed_n": 19,
+    "mean_core_time": 1.5063118062634633,
+    "median_core_time": 1.509502031000011
+  },
+  {
+    "rule": "R_IN4",
+    "n": 22,
+    "solver_feasible": 12,
+    "encoded_compliant": 12,
+    "success": 2,
+    "success_rate": 0.09090909090909091,
+    "timed_n": 22,
+    "mean_core_time": 1.251209234999971,
+    "median_core_time": 1.2541800565013546
+  },
+  {
+    "rule": "R_IN5",
+    "n": 15,
+    "solver_feasible": 15,
+    "encoded_compliant": 15,
+    "success": 10,
+    "success_rate": 0.6666666666666666,
+    "timed_n": 15,
+    "mean_core_time": 1.309231800666627,
+    "median_core_time": 0.8290247869990708
+  },
+  {
+    "rule": "ALL",
+    "n": 70,
+    "solver_feasible": 50,
+    "encoded_compliant": 49,
+    "success": 33,
+    "success_rate": 0.4714285714285714,
+    "timed_n": 70,
+    "mean_core_time": 1.1382244055143798,
+    "median_core_time": 0.8535643729992444
+  }
+]

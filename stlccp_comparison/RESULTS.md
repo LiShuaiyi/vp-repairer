@@ -46,6 +46,25 @@ MICP point result is 75.0%. The largest accuracy loss is R_IN1 (35 versus 75).
 STLCCP is tied or slightly ahead on R_G1_R_G3, R_G2, IN3, IN4, and IN5, though
 small differences from a single run should not be over-interpreted.
 
+## Generated-sampling subset
+
+All 70 XML scenarios under `scenarios/experiment_scenarios/generated_sampling/`
+are included in the 704-case table above. They were originally aggregated into
+their corresponding IN rules; the following table reports that new-scenario
+subset separately.
+
+| Rule | XML/cases | Feasible | Encoded | Success | Success rate | Mean core s | Median core s |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| R_IN1 | 14 | 9 | 9 | 9 | 64.29% | 0.278 | 0.181 |
+| R_IN3_hand_draft | 19 | 14 | 13 | 12 | 63.16% | 1.506 | 1.510 |
+| R_IN4 | 22 | 12 | 12 | 2 | 9.09% | 1.251 | 1.254 |
+| R_IN5 | 15 | 15 | 15 | 10 | 66.67% | 1.309 | 0.829 |
+| **ALL** | **70** | **50** | **49** | **33** | **47.14%** | **1.138** | **0.854** |
+
+The exact path comparison is 70/70 with no missing XML. Filtered raw rows and
+the machine-readable subset summary are retained under
+`results/generated_sampling/`.
+
 ## R_G2 alignment fix
 
 An initial run reported 0/69 for R_G2. That was an implementation-comparison
@@ -89,6 +108,10 @@ against the mixed-integer formulation.
   direct paired STLCCP-vs-MICP statistics;
 - `results/latest_full/run_manifest.json`: run options and cohort counts;
 - individual cohort CSVs in the same directory.
+- `results/generated_sampling/all_generated_sampling_results.csv`: the 70
+  generated-sampling rows extracted from the full result;
+- `results/generated_sampling/summary.json`: per-rule statistics for that
+  subset.
 
 The final test suite completed with 18 passing tests using the host Gurobi
 academic license.

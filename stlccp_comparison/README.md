@@ -90,7 +90,9 @@ and output files.
 
 The checked-in result and interpretation of the 704-case run are in
 [`RESULTS.md`](RESULTS.md).  Machine-readable outputs are under
-`results/latest_full/`.
+`results/latest_full/`.  The 70 newly generated IN scenarios are also exposed
+as a separate view under `results/generated_sampling/`; those rows remain part
+of the 704-case population and are not double-counted.
 
 For initial-value sensitivity experiments, use `--initialization random`,
 `--seed`, and `--repeat`.  The default `trajectory` initialization projects the
