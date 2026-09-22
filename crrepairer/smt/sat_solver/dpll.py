@@ -40,70 +40,13 @@ class DPLL:
 
     @staticmethod
     def get_literal(cnf, prop_nodes, tv_time_step: int):
-        def node_for(alp):
-            return next(
-                (x for x in prop_nodes or () if x.alphabet[-1] == alp[-1]), None
-            )
-
-        def predicate_name(predicate):
-            name = getattr(predicate, "base_name", None)
-            if name is None:
-                name = getattr(getattr(predicate, "evaluator", None), "predicate_name", "")
-            return str(getattr(name, "value", name)).lower()
-
-        def repairability_rank(node):
-            """Prefer the small set of predicates p1c1 can encode exactly."""
-            if node is None:
-                return 2
-            # Past truth values cannot be changed by replanning the suffix.
-            if str(getattr(node, "name", "")).startswith(("previous", "prev", "pre")):
-                return 2
-            names = [predicate_name(predicate) for predicate in node.children]
-            node_name = str(getattr(node, "name", "")).lower()
-            # For R_IN1, keeping the stop line in front falsifies the crossing
-            # antecedent and needs no three-second stop.  Try that direct,
-            # cheaper repair before constructing the historical stop window.
-            if any("stop_line_in_front" in name for name in names) and not any(
-                token in node_name for token in ("historically", "once")
-            ):
-                return 0
-            if any("stop_line_in_front" in name or "in_standstill" in name for name in names):
-                return 1
-            if any(
-                "in_intersection_conflict_area" in predicate_name(predicate)
-                and getattr(predicate, "agent_placeholders", None) == (0, 1)
-                for predicate in node.children
-            ):
-                return 1
-            if any(
-                token in name
-                for name in names
-                for token in (
-                    "speed_limit", "abrupt", "safe_distance", "in_front_of",
-                    "precedes", "in_same_lane",
-                )
-            ):
-                return 2
-            # Priority is an environment/right-of-way fact, not a maneuver
-            # that p1c1 can realize directly.  Keep its domain unrestricted,
-            # but try it only after other predicates so
-            # it cannot cheaply satisfy the Boolean formula before the
-            # conflict/stop-line action has been considered.
-            priority_tokens = (
-                "same_priority",
-                "target_has_priority",
-                "has_priority",
-            )
-            if any(token in node_name for token in priority_tokens) or any(
-                token in name for name in names for token in priority_tokens
-            ):
-                return 4
-            return 3
-
         def robustness_degree(alp):
-            node = node_for(alp)
+            node = next(
+                (x for x in prop_nodes if x.alphabet[-1] == alp[-1]),
+                None,
+            )
             if node is None:
-                return (2, math.inf, alp[-1])
+                return math.inf
             value = getattr(node, "ttv_h_min", math.inf)
             try:
                 distance = abs(float(value))
@@ -115,36 +58,7 @@ class DPLL:
                 getattr(predicate, "agent_placeholders", None) == (1, 0)
                 for predicate in node.children
             )
-            return (repairability_rank(node), target_penalty, distance, alp[-1])
-
-        def desired_repair_literal(alp):
-            """Try the polarity which flips the proposition at TV first."""
-            node = node_for(alp)
-            if node is None:
-                return alp
-            names = [predicate_name(predicate) for predicate in node.children]
-            node_name = str(getattr(node, "name", ""))
-            if node_name.startswith(("previous", "prev", "pre")):
-                return alp
-            if any(
-                "stop_line_in_front" in name or "in_standstill" in name
-                for name in names
-            ):
-                # A proposition wrapper can contain an explicit Boolean not.
-                return ("~" if node_name.count("not(") % 2 else "") + alp[-1]
-            if any(
-                "in_intersection_conflict_area" in predicate_name(predicate)
-                and getattr(predicate, "agent_placeholders", None) == (0, 1)
-                for predicate in node.children
-            ):
-                return "~" + alp[-1]
-            try:
-                value = float(getattr(node, "ttv_value", 0.0))
-            except (TypeError, ValueError):
-                return alp
-            if not math.isfinite(value) or value == 0.0:
-                return alp
-            return alp[-1] if value < 0.0 else "~" + alp[-1]
+            return target_penalty + distance
 
         literals = []
         for sub in cnf:
@@ -155,10 +69,141 @@ class DPLL:
                     literals.append(lit)
         # use robustness as heuristics to rank the literals
         if prop_nodes is not None and tv_time_step is not math.inf:
-            ordered = sorted(literals, key=robustness_degree)
-            return [desired_repair_literal(literal) for literal in ordered]
+            return sorted(literals, key=robustness_degree)
         else:
             return literals
+
+    @staticmethod
+    def get_domain_guided_literal(cnf, prop_nodes, tv_time_step: int):
+        """Return the VP-aware ordering used only by DomainDPLL.
+
+        Plain DPLL deliberately keeps the original robustness-only order.
+        DomainDPLL may additionally prioritize constraint-backed predicates
+        and the polarity that changes the monitored value.
+        """
+        def node_for(alphabet):
+            return next(
+                (
+                    node
+                    for node in prop_nodes or ()
+                    if node.alphabet[-1] == alphabet[-1]
+                ),
+                None,
+            )
+
+        def predicate_name(predicate):
+            name = getattr(predicate, "base_name", None)
+            if name is None:
+                name = getattr(
+                    getattr(predicate, "evaluator", None),
+                    "predicate_name",
+                    "",
+                )
+            return str(getattr(name, "value", name)).lower()
+
+        def repairability_rank(node):
+            if node is None:
+                return 2
+            node_name = str(getattr(node, "name", ""))
+            if node_name.startswith(("previous", "prev", "pre")):
+                return 2
+            names = [predicate_name(predicate) for predicate in node.children]
+            if any("stop_line_in_front" in name for name in names) and not any(
+                token in node_name for token in ("historically", "once")
+            ):
+                return 0
+            if any(
+                "stop_line_in_front" in name or "in_standstill" in name
+                for name in names
+            ):
+                return 1
+            if any(
+                "in_intersection_conflict_area" in predicate_name(predicate)
+                and getattr(predicate, "agent_placeholders", None) == (0, 1)
+                for predicate in node.children
+            ):
+                return 1
+            if any(
+                token in name
+                for name in names
+                for token in (
+                    "speed_limit",
+                    "abrupt",
+                    "safe_distance",
+                    "in_front_of",
+                    "precedes",
+                    "in_same_lane",
+                )
+            ):
+                return 2
+            priority_tokens = (
+                "same_priority",
+                "target_has_priority",
+                "has_priority",
+            )
+            if any(token in node_name.lower() for token in priority_tokens) or any(
+                token in name
+                for name in names
+                for token in priority_tokens
+            ):
+                return 4
+            return 3
+
+        def guided_rank(literal):
+            node = node_for(literal)
+            if node is None:
+                return (2, math.inf, literal[-1])
+            try:
+                distance = abs(float(getattr(node, "ttv_h_min", math.inf)))
+            except (TypeError, ValueError):
+                distance = math.inf
+            if not math.isfinite(distance):
+                distance = math.inf
+            target_penalty = sum(
+                getattr(predicate, "agent_placeholders", None) == (1, 0)
+                for predicate in node.children
+            )
+            return (
+                repairability_rank(node),
+                target_penalty,
+                distance,
+                literal[-1],
+            )
+
+        def desired_repair_literal(literal):
+            node = node_for(literal)
+            if node is None:
+                return literal
+            names = [predicate_name(predicate) for predicate in node.children]
+            node_name = str(getattr(node, "name", ""))
+            if node_name.startswith(("previous", "prev", "pre")):
+                return literal
+            if any(
+                "stop_line_in_front" in name or "in_standstill" in name
+                for name in names
+            ):
+                return ("~" if node_name.count("not(") % 2 else "") + literal[-1]
+            if any(
+                "in_intersection_conflict_area" in predicate_name(predicate)
+                and getattr(predicate, "agent_placeholders", None) == (0, 1)
+                for predicate in node.children
+            ):
+                return "~" + literal[-1]
+            try:
+                value = float(getattr(node, "ttv_value", 0.0))
+            except (TypeError, ValueError):
+                return literal
+            if not math.isfinite(value) or value == 0.0:
+                return literal
+            return literal[-1] if value < 0.0 else "~" + literal[-1]
+
+        literals = DPLL.get_literal(cnf, None, tv_time_step)
+        if prop_nodes is None or tv_time_step is math.inf:
+            return literals
+        return [
+            desired_repair_literal(literal)
+            for literal in sorted(literals, key=guided_rank)
+        ]
 
     @staticmethod
     def _assign_cnf(sympy_cnf):
@@ -181,64 +226,10 @@ class DPLL:
         self._new_false = []
 
     def solve(self):
-        # Keep the assignment local to each recursive branch. The legacy
-        # implementation shared ``_assign_*`` across recursion levels while
-        # ``_new_*`` only described the latest level, so a failed branch could
-        # leak literals and yield a model violating a newly added blocking
-        # clause.
-        clauses = [tuple(clause.split()) for clause in self._cnf]
-        model = self._solve_with_assignment(clauses, {})
-        self._assign_true = set()
-        self._assign_false = set()
-        self._new_true = []
-        self._new_false = []
-        if model is None:
-            return unsat
-        self._assign_true = {var for var, value in model.items() if value}
-        self._assign_false = {"~" + var for var, value in model.items() if not value}
-        return sat
-
-    @staticmethod
-    def _literal_value(literal, assignment):
-        var = literal[-1]
-        if var not in assignment:
-            return None
-        return assignment[var] != literal.startswith("~")
-
-    def _solve_with_assignment(self, clauses, assignment):
-        residual = []
-        for clause in clauses:
-            values = [self._literal_value(literal, assignment) for literal in clause]
-            if any(value is True for value in values):
-                continue
-            remaining = tuple(
-                literal for literal, value in zip(clause, values) if value is None
-            )
-            if not remaining:
-                return None
-            residual.append(remaining)
-
-        if not residual:
-            return assignment
-
-        unit = next((clause[0] for clause in residual if len(clause) == 1), None)
-        if unit is not None:
-            extended = dict(assignment)
-            extended[unit[-1]] = not unit.startswith("~")
-            return self._solve_with_assignment(residual, extended)
-
-        residual_strings = [" ".join(clause) for clause in residual]
-        selected = self.choose_literal(
-            self.get_literal(residual_strings, self._prop_nodes, self._tv_time_step)
-        )
-        opposite = selected[1:] if selected.startswith("~") else "~" + selected
-        for literal in (selected, opposite):
-            extended = dict(assignment)
-            extended[literal[-1]] = not literal.startswith("~")
-            model = self._solve_with_assignment(residual, extended)
-            if model is not None:
-                return model
-        return None
+        # Plain DPLL is the unguided comparison baseline. Keep the recursive
+        # enumeration used by the original implementation (da120f4); all
+        # domain-aware search remains isolated in DomainDPLL.
+        return self._solve(deepcopy(self._cnf))
 
     def back_tracking(self):
         for i in self._new_true:

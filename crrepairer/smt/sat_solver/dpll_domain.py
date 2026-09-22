@@ -67,7 +67,7 @@ class DomainDPLL:
 
     @staticmethod
     def get_literal(cnf, prop_nodes, tv_time_step: int):
-        return DPLL.get_literal(cnf, prop_nodes, tv_time_step)
+        return DPLL.get_domain_guided_literal(cnf, prop_nodes, tv_time_step)
 
     @staticmethod
     def _assign_cnf(sympy_cnf):

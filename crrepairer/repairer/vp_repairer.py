@@ -193,9 +193,20 @@ class VPTrajectoryRepairer(
         # that expanded guidance.
         self._repair_literals = list(self.sat_solver._repair_literals)
         once_time_estimate_elapsed = time.time() - once_time_estimate_start
-        self.domain_dict_time += once_time_estimate_elapsed
-        if getattr(self, "runtime_breakdown", None) is not None:
-            self.runtime_breakdown["domain_dict"] += once_time_estimate_elapsed
+        if self.sat_solver.solver_mode == "domain_dpll":
+            # DomainDPLL uses predicate estimates to remove unreachable time
+            # alternatives, so this preprocessing belongs to predicate-value
+            # estimation.
+            self.domain_dict_time += once_time_estimate_elapsed
+            if getattr(self, "runtime_breakdown", None) is not None:
+                self.runtime_breakdown["domain_dict"] += once_time_estimate_elapsed
+        else:
+            # Plain DPLL expands every legal temporal alternative without
+            # predicate estimation.  Charge that Boolean preprocessing to SAT
+            # rather than reporting a fictitious predicate-estimation cost.
+            self.sat_reasoning_time += once_time_estimate_elapsed
+            if getattr(self, "runtime_breakdown", None) is not None:
+                self.runtime_breakdown["sat"] += once_time_estimate_elapsed
         return not (
             self._supports_acceleration_fallback()
             and self.sat_solver.solver_mode == "domain_dpll"
