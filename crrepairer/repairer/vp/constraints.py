@@ -11,7 +11,6 @@ import numpy as np
 import shapely
 from scipy.signal import savgol_filter
 from shapely.geometry import LineString, Polygon
-from sympy.logic.boolalg import simplify_logic
 
 from commonroad.scenario.lanelet import LaneletType
 from commonroad.scenario.state import CustomState
@@ -21,12 +20,16 @@ from commonroad_clcs.clcs import CurvilinearCoordinateSystem
 from crmonitor.common.world import World
 
 from crrepairer.repairer.vp.semantic_predicate_regions import (
+    FALSE_DOMAIN,
+    TRUE_DOMAIN,
+    UNKNOWN_DOMAIN,
     _project_points_to_s,
 )
 from crrepairer.repairer.vp.temporal import (
     TemporalConstraintSteps,
     constraint_steps_for_anchors,
     constraint_time_interval,
+    expand_temporal_expression,
 )
 from crrepairer.smt.vp_proposition_capabilities import (
     VPConstraintKind,
@@ -383,17 +386,16 @@ class VPConstraintExtraction:
         trajectory_start,
         trajectory_end,
     ):
-        """Find source anchors where ``proposition`` is critical to the rule.
+        """Find anchors where the selected literal is still necessary.
 
-        A temporal leaf constraint is unnecessary at an anchor where changing
-        the selected literal cannot change the Boolean rule value--most
-        importantly, while the antecedent of an implication is false.  The
-        Per-frame monitor values are substituted only for propositions that
-        have no longitudinal VP constraint; VP-controllable conflict
-        propositions remain symbolic.  This semantic distinction is shared
-        by plain DPLL and DomainDPLL and must not depend on whether SAT-domain
-        guidance happens to be enabled.
-        Missing evaluations are retained conservatively.
+        SAT chooses a Boolean literal globally, but an outer-global rule is a
+        conjunction of per-anchor Boolean formulae.  At one anchor the
+        selected literal need not be constrained when the *other* Boolean
+        branches already guarantee the formula.  We test exactly that
+        residual formula: force the selected literal to its unsatisfied value,
+        estimate every sibling proposition over the phase reachable set, and
+        omit the anchor only when the residual is certified true.  False or
+        unknown residuals retain the constraint conservatively.
 
         ``None`` asks the caller to use the legacy all-anchor expansion.  This
         is used before a SAT model exists (during domain estimation) and if the
@@ -401,134 +403,633 @@ class VPConstraintExtraction:
         """
         if getattr(self, "_model", None) is None:
             return None
-        if not (
-            getattr(self, "_vp_repair_mode", "deceleration") == "acceleration"
-            and "in_intersection_conflict_area__0_1" in proposition.name
-        ):
-            return None
-
+        formula_anchor_cache = getattr(
+            self, "_complete_formula_active_anchor_cache", None
+        )
+        if formula_anchor_cache is None:
+            formula_anchor_cache = self._complete_formula_active_anchor_cache = {}
+        target_variable = str(proposition.alphabet).lstrip("~")
+        selected_value = not str(proposition.alphabet).startswith("~")
+        residual_target_value = not selected_value
+        formula_anchor_cache_key = (
+            getattr(self, "_vp_repair_mode", "deceleration"),
+            str(proposition.source_rule),
+            target_variable,
+            selected_value,
+            int(trajectory_start),
+            int(trajectory_end),
+        )
+        if formula_anchor_cache_key in formula_anchor_cache:
+            return formula_anchor_cache[formula_anchor_cache_key]
         try:
             formula = self.rule_monitor.sat_formula_sep[proposition.source_rule]
-            formula_symbols = {str(symbol): symbol for symbol in formula.free_symbols}
-        except (AttributeError, KeyError, TypeError):
+            rule_propositions = {}
+            for node in self.rule_monitor.proposition_nodes:
+                if node.source_rule != proposition.source_rule:
+                    continue
+                base_variable = str(node.alphabet).lstrip("~")
+                rule_propositions[base_variable] = node
+            formula_symbols = {
+                str(symbol): symbol for symbol in formula.free_symbols
+            }
+        except (AttributeError, KeyError, TypeError, ValueError):
             return None
 
-        target_variable = proposition.alphabet[-1]
-        target_symbol = formula_symbols.get(target_variable)
-        if target_symbol is None:
+        if target_variable not in formula_symbols:
             return None
 
-        rule_propositions = {}
-        for node in self.rule_monitor.proposition_nodes:
-            if node.source_rule != proposition.source_rule:
-                continue
-            variable = node.alphabet[-1]
-            if variable in formula_symbols:
-                rule_propositions[variable] = node
-        if set(formula_symbols) - set(rule_propositions):
+        formula_variables = {str(symbol) for symbol in formula.free_symbols}
+        if formula_variables - set(rule_propositions):
             return None
-
-        fixed_variables = {
-            variable
-            for variable, node in rule_propositions.items()
-            if "in_intersection_conflict_area__0_1" not in str(node.name)
-        }
-        fixed_variables &= set(formula_symbols)
-        if not fixed_variables:
-            return None
-        constrained_variables = {
-            node.alphabet[-1]
-            for node in (getattr(self, "_sel_prop", None) or ())
-        }
-        sequences = {
+        nominal_sequences = {
             variable: self._proposition_sequence(rule_propositions[variable])
-            for variable in fixed_variables
+            for variable in formula_variables
         }
+        monitor_start = int(self.rule_monitor.start_time_step)
+        try:
+            builder, _ = self._ensure_semantic_in_region_builder()
+        except Exception:
+            # Without a reachable-set estimator, fall back to the unfiltered
+            # all-anchor expansion rather than pruning from nominal values.
+            return None
 
-        start_time_step = int(self.rule_monitor.start_time_step)
+        dt = float(self.config.scenario.dt)
+
+        def estimate_at_anchor(node, source_anchor):
+            """Estimate one temporal proposition at one evaluation anchor."""
+            domain_cache = getattr(self, "_anchor_proposition_domain_cache", None)
+            if domain_cache is None:
+                domain_cache = self._anchor_proposition_domain_cache = {}
+            domain_cache_key = (
+                getattr(self, "_vp_repair_mode", "deceleration"),
+                id(builder),
+                str(node.source_rule),
+                str(node.alphabet).lstrip("~"),
+                str(node.name),
+                int(source_anchor),
+                int(trajectory_start),
+                int(trajectory_end),
+            )
+            if domain_cache_key in domain_cache:
+                return domain_cache[domain_cache_key]
+
+            def finish(domain):
+                domain_cache[domain_cache_key] = domain
+                return domain
+
+            certified_domain = getattr(
+                self, "_semantic_certified_domains", {}
+            ).get(str(node.alphabet).lstrip("~"))
+            if certified_domain in (FALSE_DOMAIN, TRUE_DOMAIN):
+                return finish(certified_domain)
+
+            children = list(getattr(node, "children", ()) or ())
+            if len(children) != 1:
+                return finish(UNKNOWN_DOMAIN)
+            evaluator = getattr(children[0], "evaluator", None)
+            if evaluator is None:
+                return finish(UNKNOWN_DOMAIN)
+            expansion_cache = getattr(
+                self, "_temporal_expression_expansion_cache", None
+            )
+            if expansion_cache is None:
+                expansion_cache = self._temporal_expression_expansion_cache = {}
+            expansion_key = (str(node.name), dt)
+            if expansion_key in expansion_cache:
+                expansion = expansion_cache[expansion_key]
+            else:
+                try:
+                    expansion = expand_temporal_expression(str(node.name), dt)
+                except (TypeError, ValueError):
+                    expansion_cache[expansion_key] = None
+                    return finish(UNKNOWN_DOMAIN)
+                expansion_cache[expansion_key] = expansion
+            if expansion is None:
+                return finish(UNKNOWN_DOMAIN)
+            if expansion.offsets is None:
+                return finish(UNKNOWN_DOMAIN)
+
+            negate = expansion.leaf_expression.strip().lower().startswith("not(")
+            operators = {
+                operator
+                for operator in expansion.operators
+                if operator not in {"previous", "prev", "pre"}
+            }
+            valid_offsets = [
+                offset
+                for offset in expansion.offsets
+                if int(trajectory_start)
+                <= int(source_anchor) + int(offset)
+                <= int(trajectory_end)
+            ]
+            if not valid_offsets:
+                if operators and operators.issubset({"once", "eventually"}):
+                    return finish(FALSE_DOMAIN)
+                if operators and operators.issubset(
+                    {"historically", "globally", "always"}
+                ):
+                    return finish(TRUE_DOMAIN)
+                return finish(UNKNOWN_DOMAIN)
+
+            # Several IN propositions share the same ego-turning atom and
+            # differ only in their fixed target/priority gate.  If reachable
+            # longitudinal progress proves that shared atom false throughout
+            # this temporal support, every composite is false and evaluating
+            # each gate separately is unnecessary.  The builder caches this
+            # spatial result by turning kind and frame set, so sibling aliases
+            # reuse one definition-driven proof.
+            turning_ego = getattr(evaluator, "_turning_ego", None)
+            if turning_ego is not None:
+                leaf_steps = tuple(
+                    int(source_anchor) + int(offset)
+                    for offset in valid_offsets
+                )
+                spatial_domain = builder.estimate_turning_spatial_domain(
+                    turning_ego, leaf_steps
+                )
+                if spatial_domain == FALSE_DOMAIN:
+                    return finish(TRUE_DOMAIN if negate else FALSE_DOMAIN)
+
+            frame_domains = []
+            for offset in valid_offsets:
+                domain = builder.estimate_frame(
+                    evaluator,
+                    str(node.name),
+                    int(source_anchor) + int(offset),
+                ).domain
+                if negate:
+                    domain = frozenset(1 - int(value) for value in domain)
+                frame_domains.append(domain)
+
+            if not operators:
+                return finish(
+                    frame_domains[0]
+                    if len(frame_domains) == 1
+                    else UNKNOWN_DOMAIN
+                )
+            if operators.issubset({"once", "eventually"}):
+                if any(domain == TRUE_DOMAIN for domain in frame_domains):
+                    return finish(TRUE_DOMAIN)
+                if frame_domains and all(
+                    domain == FALSE_DOMAIN for domain in frame_domains
+                ):
+                    return finish(FALSE_DOMAIN)
+                return finish(UNKNOWN_DOMAIN)
+            if operators.issubset({"historically", "globally", "always"}):
+                if any(domain == FALSE_DOMAIN for domain in frame_domains):
+                    return finish(FALSE_DOMAIN)
+                if frame_domains and all(
+                    domain == TRUE_DOMAIN for domain in frame_domains
+                ):
+                    return finish(TRUE_DOMAIN)
+                return finish(UNKNOWN_DOMAIN)
+            return finish(UNKNOWN_DOMAIN)
+
+        def estimate_at_anchor_span(node, source_anchors):
+            """Conservatively prove one proposition constant on an anchor run."""
+            children = list(getattr(node, "children", ()) or ())
+            if len(children) != 1:
+                return UNKNOWN_DOMAIN
+            evaluator = getattr(children[0], "evaluator", None)
+            if evaluator is None:
+                return UNKNOWN_DOMAIN
+            try:
+                expansion = expand_temporal_expression(str(node.name), dt)
+            except (TypeError, ValueError):
+                return UNKNOWN_DOMAIN
+            if expansion.offsets is None:
+                return UNKNOWN_DOMAIN
+            negate = expansion.leaf_expression.strip().lower().startswith("not(")
+            leaf_steps = tuple(sorted({
+                int(anchor) + int(offset)
+                for anchor in source_anchors
+                for offset in expansion.offsets
+                if int(trajectory_start)
+                <= int(anchor) + int(offset)
+                <= int(trajectory_end)
+            }))
+            if not leaf_steps:
+                return UNKNOWN_DOMAIN
+
+            turning_ego = getattr(evaluator, "_turning_ego", None)
+            if turning_ego is not None:
+                spatial_domain = builder.estimate_turning_spatial_domain(
+                    turning_ego, leaf_steps
+                )
+                if spatial_domain == FALSE_DOMAIN:
+                    return TRUE_DOMAIN if negate else FALSE_DOMAIN
+
+            leaf_domain = builder.estimate_domain(
+                evaluator,
+                str(node.name),
+                leaf_steps,
+            )
+            if negate:
+                leaf_domain = frozenset(
+                    1 - int(value) for value in leaf_domain
+                )
+            # A singleton over the union of every leaf frame is sufficient to
+            # prove the same truth value for every temporal window in the run.
+            # Unknown stays unknown and triggers exact per-anchor evaluation.
+            return (
+                leaf_domain
+                if leaf_domain in (FALSE_DOMAIN, TRUE_DOMAIN)
+                else UNKNOWN_DOMAIN
+            )
+
+        def prove_formula_value(
+            expression,
+            desired_value,
+            leaf_domain,
+            nominal_index,
+            nominal_values,
+        ):
+            """Prove one Boolean value without computing an unused full domain."""
+            desired_value = bool(desired_value)
+            if expression is True or expression == True:
+                return desired_value is True
+            if expression is False or expression == False:
+                return desired_value is False
+            if bool(getattr(expression, "is_Symbol", False)):
+                variable = str(expression)
+                if variable == target_variable:
+                    value = bool(residual_target_value)
+                    return value is desired_value
+                domain = leaf_domain(rule_propositions[variable])
+                required = TRUE_DOMAIN if desired_value else FALSE_DOMAIN
+                return domain == required
+
+            arguments = tuple(getattr(expression, "args", ()))
+            operator = type(expression).__name__
+            if operator == "Not" and len(arguments) == 1:
+                return prove_formula_value(
+                    arguments[0],
+                    not desired_value,
+                    leaf_domain,
+                    nominal_index,
+                    nominal_values,
+                )
+            if operator in {"And", "Or"}:
+                # Order likely proof/failure branches first using the fixed
+                # monitor trace.  Ordering affects cost only, never the proof.
+                if (operator == "And") == desired_value:
+                    # And=true / Or=false require every child.
+                    ordered = sorted(
+                        arguments,
+                        key=lambda argument: nominal_formula_at_anchor(
+                            argument, nominal_index, nominal_values
+                        )
+                        is desired_value,
+                    )
+                    return all(
+                        prove_formula_value(
+                            argument,
+                            desired_value,
+                            leaf_domain,
+                            nominal_index,
+                            nominal_values,
+                        )
+                        for argument in ordered
+                    )
+                # And=false / Or=true need any one child.
+                ordered = sorted(
+                    arguments,
+                    key=lambda argument: nominal_formula_at_anchor(
+                        argument, nominal_index, nominal_values
+                    )
+                    is not desired_value,
+                )
+                return any(
+                    prove_formula_value(
+                        argument,
+                        desired_value,
+                        leaf_domain,
+                        nominal_index,
+                        nominal_values,
+                    )
+                    for argument in ordered
+                )
+            if operator == "Implies" and len(arguments) == 2:
+                antecedent, consequent = arguments
+                if desired_value:
+                    antecedent_nominal = nominal_formula_at_anchor(
+                        antecedent, nominal_index, nominal_values
+                    )
+                    if antecedent_nominal is False and prove_formula_value(
+                        antecedent,
+                        False,
+                        leaf_domain,
+                        nominal_index,
+                        nominal_values,
+                    ):
+                        return True
+                    if prove_formula_value(
+                        consequent,
+                        True,
+                        leaf_domain,
+                        nominal_index,
+                        nominal_values,
+                    ):
+                        return True
+                    return (
+                        antecedent_nominal is not False
+                        and prove_formula_value(
+                            antecedent,
+                            False,
+                            leaf_domain,
+                            nominal_index,
+                            nominal_values,
+                        )
+                    )
+                return prove_formula_value(
+                    antecedent,
+                    True,
+                    leaf_domain,
+                    nominal_index,
+                    nominal_values,
+                ) and prove_formula_value(
+                    consequent,
+                    False,
+                    leaf_domain,
+                    nominal_index,
+                    nominal_values,
+                )
+            return False
+
+        def nominal_formula_at_anchor(expression, nominal_index, values):
+            """Evaluate the monitor trace lazily without SymPy substitution."""
+            if expression is True or expression == True:
+                return True
+            if expression is False or expression == False:
+                return False
+            if bool(getattr(expression, "is_Symbol", False)):
+                variable = str(expression)
+                if variable in values:
+                    return values[variable]
+                nominal_cache = getattr(
+                    self, "_nominal_proposition_boolean_cache", None
+                )
+                if nominal_cache is None:
+                    nominal_cache = self._nominal_proposition_boolean_cache = {}
+                nominal_key = (
+                    str(proposition.source_rule),
+                    variable,
+                    int(nominal_index),
+                )
+                if nominal_key in nominal_cache:
+                    values[variable] = nominal_cache[nominal_key]
+                    return values[variable]
+                sequence = nominal_sequences[variable]
+                if not 0 <= nominal_index < len(sequence):
+                    nominal_cache[nominal_key] = None
+                    return None
+                try:
+                    value = float(sequence[nominal_index])
+                except (TypeError, ValueError):
+                    nominal_cache[nominal_key] = None
+                    return None
+                if math.isnan(value):
+                    nominal_cache[nominal_key] = None
+                    return None
+                values[variable] = value >= 0.0
+                nominal_cache[nominal_key] = values[variable]
+                return values[variable]
+
+            arguments = tuple(getattr(expression, "args", ()))
+            operator = type(expression).__name__
+            if operator == "Not" and len(arguments) == 1:
+                value = nominal_formula_at_anchor(
+                    arguments[0], nominal_index, values
+                )
+                return None if value is None else not value
+            if operator == "And":
+                has_unknown = False
+                for argument in arguments:
+                    value = nominal_formula_at_anchor(
+                        argument, nominal_index, values
+                    )
+                    if value is False:
+                        return False
+                    has_unknown = has_unknown or value is None
+                return None if has_unknown else True
+            if operator == "Or":
+                has_unknown = False
+                for argument in arguments:
+                    value = nominal_formula_at_anchor(
+                        argument, nominal_index, values
+                    )
+                    if value is True:
+                        return True
+                    has_unknown = has_unknown or value is None
+                return None if has_unknown else False
+            if operator == "Implies" and len(arguments) == 2:
+                antecedent = nominal_formula_at_anchor(
+                    arguments[0], nominal_index, values
+                )
+                if antecedent is False:
+                    return True
+                consequent = nominal_formula_at_anchor(
+                    arguments[1], nominal_index, values
+                )
+                if consequent is True:
+                    return True
+                if antecedent is True and consequent is False:
+                    return False
+                return None
+            return None
+
+        def nominal_formula_true_mask(expression, first_index, count):
+            """Evaluate the fixed monitor trace with cached integer bitmasks."""
+            all_mask = (1 << int(count)) - 1
+            bitmask_cache = getattr(
+                self, "_nominal_proposition_bitmask_cache", None
+            )
+            if bitmask_cache is None:
+                bitmask_cache = self._nominal_proposition_bitmask_cache = {}
+
+            def evaluate(node):
+                if node is True or node == True:
+                    return all_mask, 0
+                if node is False or node == False:
+                    return 0, all_mask
+                if bool(getattr(node, "is_Symbol", False)):
+                    variable = str(node)
+                    if variable == target_variable:
+                        return (
+                            (all_mask, 0)
+                            if residual_target_value
+                            else (0, all_mask)
+                        )
+                    cache_key = (
+                        str(proposition.source_rule),
+                        variable,
+                        int(first_index),
+                        int(count),
+                    )
+                    cached = bitmask_cache.get(cache_key)
+                    if cached is not None:
+                        return cached
+                    true_mask = 0
+                    false_mask = 0
+                    sequence = nominal_sequences[variable]
+                    for position in range(int(count)):
+                        sequence_index = int(first_index) + position
+                        if not 0 <= sequence_index < len(sequence):
+                            continue
+                        try:
+                            value = float(sequence[sequence_index])
+                        except (TypeError, ValueError):
+                            continue
+                        if math.isnan(value):
+                            continue
+                        if value >= 0.0:
+                            true_mask |= 1 << position
+                        else:
+                            false_mask |= 1 << position
+                    result = (true_mask, false_mask)
+                    bitmask_cache[cache_key] = result
+                    return result
+
+                arguments = tuple(getattr(node, "args", ()))
+                operator = type(node).__name__
+                if operator == "Not" and len(arguments) == 1:
+                    true_mask, false_mask = evaluate(arguments[0])
+                    return false_mask, true_mask
+                if operator == "And":
+                    true_mask = all_mask
+                    false_mask = 0
+                    for argument in arguments:
+                        child_true, child_false = evaluate(argument)
+                        true_mask &= child_true
+                        false_mask |= child_false
+                    return true_mask, false_mask
+                if operator == "Or":
+                    true_mask = 0
+                    false_mask = all_mask
+                    for argument in arguments:
+                        child_true, child_false = evaluate(argument)
+                        true_mask |= child_true
+                        false_mask &= child_false
+                    return true_mask, false_mask
+                if operator == "Implies" and len(arguments) == 2:
+                    antecedent_true, antecedent_false = evaluate(arguments[0])
+                    consequent_true, consequent_false = evaluate(arguments[1])
+                    return (
+                        antecedent_false | consequent_true,
+                        antecedent_true & consequent_false,
+                    )
+                return 0, 0
+
+            true_mask, _ = evaluate(expression)
+            return true_mask
+
         active_anchors = []
         filtered_anchors = []
         unknown_anchors = []
         anchor_evaluations = []
-        for source_anchor in range(int(trajectory_start), int(trajectory_end) + 1):
-            # ``all_props_all_ids_all`` is indexed by the monitor's evaluation
-            # frame.  For a pastified future rule this is already the delayed
-            # anchor.  The temporal leaf offsets are applied below, but the
-            # global ``future_time_step`` must not be added a second time.
-            evaluation_index = source_anchor - start_time_step
-            assignment = {}
-            complete = True
-            for variable in sorted(fixed_variables):
-                sequence = sequences[variable]
-                if not (0 <= evaluation_index < len(sequence)):
-                    complete = False
-                    break
-                value = sequence[evaluation_index]
-                try:
-                    numeric_value = float(value)
-                    if math.isnan(numeric_value):
-                        complete = False
-                        break
-                    assignment[formula_symbols[variable]] = bool(numeric_value >= 0.0)
-                except (TypeError, ValueError):
-                    complete = False
-                    break
+        monitor_delay = int(self.rule_monitor.future_time_step)
+        first_evaluation_anchor = int(trajectory_start) + monitor_delay
+        last_evaluation_anchor = int(trajectory_end) + monitor_delay
+        nominal_residual_by_anchor = {}
+        anchor_count = last_evaluation_anchor - first_evaluation_anchor + 1
+        first_nominal_index = first_evaluation_anchor - monitor_start
+        nominal_true_mask = nominal_formula_true_mask(
+            formula, first_nominal_index, anchor_count
+        )
+        for position, source_anchor in enumerate(range(
+            first_evaluation_anchor, last_evaluation_anchor + 1
+        )):
+            nominal_residual_by_anchor[source_anchor] = bool(
+                nominal_true_mask & (1 << position)
+            )
 
-            if not complete:
-                # Unknown anchors must remain constrained: filtering them would
-                # be an unsound under-approximation.
-                active_anchors.append(source_anchor)
-                unknown_anchors.append(source_anchor)
+        # Prove complete contiguous runs in one operation.  This is a
+        # sufficient-only optimization: an unknown span is evaluated exactly
+        # anchor by anchor below, so filtering semantics do not change.
+        span_proven_true = set()
+        run_start = None
+        nominal_true_runs = []
+        for source_anchor in range(
+            first_evaluation_anchor, last_evaluation_anchor + 2
+        ):
+            is_true = nominal_residual_by_anchor.get(source_anchor, False)
+            if is_true and run_start is None:
+                run_start = source_anchor
+            elif not is_true and run_start is not None:
+                nominal_true_runs.append(tuple(range(run_start, source_anchor)))
+                run_start = None
+        for source_anchors in nominal_true_runs:
+            if len(source_anchors) < 2:
                 continue
+            span_nominal_index = int(source_anchors[0]) - monitor_start
+            span_proven = prove_formula_value(
+                formula,
+                True,
+                lambda node: estimate_at_anchor_span(node, source_anchors),
+                span_nominal_index,
+                {target_variable: residual_target_value},
+            )
+            if span_proven:
+                span_proven_true.update(source_anchors)
 
-            try:
-                substituted_formula = formula.subs(assignment)
-                # Symbol membership alone is not a semantic relevance test.
-                # For example, ``~j | (~j & ~n)`` still contains ``n``
-                # syntactically but is equivalent to ``~j``.  Expanding n's
-                # temporal window at such an anchor imposes an artificial
-                # early exit deadline.  Hard/fixed substitution leaves only a
-                # few VP-controllable symbols here, so simplify before testing
-                # whether this particular target can affect the rule value.
-                reduced_formula = simplify_logic(
-                    substituted_formula, force=True
+        for source_anchor in range(
+            first_evaluation_anchor, last_evaluation_anchor + 1
+        ):
+            # Pastified proposition sequences are evaluated on delayed monitor
+            # anchors.  Temporal leaf offsets later map these anchors back to
+            # trajectory frames, so the delay belongs in the anchor range and
+            # must not be added again during leaf expansion.
+            nominal_index = int(source_anchor) - monitor_start
+            nominal_values = {target_variable: residual_target_value}
+            nominal_residual_true = nominal_residual_by_anchor[source_anchor]
+            assignment = {}
+            estimated_domains = {}
+            # Dropping an anchor requires both the monitor residual and the
+            # reachable-set residual to be true.  If the inexpensive monitor
+            # guard is already false/unknown, semantic estimation cannot
+            # change the keep/drop decision and is skipped entirely.
+            formula_domain = UNKNOWN_DOMAIN
+            if source_anchor in span_proven_true:
+                formula_domain = TRUE_DOMAIN
+            elif nominal_residual_true:
+                formula_proven = prove_formula_value(
+                    formula,
+                    True,
+                    lambda node: estimate_at_anchor(
+                        node, source_anchor
+                    ),
+                    nominal_index,
+                    nominal_values,
                 )
-                target_relevant = target_symbol in reduced_formula.free_symbols
-                if (
-                    not target_relevant
-                    and reduced_formula not in (True, False)
+                formula_domain = (
+                    TRUE_DOMAIN if formula_proven else UNKNOWN_DOMAIN
+                )
+                if any(
+                    tuple(domain) == tuple(sorted(UNKNOWN_DOMAIN))
+                    for domain in estimated_domains.values()
                 ):
-                    # A different VP-controllable literal may absorb this
-                    # target (e.g. ``~l | (~l & ~p) == ~l``).  Dropping p is
-                    # sound only if l is itself being enforced by the current
-                    # VP candidate.  PropositionNode.ttv_value is evaluated at
-                    # one reference frame and cannot prove l's polarity at all
-                    # implication anchors.  If the absorbing symbols are not
-                    # constrained, retain the target conservatively.
-                    remaining_variables = {
-                        str(symbol) for symbol in reduced_formula.free_symbols
-                    }
-                    if not remaining_variables.issubset(constrained_variables):
-                        target_relevant = (
-                            target_symbol in substituted_formula.free_symbols
-                        )
-            except (TypeError, ValueError):
-                return None
+                    unknown_anchors.append(source_anchor)
+            target_relevant = not (
+                formula_domain == TRUE_DOMAIN and nominal_residual_true
+            )
             anchor_evaluations.append(
                 {
                     "source_anchor": source_anchor,
                     "target_relevant": target_relevant,
-                    "reduced_formula": str(reduced_formula),
+                    "formula_domain": tuple(sorted(formula_domain)),
+                    "nominal_residual_true": nominal_residual_true,
+                    "residual_target_value": residual_target_value,
                     "hard_values": {
                         variable: assignment[formula_symbols[variable]]
-                        for variable in sorted(fixed_variables)
+                        for variable in sorted(formula_variables)
+                        if formula_symbols[variable] in assignment
                     },
+                    "estimated_domains": estimated_domains,
                 }
             )
 
-            # Substituting only hard/fixed facts leaves the VP-controllable
-            # consequent symbolic.  The target disappears exactly when the
-            # fixed implication guard makes it irrelevant at this anchor.
+            # Only a certified-true complete rule permits dropping the
+            # constraint.  False and unknown anchors remain active.
             if target_relevant:
                 active_anchors.append(source_anchor)
             else:
@@ -542,6 +1043,29 @@ class VPConstraintExtraction:
             "anchor_evaluations": anchor_evaluations,
             "formula": str(formula),
         }
+        if os.environ.get("CRREPAIR_VP_FORMULA_DEBUG"):
+            print(
+                "COMPLETE_FORMULA_ANCHOR_SUMMARY",
+                proposition.source_rule,
+                proposition.name,
+                proposition.alphabet,
+                active_anchors,
+                filtered_anchors,
+                flush=True,
+            )
+            for evaluation in anchor_evaluations:
+                print(
+                    "COMPLETE_FORMULA_ANCHOR_DETAIL",
+                    evaluation,
+                    flush=True,
+                )
+        if not filtered_anchors:
+            # Keep the established closed-form all-anchor expansion when the
+            # complete-formula analysis did not remove anything.  Besides avoiding
+            # extra work, this preserves the monitor's finite-trace delay.
+            formula_anchor_cache[formula_anchor_cache_key] = None
+            return None
+        formula_anchor_cache[formula_anchor_cache_key] = active_anchors
         return active_anchors
 
     def _temporal_constraint_steps(self, all_states, propositions=None):
@@ -593,6 +1117,7 @@ class VPConstraintExtraction:
         once_choice = getattr(self, "_once_time_choice", None)
         if once_choice is None:
             once_choice = self._once_time_choice = {}
+        complete_formula_anchor_cache = {}
         for prop in propositions:
             direct_once_interval = getattr(prop, "vp_once_interval", None)
             if (
@@ -682,11 +1207,19 @@ class VPConstraintExtraction:
                     }
                 )
                 continue
-            source_anchors = self._implication_active_source_anchors(
-                proposition=prop,
-                trajectory_start=trajectory_start,
-                trajectory_end=trajectory_end,
+            anchor_key = (
+                str(prop.source_rule),
+                str(prop.alphabet),
             )
+            if anchor_key not in complete_formula_anchor_cache:
+                complete_formula_anchor_cache[anchor_key] = (
+                    self._implication_active_source_anchors(
+                        proposition=prop,
+                        trajectory_start=trajectory_start,
+                        trajectory_end=trajectory_end,
+                    )
+                )
+            source_anchors = complete_formula_anchor_cache[anchor_key]
             if source_anchors is None:
                 interval, expansion, pair_count = constraint_time_interval(
                     expression=prop.name,
@@ -710,6 +1243,27 @@ class VPConstraintExtraction:
                     # must constrain frames 4..9, not 9..14 for dt=0.2).
                     future_time_step=0,
                 )
+                # Anchor-wise Boolean simplification can leave disjoint leaf
+                # intervals.  ``outside conflict`` is represented by the
+                # before-region upper bound in deceleration and by the
+                # after-region lower bound in acceleration.  Since trajectory
+                # progress is monotone, those bounds have a corresponding
+                # causal closure: a later upper bound also holds at every
+                # earlier planning frame, while an earlier lower bound also
+                # holds at every later frame.  Closing only the LP leaf steps
+                # keeps the formula/estimate filter phase independent and
+                # avoids an infeasible leave-and-return schedule.
+                if (
+                    interval.count
+                    and proposition_constraint_kind(prop)
+                    == VPConstraintKind.OUTSIDE_EGO_CONFLICT
+                ):
+                    mode = getattr(self, "_vp_repair_mode", "deceleration")
+                    if mode == "acceleration":
+                        closed_steps = range(interval.start, trajectory_end + 1)
+                    else:
+                        closed_steps = range(planning_start, interval.end + 1)
+                    interval = TemporalConstraintSteps(frozenset(closed_steps))
             active_steps[id(prop)] = interval
             diagnostics.append(
                 {

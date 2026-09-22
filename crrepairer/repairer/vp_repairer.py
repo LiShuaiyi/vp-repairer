@@ -78,7 +78,13 @@ class VPTrajectoryRepairer(
         self.domain_dict_breakdown_by_mode = {}
         self._conflict_trajectory_interval_cache = {}
         self._semantic_fixed_domain_cache = {}
+        self._semantic_certified_domains = {}
         self._temporal_constraint_steps_cache = {}
+        self._complete_formula_active_anchor_cache = {}
+        self._temporal_expression_expansion_cache = {}
+        self._anchor_proposition_domain_cache = {}
+        self._nominal_proposition_boolean_cache = {}
+        self._nominal_proposition_bitmask_cache = {}
         self._reference_longitudinal_positions_cache = {}
         self._in_reachability_context_cache = None
         self._acceleration_lp_template_cache = {}
@@ -126,13 +132,22 @@ class VPTrajectoryRepairer(
         # receive predicate domains or unsupported-candidate pre-rejection.
         return any(
             rule in self.config.repair.rules
-            for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+            for rule in (
+                "R_G2",
+                "R_IN3",
+                "R_IN3_hand_draft",
+                "R_IN4",
+                "R_IN5",
+            )
         )
 
     def _begin_vp_repair_phase(self, repair_mode):
         """Start one independent SAT/domain search for a VP branch."""
         self._vp_repair_mode = repair_mode
-        if repair_mode == "acceleration":
+        if repair_mode == "acceleration" and any(
+            rule in self.config.repair.rules
+            for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+        ):
             # A stopped/slow violating trajectory can end inside the conflict
             # area.  Its trajectory-only CLCS is then too short to represent
             # the exit branch, so acceleration rebuilds it with route extension.
@@ -154,6 +169,13 @@ class VPTrajectoryRepairer(
         self._constraint_repair_analysis_complete = False
         self._in_reachability_context_cache = None
         self._semantic_in_region_builder = None
+        self._semantic_certified_domains = {}
+        self._complete_formula_active_anchor_cache = {}
+        # Reachable proposition domains are phase-specific: acceleration and
+        # deceleration use different reachable intervals.  Parsed temporal
+        # expressions and nominal monitor values remain valid for the whole
+        # repair call and are therefore intentionally retained.
+        self._anchor_proposition_domain_cache = {}
         self._once_time_plans = {}
         self._once_time_choice = {}
         self._active_sat_once_intervals = {}
@@ -192,7 +214,13 @@ class VPTrajectoryRepairer(
         self._shared_trajectory_clcs = None
         self._conflict_trajectory_interval_cache = {}
         self._semantic_fixed_domain_cache = {}
+        self._semantic_certified_domains = {}
         self._temporal_constraint_steps_cache = {}
+        self._complete_formula_active_anchor_cache = {}
+        self._temporal_expression_expansion_cache = {}
+        self._anchor_proposition_domain_cache = {}
+        self._nominal_proposition_boolean_cache = {}
+        self._nominal_proposition_bitmask_cache = {}
         self._reference_longitudinal_positions_cache = {}
         self._in_reachability_context_cache = None
         self._acceleration_lp_template_cache = {}
@@ -591,7 +619,10 @@ class VPTrajectoryRepairer(
         cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
 
         initial_s = initial_v = initial_a = None
-        if repair_mode == "acceleration":
+        if repair_mode == "acceleration" and any(
+            rule in self.config.repair.rules
+            for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+        ):
             initial_s, initial_v, initial_a = (
                 self._get_velocity_planning_current_conditions(
                     all_states,

@@ -306,7 +306,10 @@ def load_group_cases(group: str):
                 key = (case["scenario_id"], case["ego_id"], alternate_rule)
             if key not in path_index:
                 raise ValueError(f"Missing scenario-path index for {group} case {key}")
-            case["scenario_path"] = path_index[key]
+            indexed_path = Path(path_index[key])
+            if not indexed_path.is_absolute():
+                indexed_path = REPO_ROOT / indexed_path
+            case["scenario_path"] = str(indexed_path.resolve())
     # Some historical input lists (notably highd_rg1_rg3.csv) contain the same
     # scenario/ego pair twice.  Running and plotting those rows would silently
     # overweight most of that cohort.

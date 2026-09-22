@@ -328,12 +328,17 @@ class VPPredicateEstimation:
                         self.sat_solver._prop_nodes
                     )
                 )
+                self._semantic_certified_domains = {
+                    str(variable): frozenset({int(value)})
+                    for variable, value in region_estimates.items()
+                }
             except Exception as exc:
                 # A failed estimate carries no information.  Represent that
                 # conservatively as {0, 1} below; never substitute the
                 # monitored point value as if it were a proof over the whole
                 # reachable interval.
                 region_estimates = {}
+                self._semantic_certified_domains = {}
                 region_estimation_failed = True
                 region_diagnostics = {
                     "enabled": True,
