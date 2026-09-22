@@ -1,0 +1,86 @@
+{
+  "options": {
+    "input_dir": "evaluation/config/vp_temporal_full",
+    "scenario_root": "scenarios/experiment_scenarios",
+    "output_dir": "stlccp_comparison/results/latest_full",
+    "limit": null,
+    "repeat": 1,
+    "time_limit": 30.0,
+    "threads": 1,
+    "robustness_margin": 0.01,
+    "smoothing": "lse_mellowmin",
+    "lse_k": 10.0,
+    "mellowmin_k": 1000.0,
+    "tau0": 0.005,
+    "tau_max": 1000.0,
+    "tau_rate": 2.0,
+    "slack_tolerance": 1e-05,
+    "cost_tolerance": 0.01,
+    "max_iterations": 25,
+    "initialization": "trajectory",
+    "seed": 20260922,
+    "rule_semantics": "lin2025",
+    "gurobi_license": "/home/shuaiyi/gurobi.lic",
+    "monitor_config": "/data_linux/Lab/commonroad-stl-monitor/crmonitor/config.yaml"
+  },
+  "cohorts": [
+    {
+      "cohort": "in1",
+      "rows": 91,
+      "successful": 35,
+      "output": "stlccp_comparison/results/latest_full/in1.csv"
+    },
+    {
+      "cohort": "in3_hand_draft",
+      "rows": 68,
+      "successful": 28,
+      "output": "stlccp_comparison/results/latest_full/in3_hand_draft.csv"
+    },
+    {
+      "cohort": "in4",
+      "rows": 46,
+      "successful": 14,
+      "output": "stlccp_comparison/results/latest_full/in4.csv"
+    },
+    {
+      "cohort": "in5",
+      "rows": 50,
+      "successful": 23,
+      "output": "stlccp_comparison/results/latest_full/in5.csv"
+    },
+    {
+      "cohort": "rg1",
+      "rows": 100,
+      "successful": 98,
+      "output": "stlccp_comparison/results/latest_full/rg1.csv"
+    },
+    {
+      "cohort": "rg1_mona",
+      "rows": 93,
+      "successful": 92,
+      "output": "stlccp_comparison/results/latest_full/rg1_mona.csv"
+    },
+    {
+      "cohort": "rg1_rg3",
+      "rows": 87,
+      "successful": 85,
+      "output": "stlccp_comparison/results/latest_full/rg1_rg3.csv"
+    },
+    {
+      "cohort": "rg2",
+      "rows": 69,
+      "successful": 16,
+      "output": "stlccp_comparison/results/latest_full/rg2.csv"
+    },
+    {
+      "cohort": "rg3",
+      "rows": 100,
+      "successful": 100,
+      "output": "stlccp_comparison/results/latest_full/rg3.csv"
+    }
+  ],
+  "notes": [
+    "R_G2 was rerun after matching the saved MICP baseline's other=None fallback and full-scene existential validation.",
+    "The pre-alignment R_G2 CSV is retained in diagnostics/rg2_pre_validation_alignment.csv."
+  ]
+}

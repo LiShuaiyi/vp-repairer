@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+
+# Scratch rerun used to validate the R_G2 alignment fix. The promoted result
+# and pre-fix diagnostic are both retained under results/latest_full/.
+results/rg2_fix/
