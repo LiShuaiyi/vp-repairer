@@ -47,7 +47,6 @@ class VPPredicateEstimation:
         self.domain_dict = dict(domain_dict)
         self.sat_solver.set_domain_dict(
             domain_dict,
-            hard_domain_vars=self._hard_domain_vars,
             repair_literals=self._repair_literals,
         )
         self._domain_dict_initialized = True
@@ -124,9 +123,6 @@ class VPPredicateEstimation:
         )
         breakdown["infer_domain_dict"] = time.time() - start
         breakdown["fixed_rg_predicate_count"] = fixed_rg_count
-        breakdown["hard_rg_front_speed_domain_count"] = getattr(
-            self, "_rg_front_speed_hard_domain_count", 0
-        )
         breakdown["repair_literal_count"] = len(self._repair_literals)
         self.domain_dict_breakdown = breakdown
         return domain_dict
@@ -160,8 +156,8 @@ class VPPredicateEstimation:
 
         A cut-in event is determined by the other vehicle's lateral motion and
         is not an action available to the ego-only velocity planner.  Its SAT
-        search domain initially agrees with the monitored trajectory.  It is
-        intentionally not part of the IN-only hard-priority exception.
+        search domain agrees with the monitored trajectory as a permanent
+        singleton fact.
         """
         fixed_count = 0
         for prop_node in prop_nodes:
@@ -239,8 +235,7 @@ class VPPredicateEstimation:
         region_estimation_mode = self._in_region_estimation_mode()
         use_critical_hybrid = region_estimation_mode == "critical_hybrid"
         initial_domains = {}
-        hard_priority_vars = set()
-        unsupported_polarity_hard_vars = []
+        unsupported_polarity_fixed_vars = []
         repair_literals = []
         deferred_region_repair_literals = []
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
@@ -306,7 +301,7 @@ class VPPredicateEstimation:
                 )
             except Exception as exc:
                 # Reachability domains are search guidance.  Failure to build
-                # the estimate must not create a false hard rejection; exact
+                # the estimate must not create a false permanent rejection; exact
                 # constraint extraction and the LP remain the final guards.
                 acceleration_diagnostics = {
                     "estimate_error": f"{type(exc).__name__}: {exc}"
@@ -380,8 +375,8 @@ class VPPredicateEstimation:
                 # A domain is the complete set of truth values which remain
                 # possible over VP's reachable longitudinal intervals.  A
                 # singleton is proved fixed; {0, 1} is a sound but
-                # non-pruning result.  All such domains are permanent -- LP
-                # failure must not relax a reachability proof.
+                # non-pruning result.  All such domains are permanent because
+                # LP failure cannot invalidate a reachability proof.
                 initial_domains[alphabet] = (
                     {0, 1}
                     if estimated_value is None
@@ -395,13 +390,11 @@ class VPPredicateEstimation:
                     # but this repair phase has no VP constraint capable of
                     # requesting either polarity.  A model which changes the
                     # current polarity would therefore be rejected later by
-                    # constraint extraction.  Encode that rejection as a hard
-                    # domain now so DomainDPLL prunes the partial assignment
+                    # constraint extraction.  Encode that rejection as a
+                    # singleton now so DomainDPLL prunes the partial assignment
                     # before constructing a complete unsupported model.
                     initial_domains[alphabet] = {int(current_value)}
-                    unsupported_polarity_hard_vars.append(alphabet)
-                if len(initial_domains[alphabet]) == 1:
-                    hard_priority_vars.add(alphabet)
+                    unsupported_polarity_fixed_vars.append(alphabet)
                 if extractable:
                     # The executable polarity is rule-specific.  IN1 repairs
                     # the violation by making its stop-line/standstill event
@@ -435,16 +428,6 @@ class VPPredicateEstimation:
                     repair_literals.append(literal)
             else:
                 initial_domains[alphabet] = {int(current_value)}
-                # Legacy behavior: these names used to hard-fix the whole
-                # turning composite, even though ego turning is a function
-                # of longitudinal position.  Preserve it behind the A/B
-                # switch so the experiment has an exact baseline.
-                if (
-                    "same_priority" in name
-                    or "target_has_priority" in name
-                    or "on_lanelet_with_type_intersection" in name
-                ):
-                    hard_priority_vars.add(alphabet)
 
         current_value_guidance_count = 0
         # Keep executable VP actions separate from ordinary SAT branch
@@ -485,17 +468,18 @@ class VPPredicateEstimation:
         # can still reach and execute these fallbacks when required.
         repair_literals.extend(deferred_region_repair_literals)
 
-        self._hard_domain_vars = hard_priority_vars
         self._repair_literals = repair_literals
         self.domain_dict_breakdown = {
             "repair_mode": repair_mode,
             "initial_domain_count": len(initial_domains),
-            "hard_priority_domain_count": len(hard_priority_vars),
-            "unsupported_polarity_hard_domain_count": len(
-                unsupported_polarity_hard_vars
+            "fixed_singleton_domain_count": sum(
+                len(values) == 1 for values in initial_domains.values()
             ),
-            "unsupported_polarity_hard_domain_vars": list(
-                unsupported_polarity_hard_vars
+            "unsupported_polarity_fixed_domain_count": len(
+                unsupported_polarity_fixed_vars
+            ),
+            "unsupported_polarity_fixed_domain_vars": list(
+                unsupported_polarity_fixed_vars
             ),
             "unrestricted_domain_count": sum(
                 set(values) == {0, 1} for values in initial_domains.values()
@@ -753,7 +737,7 @@ class VPPredicateEstimation:
                 # A true witness before the modifiable planning interval can
                 # keep the temporal proposition true even when every future
                 # conjunction frame is false.  Without reconstructing that
-                # immutable prefix, falsehood is not a safe hard singleton.
+                # immutable prefix, falsehood is not a safe singleton fact.
                 estimate = None
             if estimate is not None:
                 estimates[alphabet] = int(estimate)
@@ -1197,7 +1181,7 @@ class VPPredicateEstimation:
             # a local bound mismatch.  A negative interval overlap is thus
             # ``unknown`` rather than a proof of infeasibility.  Only exact
             # stop-line/monitor geometry may turn a negative estimate into a
-            # hard SAT-domain rejection.
+            # permanent SAT-domain rejection.
             conclusive = bool(
                 is_in1 or not interval_mode.startswith("legacy")
             )
@@ -1864,15 +1848,13 @@ class VPPredicateEstimation:
         return speed_limits
 
     def _domain_dict_construct_general(self, predicate_values, prop_nodes):
-        """Build singleton RG domains and preserve proven one-way facts.
+        """Build permanent singleton RG domains from reachable-set estimates.
 
-        ``in_front_of`` and the four speed-limit predicates are hard only when
-        reachability has already proved their domain to be a singleton.  In
-        particular, a violated speed predicate which braking can repair keeps
-        the domain ``{0, 1}`` and is never fixed here.
+        A violated predicate which VP can change keeps domain ``{0, 1}`` and
+        remains searchable.  Every emitted singleton is a proved fact for the
+        complete repair phase and is unchanged after LP failure.
         """
         domain_dict = {}
-        hard_domain_vars = set()
         for prop_node in prop_nodes:
             predicate_values_key = self._prop_node_name_to_predicate_values_key(
                 prop_node.name, predicate_values
@@ -1880,27 +1862,7 @@ class VPPredicateEstimation:
             if predicate_values_key == {0} or predicate_values_key == {1}:
                 variable = prop_node.alphabet[-1]
                 domain_dict[variable] = set(predicate_values_key)
-                if self._is_rg_front_or_speed_predicate(prop_node.name):
-                    hard_domain_vars.add(variable)
-
-        self._hard_domain_vars.update(hard_domain_vars)
-        self._rg_front_speed_hard_domain_count = len(hard_domain_vars)
         return domain_dict
-
-    @staticmethod
-    def _is_rg_front_or_speed_predicate(prop_name):
-        # Temporal wrappers may be retained in a proposition name, as for the
-        # existing once(cut_in) form, so match the atomic predicate anywhere.
-        return any(
-            predicate_name in prop_name
-            for predicate_name in (
-                "in_front_of__",
-                "keeps_lane_speed_limit__",
-                "keeps_type_speed_limit__",
-                "keeps_fov_speed_limit__",
-                "keeps_brake_speed_limit__",
-            )
-        )
 
     def _prop_node_name_to_predicate_values_key(self, prop_name, predicate_values):
         key = None

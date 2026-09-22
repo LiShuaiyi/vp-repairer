@@ -15,7 +15,6 @@ class DomainDPLL:
         prop_nodes=None,
         tv_time_step=0,
         domains=None,
-        hard_domain_vars=None,
         repair_literals=None,
     ):
         """
@@ -32,10 +31,9 @@ class DomainDPLL:
         self._prop_nodes = prop_nodes
         self._tv_time_step = tv_time_step
         self._domains = domains or {}
-        # Domains are normally first-attempt pruning hints.  A deliberately
-        # small caller-provided subset may be kept hard for semantic facts
-        # which VP cannot change (currently IN priority predicates only).
-        self._hard_domain_vars = set(hard_domain_vars or ())
+        # Every singleton domain is a proven predicate fact over the reachable
+        # set.  It remains active for the complete repair phase; {0, 1} is the
+        # only representation of an unrestricted proposition.
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
         self._base_cnf = self._assign_cnf(sympy_cnf)
         self._cnf = list()
@@ -62,10 +60,6 @@ class DomainDPLL:
     @property
     def domains(self):
         return self._domains
-
-    @property
-    def hard_domain_vars(self):
-        return self._hard_domain_vars
 
     @property
     def repair_literals(self):
@@ -120,8 +114,7 @@ class DomainDPLL:
     def _rebuild_cnf(self):
         # Domains constrain a variable only when the DPLL search actually
         # selects it.  Encoding every singleton domain as a unit clause would
-        # force even irrelevant variables into the partial model and make a
-        # failed attempt relax all domains at once.
+        # force irrelevant variables into the returned partial model.
         self._cnf = deepcopy(self._base_cnf)
         self._literals = self.get_literal(
             self._cnf, self._prop_nodes, self._tv_time_step
@@ -135,35 +128,11 @@ class DomainDPLL:
     def set_search_guidance(
         self,
         domains=None,
-        hard_domain_vars=None,
         repair_literals=None,
     ):
         self._domains = dict(domains) if domains is not None else {}
-        self._hard_domain_vars = set(hard_domain_vars or ())
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
         self._rebuild_cnf()
-
-    def relax_domains_for_model(self, model=None):
-        """
-        Remove domain restrictions for variables in a failed SAT model.
-
-        Ordinary domains are pruning hints.  Caller-designated hard domains
-        remain active after a failed repair attempt.
-        """
-        model = self.model if model is None else model
-        if not self._domains or not model:
-            return []
-
-        relaxed = []
-        for literal in model:
-            var = literal[-1]
-            if var in self._domains and var not in self._hard_domain_vars:
-                self._domains.pop(var)
-                relaxed.append(var)
-
-        if relaxed:
-            self._rebuild_cnf()
-        return sorted(set(relaxed))
 
     def update_cnf(self, cnf, domains=None):
         """

@@ -31,10 +31,10 @@ class VPUtils:
                 variable = prop.alphabet[-1]
                 desired_value = 0 if prop.alphabet.startswith("~") else 1
                 domain = getattr(self, "domain_dict", {}).get(variable)
-                fixed_literal = (
-                    variable in getattr(self, "_hard_domain_vars", set())
-                    and domain == {desired_value}
-                )
+                # Every singleton domain is a certified fact over the current
+                # VP reachable set.  It therefore needs no LP constraint;
+                # {0, 1} is the only unrestricted domain.
+                fixed_literal = domain == {desired_value}
                 entailed_negative_same_lane = (
                     prop.alphabet.startswith("~")
                     and "lane" in prop.name

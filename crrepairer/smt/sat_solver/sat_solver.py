@@ -22,7 +22,6 @@ class SATSolver:
         self._config = config
         self._solver_mode = getattr(config.repair, "sat_solver_mode", "dpll")
         self._domain_dict = {}
-        self._hard_domain_vars = set()
         self._repair_literals = []
         self._dpll_solver = self._build_solver(rule_monitor.tv_time_step)
         self._solver_formula = self._formula
@@ -57,11 +56,9 @@ class SATSolver:
     def set_domain_dict(
         self,
         domain_dict,
-        hard_domain_vars=None,
         repair_literals=None,
     ):
         self._domain_dict = dict(domain_dict) if domain_dict is not None else {}
-        self._hard_domain_vars = set(hard_domain_vars or ())
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
 
     def add_once_time_selectors(self, once_time_plans):
@@ -231,7 +228,6 @@ class SATSolver:
         self._dpll_solver._prop_nodes = self._prop_nodes
         for variable in parent_variables:
             self._domain_dict.pop(variable, None)
-            self._hard_domain_vars.discard(variable)
         self._repair_literals = [
             literal
             for literal in self._repair_literals
@@ -298,7 +294,7 @@ class SATSolver:
             )
         )
 
-    def add_hard_false_units(self, variables):
+    def add_certified_false_units(self, variables):
         """Conjoin certified-false auxiliary variables as root CNF units."""
         variables = tuple(sorted(set(variables)))
         if not variables:
@@ -319,12 +315,10 @@ class SATSolver:
         if self._solver_mode == "domain_dpll":
             if (
                 self._dpll_solver.domains != self._domain_dict
-                or self._dpll_solver.hard_domain_vars != self._hard_domain_vars
                 or self._dpll_solver.repair_literals != self._repair_literals
             ):
                 self._dpll_solver.set_search_guidance(
                     self._domain_dict,
-                    self._hard_domain_vars,
                     self._repair_literals,
                 )
             if self._solver_formula != self._formula:
@@ -427,9 +421,8 @@ class SATSolver:
         """
         if self._formula[0] != "(":
             self._formula = "(" + self.formula + ")"
-        # Block exactly the failed SAT model.  DomainDPLL may then relax only
-        # the domain variables which occur in this model, leaving all other
-        # domain restrictions active for the next search.
+        # Block exactly the failed SAT model.  Reachability domains remain
+        # active for the complete repair phase.
         model = list(
             self._dpll_model if blocking_literals is None else blocking_literals
         )

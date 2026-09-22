@@ -85,8 +85,8 @@ class DPLL:
             ):
                 return 2
             # Priority is an environment/right-of-way fact, not a maneuver
-            # that p1c1 can realize directly.  Keep it searchable (no hard
-            # domain restriction), but try it only after other predicates so
+            # that p1c1 can realize directly.  Keep its domain unrestricted,
+            # but try it only after other predicates so
             # it cannot cheaply satisfy the Boolean formula before the
             # conflict/stop-line action has been considered.
             priority_tokens = (

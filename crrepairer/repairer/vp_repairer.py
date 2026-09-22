@@ -65,7 +65,6 @@ class VPTrajectoryRepairer(
         self.runtime_breakdown = {}
         self.domain_dict_breakdown = {}
         self._domain_predicate_timing = {}
-        self._hard_domain_vars = set()
         self._repair_literals = []
         self._constraint_repair_literals = []
         self._constraint_repair_analysis_complete = False
@@ -163,7 +162,6 @@ class VPTrajectoryRepairer(
         self._domain_dict_initialized = False
         self.domain_dict_breakdown = {}
         self._domain_predicate_timing = {}
-        self._hard_domain_vars = set()
         self._repair_literals = []
         self._constraint_repair_literals = []
         self._constraint_repair_analysis_complete = False
@@ -191,9 +189,8 @@ class VPTrajectoryRepairer(
         self._install_sat_once_time_expansion()
         self.sat_solver.sort_domain_repair_literals()
         # Temporal expansion may add (and optionally reorder) executable SAT
-        # once-time selectors.  Keep the repairer's copy synchronized so a
-        # later domain relaxation does not overwrite that guidance with the
-        # pre-expansion list.
+        # once-time selectors.  Keep the repairer's copy synchronized with
+        # that expanded guidance.
         self._repair_literals = list(self.sat_solver._repair_literals)
         once_time_estimate_elapsed = time.time() - once_time_estimate_start
         self.domain_dict_time += once_time_estimate_elapsed
@@ -586,24 +583,6 @@ class VPTrajectoryRepairer(
                     else None
                 )
             )
-            if self.sat_solver.solver_mode == "domain_dpll":
-                domain_solver = getattr(self.sat_solver, "_dpll_solver", None)
-                relaxed_domains = (
-                    domain_solver.relax_domains_for_model(self.model)
-                    if domain_solver is not None
-                    else []
-                )
-                if relaxed_domains:
-                    self.domain_dict = dict(domain_solver.domains)
-                    self.sat_solver.set_domain_dict(
-                        self.domain_dict,
-                        hard_domain_vars=self._hard_domain_vars,
-                        repair_literals=self._repair_literals,
-                    )
-                    print(
-                        "* \t<VPRepairer>: relaxed domains selected by failed model: "
-                        f"{relaxed_domains}"
-                    )
             nr += 1
 
         print(f"*******   Repairing Failed ಠ_ಠ with {nr} iteration(s)  *******")

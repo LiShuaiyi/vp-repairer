@@ -284,7 +284,7 @@ class VPConstraintExtraction:
         Formula construction is independent of predicate estimation: plain
         DPLL and DomainDPLL receive the same time variables and clauses.
         An end time proved impossible by the reachability estimate remains in
-        the CNF but is hard-fixed false for DomainDPLL.
+        the CNF but is fixed false for DomainDPLL.
         """
         if self._once_time_mode() != "estimate_or_sat":
             return {}
@@ -319,15 +319,13 @@ class VPConstraintExtraction:
 
         for variable in rejected_selector_vars:
             self.domain_dict[variable] = {0}
-            self._hard_domain_vars.add(variable)
             self.sat_solver._domain_dict[variable] = {0}
-            self.sat_solver._hard_domain_vars.add(variable)
         if rejected_selector_vars:
             # DomainDPLL's singleton checks happen during branching.  Put
             # certified-impossible once-time choices at the CNF root as well,
             # so ordinary unit propagation simplifies their Tseitin clauses
             # before any unrelated proposition is selected.
-            self.sat_solver.add_hard_false_units(rejected_selector_vars)
+            self.sat_solver.add_certified_false_units(rejected_selector_vars)
             self.sat_solver._repair_literals = [
                 literal
                 for literal in self.sat_solver._repair_literals
@@ -401,6 +399,11 @@ class VPConstraintExtraction:
         is used before a SAT model exists (during domain estimation) and if the
         monitor formula cannot be evaluated reliably.
         """
+        # Plain DPLL is the no-predicate-estimation ablation.  Keep its
+        # constraint extraction on the legacy all-anchor expansion; only
+        # DomainDPLL may use reachable predicate estimates to prune anchors.
+        if getattr(self.sat_solver, "solver_mode", "dpll") == "dpll":
+            return None
         if getattr(self, "_model", None) is None:
             return None
         formula_anchor_cache = getattr(
@@ -1019,7 +1022,7 @@ class VPConstraintExtraction:
                     "formula_domain": tuple(sorted(formula_domain)),
                     "nominal_residual_true": nominal_residual_true,
                     "residual_target_value": residual_target_value,
-                    "hard_values": {
+                    "fixed_values": {
                         variable: assignment[formula_symbols[variable]]
                         for variable in sorted(formula_variables)
                         if formula_symbols[variable] in assignment
@@ -2036,7 +2039,7 @@ class VPConstraintExtraction:
     ):
         """Reject selected SAT literals that cannot produce a VP constraint.
 
-        Fixed predicates are filtered by SAT hard domains.  This validation is
+        Fixed predicates are filtered by singleton SAT domains.  This validation is
         the final guard for genuinely unsupported selected literals, so the LP
         is never solved with a silently missing constraint.
         """
