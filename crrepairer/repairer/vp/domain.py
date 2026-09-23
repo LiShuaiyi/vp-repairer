@@ -9,6 +9,7 @@ from shapely import affinity
 
 from crrepairer.repairer.vp.semantic_predicate_regions import (
     FALSE_DOMAIN,
+    SemanticINPredicateRegionBuilder,
     TRUE_DOMAIN,
     UNKNOWN_DOMAIN,
     build_semantic_in_predicate_region_builder,
@@ -99,15 +100,175 @@ class VPPredicateEstimation:
         breakdown["convert_reachset_back_to_lanelet"] = time.time() - start
 
         start = time.time()
-        predicate_values = self._estimate_predicate_ranges(cart_reach, cl_reach, theta_bounds[1])
+        # Geometric endpoint equality is not a proof that a predicate stays
+        # constant between the endpoints.  The semantic builder below owns all
+        # RG geometry; retain this lightweight legacy pass only for speed
+        # limits, whose value is monotone over the velocity interval.
+        predicate_values = self._estimate_speed_predicate_ranges(cl_reach)
+        semantic_frame_domains = {}
+        reachable_by_time = {
+            int(time_step): (float(s_min), float(s_max))
+            for time_step, s_min, s_max, _, _ in ct_reach
+        }
+        reachable_velocity_by_time = {
+            int(time_step): (float(v_min), float(v_max))
+            for time_step, _, _, v_min, v_max, _, _ in cl_reach
+        }
+        semantic_prop_nodes = []
+        for prop_node in self.sat_solver._prop_nodes:
+            children = list(getattr(prop_node, "children", ()) or ())
+            evaluator = (
+                getattr(children[0], "evaluator", None)
+                if len(children) == 1
+                else None
+            )
+            values_key = self._prop_node_predicate_values_key(
+                prop_node.name
+            )
+            if (
+                values_key
+                in {"safe_dist", "in_same_lane", "cut_in", "in_front_of"}
+                and SemanticINPredicateRegionBuilder.supports_evaluator(
+                    evaluator
+                )
+            ):
+                semantic_prop_nodes.append((prop_node, evaluator, values_key))
+        try:
+            semantic_builder = None
+            if semantic_prop_nodes:
+                semantic_builder = build_semantic_in_predicate_region_builder(
+                    self,
+                    trajectory_clcs,
+                    ref_path,
+                    reachable_by_time,
+                    lanelet_clcs=lanelet_clcs,
+                    reachable_velocity_by_time=reachable_velocity_by_time,
+                    fixed_domain_cache=self._semantic_fixed_domain_cache,
+                    uncertainty=float(
+                        os.environ.get(
+                            "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY",
+                            "0.05",
+                        )
+                    ),
+                )
+                self._semantic_in_region_builder = semantic_builder
+                self._semantic_in_region_context = {
+                    "source": "rg_reachable_set",
+                    "reachable_frame_count": len(reachable_by_time),
+                }
+            for prop_node, evaluator, values_key in semantic_prop_nodes:
+                variable = str(prop_node.alphabet[-1])
+                frame_domains = {}
+                possible_values = set()
+                time_steps = sorted(reachable_by_time)
+                needs_temporal_sequence = values_key == "cut_in"
+                if needs_temporal_sequence:
+                    evaluation_order = time_steps
+                else:
+                    evaluation_order = []
+                    left, right = 0, len(time_steps) - 1
+                    while left <= right:
+                        evaluation_order.append(time_steps[right])
+                        if left != right:
+                            evaluation_order.append(time_steps[left])
+                        left += 1
+                        right -= 1
+                for time_step in evaluation_order:
+                    domain = semantic_builder.estimate_frame(
+                        evaluator,
+                        str(prop_node.name),
+                        int(time_step),
+                    ).domain
+                    frame_domains[int(time_step)] = set(domain)
+                    possible_values.update(int(value) for value in domain)
+                    if (
+                        not needs_temporal_sequence
+                        and possible_values == {0, 1}
+                    ):
+                        break
+                if len(frame_domains) == len(time_steps):
+                    semantic_frame_domains[variable] = frame_domains
+                if needs_temporal_sequence:
+                    predicate_values[values_key] = [
+                        (
+                            int(time_step),
+                            (
+                                int(next(iter(frame_domains[time_step])))
+                                if len(frame_domains[time_step]) == 1
+                                else 2
+                            ),
+                        )
+                        for time_step in time_steps
+                    ]
+                elif len(possible_values) == 1:
+                    predicate_values[values_key] = [
+                        (int(time_steps[0]), int(next(iter(possible_values))))
+                    ]
+                else:
+                    predicate_values[values_key] = [
+                        (int(time_steps[0]), 2)
+                    ]
+        except Exception as exc:
+            # A failed proof must only reduce pruning power.  Keep every
+            # affected frame unknown instead of falling back to the old
+            # endpoint-equality assumption.
+            semantic_frame_domains = {}
+            for prop_node in self.sat_solver._prop_nodes:
+                values_key = self._prop_node_predicate_values_key(
+                    prop_node.name
+                )
+                if values_key in {
+                    "safe_dist",
+                    "in_same_lane",
+                    "cut_in",
+                    "in_front_of",
+                }:
+                    predicate_values[values_key] = [
+                        (int(time_step), 2)
+                        for time_step in sorted(reachable_by_time)
+                    ]
+            breakdown["semantic_rg_fallback"] = str(exc)
         breakdown["estimate_predicate_ranges"] = time.time() - start
         if self._domain_predicate_timing:
             breakdown["estimate_predicate_ranges_detail"] = dict(
                 self._domain_predicate_timing
             )
 
+
         start = time.time()
         self._apply_once_operator(predicate_values["cut_in"])
+
+        # Reuse per-frame RG reachability during Boolean anchor filtering.
+        frame_domains = dict(semantic_frame_domains)
+        for prop_node in self.sat_solver._prop_nodes:
+            variable = str(prop_node.alphabet[-1])
+            if variable in frame_domains:
+                continue
+            values_key = self._prop_node_predicate_values_key(prop_node.name)
+            # Speed compliance is monotone over the estimated velocity
+            # interval, so its endpoint values certify the whole interval.
+            # The RG geometric predicates are currently evaluated only at the
+            # two longitudinal endpoints; equal endpoint values do not prove
+            # that a lane/front/cut-in Boolean is constant in between.
+            if values_key not in {
+                "lane_speed",
+                "type_speed",
+                "fov_speed",
+                "brake_speed",
+            }:
+                continue
+            values = predicate_values.get(values_key)
+            if values is None:
+                continue
+            frame_domains[variable] = {
+                int(time_step): (
+                    {0, 1} if int(value) == 2 else {int(value)}
+                )
+                for time_step, value in values
+            }
+        # These sequences were previously reduced to phase-wide domains and
+        # predicate information was recomputed during constraint extraction.
+        self._predicate_frame_domain_cache = frame_domains
         breakdown["apply_once_operator"] = time.time() - start
 
         start = time.time()
@@ -1826,6 +1987,62 @@ class VPPredicateEstimation:
             predicate_values["brake_speed"] = brake_speed
         return predicate_values
 
+    def _estimate_speed_predicate_ranges(self, cl_reach):
+        """Estimate only RG speed predicates from certified velocity bounds."""
+        lane_speed = []
+        type_speed = []
+        fov_speed = []
+        brake_speed = []
+        speed_limits = self._extract_speed_limit_values()
+        started = time.time()
+        for row in cl_reach:
+            time_step = int(row[0])
+            v_min = float(row[3])
+            v_max = float(row[4])
+            for key, output in (
+                ("lane", lane_speed),
+                ("type", type_speed),
+                ("fov", fov_speed),
+                ("brake", brake_speed),
+            ):
+                speed_limit = speed_limits[key]
+                if speed_limit is None:
+                    continue
+                value_min = self._keep_speed_limit_eval(v_min, speed_limit)
+                value_max = self._keep_speed_limit_eval(v_max, speed_limit)
+                output.append(
+                    (
+                        time_step,
+                        (
+                            2
+                            if value_min != value_max
+                            else int(value_min)
+                        ),
+                    )
+                )
+        predicate_values = {
+            "safe_dist": [],
+            "in_same_lane": [],
+            "cut_in": [],
+            "in_front_of": [],
+        }
+        for key, values in (
+            ("lane_speed", lane_speed),
+            ("type_speed", type_speed),
+            ("fov_speed", fov_speed),
+            ("brake_speed", brake_speed),
+        ):
+            if values:
+                predicate_values[key] = values
+        self._domain_predicate_timing = {
+            "safe_dist": 0.0,
+            "in_same_lane": 0.0,
+            "cut_in": 0.0,
+            "in_front_of": 0.0,
+            "speed_limits": time.time() - started,
+        }
+        return predicate_values
+
     def _extract_speed_limit_values(self):
         speed_limits = {"lane": None, "type": None, "fov": None, "brake": None}
         stlmonitor_world = self.rule_monitor.world
@@ -1865,6 +2082,21 @@ class VPPredicateEstimation:
         return domain_dict
 
     def _prop_node_name_to_predicate_values_key(self, prop_name, predicate_values):
+        key = self._prop_node_predicate_values_key(prop_name)
+        if key is None or key not in predicate_values:
+            return {0, 1}
+
+        possible_values = set()
+        for _, value in predicate_values[key]:
+            if value == 2:
+                possible_values.update({0, 1})
+            else:
+                possible_values.add(int(value))
+        return possible_values
+
+    @staticmethod
+    def _prop_node_predicate_values_key(prop_name):
+        """Map a temporal proposition name to its cached RG estimate series."""
         key = None
         if "distance" in prop_name:
             key = "safe_dist"
@@ -1882,17 +2114,7 @@ class VPPredicateEstimation:
             key = "fov_speed"
         elif "brake" in prop_name and "speed" in prop_name:
             key = "brake_speed"
-
-        if key is None or key not in predicate_values:
-            return {0, 1}
-
-        possible_values = set()
-        for _, value in predicate_values[key]:
-            if value == 2:
-                possible_values.update({0, 1})
-            else:
-                possible_values.add(int(value))
-        return possible_values
+        return key
 
     def _apply_once_operator(self, cut_in):
         for prop_node in self.sat_solver._prop_nodes:

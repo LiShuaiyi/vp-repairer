@@ -33,6 +33,7 @@ from typing import Any, Dict, FrozenSet, Iterable, Mapping, Optional, Sequence, 
 
 import numpy as np
 import shapely
+from shapely import affinity
 from shapely.geometry import LineString
 
 from commonroad.scenario.lanelet import LaneletType
@@ -466,6 +467,8 @@ class SemanticINPredicateRegionBuilder:
             "stop_line_in_front",
             "relevant_traffic_light",
             "on_lanelet_with_type_intersection",
+            "in_front_of",
+            "keeps_safe_distance_prec",
             "causes_braking_intersection",
             "in_standstill",
         }
@@ -475,8 +478,25 @@ class SemanticINPredicateRegionBuilder:
             "at_traffic_sign_stop",
             "on_incoming_left_of",
             "in_intersection_conflict_area",
+            "in_same_lane",
+            "cut_in",
         }
     )
+
+    @classmethod
+    def supports_evaluator(cls, evaluator: Any) -> bool:
+        """Return whether this builder has a sound per-frame estimator.
+
+        Unsupported predicates remain unknown without constructing the
+        comparatively expensive intersection geometry.
+        """
+        if evaluator is None:
+            return False
+        if getattr(evaluator, "_turning_ego", None) is not None:
+            return True
+        return _predicate_name(evaluator) in (
+            cls.QUANTITATIVE_NAMES | cls.BOOLEAN_NAMES | cls.TURNING_NAMES
+        )
 
     def __init__(
         self,
@@ -557,6 +577,9 @@ class SemanticINPredicateRegionBuilder:
         )
         self._frame_cache: Dict[Any, FramePredicateEstimate] = {}
         self._evaluator_semantic_key_cache: Dict[int, Tuple[Any, ...]] = {}
+        self._path_line = LineString(np.asarray(self.ref_path, dtype=float)[:, :2])
+        self._same_lane_sample_context_cache: Optional[Mapping[str, Any]] = None
+        self._same_lane_robustness_region_cache: Dict[Any, SemanticIntervalSet] = {}
         self._turning_spatial_domain_cache: Dict[Any, TruthDomain] = {}
         self._lanelet_bounds_cache: Dict[int, Optional[Tuple[float, float]]] = {}
         # These caches contain only definition-derived route geometry and
@@ -819,6 +842,24 @@ class SemanticINPredicateRegionBuilder:
             self._ego_conflict_region,
         )
 
+    def same_lane_monitor_region(
+        self, target_id: int, time_step: int
+    ) -> SemanticIntervalSet:
+        """Return monitor-aligned longitudinal bounds for ``in_same_lane``.
+
+        The inexpensive domain estimator uses an orientation-independent
+        circumcircle cover.  That cover is sound but deliberately too broad
+        to generate a useful ``not in_same_lane`` LP bound for adjacent-lane
+        traffic.  Constraint extraction needs the sharper robustness-zero
+        boundary derived from the monitor's complete rectangular occupancy.
+        It is built lazily and cached per target assignment/time step, so the
+        extra work is paid only when SAT actually selects the negative
+        literal.
+        """
+        return self._same_lane_robustness_region(
+            int(target_id), int(time_step)
+        )
+
     @property
     def diagnostics(self) -> Dict[str, Any]:
         """Compact timing/cache diagnostics for batch-result accounting."""
@@ -831,6 +872,7 @@ class SemanticINPredicateRegionBuilder:
         self,
         evaluator: Any,
         prop_name: str,
+
         time_step: int,
         vehicle_ids: Tuple[int, ...],
         reachable: Optional[Tuple[float, float]],
@@ -838,6 +880,20 @@ class SemanticINPredicateRegionBuilder:
         name = _predicate_name(evaluator)
         if evaluator is None:
             return FramePredicateEstimate(UNKNOWN_DOMAIN, "missing_evaluator")
+
+        if name == "in_same_lane":
+            return self._same_lane_frame(
+                evaluator, time_step, vehicle_ids, reachable
+            )
+
+        if name == "in_front_of":
+            return self._in_front_of_frame(time_step, vehicle_ids, reachable)
+
+        if name == "keeps_safe_distance_prec":
+            return self._safe_distance_frame(time_step, vehicle_ids, reachable)
+
+        if name == "cut_in":
+            return self._cut_in_frame(evaluator, time_step, vehicle_ids, reachable)
 
         if hasattr(evaluator, "_turning_ego"):
             return self._turning_composite_frame(
@@ -1727,6 +1783,511 @@ class SemanticINPredicateRegionBuilder:
             },
         )
 
+    def _constant_path_region(
+        self, value: bool, source: str
+    ) -> SemanticIntervalSet:
+        if not value:
+            return SemanticIntervalSet.empty(source)
+        lower, upper = self._progress.trajectory_bounds
+        coverage = ClosedInterval(
+            float(lower) - self.uncertainty,
+            float(upper) + self.uncertainty,
+        )
+        return SemanticIntervalSet(
+            inner_true=(coverage,),
+            outer_true=(coverage,),
+            complete=True,
+            source=source,
+        )
+
+    def _same_lane_frame(
+        self,
+        evaluator: Any,
+        time_step: int,
+        vehicle_ids: Tuple[int, ...],
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        if self.ego_id not in vehicle_ids or len(vehicle_ids) != 2:
+            fixed = self._fixed_domain(evaluator, time_step, vehicle_ids)
+            return FramePredicateEstimate(fixed, "same_lane:fixed")
+        target_id = (
+            vehicle_ids[1] if vehicle_ids[0] == self.ego_id else vehicle_ids[0]
+        )
+        region = self._same_lane_region(int(target_id), int(time_step))
+        domain = self._classify_region(region, reachable)
+        return FramePredicateEstimate(domain, region.source, region=region)
+
+    def _same_lane_region(
+        self, target_id: int, time_step: int
+    ) -> SemanticIntervalSet:
+        target = self.world.vehicle_by_id(int(target_id))
+        try:
+            target_lanelets = frozenset(
+                int(item) for item in target.lanelet_assignment[int(time_step)]
+            )
+        except Exception:
+            return SemanticIntervalSet.unknown("same_lane:target_assignment_missing")
+        key = ("same_lane", target_lanelets)
+        cached = self._region_cache.get(key)
+        if cached is not None:
+            return cached
+
+        road_network = self.world.road_network
+        network = road_network.lanelet_network
+        try:
+            target_lanes = road_network.find_lanes_by_lanelets(target_lanelets)
+            matching_ids = sorted({
+                int(lanelet_id)
+                for lane in target_lanes
+                for lanelet_id in lane.contained_lanelets
+            })
+            shapes = [
+                network.find_lanelet_by_id(lanelet_id).polygon.shapely_object
+                for lanelet_id in matching_ids
+            ]
+            if not shapes:
+                region = SemanticIntervalSet.empty(
+                    "same_lane:boolean_no_matching_lane"
+                )
+            else:
+                polygon = shapely.unary_union(shapes)
+                half_length = 0.5 * float(self.ego.shape.length)
+                half_width = 0.5 * float(self.ego.shape.width)
+                circumradius = math.hypot(half_length, half_width)
+                # A centre point inside the polygon is not sufficient: the
+                # monitor assigns lanes from the complete vehicle occupancy.
+                # The circumcircle gives orientation-independent bounds.  If
+                # the centre lies in the eroded target-lane union, the whole
+                # ego occupancy is inside it (guaranteed same lane).  If the
+                # centre lies outside the buffered union, the occupancy cannot
+                # touch any target lanelet (guaranteed different lane).
+                inner_polygon = polygon.buffer(-circumradius)
+                outer_polygon = polygon.buffer(circumradius)
+                inner_nominal = self._path_polygon_intervals(
+                    self._path_line, inner_polygon
+                )
+                outer_nominal = self._path_polygon_intervals(
+                    self._path_line, outer_polygon
+                )
+                inner = SemanticIntervalSet.from_nominal(
+                    inner_nominal,
+                    uncertainty=self.uncertainty,
+                    source="same_lane:boolean_inner",
+                ).inner_true
+                outer = SemanticIntervalSet.from_nominal(
+                    outer_nominal,
+                    uncertainty=self.uncertainty,
+                    source="same_lane:boolean_outer",
+                ).outer_true
+                region = SemanticIntervalSet(
+                    inner_true=inner,
+                    outer_true=outer,
+                    complete=True,
+                    source="same_lane:critical_lane_boundary",
+                    diagnostics={
+                        "target_lanelet_count": len(target_lanelets),
+                        "matching_lanelet_count": len(matching_ids),
+                        "circumradius": float(circumradius),
+                    },
+                )
+        except Exception:
+            region = SemanticIntervalSet.unknown("same_lane:geometry_unavailable")
+        self._region_cache[key] = region
+        return region
+
+    def _same_lane_sample_context(self) -> Optional[Mapping[str, Any]]:
+        cached = self._same_lane_sample_context_cache
+        if cached is not None:
+            return cached
+        points = np.asarray(self.ref_path, dtype=float)
+        trajectory_s = np.asarray(
+            self._progress.reference_trajectory_s, dtype=float
+        )
+        finite = np.isfinite(trajectory_s)
+        if len(points) != len(trajectory_s) or np.count_nonzero(finite) < 2:
+            return None
+        points = points[finite, :2]
+        trajectory_s = trajectory_s[finite]
+        order = np.argsort(trajectory_s)
+        points = points[order]
+        trajectory_s = trajectory_s[order]
+        keep = np.concatenate(
+            ([True], np.diff(trajectory_s) > 1.0e-8)
+        )
+        points = points[keep]
+        trajectory_s = trajectory_s[keep]
+        if len(points) < 2:
+            return None
+
+        tangents = np.empty_like(points)
+        tangents[0] = points[1] - points[0]
+        tangents[-1] = points[-1] - points[-2]
+        if len(points) > 2:
+            tangents[1:-1] = points[2:] - points[:-2]
+        tangent_norm = np.linalg.norm(tangents, axis=1)
+        valid = tangent_norm > 1.0e-9
+        orientations = np.arctan2(tangents[:, 1], tangents[:, 0])
+
+        cached = {
+            "points": points,
+            "trajectory_s": trajectory_s,
+            "orientations": orientations,
+            "valid": valid,
+        }
+        self._same_lane_sample_context_cache = cached
+        return cached
+
+    def _same_lane_robustness_region(
+        self, target_id: int, time_step: int
+    ) -> SemanticIntervalSet:
+        context = self._same_lane_sample_context()
+        if context is None:
+            return SemanticIntervalSet.unknown(
+                "same_lane:sample_context_unavailable"
+            )
+        target = self.world.vehicle_by_id(int(target_id))
+        try:
+            target_lanelets = frozenset(
+                int(item) for item in target.lanelet_assignment[int(time_step)]
+            )
+            target_lanes = self.world.road_network.find_lanes_by_lanelets(
+                target_lanelets
+            )
+            target_lane_union = frozenset(
+                int(item)
+                for lane in target_lanes
+                for item in lane.contained_lanelets
+            )
+        except Exception:
+            return SemanticIntervalSet.unknown(
+                "same_lane:target_assignment_missing"
+            )
+        key = tuple(sorted(target_lane_union))
+        cached = self._same_lane_robustness_region_cache.get(key)
+        if cached is not None:
+            return cached
+
+        network = self.world.road_network.lanelet_network
+        try:
+            target_polygon = shapely.unary_union(
+                [
+                    network.find_lanelet_by_id(item).polygon.shapely_object
+                    for item in target_lane_union
+                ]
+            )
+            points = np.asarray(context["points"], dtype=float)
+            orientations = np.asarray(context["orientations"], dtype=float)
+            local_vertices = np.asarray(
+                self.ego.shape.vertices[:-1], dtype=float
+            )
+            cosine = np.cos(orientations)[:, None]
+            sine = np.sin(orientations)[:, None]
+            local_x = local_vertices[:, 0][None, :]
+            local_y = local_vertices[:, 1][None, :]
+            vertices = np.empty(
+                (len(points), len(local_vertices), 2), dtype=float
+            )
+            vertices[:, :, 0] = (
+                local_x * cosine - local_y * sine + points[:, 0, None]
+            )
+            vertices[:, :, 1] = (
+                local_x * sine + local_y * cosine + points[:, 1, None]
+            )
+            occupancies = shapely.polygons(vertices)
+            clearance = np.asarray(
+                shapely.distance(occupancies, target_polygon), dtype=float
+            )
+        except Exception:
+            return SemanticIntervalSet.unknown(
+                "same_lane:occupancy_distance_unavailable"
+            )
+
+        s_values = np.asarray(context["trajectory_s"], dtype=float)
+        s_lower = s_values[:-1]
+        s_upper = s_values[1:]
+        valid = (
+            np.asarray(context["valid"][:-1], dtype=bool)
+            & np.asarray(context["valid"][1:], dtype=bool)
+            & np.isfinite(clearance[:-1])
+            & np.isfinite(clearance[1:])
+        )
+        displacement = np.linalg.norm(points[1:] - points[:-1], axis=1)
+        angle_delta = np.abs(
+            np.arctan2(
+                np.sin(
+                    np.asarray(context["orientations"][1:])
+                    - np.asarray(context["orientations"][:-1])
+                ),
+                np.cos(
+                    np.asarray(context["orientations"][1:])
+                    - np.asarray(context["orientations"][:-1])
+                ),
+            )
+        )
+        radius = math.hypot(
+            0.5 * float(self.ego.shape.length),
+            0.5 * float(self.ego.shape.width),
+        )
+        error = displacement + radius * angle_delta + self.uncertainty
+        # Distance between compact sets is 1-Lipschitz under rigid-body
+        # translation.  ``radius * angle_delta`` bounds the additional corner
+        # displacement under rotation, so clearance larger than the complete
+        # cell motion proves that no intermediate rectangular occupancy can
+        # intersect a lanelet belonging to the target's lane.
+        proven_false = (
+            valid
+            & (clearance[:-1] > error)
+            & (clearance[1:] > error)
+        )
+        cells = {
+            "s_lower": s_lower,
+            "s_upper": s_upper,
+        }
+        region = SemanticIntervalSet(
+            inner_true=(),
+            outer_true=self._cell_mask_to_intervals(
+                cells, np.logical_not(proven_false)
+            ),
+            complete=True,
+            source="same_lane:occupancy_boundary",
+            diagnostics={
+                "sample_count": int(len(s_values)),
+                "valid_cell_count": int(np.count_nonzero(valid)),
+                "false_cell_count": int(np.count_nonzero(proven_false)),
+                "target_lanelet_count": int(len(target_lane_union)),
+            },
+        )
+        self._same_lane_robustness_region_cache[key] = region
+        return region
+
+
+    def _longitudinal_cell_region(
+        self,
+        cells: Mapping[str, Any],
+        coordinate: str,
+        relation: str,
+        threshold_inner: float,
+        threshold_outer: float,
+        source: str,
+    ) -> SemanticIntervalSet:
+        valid = np.asarray(cells["valid"], dtype=bool)
+        lower = np.asarray(cells[f"{coordinate}_lower"], dtype=float)
+        upper = np.asarray(cells[f"{coordinate}_upper"], dtype=float)
+        width = np.asarray(cells["s_upper"], dtype=float) - np.asarray(
+            cells["s_lower"], dtype=float
+        )
+        error = width + self.uncertainty
+        if relation == "below":
+            inner_mask = valid & (upper + error < float(threshold_inner))
+            outer_mask = (~valid) | (
+                lower - error <= float(threshold_outer)
+            )
+        elif relation == "above":
+            inner_mask = valid & (lower - error > float(threshold_inner))
+            outer_mask = (~valid) | (
+                upper + error >= float(threshold_outer)
+            )
+        else:
+            return SemanticIntervalSet.unknown(f"{source}:invalid_relation")
+        return SemanticIntervalSet(
+            inner_true=self._cell_mask_to_intervals(cells, inner_mask),
+            outer_true=self._cell_mask_to_intervals(cells, outer_mask),
+            complete=True,
+            source=source,
+            diagnostics={
+                "cell_count": int(len(valid)),
+                "invalid_cell_count": int(np.count_nonzero(~valid)),
+            },
+        )
+
+    def _in_front_of_frame(
+        self,
+        time_step: int,
+        vehicle_ids: Tuple[int, ...],
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        if len(vehicle_ids) != 2 or self.ego_id not in vehicle_ids:
+            return FramePredicateEstimate(UNKNOWN_DOMAIN, "in_front_of:fixed")
+        rear_id, front_id = vehicle_ids
+        try:
+            if rear_id == self.ego_id:
+                rear_vehicle = self.ego
+                lane = rear_vehicle.get_lane(int(time_step))
+                front_vehicle = self.world.vehicle_by_id(int(front_id))
+                threshold = front_vehicle.rear_s(int(time_step), lane)
+                cells = self._target_path_rear_cells(
+                    self.ego, path_lane=lane
+                )
+                coordinate = "front"
+                relation = "below"
+            else:
+                rear_vehicle = self.world.vehicle_by_id(int(rear_id))
+                lane = rear_vehicle.get_lane(int(time_step))
+                threshold = rear_vehicle.front_s(int(time_step))
+                cells = self._target_path_rear_cells(
+                    self.ego, path_lane=lane
+                )
+                coordinate = "rear"
+                relation = "above"
+        except Exception:
+            cells = None
+            threshold = None
+        if cells is None or threshold is None or not math.isfinite(float(threshold)):
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN, "in_front_of:path_mapping_unavailable"
+            )
+        region = self._longitudinal_cell_region(
+            cells,
+            coordinate,
+            relation,
+            float(threshold),
+            float(threshold),
+            "in_front_of:longitudinal_boundary",
+        )
+        return FramePredicateEstimate(
+            self._classify_region(region, reachable),
+            region.source,
+            region=region,
+        )
+
+    @staticmethod
+    def _safe_distance_value(
+        v_follow: float,
+        v_lead: float,
+        a_min_lead: float,
+        a_min_follow: float,
+        t_react_follow: float,
+    ) -> float:
+        return (
+            (float(v_lead) ** 2) / (-2.0 * abs(float(a_min_lead)))
+            - (float(v_follow) ** 2) / (-2.0 * abs(float(a_min_follow)))
+            + float(v_follow) * float(t_react_follow)
+        )
+
+    def _safe_distance_frame(
+        self,
+        time_step: int,
+        vehicle_ids: Tuple[int, ...],
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        if len(vehicle_ids) != 2 or self.ego_id not in vehicle_ids:
+            return FramePredicateEstimate(UNKNOWN_DOMAIN, "safe_distance:fixed")
+        follow_id, lead_id = vehicle_ids
+        follow = self.world.vehicle_by_id(int(follow_id))
+        lead = self.world.vehicle_by_id(int(lead_id))
+        try:
+            if lead.get_lane(int(time_step)) is None:
+                region = self._constant_path_region(
+                    True, "safe_distance:lead_lane_missing"
+                )
+                return FramePredicateEstimate(
+                    TRUE_DOMAIN, region.source, region=region
+                )
+            velocity_interval = self.reachable_velocity_by_time.get(
+                int(time_step)
+            )
+            if velocity_interval is None:
+                raise ValueError("reachable velocity missing")
+            v_lower, v_upper = velocity_interval
+            a_min_follow = float(follow.vehicle_param.get("a_min"))
+            a_min_lead = float(lead.vehicle_param.get("a_min"))
+            t_react = float(follow.vehicle_param.get("t_react"))
+            if follow_id == self.ego_id:
+                fixed_velocity = float(lead.states_cr[int(time_step)].velocity)
+                safe_values = [
+                    self._safe_distance_value(
+                        velocity,
+                        fixed_velocity,
+                        a_min_lead,
+                        a_min_follow,
+                        t_react,
+                    )
+                    for velocity in (v_lower, v_upper)
+                ]
+                threshold = float(lead.rear_s(int(time_step)))
+                lane = follow.get_lane(int(time_step))
+                cells = self._target_path_rear_cells(self.ego, path_lane=lane)
+                coordinate = "front"
+                relation = "below"
+                threshold_inner = threshold - max(safe_values)
+                threshold_outer = threshold - min(safe_values)
+            else:
+                fixed_velocity = float(follow.states_cr[int(time_step)].velocity)
+                safe_values = [
+                    self._safe_distance_value(
+                        fixed_velocity,
+                        velocity,
+                        a_min_lead,
+                        a_min_follow,
+                        t_react,
+                    )
+                    for velocity in (v_lower, v_upper)
+                ]
+                threshold = float(follow.front_s(int(time_step)))
+                lane = follow.get_lane(int(time_step))
+                cells = self._target_path_rear_cells(self.ego, path_lane=lane)
+                coordinate = "rear"
+                relation = "above"
+                threshold_inner = threshold + max(safe_values)
+                threshold_outer = threshold + min(safe_values)
+        except Exception:
+            cells = None
+        if cells is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN, "safe_distance:path_mapping_unavailable"
+            )
+        region = self._longitudinal_cell_region(
+            cells,
+            coordinate,
+            relation,
+            threshold_inner,
+            threshold_outer,
+            "safe_distance:position_velocity_boundary",
+        )
+        return FramePredicateEstimate(
+            self._classify_region(region, reachable),
+            region.source,
+            region=region,
+        )
+
+    def _cut_in_frame(
+        self,
+        evaluator: Any,
+        time_step: int,
+        vehicle_ids: Tuple[int, ...],
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        if len(vehicle_ids) != 2 or self.ego_id not in vehicle_ids:
+            return FramePredicateEstimate(UNKNOWN_DOMAIN, "cut_in:fixed")
+        cutting_id, _ = vehicle_ids
+        if cutting_id != self.ego_id:
+            single_lane = self._fixed_domain(
+                evaluator._single_lane_evaluator,
+                int(time_step),
+                (int(cutting_id),),
+            )
+            if single_lane == TRUE_DOMAIN:
+                return FramePredicateEstimate(
+                    FALSE_DOMAIN, "cut_in:cutting_vehicle_single_lane"
+                )
+            try:
+                cutting = self.world.vehicle_by_id(int(cutting_id))
+                theta = float(cutting.get_lat_state(int(time_step)).theta)
+                epsilon = float(getattr(evaluator, "eps", 1.0e-5))
+                if -epsilon <= theta <= epsilon:
+                    return FramePredicateEstimate(
+                        FALSE_DOMAIN, "cut_in:fixed_orientation_false"
+                    )
+            except Exception:
+                pass
+        # The same-lane region is certified above, but the lateral d crossing
+        # is added separately below. Until that boundary is available, unknown
+        # is the only sound conjunction result.
+        return FramePredicateEstimate(
+            UNKNOWN_DOMAIN, "cut_in:lateral_boundary_unavailable"
+        )
+
+
     def _target_front_rear(
         self, target: Any, time_step: int
     ) -> Optional[Tuple[Optional[float], Optional[float], Optional[float]]]:
@@ -1792,9 +2353,12 @@ class SemanticINPredicateRegionBuilder:
         stop = min(len(trajectory_values), int(selected[-1]) + 3)
         return slice(start, stop)
 
-    def _target_path_rear_cells(self, target: Any) -> Optional[Mapping[str, Any]]:
-        """Map VP path cells to ego-rear progress on the target lane once."""
-        key = (int(target.id), id(target.ref_path_lane))
+    def _target_path_rear_cells(
+        self, target: Any, path_lane: Any = None
+    ) -> Optional[Mapping[str, Any]]:
+        """Map VP path cells to ego front/rear progress on one lane once."""
+        target_lane = path_lane if path_lane is not None else target.ref_path_lane
+        key = (int(target.id), id(target_lane))
         if key in self._target_path_rear_cells_cache:
             return self._target_path_rear_cells_cache[key]
         points = np.asarray(self.ref_path, dtype=float)
@@ -1802,7 +2366,6 @@ class SemanticINPredicateRegionBuilder:
             self._target_path_rear_cells_cache[key] = None
             return None
 
-        target_lane = target.ref_path_lane
         half_length = 0.5 * float(self.ego.shape.length)
         half_width = 0.5 * float(self.ego.shape.width)
         # The progress map has already projected these exact reference-path
@@ -1850,6 +2413,7 @@ class SemanticINPredicateRegionBuilder:
             & (tangent_norm > 1.0e-9)
         )
         rear_values = np.full(len(points), math.nan, dtype=float)
+        front_values = np.full(len(points), math.nan, dtype=float)
         if np.any(geometry_valid):
             ego_orientation = np.arctan2(tangents[:, 1], tangents[:, 0])
             try:
@@ -1877,45 +2441,65 @@ class SemanticINPredicateRegionBuilder:
             rear_values[geometry_valid] = (
                 target_center_values[geometry_valid] - longitudinal_extent
             )
+            front_values[geometry_valid] = (
+                target_center_values[geometry_valid] + longitudinal_extent
+            )
 
         finite_trajectory = np.isfinite(trajectory_values)
         samples = list(
             zip(
                 trajectory_values[finite_trajectory].tolist(),
                 rear_values[finite_trajectory].tolist(),
+                front_values[finite_trajectory].tolist(),
             )
         )
 
         samples.sort(key=lambda item: item[0])
         deduplicated = []
-        for trajectory_s, rear_target_s in samples:
+        for trajectory_s, rear_target_s, front_target_s in samples:
             if deduplicated and abs(trajectory_s - deduplicated[-1][0]) <= 1.0e-8:
                 if not math.isfinite(deduplicated[-1][1]) and math.isfinite(rear_target_s):
-                    deduplicated[-1] = (trajectory_s, rear_target_s)
+                    deduplicated[-1] = (
+                        trajectory_s,
+                        rear_target_s,
+                        front_target_s,
+                    )
                 continue
-            deduplicated.append((trajectory_s, rear_target_s))
+            deduplicated.append((trajectory_s, rear_target_s, front_target_s))
         if len(deduplicated) < 2:
             self._target_path_rear_cells_cache[key] = None
             return None
 
         s_values = np.asarray([item[0] for item in deduplicated], dtype=float)
         rear_values = np.asarray([item[1] for item in deduplicated], dtype=float)
+        front_values = np.asarray([item[2] for item in deduplicated], dtype=float)
         s_lower = s_values[:-1]
         s_upper = s_values[1:]
         rear_left = rear_values[:-1]
         rear_right = rear_values[1:]
+        front_left = front_values[:-1]
+        front_right = front_values[1:]
         path_lower, path_upper = self._progress.trajectory_bounds
         if float(path_lower) < float(s_values[0]) - 1.0e-8:
             s_lower = np.concatenate(([float(path_lower)], s_lower))
             s_upper = np.concatenate(([float(s_values[0])], s_upper))
             rear_left = np.concatenate(([math.nan], rear_left))
             rear_right = np.concatenate(([math.nan], rear_right))
+            front_left = np.concatenate(([math.nan], front_left))
+            front_right = np.concatenate(([math.nan], front_right))
         if float(path_upper) > float(s_values[-1]) + 1.0e-8:
             s_lower = np.concatenate((s_lower, [float(s_values[-1])]))
             s_upper = np.concatenate((s_upper, [float(path_upper)]))
             rear_left = np.concatenate((rear_left, [math.nan]))
             rear_right = np.concatenate((rear_right, [math.nan]))
-        valid = np.isfinite(rear_left) & np.isfinite(rear_right)
+            front_left = np.concatenate((front_left, [math.nan]))
+            front_right = np.concatenate((front_right, [math.nan]))
+        valid = (
+            np.isfinite(rear_left)
+            & np.isfinite(rear_right)
+            & np.isfinite(front_left)
+            & np.isfinite(front_right)
+        )
         positive_steps = np.diff(s_values)
         median_step = float(np.median(positive_steps[positive_steps > 1.0e-9]))
         max_step = max(2.0, 4.0 * median_step)
@@ -1925,6 +2509,8 @@ class SemanticINPredicateRegionBuilder:
             "s_upper": s_upper,
             "rear_lower": np.minimum(rear_left, rear_right),
             "rear_upper": np.maximum(rear_left, rear_right),
+            "front_lower": np.minimum(front_left, front_right),
+            "front_upper": np.maximum(front_left, front_right),
             "valid": valid,
             "mapped_point_count": int(len(points)),
         }

@@ -21,6 +21,7 @@ from crmonitor.common.world import World
 
 from crrepairer.repairer.vp.semantic_predicate_regions import (
     FALSE_DOMAIN,
+    SemanticINPredicateRegionBuilder,
     TRUE_DOMAIN,
     UNKNOWN_DOMAIN,
     _project_points_to_s,
@@ -390,10 +391,11 @@ class VPConstraintExtraction:
         conjunction of per-anchor Boolean formulae.  At one anchor the
         selected literal need not be constrained when the *other* Boolean
         branches already guarantee the formula.  We test exactly that
-        residual formula: force the selected literal to its unsatisfied value,
-        estimate every sibling proposition over the phase reachable set, and
-        omit the anchor only when the residual is certified true.  False or
-        unknown residuals retain the constraint conservatively.
+        residual formula: treat the selected proposition as unknown by proving
+        the complete formula with that proposition fixed to ``False`` and to
+        ``True`` under the same reachable predicate estimates.  The anchor is
+        omitted only when both cofactors are certified true.  A false or
+        unknown cofactor retains the constraint conservatively.
 
         ``None`` asks the caller to use the legacy all-anchor expansion.  This
         is used before a SAT model exists (during domain estimation) and if the
@@ -404,6 +406,11 @@ class VPConstraintExtraction:
         # DomainDPLL may use reachable predicate estimates to prune anchors.
         if getattr(self.sat_solver, "solver_mode", "dpll") == "dpll":
             return None
+        # Use the same formula-aware filtering path for intersection and
+        # interstate rules.  The pointwise-monitor alignment check below is
+        # rule agnostic: if a monitor's TV aggregation cannot be represented
+        # by per-anchor Boolean evaluation, it conservatively retains every
+        # anchor instead of disabling RG filtering at the entry point.
         if getattr(self, "_model", None) is None:
             return None
         formula_anchor_cache = getattr(
@@ -414,11 +421,13 @@ class VPConstraintExtraction:
         target_variable = str(proposition.alphabet).lstrip("~")
         selected_value = not str(proposition.alphabet).startswith("~")
         residual_target_value = not selected_value
+        # Test the previously used unsatisfied value first so anchors that
+        # still need this constraint fail without evaluating the second side.
+        target_values = (residual_target_value, selected_value)
         formula_anchor_cache_key = (
             getattr(self, "_vp_repair_mode", "deceleration"),
             str(proposition.source_rule),
             target_variable,
-            selected_value,
             int(trajectory_start),
             int(trajectory_end),
         )
@@ -449,12 +458,18 @@ class VPConstraintExtraction:
             for variable in formula_variables
         }
         monitor_start = int(self.rule_monitor.start_time_step)
-        try:
-            builder, _ = self._ensure_semantic_in_region_builder()
-        except Exception:
-            # Without a reachable-set estimator, fall back to the unfiltered
-            # all-anchor expansion rather than pruning from nominal values.
-            return None
+        builder = None
+        builder_unavailable = False
+
+        def semantic_builder():
+            """Build intersection geometry lazily for supported predicates."""
+            nonlocal builder, builder_unavailable
+            if builder is None and not builder_unavailable:
+                try:
+                    builder, _ = self._ensure_semantic_in_region_builder()
+                except Exception:
+                    builder_unavailable = True
+            return builder
 
         dt = float(self.config.scenario.dt)
 
@@ -465,7 +480,6 @@ class VPConstraintExtraction:
                 domain_cache = self._anchor_proposition_domain_cache = {}
             domain_cache_key = (
                 getattr(self, "_vp_repair_mode", "deceleration"),
-                id(builder),
                 str(node.source_rule),
                 str(node.alphabet).lstrip("~"),
                 str(node.name),
@@ -534,36 +548,58 @@ class VPConstraintExtraction:
                     return finish(TRUE_DOMAIN)
                 return finish(UNKNOWN_DOMAIN)
 
-            # Several IN propositions share the same ego-turning atom and
-            # differ only in their fixed target/priority gate.  If reachable
-            # longitudinal progress proves that shared atom false throughout
-            # this temporal support, every composite is false and evaluating
-            # each gate separately is unnecessary.  The builder caches this
-            # spatial result by turning kind and frame set, so sibling aliases
-            # reuse one definition-driven proof.
-            turning_ego = getattr(evaluator, "_turning_ego", None)
-            if turning_ego is not None:
-                leaf_steps = tuple(
-                    int(source_anchor) + int(offset)
+            variable = str(node.alphabet).lstrip("~")
+            estimated_frames = getattr(
+                self, "_predicate_frame_domain_cache", {}
+            ).get(variable)
+            if estimated_frames is not None:
+                frame_domains = [
+                    frozenset(
+                        estimated_frames.get(
+                            int(source_anchor) + int(offset), UNKNOWN_DOMAIN
+                        )
+                    )
                     for offset in valid_offsets
-                )
-                spatial_domain = builder.estimate_turning_spatial_domain(
-                    turning_ego, leaf_steps
-                )
-                if spatial_domain == FALSE_DOMAIN:
-                    return finish(TRUE_DOMAIN if negate else FALSE_DOMAIN)
+                ]
+            else:
+                if not SemanticINPredicateRegionBuilder.supports_evaluator(
+                    evaluator
+                ):
+                    return finish(UNKNOWN_DOMAIN)
+                active_builder = semantic_builder()
+                if active_builder is None:
+                    return finish(UNKNOWN_DOMAIN)
 
-            frame_domains = []
-            for offset in valid_offsets:
-                domain = builder.estimate_frame(
-                    evaluator,
-                    str(node.name),
-                    int(source_anchor) + int(offset),
-                ).domain
-                if negate:
-                    domain = frozenset(1 - int(value) for value in domain)
-                frame_domains.append(domain)
+                # Several IN propositions share the same ego-turning atom.  A
+                # shared false spatial domain avoids evaluating every gate.
+                turning_ego = getattr(evaluator, "_turning_ego", None)
+                if turning_ego is not None:
+                    leaf_steps = tuple(
+                        int(source_anchor) + int(offset)
+                        for offset in valid_offsets
+                    )
+                    spatial_domain = (
+                        active_builder.estimate_turning_spatial_domain(
+                            turning_ego, leaf_steps
+                        )
+                    )
+                    if spatial_domain == FALSE_DOMAIN:
+                        return finish(TRUE_DOMAIN if negate else FALSE_DOMAIN)
 
+                frame_domains = [
+                    active_builder.estimate_frame(
+                        evaluator,
+                        str(node.name),
+                        int(source_anchor) + int(offset),
+                    ).domain
+                    for offset in valid_offsets
+                ]
+
+            if negate:
+                frame_domains = [
+                    frozenset(1 - int(value) for value in domain)
+                    for domain in frame_domains
+                ]
             if not operators:
                 return finish(
                     frame_domains[0]
@@ -590,6 +626,13 @@ class VPConstraintExtraction:
 
         def estimate_at_anchor_span(node, source_anchors):
             """Conservatively prove one proposition constant on an anchor run."""
+            variable = str(node.alphabet).lstrip("~")
+            certified_domain = getattr(
+                self, "_semantic_certified_domains", {}
+            ).get(variable)
+            if certified_domain in (FALSE_DOMAIN, TRUE_DOMAIN):
+                return certified_domain
+
             children = list(getattr(node, "children", ()) or ())
             if len(children) != 1:
                 return UNKNOWN_DOMAIN
@@ -614,150 +657,117 @@ class VPConstraintExtraction:
             if not leaf_steps:
                 return UNKNOWN_DOMAIN
 
-            turning_ego = getattr(evaluator, "_turning_ego", None)
-            if turning_ego is not None:
-                spatial_domain = builder.estimate_turning_spatial_domain(
-                    turning_ego, leaf_steps
+            estimated_frames = getattr(
+                self, "_predicate_frame_domain_cache", {}
+            ).get(variable)
+            if estimated_frames is not None:
+                possible = set()
+                for step in leaf_steps:
+                    possible.update(
+                        estimated_frames.get(int(step), UNKNOWN_DOMAIN)
+                    )
+                    if possible == {0, 1}:
+                        return UNKNOWN_DOMAIN
+                leaf_domain = frozenset(possible)
+            else:
+                if not SemanticINPredicateRegionBuilder.supports_evaluator(
+                    evaluator
+                ):
+                    return UNKNOWN_DOMAIN
+                active_builder = semantic_builder()
+                if active_builder is None:
+                    return UNKNOWN_DOMAIN
+                turning_ego = getattr(evaluator, "_turning_ego", None)
+                if turning_ego is not None:
+                    spatial_domain = (
+                        active_builder.estimate_turning_spatial_domain(
+                            turning_ego, leaf_steps
+                        )
+                    )
+                    if spatial_domain == FALSE_DOMAIN:
+                        return TRUE_DOMAIN if negate else FALSE_DOMAIN
+                leaf_domain = active_builder.estimate_domain(
+                    evaluator,
+                    str(node.name),
+                    leaf_steps,
                 )
-                if spatial_domain == FALSE_DOMAIN:
-                    return TRUE_DOMAIN if negate else FALSE_DOMAIN
 
-            leaf_domain = builder.estimate_domain(
-                evaluator,
-                str(node.name),
-                leaf_steps,
-            )
             if negate:
                 leaf_domain = frozenset(
                     1 - int(value) for value in leaf_domain
                 )
-            # A singleton over the union of every leaf frame is sufficient to
-            # prove the same truth value for every temporal window in the run.
-            # Unknown stays unknown and triggers exact per-anchor evaluation.
             return (
                 leaf_domain
                 if leaf_domain in (FALSE_DOMAIN, TRUE_DOMAIN)
                 else UNKNOWN_DOMAIN
             )
 
-        def prove_formula_value(
-            expression,
-            desired_value,
-            leaf_domain,
-            nominal_index,
-            nominal_values,
-        ):
-            """Prove one Boolean value without computing an unused full domain."""
-            desired_value = bool(desired_value)
-            if expression is True or expression == True:
-                return desired_value is True
-            if expression is False or expression == False:
-                return desired_value is False
-            if bool(getattr(expression, "is_Symbol", False)):
-                variable = str(expression)
-                if variable == target_variable:
-                    value = bool(residual_target_value)
-                    return value is desired_value
-                domain = leaf_domain(rule_propositions[variable])
-                required = TRUE_DOMAIN if desired_value else FALSE_DOMAIN
-                return domain == required
+        def prove_formula_for_unknown_target(expression, leaf_domain):
+            """Prove the formula for both Boolean values of the target.
 
-            arguments = tuple(getattr(expression, "args", ()))
-            operator = type(expression).__name__
-            if operator == "Not" and len(arguments) == 1:
-                return prove_formula_value(
-                    arguments[0],
-                    not desired_value,
-                    leaf_domain,
-                    nominal_index,
-                    nominal_values,
-                )
-            if operator in {"And", "Or"}:
-                # Order likely proof/failure branches first using the fixed
-                # monitor trace.  Ordering affects cost only, never the proof.
-                if (operator == "And") == desired_value:
-                    # And=true / Or=false require every child.
-                    ordered = sorted(
-                        arguments,
-                        key=lambda argument: nominal_formula_at_anchor(
-                            argument, nominal_index, nominal_values
-                        )
-                        is desired_value,
-                    )
-                    return all(
-                        prove_formula_value(
-                            argument,
-                            desired_value,
-                            leaf_domain,
-                            nominal_index,
-                            nominal_values,
-                        )
-                        for argument in ordered
-                    )
-                # And=false / Or=true need any one child.
-                ordered = sorted(
-                    arguments,
-                    key=lambda argument: nominal_formula_at_anchor(
-                        argument, nominal_index, nominal_values
-                    )
-                    is not desired_value,
-                )
-                return any(
-                    prove_formula_value(
-                        argument,
-                        desired_value,
-                        leaf_domain,
-                        nominal_index,
-                        nominal_values,
-                    )
-                    for argument in ordered
-                )
-            if operator == "Implies" and len(arguments) == 2:
-                antecedent, consequent = arguments
-                if desired_value:
-                    antecedent_nominal = nominal_formula_at_anchor(
-                        antecedent, nominal_index, nominal_values
-                    )
-                    if antecedent_nominal is False and prove_formula_value(
-                        antecedent,
-                        False,
-                        leaf_domain,
-                        nominal_index,
-                        nominal_values,
-                    ):
-                        return True
-                    if prove_formula_value(
-                        consequent,
-                        True,
-                        leaf_domain,
-                        nominal_index,
-                        nominal_values,
-                    ):
-                        return True
-                    return (
-                        antecedent_nominal is not False
-                        and prove_formula_value(
-                            antecedent,
-                            False,
-                            leaf_domain,
-                            nominal_index,
-                            nominal_values,
-                        )
-                    )
-                return prove_formula_value(
-                    antecedent,
-                    True,
-                    leaf_domain,
-                    nominal_index,
-                    nominal_values,
-                ) and prove_formula_value(
-                    consequent,
-                    False,
-                    leaf_domain,
-                    nominal_index,
-                    nominal_values,
-                )
-            return False
+            Bit 0 represents ``target=False`` and bit 1 represents
+            ``target=True``.  Propagating both bits through one Boolean-tree
+            traversal is exactly equivalent to proving the two cofactors
+            separately, while shared sibling estimates are evaluated once.
+            """
+            both_targets = 0b11
+            target_true = 0b10
+            target_false = 0b01
+            proof_cache = {}
+
+            def prove_mask(node, desired_value):
+                desired_value = bool(desired_value)
+                cache_key = (node, desired_value)
+                if cache_key in proof_cache:
+                    return proof_cache[cache_key]
+
+                if node is True or node == True:
+                    result = both_targets if desired_value else 0
+                elif node is False or node == False:
+                    result = both_targets if not desired_value else 0
+                elif bool(getattr(node, "is_Symbol", False)):
+                    variable = str(node)
+                    if variable == target_variable:
+                        result = target_true if desired_value else target_false
+                    else:
+                        domain = leaf_domain(rule_propositions[variable])
+                        required = TRUE_DOMAIN if desired_value else FALSE_DOMAIN
+                        result = both_targets if domain == required else 0
+                else:
+                    arguments = tuple(getattr(node, "args", ()))
+                    operator = type(node).__name__
+                    if operator == "Not" and len(arguments) == 1:
+                        result = prove_mask(arguments[0], not desired_value)
+                    elif operator in {"And", "Or"}:
+                        use_intersection = (operator == "And") == desired_value
+                        result = both_targets if use_intersection else 0
+                        for argument in arguments:
+                            child = prove_mask(argument, desired_value)
+                            if use_intersection:
+                                result &= child
+                                if result == 0:
+                                    break
+                            else:
+                                result |= child
+                                if result == both_targets:
+                                    break
+                    elif operator == "Implies" and len(arguments) == 2:
+                        antecedent, consequent = arguments
+                        if desired_value:
+                            result = prove_mask(antecedent, False)
+                            if result != both_targets:
+                                result |= prove_mask(consequent, True)
+                        else:
+                            result = prove_mask(antecedent, True)
+                            if result:
+                                result &= prove_mask(consequent, False)
+                    else:
+                        result = 0
+
+                proof_cache[cache_key] = result
+                return result
+
+            return prove_mask(expression, True) == both_targets
 
         def nominal_formula_at_anchor(expression, nominal_index, values):
             """Evaluate the monitor trace lazily without SymPy substitution."""
@@ -841,7 +851,9 @@ class VPConstraintExtraction:
                 return None
             return None
 
-        def nominal_formula_true_mask(expression, first_index, count):
+        def nominal_formula_true_mask(
+            expression, first_index, count, target_value
+        ):
             """Evaluate the fixed monitor trace with cached integer bitmasks."""
             all_mask = (1 << int(count)) - 1
             bitmask_cache = getattr(
@@ -860,7 +872,7 @@ class VPConstraintExtraction:
                     if variable == target_variable:
                         return (
                             (all_mask, 0)
-                            if residual_target_value
+                            if target_value
                             else (0, all_mask)
                         )
                     cache_key = (
@@ -926,23 +938,94 @@ class VPConstraintExtraction:
             true_mask, _ = evaluate(expression)
             return true_mask
 
+        # ``sat_formula_sep`` is a pointwise Boolean abstraction only when its
+        # proposition traces reproduce a false rule anchor.  The legacy TV
+        # calculation combines proposition transition times and can report a
+        # finite TV even though this Boolean formula is true at every frame
+        # (notably for some merge scenarios where ``in_front_of`` becomes
+        # false before ``in_same_lane`` becomes true).  In that situation a
+        # per-anchor sibling proof is not aligned with the monitor's TV
+        # semantics and must not delete constraints.  Falling back to the
+        # legacy all-anchor expansion is conservative and rule-agnostic.
+        alignment_cache = getattr(
+            self, "_pointwise_formula_alignment_cache", None
+        )
+        if alignment_cache is None:
+            alignment_cache = self._pointwise_formula_alignment_cache = {}
+        monitor_delay = int(self.rule_monitor.future_time_step)
+        first_evaluation_anchor = int(trajectory_start) + monitor_delay
+        last_evaluation_anchor = int(trajectory_end) + monitor_delay
+        alignment_key = (
+            str(proposition.source_rule),
+            str(formula),
+            int(first_evaluation_anchor),
+            int(last_evaluation_anchor),
+        )
+        pointwise_aligned = alignment_cache.get(alignment_key)
+        if pointwise_aligned is None:
+            pointwise_aligned = any(
+                nominal_formula_at_anchor(
+                    formula,
+                    int(source_anchor) - monitor_start,
+                    {},
+                )
+                is False
+                for source_anchor in range(
+                    first_evaluation_anchor,
+                    last_evaluation_anchor + 1,
+                )
+            )
+            alignment_cache[alignment_key] = bool(pointwise_aligned)
+        if not pointwise_aligned:
+            return None
+
         active_anchors = []
         filtered_anchors = []
         unknown_anchors = []
         anchor_evaluations = []
-        monitor_delay = int(self.rule_monitor.future_time_step)
-        first_evaluation_anchor = int(trajectory_start) + monitor_delay
-        last_evaluation_anchor = int(trajectory_end) + monitor_delay
-        nominal_residual_by_anchor = {}
+        nominal_both_true_by_anchor = {}
         anchor_count = last_evaluation_anchor - first_evaluation_anchor + 1
         first_nominal_index = first_evaluation_anchor - monitor_start
-        nominal_true_mask = nominal_formula_true_mask(
-            formula, first_nominal_index, anchor_count
-        )
+        nominal_true_masks = [
+            nominal_formula_true_mask(
+                formula,
+                first_nominal_index,
+                anchor_count,
+                target_value,
+            )
+            for target_value in target_values
+        ]
+        nominal_true_mask = nominal_true_masks[0] & nominal_true_masks[1]
+        if nominal_true_mask == 0:
+            # No anchor passes even the inexpensive nominal two-cofactor
+            # guard, so the reachable-set proof cannot remove a constraint.
+            # Return the closed-form all-anchor expansion immediately instead
+            # of allocating per-anchor diagnostics and semantic queries.
+            self._last_implication_anchor_debug = {
+                "proposition": proposition.name,
+                "active_source_anchors": "all",
+                "filtered_source_anchors": [],
+                "unknown_source_anchors": [],
+                "anchor_evaluations": [],
+                "formula": str(formula),
+                "reason": "empty_nominal_two_cofactor_mask",
+            }
+            if os.environ.get("CRREPAIR_VP_FORMULA_DEBUG"):
+                print(
+                    "COMPLETE_FORMULA_ANCHOR_SUMMARY",
+                    proposition.source_rule,
+                    proposition.name,
+                    proposition.alphabet,
+                    "all",
+                    [],
+                    flush=True,
+                )
+            formula_anchor_cache[formula_anchor_cache_key] = None
+            return None
         for position, source_anchor in enumerate(range(
             first_evaluation_anchor, last_evaluation_anchor + 1
         )):
-            nominal_residual_by_anchor[source_anchor] = bool(
+            nominal_both_true_by_anchor[source_anchor] = bool(
                 nominal_true_mask & (1 << position)
             )
 
@@ -955,7 +1038,7 @@ class VPConstraintExtraction:
         for source_anchor in range(
             first_evaluation_anchor, last_evaluation_anchor + 2
         ):
-            is_true = nominal_residual_by_anchor.get(source_anchor, False)
+            is_true = nominal_both_true_by_anchor.get(source_anchor, False)
             if is_true and run_start is None:
                 run_start = source_anchor
             elif not is_true and run_start is not None:
@@ -964,13 +1047,9 @@ class VPConstraintExtraction:
         for source_anchors in nominal_true_runs:
             if len(source_anchors) < 2:
                 continue
-            span_nominal_index = int(source_anchors[0]) - monitor_start
-            span_proven = prove_formula_value(
+            span_proven = prove_formula_for_unknown_target(
                 formula,
-                True,
                 lambda node: estimate_at_anchor_span(node, source_anchors),
-                span_nominal_index,
-                {target_variable: residual_target_value},
             )
             if span_proven:
                 span_proven_true.update(source_anchors)
@@ -982,27 +1061,26 @@ class VPConstraintExtraction:
             # anchors.  Temporal leaf offsets later map these anchors back to
             # trajectory frames, so the delay belongs in the anchor range and
             # must not be added again during leaf expansion.
-            nominal_index = int(source_anchor) - monitor_start
-            nominal_values = {target_variable: residual_target_value}
-            nominal_residual_true = nominal_residual_by_anchor[source_anchor]
-            assignment = {}
+            nominal_both_true = nominal_both_true_by_anchor[source_anchor]
             estimated_domains = {}
-            # Dropping an anchor requires both the monitor residual and the
-            # reachable-set residual to be true.  If the inexpensive monitor
-            # guard is already false/unknown, semantic estimation cannot
-            # change the keep/drop decision and is skipped entirely.
+            # Dropping an anchor requires both nominal cofactors and both
+            # reachable-set cofactors to be true.  If the inexpensive nominal
+            # guard is already false, semantic estimation cannot change the
+            # keep/drop decision and is skipped entirely.
             formula_domain = UNKNOWN_DOMAIN
             if source_anchor in span_proven_true:
                 formula_domain = TRUE_DOMAIN
-            elif nominal_residual_true:
-                formula_proven = prove_formula_value(
+            elif nominal_both_true:
+                def estimate_domain_with_diagnostics(node):
+                    """Return the proof domain unchanged and record diagnostics."""
+                    variable = str(node.alphabet).lstrip("~")
+                    domain = estimate_at_anchor(node, source_anchor)
+                    estimated_domains[variable] = tuple(sorted(domain))
+                    return domain
+
+                formula_proven = prove_formula_for_unknown_target(
                     formula,
-                    True,
-                    lambda node: estimate_at_anchor(
-                        node, source_anchor
-                    ),
-                    nominal_index,
-                    nominal_values,
+                    estimate_domain_with_diagnostics,
                 )
                 formula_domain = (
                     TRUE_DOMAIN if formula_proven else UNKNOWN_DOMAIN
@@ -1013,20 +1091,15 @@ class VPConstraintExtraction:
                 ):
                     unknown_anchors.append(source_anchor)
             target_relevant = not (
-                formula_domain == TRUE_DOMAIN and nominal_residual_true
+                formula_domain == TRUE_DOMAIN and nominal_both_true
             )
             anchor_evaluations.append(
                 {
                     "source_anchor": source_anchor,
                     "target_relevant": target_relevant,
                     "formula_domain": tuple(sorted(formula_domain)),
-                    "nominal_residual_true": nominal_residual_true,
-                    "residual_target_value": residual_target_value,
-                    "fixed_values": {
-                        variable: assignment[formula_symbols[variable]]
-                        for variable in sorted(formula_variables)
-                        if formula_symbols[variable] in assignment
-                    },
+                    "nominal_both_true": nominal_both_true,
+                    "target_values_tested": target_values,
                     "estimated_domains": estimated_domains,
                 }
             )
@@ -1378,21 +1451,35 @@ class VPConstraintExtraction:
                     v_max_list.append(v_up)
                 elif "lane" in prop.name and "same" in prop.name:
                     if prop.alphabet.startswith("~"):
-                        if self._reject_unsupported_vp_candidates():
-                            raise UnsupportedVPCandidateError(
-                                "Negative in-same-lane RG literal is not representable "
-                                f"by the positive VP lane constraint: {prop.name} "
-                                f"({prop.alphabet})."
+                        s_low, s_up = self._constraint_not_in_same_lane(
+                            proposition=prop,
+                            lanelet_clcs=lanelet_clcs,
+                            time_step=time_step,
+                            other_id=self.rule_monitor.other_id,
+                        )
+                        if s_low is None or s_up is None:
+                            raise RuntimeError(
+                                "Infeasible negative lane constraint at time "
+                                f"step {time_step} with prop {prop.name}."
                             )
-                    s_low, s_up = self._constraint_in_same_lane(
-                        world=self.rule_monitor.world,
-                        lanelet_clcs=lanelet_clcs,
-                        time_step=time_step,
-                        other_id=self.rule_monitor.other_id,
-                        ego_id=self.ego_vehicle.obstacle_id,
-                        t_c=int(self._tc),
-                        t_f=final_time_step,
-                    )
+                        s_min_list.append(s_low)
+                        s_max_list.append(s_up)
+                        # ``not in_same_lane`` is itself a complete RG1
+                        # disjunct.  The positive same-lane branch below also
+                        # enforces safe distance, but doing that here would
+                        # silently turn ``~c`` into ``~c and a``.
+                        v_max_list.append(follow_velocity)
+                        continue
+                    else:
+                        s_low, s_up = self._constraint_in_same_lane(
+                            world=self.rule_monitor.world,
+                            lanelet_clcs=lanelet_clcs,
+                            time_step=time_step,
+                            other_id=self.rule_monitor.other_id,
+                            ego_id=self.ego_vehicle.obstacle_id,
+                            t_c=int(self._tc),
+                            t_f=final_time_step,
+                        )
                     if s_low is None or s_up is None:
                         raise RuntimeError(
                             f"Infeasible lane constraint at time step {time_step} with prop {prop.name}."
@@ -2219,6 +2306,84 @@ class VPConstraintExtraction:
         start_cl_pos = lanelet_clcs.convert_to_curvilinear_coords(start_cart_pos[0], start_cart_pos[1])
         end_cl_pos = lanelet_clcs.convert_to_curvilinear_coords(end_cart_pos[0], end_cart_pos[1])
         return start_cl_pos[0], end_cl_pos[0]
+
+    def _constraint_not_in_same_lane(
+        self,
+        proposition,
+        lanelet_clcs: CurvilinearCoordinateSystem,
+        time_step: int,
+        other_id: int,
+    ):
+        """Return a certified pre-entry bound for ``not in_same_lane``.
+
+        Velocity planning preserves the ego route and changes only monotone
+        longitudinal progress.  The monitor-aligned outer true intervals
+        therefore split that path into regions where sharing a lane with the
+        target is possible and regions where it is guaranteed impossible.
+        Deceleration realizes the negative literal by remaining before the
+        first possible same-lane interval which is still ahead of the fixed
+        current state.  An empty outer cover means the literal is already
+        guaranteed and contributes no position bound.
+        """
+        if getattr(self, "_vp_repair_mode", "deceleration") != "deceleration":
+            raise UnsupportedVPCandidateError(
+                "Negative in-same-lane acceleration constraint has no "
+                f"monotone pre-entry branch: {proposition.name}."
+            )
+
+        try:
+            builder, _ = self._ensure_semantic_in_region_builder()
+            region = builder.same_lane_monitor_region(
+                int(other_id), int(time_step)
+            )
+        except Exception as exc:
+            raise UnsupportedVPCandidateError(
+                "Monitor-aligned negative in-same-lane geometry is "
+                f"unavailable for {proposition.name}."
+            ) from exc
+        if not region.complete:
+            raise UnsupportedVPCandidateError(
+                "Negative in-same-lane outer region is incomplete for "
+                f"{proposition.name}."
+            )
+        if not region.outer_true:
+            return -math.inf, math.inf
+
+        reachable = builder.reachable_by_time.get(int(time_step))
+        if reachable is None:
+            raise UnsupportedVPCandidateError(
+                "Negative in-same-lane reachable interval is unavailable at "
+                f"time step {time_step}."
+            )
+        reachable_lower, reachable_upper = map(float, reachable)
+        candidates = [
+            interval
+            for interval in region.outer_true
+            if interval.upper >= reachable_lower - 1e-9
+            and interval.lower <= reachable_upper + 1e-9
+        ]
+        if not candidates:
+            return -math.inf, math.inf
+        interval = min(candidates, key=lambda item: item.lower)
+
+        # Remaining before an interval which already contains the fixed
+        # current progress would require moving backwards, which VP forbids.
+        trajectory_upper = float(interval.lower)
+        strict_margin = max(1e-6, float(builder.uncertainty) * 1e-3)
+        trajectory_upper -= strict_margin
+        try:
+            boundary_point = builder.trajectory_clcs.convert_to_cartesian_coords(
+                trajectory_upper, 0.0
+            )
+            lanelet_upper = lanelet_clcs.convert_to_curvilinear_coords(
+                float(boundary_point[0]), float(boundary_point[1])
+            )[0]
+        except Exception as exc:
+            raise UnsupportedVPCandidateError(
+                "Negative in-same-lane boundary cannot be mapped to the "
+                f"planning CLCS at time step {time_step}."
+            ) from exc
+        return -math.inf, float(lanelet_upper)
 
     def _constraint_stop_line(
         self,

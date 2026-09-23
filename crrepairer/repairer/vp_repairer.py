@@ -82,6 +82,7 @@ class VPTrajectoryRepairer(
         self._complete_formula_active_anchor_cache = {}
         self._temporal_expression_expansion_cache = {}
         self._anchor_proposition_domain_cache = {}
+        self._predicate_frame_domain_cache = {}
         self._nominal_proposition_boolean_cache = {}
         self._nominal_proposition_bitmask_cache = {}
         self._reference_longitudinal_positions_cache = {}
@@ -174,6 +175,7 @@ class VPTrajectoryRepairer(
         # expressions and nominal monitor values remain valid for the whole
         # repair call and are therefore intentionally retained.
         self._anchor_proposition_domain_cache = {}
+        self._predicate_frame_domain_cache = {}
         self._once_time_plans = {}
         self._once_time_choice = {}
         self._active_sat_once_intervals = {}
@@ -227,6 +229,7 @@ class VPTrajectoryRepairer(
         self._complete_formula_active_anchor_cache = {}
         self._temporal_expression_expansion_cache = {}
         self._anchor_proposition_domain_cache = {}
+        self._predicate_frame_domain_cache = {}
         self._nominal_proposition_boolean_cache = {}
         self._nominal_proposition_bitmask_cache = {}
         self._reference_longitudinal_positions_cache = {}
