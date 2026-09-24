@@ -1753,16 +1753,28 @@ class VPPredicateEstimation:
         return domain_dict
 
     def _estimate_theta_bounds(self, ref_path: np.ndarray, lanelet_clcs):
-        lanelet_pts = np.empty((len(ref_path), 2), dtype=float)
-        for k, point in enumerate(ref_path):
-            point_arr = np.asarray(point, dtype=float).reshape(-1)
-            if point_arr.size < 2:
-                raise ValueError(
-                    f"Invalid reference-path point at index {k}: {point!r}"
+        points = np.ascontiguousarray(np.asarray(ref_path, dtype=float)[:, :2])
+        lanelet_pts = None
+        bulk = getattr(
+            lanelet_clcs,
+            "convert_list_of_points_to_curvilinear_coords",
+            None,
+        )
+        if bulk is not None:
+            try:
+                projected = np.asarray(bulk(points, 1), dtype=float)
+                if projected.shape == (len(points), 2) and np.all(
+                    np.isfinite(projected)
+                ):
+                    lanelet_pts = projected
+            except Exception:
+                lanelet_pts = None
+        if lanelet_pts is None:
+            lanelet_pts = np.empty((len(points), 2), dtype=float)
+            for k, point in enumerate(points):
+                lanelet_pts[k] = lanelet_clcs.convert_to_curvilinear_coords(
+                    float(point[0]), float(point[1])
                 )
-            x = float(point_arr[0])
-            y = float(point_arr[1])
-            lanelet_pts[k] = lanelet_clcs.convert_to_curvilinear_coords(x, y)
         ds = np.gradient(lanelet_pts[:, 0])
         dd = np.gradient(lanelet_pts[:, 1])
         eps = 1e-6

@@ -345,7 +345,14 @@ class _ProgressMap:
     def __init__(self, lane_clcs: Any, trajectory_clcs: Any, ref_path: Any):
         points = np.asarray(ref_path, dtype=float)
         lane_by_ref = _project_points_to_s(lane_clcs, points)
-        trajectory_by_ref = _project_points_to_s(trajectory_clcs, points)
+        # Interstate VP can use the route/lane CLCS itself as the trajectory
+        # coordinate system.  Reuse identical projections instead of calling
+        # the same C++ object twice.
+        trajectory_by_ref = (
+            lane_by_ref.copy()
+            if trajectory_clcs is lane_clcs
+            else _project_points_to_s(trajectory_clcs, points)
+        )
         self.reference_lane_s = lane_by_ref
         self.reference_trajectory_s = trajectory_by_ref
         valid = np.isfinite(lane_by_ref) & np.isfinite(trajectory_by_ref)
@@ -2398,7 +2405,15 @@ class SemanticINPredicateRegionBuilder:
         if len(points) > 2:
             tangents[1:-1] = points[2:, :2] - points[:-2, :2]
 
-        target_center_values = _project_points_to_s(target_lane.clcs, points)
+        if target_lane.clcs is self.lanelet_clcs:
+            # The progress map already projected these exact samples.
+            target_center_values = np.asarray(
+                self._progress.reference_lane_s, dtype=float
+            )[reachable_slice].copy()
+        else:
+            target_center_values = _project_points_to_s(
+                target_lane.clcs, points
+            )
         missing_target = ~np.isfinite(target_center_values)
         large_step_clcs = getattr(target_lane, "clcs_large_step", None)
         if np.any(missing_target) and large_step_clcs is not None:
