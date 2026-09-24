@@ -1,5 +1,4 @@
 scenario,scenario_path,ego_id
-DEU_AachenFrankenburg-1_201920_T-1939,scenarios/experiment_scenarios/ind_13/DEU_AachenFrankenburg-1_201920_T-1939.xml,10185
 DEU_AachenFrankenburg-1_212980_T-2999,scenarios/experiment_scenarios/ind_13/DEU_AachenFrankenburg-1_212980_T-2999.xml,10277
 DEU_AachenFrankenburg-1_214320_T-4339,scenarios/experiment_scenarios/ind_13/DEU_AachenFrankenburg-1_214320_T-4339.xml,10381
 DEU_AachenFrankenburg-1_231880_T-1899,scenarios/experiment_scenarios/ind_13/DEU_AachenFrankenburg-1_231880_T-1899.xml,10184

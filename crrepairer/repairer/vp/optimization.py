@@ -808,9 +808,9 @@ class VPOptimization:
                 raise ValueError(f"Unsupported VP repair mode: {repair_mode!r}")
             if lb > ub:
                 abs_time_step = time_offset + t
-                if repair_mode == "acceleration":
+                if repair_mode == "acceleration" or initial_s is not None:
                     raise RuntimeError(
-                        "Infeasible acceleration position bounds at "
+                        "Infeasible velocity-planning position bounds at "
                         f"time_step={abs_time_step}: smin={lb}, smax={ub}, "
                         f"s_hat={s_hat[t]}"
                     )

@@ -1559,7 +1559,10 @@ class VPConstraintExtraction:
 
         lane_start = cl_trajectory_before[0][0]
         lane_end = cl_trajectory_before[-1][0]
-        s_min = np.ones(horizon) * min(lane_start, lane_end)
+        # Semantic lower bounds are installed directly in trajectory progress.
+        # Keep the base lane-coordinate lower side unbounded so a round trip
+        # through two CLCSs cannot move it above the first reachable state.
+        s_min = np.full(horizon, -math.inf)
         s_max = np.ones(horizon) * max(lane_start, lane_end)
         if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
             # The recorded violating trajectory may stop inside the conflict
@@ -1579,7 +1582,7 @@ class VPConstraintExtraction:
         )[0]
         if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
             ct_s_max = float(trajectory_clcs.length())
-        trajectory_s_min_cap = np.ones(horizon) * ct_s_min
+        trajectory_s_min_cap = np.zeros(horizon)
         trajectory_s_max_cap = np.ones(horizon) * ct_s_max
         first_plan_state = all_states[min(start_idx + 1, len(all_states) - 1)]
         first_plan_s_trajectory = trajectory_clcs.convert_to_curvilinear_coords(
@@ -2727,9 +2730,10 @@ class VPConstraintExtraction:
 
         for i in range(len(s_min)):
             d = cl_trajectory_before[i][1]
+            min_is_unbounded = not np.isfinite(s_min[i])
             try:
-                if not np.isfinite(s_min[i]):
-                    raise ValueError("s_min outside projection domain")
+                if min_is_unbounded:
+                    raise ValueError("s_min is unbounded")
                 min_lane_to_cart = lanelet_clcs.convert_to_cartesian_coords(
                     float(s_min[i]), float(d)
                 )
@@ -2744,13 +2748,16 @@ class VPConstraintExtraction:
             except Exception:
                 max_lane_to_cart = (float(ref_path[-1][0]), float(ref_path[-1][1]))
 
-            try:
-                min_cart_to_traj = trajectory_clcs.convert_to_curvilinear_coords(
-                    float(min_lane_to_cart[0]),
-                    float(min_lane_to_cart[1]),
-                )[0]
-            except Exception:
-                min_cart_to_traj = ct_s_min
+            if min_is_unbounded:
+                min_cart_to_traj = 0.0
+            else:
+                try:
+                    min_cart_to_traj = trajectory_clcs.convert_to_curvilinear_coords(
+                        float(min_lane_to_cart[0]),
+                        float(min_lane_to_cart[1]),
+                    )[0]
+                except Exception:
+                    min_cart_to_traj = ct_s_min
             try:
                 max_cart_to_traj = trajectory_clcs.convert_to_curvilinear_coords(
                     float(max_lane_to_cart[0]),
@@ -2798,9 +2805,10 @@ class VPConstraintExtraction:
         if apply_curvature_limits:
             curvature_s_min = estimated_s_min
             curvature_s_max = estimated_s_max
-            if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+            repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+            if repair_mode == "acceleration":
                 reachable_s_min, reachable_s_max = (
-                    self._acceleration_reachable_s_intervals(
+                    self._longitudinal_reachable_s_intervals(
                         all_states,
                         trajectory_clcs,
                         len(estimated_s_min),
@@ -2822,7 +2830,49 @@ class VPConstraintExtraction:
                     (float(lower), float(upper))
                     for lower, upper in zip(curvature_s_min, curvature_s_max)
                 ]
-            if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+            elif repair_mode == "deceleration" and any(
+                rule in self.config.repair.rules
+                for rule in (
+                    "R_IN1",
+                    "R_IN3",
+                    "R_IN3_hand_draft",
+                    "R_IN4",
+                    "R_IN5",
+                )
+            ):
+                reachable_s_min, reachable_s_max = (
+                    self._longitudinal_reachable_s_intervals(
+                        all_states,
+                        trajectory_clcs,
+                        len(estimated_s_min),
+                    )
+                )
+                current_s, _, _ = self._get_velocity_planning_current_conditions(
+                    all_states, trajectory_clcs
+                )
+                original_s = np.asarray(
+                    self._build_reference_longitudinal_positions(
+                        all_states, trajectory_clcs
+                    ),
+                    dtype=float,
+                )
+                if current_s is not None:
+                    original_s = np.maximum.accumulate(
+                        np.maximum(original_s, float(current_s))
+                    )
+                reachable_s_max = np.minimum(reachable_s_max, original_s)
+                curvature_s_min = np.maximum(
+                    np.asarray(estimated_s_min, dtype=float), reachable_s_min
+                )
+                curvature_s_max = np.minimum(
+                    np.asarray(estimated_s_max, dtype=float), reachable_s_max
+                )
+                curvature_s_max = np.maximum(curvature_s_min, curvature_s_max)
+                self._last_curvature_reachable_intervals = [
+                    (float(lower), float(upper))
+                    for lower, upper in zip(curvature_s_min, curvature_s_max)
+                ]
+            if repair_mode == "acceleration":
                 curvature_v_max = self._acceleration_curvature_velocity_limits(
                     trajectory_clcs,
                     curvature_s_min,
@@ -2843,13 +2893,13 @@ class VPConstraintExtraction:
 
         return estimated_s_min, estimated_s_max, estimated_v_min, estimated_v_max
 
-    def _acceleration_reachable_s_intervals(
+    def _longitudinal_reachable_s_intervals(
         self,
         all_states,
         trajectory_clcs,
         horizon,
     ):
-        """Return a sound forward reachable ``s`` envelope for acceleration VP."""
+        """Return a sound forward reachable ``s`` envelope for VP."""
         current_s, current_v, current_a = (
             self._get_velocity_planning_current_conditions(
                 all_states,
@@ -3224,6 +3274,146 @@ class VPConstraintExtraction:
         s_circle_center_center = np.sort(s_circle_center_center)
         return s_circle_center_center[0], s_circle_center_center[1]
 
+    def _sampled_monitor_conflict_interval_on_trajectory(
+        self,
+        world: World,
+        ego_vehicle,
+        target_vehicle,
+        ref_path: np.ndarray,
+        trajectory_clcs: CurvilinearCoordinateSystem,
+        refinement_tolerance: float = 1.0e-3,
+        safety_margin=None,
+    ):
+        """Return a tight conflict interval from monitor-shape occupancy.
+
+        ``safety_margin`` defaults to the current monitor-geometry refinement
+        level so a boundary-touching candidate can be tightened lazily.
+
+        This is a lazy fallback for a selected negative conflict literal.  It
+        reuses the existing 0.1 m VP reference path, places the actual
+        oriented ego rectangle on it, and finds the first and last samples
+        assigned to target-route conflict lanelets.  Only the two transition
+        cells are bisected, so no CLCS reconstruction or dense-path scan is
+        needed.
+        """
+        if safety_margin is None:
+            safety_margin = float(
+                getattr(self, "_monitor_conflict_safety_margin", 1.0e-4)
+            )
+        try:
+            incoming_ego = ego_vehicle.incoming_intersection
+            incoming_target = target_vehicle.incoming_intersection
+            adjacent = world.road_network.adjacent_lanelets(
+                incoming_ego.incoming_lanelets
+            )
+            if adjacent.intersection(incoming_target.incoming_lanelets):
+                return None
+
+            network = world.road_network.lanelet_network
+            ego_direction_ids = set(int(item) for item in ego_vehicle.lanelets_dir)
+            conflict_shapes = []
+            for lanelet_id in target_vehicle.ref_path_lane.contained_lanelets:
+                lanelet_id = int(lanelet_id)
+                if lanelet_id in ego_direction_ids:
+                    continue
+                lanelet = network.find_lanelet_by_id(lanelet_id)
+                if LaneletType.INTERSECTION in lanelet.lanelet_type:
+                    conflict_shapes.append(lanelet.polygon.shapely_object)
+            if not conflict_shapes:
+                return None
+            conflict_polygon = shapely.unary_union(conflict_shapes)
+
+            points = np.asarray(ref_path, dtype=float)[:, :2]
+            progress = np.asarray(
+                _project_points_to_s(trajectory_clcs, points), dtype=float
+            )
+            finite = np.isfinite(progress)
+            points = points[finite]
+            progress = progress[finite]
+            order = np.argsort(progress)
+            points = points[order]
+            progress = progress[order]
+            keep = np.concatenate(([True], np.diff(progress) > 1.0e-8))
+            points = points[keep]
+            progress = progress[keep]
+            if len(points) < 2:
+                return None
+
+            tangents = np.empty_like(points)
+            tangents[0] = points[1] - points[0]
+            tangents[-1] = points[-1] - points[-2]
+            if len(points) > 2:
+                tangents[1:-1] = points[2:] - points[:-2]
+            orientations = np.arctan2(tangents[:, 1], tangents[:, 0])
+            local_vertices = np.asarray(
+                ego_vehicle.shape.vertices[:-1], dtype=float
+            )
+            cosine = np.cos(orientations)[:, None]
+            sine = np.sin(orientations)[:, None]
+            local_x = local_vertices[:, 0][None, :]
+            local_y = local_vertices[:, 1][None, :]
+            vertices = np.empty(
+                (len(points), len(local_vertices), 2), dtype=float
+            )
+            vertices[:, :, 0] = (
+                local_x * cosine - local_y * sine + points[:, 0, None]
+            )
+            vertices[:, :, 1] = (
+                local_x * sine + local_y * cosine + points[:, 1, None]
+            )
+            occupancies = shapely.polygons(vertices)
+            intersects = np.asarray(
+                shapely.intersects(occupancies, conflict_polygon), dtype=bool
+            )
+            hit_indices = np.flatnonzero(intersects)
+            if len(hit_indices) == 0:
+                return None
+        except Exception:
+            return None
+
+        def intersects_at(s_value):
+            position = np.asarray(
+                trajectory_clcs.convert_to_cartesian_coords(float(s_value), 0.0),
+                dtype=float,
+            )
+            orientation = self._orientation_from_trajectory_clcs(
+                trajectory_clcs, float(s_value)
+            )
+            occupancy = ego_vehicle.shape.rotate_translate_local(
+                position, orientation
+            ).shapely_object
+            return bool(shapely.intersects(occupancy, conflict_polygon))
+
+        first_hit = int(hit_indices[0])
+        if first_hit == 0:
+            before_upper = float(progress[0]) - safety_margin
+        else:
+            lower = float(progress[first_hit - 1])
+            upper = float(progress[first_hit])
+            while upper - lower > refinement_tolerance:
+                midpoint = 0.5 * (lower + upper)
+                if intersects_at(midpoint):
+                    upper = midpoint
+                else:
+                    lower = midpoint
+            before_upper = lower - safety_margin
+
+        last_hit = int(hit_indices[-1])
+        if last_hit == len(progress) - 1:
+            after_lower = float(progress[-1]) + safety_margin
+        else:
+            lower = float(progress[last_hit])
+            upper = float(progress[last_hit + 1])
+            while upper - lower > refinement_tolerance:
+                midpoint = 0.5 * (lower + upper)
+                if intersects_at(midpoint):
+                    lower = midpoint
+                else:
+                    upper = midpoint
+            after_lower = upper + safety_margin
+
+        return before_upper, after_lower
+
     def _monitor_conflict_interval_on_trajectory(
         self,
         world: World,
@@ -3242,6 +3432,16 @@ class VPConstraintExtraction:
         error.  A monotone longitudinal mapping through the shared repair path
         keeps those out-of-horizon endpoints meaningful.
         """
+        sampled_interval = self._sampled_monitor_conflict_interval_on_trajectory(
+            world=world,
+            ego_vehicle=ego_vehicle,
+            target_vehicle=target_vehicle,
+            ref_path=ref_path,
+            trajectory_clcs=trajectory_clcs,
+        )
+        if sampled_interval is not None:
+            return sampled_interval
+
         center_start, center_end = self._create_conflict_area_parameter(
             ego_vehicle,
             target_vehicle,

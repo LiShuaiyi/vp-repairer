@@ -71,6 +71,7 @@ class VPTrajectoryRepairer(
         self.candidate_tvs = []
         self.candidate_diagnostics = []
         self._use_monitor_conflict_geometry = False
+        self._monitor_conflict_safety_margin = 1.0e-4
         self._vp_repair_mode = "deceleration"
         self.successful_repair_mode = None
         self.phase_iterations = {"deceleration": 0, "acceleration": 0}
@@ -144,13 +145,13 @@ class VPTrajectoryRepairer(
     def _begin_vp_repair_phase(self, repair_mode):
         """Start one independent SAT/domain search for a VP branch."""
         self._vp_repair_mode = repair_mode
-        if repair_mode == "acceleration" and any(
+        if any(
             rule in self.config.repair.rules
-            for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+            for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
         ):
-            # A stopped/slow violating trajectory can end inside the conflict
-            # area.  Its trajectory-only CLCS is then too short to represent
-            # the exit branch, so acceleration rebuilds it with route extension.
+            # Each phase owns its trajectory geometry and reachability caches.
+            # Acceleration may route-extend a stopped trajectory; deceleration
+            # reuses the same context for strict initial dynamics.
             self._shared_trajectory_clcs = None
             self._conflict_trajectory_interval_cache = {}
             self._acceleration_lp_template_cache = {}
@@ -159,6 +160,7 @@ class VPTrajectoryRepairer(
         self._sel_prop = None
         self._prop_full = None
         self._use_monitor_conflict_geometry = False
+        self._monitor_conflict_safety_margin = 1.0e-4
         self.domain_dict = {}
         self._domain_dict_initialized = False
         self.domain_dict_breakdown = {}
@@ -399,6 +401,23 @@ class VPTrajectoryRepairer(
                     }
                 )
                 repaired_traj = None
+                selected_negative_conflict = any(
+                    "in_intersection_conflict_area" in prop.name
+                    and prop.alphabet.startswith("~")
+                    for prop in (getattr(self, "_sel_prop", None) or [])
+                )
+                if (
+                    selected_negative_conflict
+                    and not self._use_monitor_conflict_geometry
+                ):
+                    self._use_monitor_conflict_geometry = True
+                    print(
+                        "* \t<VPRepairer>: retrying the infeasible SAT model "
+                        "with monitor-aligned conflict geometry"
+                    )
+                    reuse_sat_model = True
+                    nr += 1
+                    continue
                 if self._advance_once_time_choice():
                     print(
                         "* \t<VPRepairer>: retrying the same SAT model with "
@@ -563,7 +582,23 @@ class VPTrajectoryRepairer(
                     nr += 1
                     continue
 
+                if (
+                    selected_negative_conflict
+                    and self._use_monitor_conflict_geometry
+                    and self._monitor_conflict_safety_margin < 5.0e-2
+                ):
+                    self._monitor_conflict_safety_margin = 5.0e-2
+                    self._conflict_trajectory_interval_cache = {}
+                    print(
+                        "* \t<VPRepairer>: retrying the same SAT model with "
+                        "lanelet-assignment conflict clearance"
+                    )
+                    reuse_sat_model = True
+                    nr += 1
+                    continue
+
             self._use_monitor_conflict_geometry = False
+            self._monitor_conflict_safety_margin = 1.0e-4
             # A once-time selector denotes the conjunction of its per-leaf
             # temporal obligations.  Preserve any ordinary literals selected
             # in the same partial model: failure of (z_w & a) does not prove
@@ -612,9 +647,9 @@ class VPTrajectoryRepairer(
         cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
 
         initial_s = initial_v = initial_a = None
-        if repair_mode == "acceleration" and any(
+        if any(
             rule in self.config.repair.rules
-            for rule in ("R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
+            for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
         ):
             initial_s, initial_v, initial_a = (
                 self._get_velocity_planning_current_conditions(
@@ -624,7 +659,7 @@ class VPTrajectoryRepairer(
             )
             if initial_s is None:
                 raise AccelerationExitStepInfeasibleError(
-                    "Acceleration planning has no fixed current state."
+                    "Velocity planning has no fixed current state."
                 )
 
         constraint_extraction_start_time = time.time()
@@ -690,6 +725,24 @@ class VPTrajectoryRepairer(
         s_hat = self._build_reference_longitudinal_positions(
             all_states, trajectory_clcs
         )
+        if repair_mode == "deceleration" and initial_s is not None:
+            # A stopped recorded vehicle can jitter a few millimetres
+            # backwards after projection.  Such a sample must not become an
+            # upper bound below the fixed current state.  The physical VP
+            # trajectory remains monotone because velocity is non-negative.
+            s_hat = np.maximum.accumulate(
+                np.maximum(np.asarray(s_hat, dtype=float), float(initial_s))
+            )
+            # A recorded trajectory may itself brake harder than the configured
+            # longitudinal dynamics permit.  Once the state at tc is fixed,
+            # no physically feasible repair can remain below such a reference.
+            # Raise only those impossible samples to the minimum dynamically
+            # reachable progress; the ordinary recorded reference remains the
+            # upper envelope everywhere else.
+            reachable_s_min, _ = self._longitudinal_reachable_s_intervals(
+                all_states, trajectory_clcs, len(s_hat)
+            )
+            s_hat = np.maximum(s_hat, reachable_s_min)
         amin, amax, jmin, jmax = self._get_longitudinal_planning_limits()
         if repair_mode == "acceleration":
             smoothing_jerk_limit = max(
