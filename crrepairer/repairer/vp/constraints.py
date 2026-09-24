@@ -1388,8 +1388,13 @@ class VPConstraintExtraction:
 
         s_min = np.ones(horizon) * min(lane_start, lane_end)
         s_max = np.ones(horizon) * max(lane_start, lane_end)
+        if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
+            # The acceleration CLCS may extend beyond the recorded trajectory.
+            # Its original lane progress is not a physical planning bound.
+            s_max[:] = math.inf
         v_min = np.zeros(horizon)
         v_max = np.ones(horizon) * math.inf
+        self._rg1_safe_distance_lane_constraints = {}
         speed_limits = self._extract_speed_limit_values() 
         if self._once_time_mode() == "legacy":
             constraint_propositions = self._sel_prop
@@ -1447,7 +1452,29 @@ class VPConstraintExtraction:
                             )
                         else:
                             s_up, v_up = math.inf, math.inf
-                    s_max_list.append(s_up)
+                    if (
+                        getattr(self, "_vp_repair_mode", "deceleration")
+                        == "deceleration"
+                        and math.isfinite(s_up)
+                        and math.isfinite(v_up)
+                    ):
+                        follow_vehicle = self.rule_monitor.world.vehicle_by_id(
+                            self.ego_vehicle.obstacle_id
+                        )
+                        follow_deceleration = abs(
+                            float(follow_vehicle.vehicle_param.get("a_min"))
+                        )
+                        reaction_time = float(
+                            follow_vehicle.vehicle_param.get("t_react")
+                        )
+                        velocity_coefficient = (
+                            reaction_time + float(v_up) / (2.0 * follow_deceleration)
+                        )
+                        self._rg1_safe_distance_lane_constraints.setdefault(
+                            idx, []
+                        ).append((float(s_up), float(v_up), velocity_coefficient))
+                    else:
+                        s_max_list.append(s_up)
                     v_max_list.append(v_up)
                 elif "lane" in prop.name and "same" in prop.name:
                     if prop.alphabet.startswith("~"):
@@ -1515,12 +1542,16 @@ class VPConstraintExtraction:
                         "Unsupported RG predicate has no VP constraint: "
                         f"{prop.name} ({prop.alphabet})."
                     )
-                v_max_list.append(follow_velocity)
+                if (
+                    getattr(self, "_vp_repair_mode", "deceleration")
+                    != "acceleration"
+                ):
+                    v_max_list.append(follow_velocity)
                 # print('v_max candidates at time step {}: {}'.format(time_step, v_max_list))
 
             v_max[idx] = min(v_max_list) if v_max_list else math.inf
-            s_max[idx] = min(s_max_list) if s_max_list else max(lane_start, lane_end)
-            s_min[idx] = max(s_min_list) if s_min_list else min(lane_start, lane_end)
+            s_max[idx] = min(s_max_list) if s_max_list else s_max[idx]
+            s_min[idx] = max(s_min_list) if s_min_list else s_min[idx]
 
         return s_min, s_max, v_min, v_max
 
@@ -2581,7 +2612,7 @@ class VPConstraintExtraction:
         lead_id,
         follow_id,
         follow_velocity,
-        delta_s=0.5,
+        delta_s=0.1,
     ):
         def calculate_safe_distance(v_follow, v_lead, a_min_lead, a_min_follow, t_react_follow):
             return (
@@ -2590,44 +2621,113 @@ class VPConstraintExtraction:
                 + v_follow * t_react_follow
             )
 
-        vehicle_follow = world.vehicle_by_id(follow_id)
-        vehicle_lead = world.vehicle_by_id(lead_id)
-        follow_length = vehicle_follow.shape.length
-        if not self._vehicle_has_valid_time_step(vehicle_lead, time_step):
-            return math.inf, math.inf
-        if vehicle_lead.get_lane(time_step) is None:
-            return math.inf, math.inf
+        def occupancy_s_extrema(vehicle):
+            state = vehicle.states_cr[time_step]
+            occupancy = vehicle.shape.rotate_translate_local(
+                state.position, state.orientation
+            )
+            projected = []
+            for vertex in np.asarray(occupancy.vertices[:-1], dtype=float):
+                try:
+                    projected.append(
+                        float(
+                            lanelet_clcs.convert_to_curvilinear_coords(
+                                float(vertex[0]), float(vertex[1])
+                            )[0]
+                        )
+                    )
+                except Exception:
+                    return None
+            if len(projected) != len(occupancy.vertices[:-1]):
+                return None
+            return min(projected), max(projected)
 
-        a_min_follow = vehicle_follow.vehicle_param.get("a_min")
-        a_min_lead = vehicle_lead.vehicle_param.get("a_min")
-        t_react_follow = vehicle_follow.vehicle_param.get("t_react")
+        geometry_cache = getattr(
+            self, "_rg1_safe_distance_geometry_cache", None
+        )
+        if geometry_cache is None:
+            geometry_cache = {}
+            self._rg1_safe_distance_geometry_cache = geometry_cache
+        clcs_key = id(lanelet_clcs)
+
+        follow_key = ("follow", clcs_key, int(follow_id), int(time_step))
+        follow_data = geometry_cache.get(follow_key)
+        if follow_data is None:
+            vehicle_follow = world.vehicle_by_id(follow_id)
+            follow_front_s = vehicle_follow.front_s(time_step)
+            try:
+                follow_center_s = lanelet_clcs.convert_to_curvilinear_coords(
+                    float(vehicle_follow.states_cr[time_step].position[0]),
+                    float(vehicle_follow.states_cr[time_step].position[1]),
+                )[0]
+            except Exception:
+                return math.inf, math.inf
+            if follow_front_s is not None:
+                front_extent = max(
+                    0.0, float(follow_front_s) - float(follow_center_s)
+                )
+            else:
+                follow_extrema = occupancy_s_extrema(vehicle_follow)
+                if follow_extrema is None:
+                    return math.inf, math.inf
+                front_extent = max(
+                    0.0, follow_extrema[1] - float(follow_center_s)
+                )
+            follow_data = (
+                float(front_extent),
+                float(vehicle_follow.vehicle_param.get("a_min")),
+                float(vehicle_follow.vehicle_param.get("t_react")),
+            )
+            geometry_cache[follow_key] = follow_data
+
+        lead_key = ("lead", clcs_key, int(lead_id), int(time_step))
+        lead_data = geometry_cache.get(lead_key)
+        if lead_data is None:
+            vehicle_lead = world.vehicle_by_id(lead_id)
+            if not self._vehicle_has_valid_time_step(vehicle_lead, time_step):
+                return math.inf, math.inf
+            if vehicle_lead.get_lane(time_step) is None:
+                return math.inf, math.inf
+            lead_rear_s = vehicle_lead.rear_s(time_step)
+            if lead_rear_s is None:
+                lead_extrema = occupancy_s_extrema(vehicle_lead)
+                if lead_extrema is None:
+                    return math.inf, math.inf
+                lead_rear_s = lead_extrema[0]
+            lead_data = (
+                float(lead_rear_s),
+                float(vehicle_lead.states_cr[time_step].velocity),
+                float(vehicle_lead.vehicle_param.get("a_min")),
+            )
+            geometry_cache[lead_key] = lead_data
+
+        front_extent, a_min_follow, t_react_follow = follow_data
+        lead_rear_s, lead_velocity, a_min_lead = lead_data
         safe_distance = calculate_safe_distance(
-            follow_velocity + 1.0,
-            vehicle_lead.states_cr[time_step].velocity,
+            follow_velocity,
+            lead_velocity,
             a_min_lead,
             a_min_follow,
             t_react_follow,
         )
-        lead_rear_s = lanelet_clcs.convert_to_curvilinear_coords(
-            vehicle_lead.states_cr[time_step].position[0],
-            vehicle_lead.states_cr[time_step].position[1],
-        )[0]
-        lead_rear_s = lead_rear_s - vehicle_lead.shape.length / 2
-        s = lead_rear_s - safe_distance - follow_length - delta_s
+
+        # Prefer the exact longitudinal quantities used by the monitor.  Its
+        # RG1 robustness directly subtracts these scalars even when the two
+        # vehicles are represented by different route-lane objects.
+        s = float(lead_rear_s) - safe_distance - front_extent - delta_s
         return s, follow_velocity
 
     def _rg1_safe_distance_lead_ids(self, time_step):
-        """Return RG1 antecedent-active leads when the selected lead is stale.
+        """Return every lead whose RG1 implication antecedent is active.
 
-        The monitor reports one ``other_id`` for the minimum rule robustness.
-        In multi-vehicle RG1 scenarios that vehicle can nevertheless have a
-        false implication antecedent at every frame, while another vehicle is
-        the actual front vehicle requiring the safe-distance constraint.  Keep
-        the legacy selected-lead behavior whenever that lead is ever active;
-        this narrowly fixes only the stale-selection case.
+        The quantified monitor reports only the vehicle producing the original
+        minimum robustness.  After VP changes the ego progress, a different
+        front vehicle can become the minimum.  Constraining only ``other_id``
+        therefore does not represent the universal RG1 formula.  The strictest
+        bound among all active leads is selected by the caller for each frame.
 
-        ``None`` means use the legacy selected ``other_id``.  An empty tuple
-        means that no lead activates the RG1 antecedent at this frame.
+        ``None`` is reserved for non-RG1 formulas.  An empty tuple means that
+        no lead activates the RG1 antecedent at this frame.
         """
         if list(getattr(self.config.repair, "rules", ())) != ["R_G1"]:
             return None
@@ -2666,27 +2766,30 @@ class VPConstraintExtraction:
                         ):
                             active_by_index.setdefault(index, []).append(candidate_id)
 
-                selected_lead_is_active = any(
-                    monitor.other_id in lead_ids
-                    for lead_ids in active_by_index.values()
-                )
+                # Deceleration can only delay the ego's longitudinal passage
+                # through a lane/front relation boundary.  Consequently an
+                # antecedent that was active on the recorded trajectory may
+                # remain active at later frames on a repaired trajectory.
+                # Use the causal prefix closure so those delayed obligations
+                # are not silently dropped at the nominal boundary.
+                active_prefix = set()
+                active_with_closure = {}
+                last_index = max((len(values) for values in same_by_vehicle.values()), default=0)
+                for index in range(last_index):
+                    active_prefix.update(active_by_index.get(index, ()))
+                    active_with_closure[index] = tuple(sorted(active_prefix))
                 cache = {
                     "key": cache_key,
-                    "selected_lead_is_active": selected_lead_is_active,
-                    "active_by_index": {
-                        index: tuple(sorted(lead_ids))
-                        for index, lead_ids in active_by_index.items()
-                    },
+                    "active_by_index": active_with_closure,
                 }
             except (AttributeError, IndexError, KeyError, TypeError, ValueError):
                 cache = {
                     "key": cache_key,
-                    "selected_lead_is_active": True,
-                    "active_by_index": {},
+                    "active_by_index": None,
                 }
             self._rg1_safe_distance_lead_cache = cache
 
-        if cache["selected_lead_is_active"]:
+        if cache["active_by_index"] is None:
             return None
         relative_step = int(time_step - monitor.start_time_step)
         return cache["active_by_index"].get(relative_step, ())
@@ -2711,22 +2814,9 @@ class VPConstraintExtraction:
         estimated_v_min = []
         estimated_v_max = []
 
-        ds = np.gradient(ref_path[:, 0])
-        dd = np.gradient(ref_path[:, 1])
-        eps = 1e-6
-        ds_safe = np.where(np.abs(ds) < eps, eps, ds)
-        ratio_1_cos = np.sqrt(1.0 + (dd / ds_safe) ** 2)
-        rmax = np.max(ratio_1_cos)
-        rmin = np.min(ratio_1_cos)
-
-        ct_s_min = trajectory_clcs.convert_to_curvilinear_coords(
-            float(ref_path[0][0]),
-            float(ref_path[0][1]),
-        )[0]
-        ct_s_max = trajectory_clcs.convert_to_curvilinear_coords(
-            float(ref_path[-1][0]),
-            float(ref_path[-1][1]),
-        )[0]
+        # Reprojecting an endpoint can fail exactly on the CLCS domain edge.
+        ct_s_min = 0.0
+        ct_s_max = float(trajectory_clcs.length())
 
         for i in range(len(s_min)):
             d = cl_trajectory_before[i][1]
@@ -2780,8 +2870,77 @@ class VPConstraintExtraction:
             if trajectory_s_max_cap is not None:
                 s_max_traj = min(s_max_traj, trajectory_s_max_cap[i])
             estimated_s_max.append(s_max_traj)
-            estimated_v_max.append(v_max[i] * rmin)
-            estimated_v_min.append(v_min[i] * rmax)
+            estimated_v_max.append(v_max[i])
+            estimated_v_min.append(v_min[i])
+
+        lane_progress_samples = np.asarray(
+            [coordinates[0] for coordinates in cl_trajectory_before], dtype=float
+        )
+        trajectory_progress_samples = _project_points_to_s(
+            trajectory_clcs,
+            np.asarray([state.position for state in all_states], dtype=float)[:, :2],
+        )
+        valid_progress = np.isfinite(lane_progress_samples) & np.isfinite(
+            trajectory_progress_samples
+        )
+        lane_progress_samples = lane_progress_samples[valid_progress]
+        trajectory_progress_samples = trajectory_progress_samples[valid_progress]
+        progress_order = np.argsort(lane_progress_samples)
+        lane_progress_samples = lane_progress_samples[progress_order]
+        trajectory_progress_samples = trajectory_progress_samples[progress_order]
+        if len(lane_progress_samples):
+            progress_keep = np.r_[True, np.diff(lane_progress_samples) > 1.0e-8]
+            lane_progress_samples = lane_progress_samples[progress_keep]
+            trajectory_progress_samples = trajectory_progress_samples[progress_keep]
+
+        coupled_constraints = []
+        start_idx = int(self._tc - all_states[0].time_step)
+        for index, lane_constraints in getattr(
+            self, "_rg1_safe_distance_lane_constraints", {}
+        ).items():
+            state_index = min(start_idx + int(index) + 1, len(all_states) - 1)
+            lateral_offset = float(cl_trajectory_before[state_index][1])
+            for lane_cap, velocity_upper, velocity_coefficient in lane_constraints:
+                cap_trajectory = None
+                if (
+                    len(lane_progress_samples) >= 2
+                    and lane_progress_samples[0] <= float(lane_cap)
+                    <= lane_progress_samples[-1]
+                ):
+                    cap_trajectory = float(
+                        np.interp(
+                            float(lane_cap),
+                            lane_progress_samples,
+                            trajectory_progress_samples,
+                        )
+                    )
+                if cap_trajectory is None:
+                    try:
+                        cap_cartesian = lanelet_clcs.convert_to_cartesian_coords(
+                            float(lane_cap), lateral_offset
+                        )
+                    except Exception:
+                        try:
+                            cap_cartesian = lanelet_clcs.convert_to_cartesian_coords(
+                                float(lane_cap), 0.0
+                            )
+                        except Exception:
+                            continue
+                    try:
+                        cap_trajectory = trajectory_clcs.convert_to_curvilinear_coords(
+                            float(cap_cartesian[0]), float(cap_cartesian[1])
+                        )[0]
+                    except Exception:
+                        continue
+                coupled_constraints.append(
+                    (
+                        int(index),
+                        float(velocity_coefficient),
+                        float(cap_trajectory)
+                        + float(velocity_coefficient) * float(velocity_upper),
+                    )
+                )
+        self._vp_coupled_sv_upper_constraints = tuple(coupled_constraints)
 
         if getattr(self, "_vp_repair_mode", "deceleration") == "acceleration":
             # All temporal/proposition requirements for one frame have already
@@ -2803,6 +2962,22 @@ class VPConstraintExtraction:
             estimated_s_max = merged_s_max.tolist()
 
         if apply_curvature_limits:
+            source_points = np.asarray(
+                [state.position for state in all_states], dtype=float
+            )[:, :2]
+            source_steps = np.linalg.norm(np.diff(source_points, axis=0), axis=1)
+            source_steps = source_steps[
+                np.isfinite(source_steps) & (source_steps > 1.0e-6)
+            ]
+            source_step = (
+                float(np.median(source_steps)) if len(source_steps) else 0.0
+            )
+            # Roughly eight recorded intervals suppress position-quantization
+            # heading spikes while retaining road curvature on the physical
+            # scale traversed during a short planning response.
+            self._curvature_smoothing_distance = max(
+                2.0, min(40.0, 8.0 * source_step)
+            )
             curvature_s_min = estimated_s_min
             curvature_s_max = estimated_s_max
             repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
@@ -2830,16 +3005,7 @@ class VPConstraintExtraction:
                     (float(lower), float(upper))
                     for lower, upper in zip(curvature_s_min, curvature_s_max)
                 ]
-            elif repair_mode == "deceleration" and any(
-                rule in self.config.repair.rules
-                for rule in (
-                    "R_IN1",
-                    "R_IN3",
-                    "R_IN3_hand_draft",
-                    "R_IN4",
-                    "R_IN5",
-                )
-            ):
+            elif repair_mode == "deceleration":
                 reachable_s_min, reachable_s_max = (
                     self._longitudinal_reachable_s_intervals(
                         all_states,
@@ -2885,6 +3051,9 @@ class VPConstraintExtraction:
                     curvature_s_min,
                     curvature_s_max,
                     self.config.vehicle.qp_veh_config.a_lat_max,
+                    smoothing_distance=float(
+                        getattr(self, "_curvature_smoothing_distance", 2.0)
+                    ),
                 )
             estimated_v_max = np.minimum(
                 np.asarray(estimated_v_max, dtype=float),
@@ -3022,12 +3191,15 @@ class VPConstraintExtraction:
         if cache is None:
             cache = {}
             self._acceleration_curvature_cache = cache
-        key = id(trajectory_clcs)
+        smoothing_distance = float(
+            getattr(self, "_curvature_smoothing_distance", 2.0)
+        )
+        key = (id(trajectory_clcs), smoothing_distance)
         profile_data = cache.get(key)
         if profile_data is None:
             try:
                 positions, profile = self._smoothed_curvature_profile(
-                    trajectory_clcs
+                    trajectory_clcs, smoothing_distance=smoothing_distance
                 )
             except (AttributeError, TypeError, ValueError):
                 # Preserve the CLCS-native fallback used by the original
@@ -3094,6 +3266,7 @@ class VPConstraintExtraction:
         s_max,
         a_lat_max,
         curvature_epsilon=1e-9,
+        smoothing_distance=2.0,
     ):
         """Compute the conservative curvature speed limit for each time step.
 
@@ -3111,10 +3284,9 @@ class VPConstraintExtraction:
         if not np.isfinite(path_length) or path_length <= 0:
             raise ValueError(f"Invalid trajectory CLCS length: {path_length!r}")
         try:
-            curvature_positions, curvature_profile = (
-                VPConstraintExtraction._smoothed_curvature_profile(
-                    trajectory_clcs
-                )
+            curvature_positions, curvature_profile = VPConstraintExtraction._smoothed_curvature_profile(
+                trajectory_clcs,
+                smoothing_distance=float(smoothing_distance),
             )
         except (AttributeError, TypeError, ValueError):
             curvature_positions = curvature_profile = None

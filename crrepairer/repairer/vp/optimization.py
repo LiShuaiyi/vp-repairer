@@ -651,6 +651,16 @@ class VPOptimization:
 
         A_ub = []
         b_ub = []
+        for time_index, velocity_coefficient, upper_bound in getattr(
+            self, "_vp_coupled_sv_upper_constraints", ()
+        ):
+            if not 0 <= int(time_index) < T:
+                continue
+            row = np.zeros(n_x)
+            row[s_idx(int(time_index))] = 1.0
+            row[v_idx(int(time_index))] = float(velocity_coefficient)
+            A_ub.append(row)
+            b_ub.append(float(upper_bound))
         if initial_v is not None and T:
             row = np.zeros(n_x)
             row[v_idx(0)] = 1.0

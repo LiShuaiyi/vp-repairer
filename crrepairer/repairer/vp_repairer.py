@@ -87,6 +87,7 @@ class VPTrajectoryRepairer(
         self._nominal_proposition_boolean_cache = {}
         self._nominal_proposition_bitmask_cache = {}
         self._reference_longitudinal_positions_cache = {}
+        self._rg1_safe_distance_geometry_cache = {}
         self._in_reachability_context_cache = None
         self._acceleration_lp_template_cache = {}
         self._acceleration_curvature_cache = {}
@@ -145,17 +146,12 @@ class VPTrajectoryRepairer(
     def _begin_vp_repair_phase(self, repair_mode):
         """Start one independent SAT/domain search for a VP branch."""
         self._vp_repair_mode = repair_mode
-        if any(
-            rule in self.config.repair.rules
-            for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
-        ):
-            # Each phase owns its trajectory geometry and reachability caches.
-            # Acceleration may route-extend a stopped trajectory; deceleration
-            # reuses the same context for strict initial dynamics.
-            self._shared_trajectory_clcs = None
-            self._conflict_trajectory_interval_cache = {}
-            self._acceleration_lp_template_cache = {}
-            self._acceleration_curvature_cache = {}
+        # Each phase owns its trajectory geometry and reachability caches.
+        # RG2 acceleration can extend the recorded trajectory just like IN.
+        self._shared_trajectory_clcs = None
+        self._conflict_trajectory_interval_cache = {}
+        self._acceleration_lp_template_cache = {}
+        self._acceleration_curvature_cache = {}
         self._model = None
         self._sel_prop = None
         self._prop_full = None
@@ -647,20 +643,16 @@ class VPTrajectoryRepairer(
         cl_trajectory_before = self._convert_states_to_clcs(all_states, lanelet_clcs)
 
         initial_s = initial_v = initial_a = None
-        if any(
-            rule in self.config.repair.rules
-            for rule in ("R_IN1", "R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5")
-        ):
-            initial_s, initial_v, initial_a = (
-                self._get_velocity_planning_current_conditions(
-                    all_states,
-                    trajectory_clcs,
-                )
+        initial_s, initial_v, initial_a = (
+            self._get_velocity_planning_current_conditions(
+                all_states,
+                trajectory_clcs,
             )
-            if initial_s is None:
-                raise AccelerationExitStepInfeasibleError(
-                    "Velocity planning has no fixed current state."
-                )
+        )
+        if initial_s is None:
+            raise AccelerationExitStepInfeasibleError(
+                "Velocity planning has no fixed current state."
+            )
 
         constraint_extraction_start_time = time.time()
         trajectory_s_min_cap = None
@@ -762,7 +754,7 @@ class VPTrajectoryRepairer(
             all_states,
             trajectory_clcs,
         )
-        if not (
+        if initial_s is not None or not (
             self.config.repair.rules == ["R_G3"]
             and self._initial_conditions_within_bounds(
                 s0,

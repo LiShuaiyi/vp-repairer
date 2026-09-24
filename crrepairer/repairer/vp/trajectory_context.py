@@ -324,7 +324,25 @@ class VPTrajectoryContext:
         world_ego = self.rule_monitor.world.vehicle_by_id(
             self.config.repair.ego_id
         )
-        route_clcs = world_ego.ref_path_lane.clcs
+        route_clcs = self._get_vp_lanelet_clcs()
+        if getattr(world_ego, "ref_path_lane", None) is None:
+            # Interstate monitor lanes already provide a complete route CLCS.
+            # Reusing it avoids introducing an artificial high-curvature
+            # lateral blend merely to extend the finite recorded trajectory.
+            current_idx = int(self._tc - all_states[0].time_step)
+            current_state = all_states[current_idx]
+            current_ct = route_clcs.convert_to_curvilinear_coords(
+                float(current_state.position[0]),
+                float(current_state.position[1]),
+            )
+            self._trajectory_clcs_lateral_offset = float(current_ct[1])
+            self._trajectory_clcs_preprocessed = True
+            ref_path = np.asarray(route_clcs.reference_path(), dtype=float)
+            if ref_path.ndim != 2 or len(ref_path) < 2:
+                raise ValueError(
+                    "Complete lane acceleration reference has fewer than two points."
+                )
+            return route_clcs, ref_path
         projected = np.asarray(
             [
                 route_clcs.convert_to_curvilinear_coords(
