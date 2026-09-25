@@ -587,6 +587,10 @@ class SemanticINPredicateRegionBuilder:
         self._path_line = LineString(np.asarray(self.ref_path, dtype=float)[:, :2])
         self._same_lane_sample_context_cache: Optional[Mapping[str, Any]] = None
         self._same_lane_robustness_region_cache: Dict[Any, SemanticIntervalSet] = {}
+        # Path samples expressed in a cutting vehicle's lane coordinates.
+        # Projection depends only on that lane, not on the repair phase.
+        self._cut_in_path_lateral_cache: Dict[Any, Optional[Mapping[str, Any]]] = {}
+        self._cut_in_single_lane_cache: Dict[Any, TruthDomain] = {}
         self._turning_spatial_domain_cache: Dict[Any, TruthDomain] = {}
         self._lanelet_bounds_cache: Dict[int, Optional[Tuple[float, float]]] = {}
         # These caches contain only definition-derived route geometry and
@@ -949,7 +953,9 @@ class SemanticINPredicateRegionBuilder:
                 gate_domain=UNKNOWN_DOMAIN,
                 diagnostics={"spatial_domain": [0], "gate_skipped": True},
             )
-        gate = self._turning_gate_domain(evaluator, prop_name, time_step)
+        gate = self._turning_gate_domain(
+            evaluator, prop_name, time_step, reachable
+        )
         if gate == FALSE_DOMAIN or spatial == FALSE_DOMAIN:
             combined = FALSE_DOMAIN
         elif gate == TRUE_DOMAIN and spatial == TRUE_DOMAIN:
@@ -965,7 +971,11 @@ class SemanticINPredicateRegionBuilder:
         )
 
     def _turning_gate_domain(
-        self, evaluator: Any, prop_name: str, time_step: int
+        self,
+        evaluator: Any,
+        prop_name: str,
+        time_step: int,
+        reachable: Optional[Tuple[float, float]] = None,
     ) -> TruthDomain:
         if self.other_id is None:
             return UNKNOWN_DOMAIN
@@ -983,18 +993,20 @@ class SemanticINPredicateRegionBuilder:
             return FALSE_DOMAIN
         if hasattr(evaluator, "_same_priority"):
             gate_parts.append(
-                fixed_domain(
+                self._topology_region_domain(
                     evaluator._same_priority,
                     time_step,
                     (self.ego_id, self.other_id),
+                    reachable,
                 )
             )
         elif hasattr(evaluator, "_target_has_priority"):
             gate_parts.append(
-                fixed_domain(
+                self._topology_region_domain(
                     evaluator._target_has_priority,
                     time_step,
                     (self.other_id, self.ego_id),
+                    reachable,
                 )
             )
         else:
@@ -1002,16 +1014,60 @@ class SemanticINPredicateRegionBuilder:
         if gate_parts[-1] == FALSE_DOMAIN:
             return FALSE_DOMAIN
         if hasattr(evaluator, "_on_oncoming_of"):
-            oncoming = fixed_domain(
+            oncoming = self._topology_region_domain(
                 evaluator._on_oncoming_of,
                 time_step,
                 (self.other_id, self.ego_id),
+                reachable,
             )
             if "not_oncoming" in prop_name.lower():
                 oncoming = self._negate_domain(oncoming)
             gate_parts.append(oncoming)
 
         return self._and_domains(gate_parts)
+
+    def _topology_region_domain(
+        self,
+        evaluator: Any,
+        time_step: int,
+        vehicle_ids: Sequence[int],
+        reachable: Optional[Tuple[float, float]],
+    ) -> TruthDomain:
+        """Classify a route-topology Boolean as a path-wide semantic region.
+
+        The underlying monitor predicates (same/has priority and oncoming)
+        depend on fixed incoming/successor topology, not ego progress.  A true
+        relation therefore owns the complete longitudinal path; a false one
+        owns the empty set.  The result still goes through the common
+        reachable-region classifier instead of being injected as a sampled
+        monitor truth value.
+        """
+        key = (
+            "topology_constant",
+            self._semantic_evaluator_key(evaluator),
+            tuple(int(item) for item in vehicle_ids),
+        )
+
+        def build() -> SemanticIntervalSet:
+            try:
+                value = bool(
+                    evaluator.evaluate_boolean(
+                        self.world, int(time_step), list(vehicle_ids)
+                    )
+                )
+            except Exception as exc:
+                return SemanticIntervalSet.unknown(
+                    "topology_constant:error", error=type(exc).__name__
+                )
+            if not value:
+                return SemanticIntervalSet.empty("topology_constant:false")
+            return SemanticIntervalSet(
+                complete=True,
+                source="topology_constant:true",
+                diagnostics={"constant_true": True},
+            )
+
+        return self._classify_region(self._cached_region(key, build), reachable)
 
     def _fixed_boolean_domain(
         self, evaluator: Any, time_step: int, vehicle_ids: Sequence[int]
@@ -2265,13 +2321,12 @@ class SemanticINPredicateRegionBuilder:
         reachable: Optional[Tuple[float, float]],
     ) -> FramePredicateEstimate:
         if len(vehicle_ids) != 2 or self.ego_id not in vehicle_ids:
-            return FramePredicateEstimate(UNKNOWN_DOMAIN, "cut_in:fixed")
-        cutting_id, _ = vehicle_ids
-        if cutting_id != self.ego_id:
-            single_lane = self._fixed_domain(
-                evaluator._single_lane_evaluator,
-                int(time_step),
-                (int(cutting_id),),
+            fixed = self._fixed_domain(evaluator, time_step, vehicle_ids)
+            return FramePredicateEstimate(fixed, "cut_in:other_only")
+        cutting_id, cutted_id = vehicle_ids
+        if cutting_id != self.ego_id and cutted_id == self.ego_id:
+            single_lane = self._cut_in_single_lane_domain(
+                int(cutting_id), int(time_step)
             )
             if single_lane == TRUE_DOMAIN:
                 return FramePredicateEstimate(
@@ -2279,19 +2334,187 @@ class SemanticINPredicateRegionBuilder:
                 )
             try:
                 cutting = self.world.vehicle_by_id(int(cutting_id))
-                theta = float(cutting.get_lat_state(int(time_step)).theta)
+                cutting_lane = cutting.get_lane(int(time_step))
+                cutting_lat = cutting.get_lat_state(int(time_step), cutting_lane)
+                theta = float(cutting_lat.theta)
+                cutting_d = float(cutting_lat.d)
                 epsilon = float(getattr(evaluator, "eps", 1.0e-5))
-                if -epsilon <= theta <= epsilon:
-                    return FramePredicateEstimate(
-                        FALSE_DOMAIN, "cut_in:fixed_orientation_false"
-                    )
             except Exception:
-                pass
-        # The same-lane region is certified above, but the lateral d crossing
-        # is added separately below. Until that boundary is available, unknown
-        # is the only sound conjunction result.
+                return FramePredicateEstimate(
+                    UNKNOWN_DOMAIN, "cut_in:target_state_unavailable"
+                )
+            if -epsilon <= theta <= epsilon:
+                return FramePredicateEstimate(
+                    FALSE_DOMAIN, "cut_in:fixed_orientation_false"
+                )
+
+            same_lane = self._same_lane_region(int(cutting_id), int(time_step))
+            lateral = self._cut_in_lateral_region(
+                cutting_lane, cutting_d, theta > epsilon
+            )
+            region = self._intersect_semantic_regions(
+                same_lane, lateral, "cut_in:reachable_lane_lateral"
+            )
+            return FramePredicateEstimate(
+                self._classify_region(region, reachable),
+                region.source,
+                region=region,
+                diagnostics={
+                    "same_lane_source": same_lane.source,
+                    "lateral_source": lateral.source,
+                },
+            )
+
+        # In this argument order the ego itself is the cutting vehicle, so
+        # both lateral coordinate and heading depend on path progress.
         return FramePredicateEstimate(
-            UNKNOWN_DOMAIN, "cut_in:lateral_boundary_unavailable"
+            UNKNOWN_DOMAIN, "cut_in:ego_is_cutting_vehicle"
+        )
+
+    def _cut_in_single_lane_domain(
+        self, cutting_id: int, time_step: int
+    ) -> TruthDomain:
+        """Evaluate the other-only ``single_lane`` gate by assignment signature."""
+        try:
+            cutting = self.world.vehicle_by_id(int(cutting_id))
+            assignment = frozenset(
+                int(item) for item in cutting.lanelet_assignment[int(time_step)]
+            )
+        except Exception:
+            return UNKNOWN_DOMAIN
+        key = (int(cutting_id), assignment)
+        cached = self._cut_in_single_lane_cache.get(key)
+        if cached is not None:
+            return cached
+        try:
+            lanes = self.world.road_network.find_lanes_by_lanelets(assignment)
+            result = TRUE_DOMAIN if len(lanes) == 1 else FALSE_DOMAIN
+        except Exception:
+            result = UNKNOWN_DOMAIN
+        self._cut_in_single_lane_cache[key] = result
+        return result
+
+    def _cut_in_lateral_region(
+        self, cutting_lane: Any, cutting_d: float, ego_must_be_above: bool
+    ) -> SemanticIntervalSet:
+        """Bound the lateral-side term of ``cut_in(other, ego)`` over path s."""
+        if cutting_lane is None or not math.isfinite(float(cutting_d)):
+            return self._unknown_path_region("cut_in:lateral_lane_missing")
+        lane_key = tuple(sorted(
+            int(item)
+            for item in getattr(cutting_lane, "contained_lanelets", ())
+        )) or (id(cutting_lane),)
+        context = self._cut_in_path_lateral_cache.get(lane_key)
+        if lane_key not in self._cut_in_path_lateral_cache:
+            context = self._build_cut_in_lateral_context(cutting_lane)
+            self._cut_in_path_lateral_cache[lane_key] = context
+        if context is None:
+            return self._unknown_path_region(
+                "cut_in:lateral_projection_unavailable"
+            )
+
+        d_lower = np.asarray(context["d_lower"], dtype=float)
+        d_upper = np.asarray(context["d_upper"], dtype=float)
+        valid = np.asarray(context["valid"], dtype=bool)
+        error = np.asarray(context["error"], dtype=float)
+        threshold = float(cutting_d)
+        if ego_must_be_above:
+            inner_mask = valid & (d_lower - error > threshold)
+            outer_mask = (~valid) | (d_upper + error > threshold)
+        else:
+            inner_mask = valid & (d_upper + error < threshold)
+            outer_mask = (~valid) | (d_lower - error < threshold)
+        return SemanticIntervalSet(
+            inner_true=self._cell_mask_to_intervals(context, inner_mask),
+            outer_true=self._cell_mask_to_intervals(context, outer_mask),
+            complete=True,
+            source="cut_in:lateral_critical_boundary",
+            diagnostics={
+                "lanelet_count": len(lane_key),
+                "cell_count": int(len(valid)),
+                "invalid_cell_count": int(np.count_nonzero(~valid)),
+            },
+        )
+
+    def _build_cut_in_lateral_context(
+        self, cutting_lane: Any
+    ) -> Optional[Mapping[str, Any]]:
+        sample = self._same_lane_sample_context()
+        if sample is None:
+            return None
+        points = np.asarray(sample["points"], dtype=float)
+        s_values = np.asarray(sample["trajectory_s"], dtype=float)
+        try:
+            bulk = getattr(
+                cutting_lane.clcs,
+                "convert_list_of_points_to_curvilinear_coords",
+                None,
+            )
+            if bulk is None:
+                raise AttributeError("bulk CLCS projection unavailable")
+            projected = np.asarray(bulk(points, 1), dtype=float)
+            if projected.shape != (len(points), 2):
+                raise ValueError("unexpected CLCS projection shape")
+            lateral = projected[:, 1]
+        except Exception:
+            # Projection failures make only affected cells unknown; never
+            # substitute the nominal monitor truth value.
+            lateral = np.full(len(points), math.nan, dtype=float)
+            for index, point in enumerate(points):
+                try:
+                    lateral[index] = float(
+                        cutting_lane.clcs.convert_to_curvilinear_coords(
+                            float(point[0]), float(point[1])
+                        )[1]
+                    )
+                except Exception:
+                    continue
+
+        displacement = np.linalg.norm(points[1:] - points[:-1], axis=1)
+        valid = (
+            np.isfinite(s_values[:-1])
+            & np.isfinite(s_values[1:])
+            & np.isfinite(lateral[:-1])
+            & np.isfinite(lateral[1:])
+        )
+        return {
+            "s_lower": np.minimum(s_values[:-1], s_values[1:]),
+            "s_upper": np.maximum(s_values[:-1], s_values[1:]),
+            "d_lower": np.minimum(lateral[:-1], lateral[1:]),
+            "d_upper": np.maximum(lateral[:-1], lateral[1:]),
+            "error": displacement + self.uncertainty,
+            "valid": valid,
+        }
+
+    @staticmethod
+    def _intersect_interval_sets(
+        left: Sequence[ClosedInterval], right: Sequence[ClosedInterval]
+    ) -> Tuple[ClosedInterval, ...]:
+        intersections = []
+        for lhs in left:
+            for rhs in right:
+                lower = max(float(lhs.lower), float(rhs.lower))
+                upper = min(float(lhs.upper), float(rhs.upper))
+                if lower <= upper:
+                    intersections.append((lower, upper))
+        return merge_intervals(intersections)
+
+    def _intersect_semantic_regions(
+        self,
+        left: SemanticIntervalSet,
+        right: SemanticIntervalSet,
+        source: str,
+    ) -> SemanticIntervalSet:
+        return SemanticIntervalSet(
+            inner_true=self._intersect_interval_sets(
+                left.inner_true, right.inner_true
+            ),
+            outer_true=self._intersect_interval_sets(
+                left.outer_true, right.outer_true
+            ),
+            complete=bool(left.complete and right.complete),
+            source=source,
+            diagnostics={"left_source": left.source, "right_source": right.source},
         )
 
 

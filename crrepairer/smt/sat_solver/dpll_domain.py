@@ -16,6 +16,7 @@ class DomainDPLL:
         tv_time_step=0,
         domains=None,
         repair_literals=None,
+        admissible_polarities=None,
     ):
         """
         Based on the pseudocode in Wikipedia page:
@@ -31,6 +32,9 @@ class DomainDPLL:
         self._prop_nodes = prop_nodes
         self._tv_time_step = tv_time_step
         self._domains = domains or {}
+        # Keep executable-polarity admissibility separate from reachable-set
+        # truth domains; they have different semantics even when both prune.
+        self._admissible_polarities = admissible_polarities or {}
         # Every singleton domain is a proven predicate fact over the reachable
         # set.  It remains active for the complete repair phase; {0, 1} is the
         # only representation of an unrestricted proposition.
@@ -64,6 +68,10 @@ class DomainDPLL:
     @property
     def repair_literals(self):
         return self._repair_literals
+
+    @property
+    def admissible_polarities(self):
+        return self._admissible_polarities
 
     @staticmethod
     def get_literal(cnf, prop_nodes, tv_time_step: int):
@@ -129,9 +137,14 @@ class DomainDPLL:
         self,
         domains=None,
         repair_literals=None,
+        admissible_polarities=None,
     ):
         self._domains = dict(domains) if domains is not None else {}
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
+        self._admissible_polarities = {
+            str(variable): set(values)
+            for variable, values in (admissible_polarities or {}).items()
+        }
         self._rebuild_cnf()
 
     def update_cnf(self, cnf, domains=None):
@@ -205,9 +218,13 @@ class DomainDPLL:
         literals = self.get_literal(cnf, self._prop_nodes, self._tv_time_step)
         lit = self.choose_literal(literals)
 
-        domain_lit = self._singleton_domain_literal(lit[-1])
-        if domain_lit is not None:
-            if self._solve(deepcopy(cnf) + [domain_lit]) == sat:
+        allowed_values = self._allowed_values(lit[-1])
+        if not allowed_values:
+            self.back_tracking()
+            return unsat
+        required_lit = self._required_literal(lit[-1])
+        if required_lit is not None:
+            if self._solve(deepcopy(cnf) + [required_lit]) == sat:
                 return sat
             self._assign_true = set()
             self._assign_false = set()
@@ -244,8 +261,26 @@ class DomainDPLL:
         )
 
     def _literal_allowed_by_domain(self, literal):
-        required = self._singleton_domain_literal(literal[-1])
-        return required is None or literal == required
+        allowed = self._allowed_values(literal[-1])
+        requested = 0 if literal.startswith("~") else 1
+        return requested in allowed
+
+    def _allowed_values(self, var):
+        domain = set(self._domains.get(var, {0, 1}))
+        admissible = set(self._admissible_polarities.get(var, {0, 1}))
+        return domain.intersection(admissible)
+
+    def _required_literal(self, var):
+        allowed = self._allowed_values(var)
+        if allowed == {1}:
+            return var
+        if allowed == {0}:
+            return "~" + var
+        if allowed == {0, 1}:
+            return None
+        if not allowed:
+            return None
+        raise ValueError(f"<DPLL>: invalid admissible values for {var}: {allowed}")
 
     def unit_propagation(self, cnf, units):
         for unit in units:

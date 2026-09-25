@@ -67,6 +67,7 @@ class VPTrajectoryRepairer(
         self._domain_predicate_timing = {}
         self._repair_literals = []
         self._constraint_repair_literals = []
+        self._vp_admissible_polarities = {}
         self._constraint_repair_analysis_complete = False
         self.candidate_tvs = []
         self.candidate_diagnostics = []
@@ -163,6 +164,7 @@ class VPTrajectoryRepairer(
         self._domain_predicate_timing = {}
         self._repair_literals = []
         self._constraint_repair_literals = []
+        self._vp_admissible_polarities = {}
         self._constraint_repair_analysis_complete = False
         self._in_reachability_context_cache = None
         self._semantic_in_region_builder = None

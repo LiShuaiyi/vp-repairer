@@ -14,7 +14,14 @@ from crrepairer.repairer.vp.semantic_predicate_regions import (
     UNKNOWN_DOMAIN,
     build_semantic_in_predicate_region_builder,
 )
-from crrepairer.repairer.vp.temporal import expand_temporal_expression
+from crrepairer.repairer.vp.temporal import (
+    evaluate_temporal_truth_domain,
+    evaluate_temporal_truth_domains,
+    evaluate_temporal_truth_nodes,
+    expand_temporal_expression,
+    parse_temporal_truth_expression,
+    TemporalTruthNode,
+)
 from crrepairer.smt.vp_proposition_capabilities import (
     VPConstraintKind,
     proposition_constraint_kind,
@@ -49,6 +56,9 @@ class VPPredicateEstimation:
         self.sat_solver.set_domain_dict(
             domain_dict,
             repair_literals=self._repair_literals,
+            admissible_polarities=getattr(
+                self, "_vp_admissible_polarities", {}
+            ),
         )
         self._domain_dict_initialized = True
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
@@ -127,7 +137,7 @@ class VPPredicateEstimation:
             )
             if (
                 values_key
-                in {"safe_dist", "in_same_lane", "in_front_of"}
+                in {"safe_dist", "in_same_lane", "cut_in", "in_front_of"}
                 and SemanticINPredicateRegionBuilder.supports_evaluator(
                     evaluator
                 )
@@ -236,7 +246,9 @@ class VPPredicateEstimation:
 
 
         start = time.time()
-        self._apply_once_operator(predicate_values["cut_in"])
+        # Reuse per-frame RG reachability during Boolean anchor filtering and
+        # lift the complete proposition syntax below.  This replaces the old
+        # cut-in-only once mutation with the shared temporal AST semantics.
 
         # Reuse per-frame RG reachability during Boolean anchor filtering.
         frame_domains = dict(semantic_frame_domains)
@@ -272,8 +284,11 @@ class VPPredicateEstimation:
         breakdown["apply_once_operator"] = time.time() - start
 
         start = time.time()
-        domain_dict = self._domain_dict_construct_general(
-            predicate_values, self.sat_solver._prop_nodes
+        domain_dict = self._domain_dict_construct_temporal(
+            predicate_values,
+            self.sat_solver._prop_nodes,
+            frame_domains,
+            dt,
         )
         # ``cut_in`` is neither estimated nor fixed from the nominal
         # monitor trace.  It remains unknown to SAT unless the formula itself
@@ -376,7 +391,8 @@ class VPPredicateEstimation:
         region_estimation_mode = self._in_region_estimation_mode()
         use_critical_hybrid = region_estimation_mode == "critical_hybrid"
         initial_domains = {}
-        unsupported_polarity_fixed_vars = []
+        admissible_polarities = {}
+        unsupported_polarity_limited_vars = []
         repair_literals = []
         deferred_region_repair_literals = []
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
@@ -534,8 +550,8 @@ class VPPredicateEstimation:
                     # constraint extraction.  Encode that rejection as a
                     # singleton now so DomainDPLL prunes the partial assignment
                     # before constructing a complete unsupported model.
-                    initial_domains[alphabet] = {int(current_value)}
-                    unsupported_polarity_fixed_vars.append(alphabet)
+                    admissible_polarities[alphabet] = {int(current_value)}
+                    unsupported_polarity_limited_vars.append(alphabet)
                 if extractable:
                     # The executable polarity is rule-specific.  IN1 repairs
                     # the violation by making its stop-line/standstill event
@@ -610,17 +626,18 @@ class VPPredicateEstimation:
         repair_literals.extend(deferred_region_repair_literals)
 
         self._repair_literals = repair_literals
+        self._vp_admissible_polarities = admissible_polarities
         self.domain_dict_breakdown = {
             "repair_mode": repair_mode,
             "initial_domain_count": len(initial_domains),
             "fixed_singleton_domain_count": sum(
                 len(values) == 1 for values in initial_domains.values()
             ),
-            "unsupported_polarity_fixed_domain_count": len(
-                unsupported_polarity_fixed_vars
+            "unsupported_polarity_limited_count": len(
+                unsupported_polarity_limited_vars
             ),
-            "unsupported_polarity_fixed_domain_vars": list(
-                unsupported_polarity_fixed_vars
+            "unsupported_polarity_limited_vars": list(
+                unsupported_polarity_limited_vars
             ),
             "unrestricted_domain_count": sum(
                 set(values) == {0, 1} for values in initial_domains.values()
@@ -690,241 +707,170 @@ class VPPredicateEstimation:
         )
 
     def _estimate_semantic_intersection_predicate_domains(self, prop_nodes):
-        """Estimate IN proposition domains from monitor definitions.
-
-        Spatial regions come from map/route geometry rather than the recorded
-        ego predicate trace.  A proposition is fixed only when every active
-        repair frame has the same guaranteed value over the complete reachable
-        interval.  Mixed or unresolved frames remain ``{0, 1}``.
-        """
+        """Batch-lift definition-driven domains with evaluator-bound AST atoms."""
         context_start = time.perf_counter()
         all_states = self._get_states_with_initial()
-        builder, context_diagnostics = (
-            self._ensure_semantic_in_region_builder()
-        )
+        builder, context_diagnostics = self._ensure_semantic_in_region_builder()
         context_time = time.perf_counter() - context_start
-
-        temporal_steps = self._temporal_constraint_steps(
-            all_states, propositions=prop_nodes
-        )
-
-        def time_steps(prop):
-            interval = temporal_steps[id(prop)]
-            if interval.count <= 0:
-                return ()
-            # Domain inference unions the possible values over all active
-            # frames, so evaluation order cannot change the result.  Inspect
-            # both extremes first: long trajectories commonly become unknown
-            # at the target horizon or cross a critical spatial boundary,
-            # while some rules expose a mixed value near the first frame.
-            # Alternating end/start finds either case without evaluating a
-            # hundred interior singleton frames.
-            start = int(interval.start)
-            end = int(interval.end)
-            ordered = []
-            left, right = start, end
-            while left <= right:
-                ordered.append(right)
-                if left != right:
-                    ordered.append(left)
-                left += 1
-                right -= 1
-            return tuple(ordered)
-
-        def negate_domain(domain):
-            return frozenset(1 - int(value) for value in domain)
-
-        def and_domain(left, right):
-            if left == FALSE_DOMAIN or right == FALSE_DOMAIN:
-                return FALSE_DOMAIN
-            if left == TRUE_DOMAIN and right == TRUE_DOMAIN:
-                return TRUE_DOMAIN
-            return UNKNOWN_DOMAIN
-
-        estimates = {}
+        trace_start = int(all_states[0].time_step)
+        trace_end = int(all_states[-1].time_step)
+        source_anchors = tuple(range(trace_start, trace_end + 1))
+        dt = float(self.config.scenario.dt)
         predicate_debug_enabled = bool(
             os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
         )
         per_prop = {} if predicate_debug_enabled else None
         classification_counts = {}
-        turning_spatial_domain_cache = {}
-        short_circuit_counts = {
-            "turning_spatial_false": 0,
-            "unknown_or_mixed_prefix": 0,
-            "conjunction_left_false": 0,
-        }
+        atomic_cache = {}
         inference_start = time.perf_counter()
-        dt = float(self.config.scenario.dt)
+        estimates = {}
+
+        def normalized(value):
+            return "".join(str(value).lower().split()).strip("()")
+
+        records = []
+        evaluator_tokens = {}
+
+        def bind_atoms(node, evaluator_entries, alphabet):
+            if node.kind != "atom":
+                return TemporalTruthNode(
+                    kind=node.kind,
+                    value=node.value,
+                    children=tuple(
+                        bind_atoms(child, evaluator_entries, alphabet)
+                        for child in node.children
+                    ),
+                    offsets=node.offsets,
+                )
+            atom = str(node.value)
+            atom_key = normalized(atom)
+            if atom_key in {"true", "1", "false", "0"}:
+                return TemporalTruthNode(kind="atom", value=atom_key)
+            matches = [
+                evaluator
+                for evaluator, names in evaluator_entries
+                if atom_key in names
+                or any(name and name in atom_key for name in names)
+            ]
+            if not matches and len(evaluator_entries) == 1:
+                matches = [evaluator_entries[0][0]]
+            if len(matches) != 1:
+                return TemporalTruthNode(
+                    kind="atom",
+                    value=f"__vp_unknown_{alphabet}_{atom_key}",
+                )
+            evaluator = matches[0]
+            token = f"__vp_atom_{id(evaluator)}_{atom_key}"
+            evaluator_tokens[token] = (evaluator, atom)
+            return TemporalTruthNode(kind="atom", value=token)
+
         for prop in prop_nodes:
-            alphabet = prop.alphabet[-1]
+            alphabet = str(prop.alphabet[-1])
             prop_name = str(prop.name)
             children = list(getattr(prop, "children", ()) or ())
-            active_steps = tuple(time_steps(prop))
-            frame_domains = []
-            frame_sources = []
-            classification = "unsupported"
-
-            try:
-                leaf_expression = expand_temporal_expression(
-                    prop_name, dt
-                ).leaf_expression.strip().lower()
-            except Exception:
-                leaf_expression = prop_name.strip().lower()
-
-            if len(children) == 1:
-                evaluator = getattr(children[0], "evaluator", None)
-                if evaluator is not None:
-                    predicate_name = getattr(evaluator, "predicate_name", None)
-                    base_name = str(
+            evaluator_entries = []
+            for child in children:
+                evaluator = getattr(child, "evaluator", None)
+                if evaluator is None:
+                    continue
+                names = {
+                    normalized(getattr(child, "name", "")),
+                    normalized(getattr(child, "base_name", "")),
+                }
+                predicate_name = getattr(evaluator, "predicate_name", None)
+                names.add(
+                    normalized(
                         getattr(predicate_name, "value", predicate_name or "")
-                    ).lower()
-                    if hasattr(evaluator, "_turning_ego"):
-                        classification = "critical_boolean_composite"
-                    elif base_name in builder.QUANTITATIVE_NAMES:
-                        classification = "critical_quantitative_envelope"
-                    else:
-                        classification = "critical_boolean_cells"
-                    negate = leaf_expression.startswith("not(")
-                    turning_ego = getattr(evaluator, "_turning_ego", None)
-                    if turning_ego is not None and not negate:
-                        turning_name = str(
-                            getattr(
-                                getattr(turning_ego, "predicate_name", None),
-                                "value",
-                                getattr(turning_ego, "predicate_name", ""),
-                            )
-                        ).lower()
-                        turning_key = (turning_name, active_steps)
-                        spatial_domain = turning_spatial_domain_cache.get(
-                            turning_key
-                        )
-                        if spatial_domain is None:
-                            spatial_domain = (
-                                builder.estimate_turning_spatial_domain(
-                                    turning_ego, active_steps
-                                )
-                            )
-                            turning_spatial_domain_cache[turning_key] = (
-                                spatial_domain
-                            )
-                        if spatial_domain == FALSE_DOMAIN:
-                            frame_domains.append(FALSE_DOMAIN)
-                            classification = "critical_boolean_short_circuit"
-                            short_circuit_counts["turning_spatial_false"] += 1
-                    if not frame_domains:
-                        prefix_values = set()
-                        for step in active_steps:
-                            frame = builder.estimate_frame(
-                                evaluator, prop_name, step
-                            )
-                            domain = frame.domain
-                            if negate:
-                                domain = negate_domain(domain)
-                            frame_domains.append(domain)
-                            prefix_values.update(int(value) for value in domain)
-                            if predicate_debug_enabled:
-                                frame_sources.append(frame.source)
-                            if prefix_values == {0, 1}:
-                                short_circuit_counts[
-                                    "unknown_or_mixed_prefix"
-                                ] += 1
-                                break
-            elif len(children) == 2 and "and" in leaf_expression:
-                evaluators = [
-                    getattr(child, "evaluator", None) for child in children
-                ]
-                if all(item is not None for item in evaluators):
-                    classification = "semantic_conjunction"
-                    prefix_values = set()
-                    for step in active_steps:
-                        left = builder.estimate_frame(
-                            evaluators[0], prop_name, step
-                        )
-                        if left.domain == FALSE_DOMAIN:
-                            domain = FALSE_DOMAIN
-                            right = None
-                            short_circuit_counts[
-                                "conjunction_left_false"
-                            ] += 1
-                        else:
-                            right = builder.estimate_frame(
-                                evaluators[1], prop_name, step
-                            )
-                            domain = and_domain(left.domain, right.domain)
-                        frame_domains.append(domain)
-                        prefix_values.update(int(value) for value in domain)
-                        if predicate_debug_enabled:
-                            frame_sources.append(left.source)
-                            if right is not None:
-                                frame_sources.append(right.source)
-                        if prefix_values == {0, 1}:
-                            short_circuit_counts[
-                                "unknown_or_mixed_prefix"
-                            ] += 1
-                            break
+                    )
+                )
+                evaluator_entries.append((evaluator, names - {""}))
 
-            possible_values = set()
-            for frame_domain in frame_domains:
-                possible_values.update(int(value) for value in frame_domain)
-                if possible_values == {0, 1}:
-                    break
-            estimate = (
-                next(iter(possible_values))
-                if len(possible_values) == 1 and frame_domains
-                else None
+            if len(evaluator_entries) > 1:
+                classification = "temporal_boolean_lift"
+            elif evaluator_entries:
+                evaluator = evaluator_entries[0][0]
+                predicate_name = getattr(evaluator, "predicate_name", None)
+                base_name = str(
+                    getattr(predicate_name, "value", predicate_name or "")
+                ).lower()
+                if hasattr(evaluator, "_turning_ego"):
+                    classification = "temporal_turning_lift"
+                elif base_name in builder.QUANTITATIVE_NAMES:
+                    classification = "temporal_quantitative_lift"
+                else:
+                    classification = "temporal_boolean_lift"
+            else:
+                classification = "unsupported"
+
+            root = bind_atoms(
+                parse_temporal_truth_expression(prop_name, dt),
+                evaluator_entries,
+                alphabet,
             )
-            if classification == "semantic_conjunction" and estimate == 0:
-                # IN1 wraps this conjunction in an unbounded past ``once``.
-                # A true witness before the modifiable planning interval can
-                # keep the temporal proposition true even when every future
-                # conjunction frame is false.  Without reconstructing that
-                # immutable prefix, falsehood is not a safe singleton fact.
-                estimate = None
-            if estimate is not None:
-                estimates[alphabet] = int(estimate)
+            records.append((alphabet, prop, classification, root))
             classification_counts[classification] = (
                 classification_counts.get(classification, 0) + 1
             )
+
+        def atomic_domain(token, time_step):
+            if token in {"true", "1"}:
+                return TRUE_DOMAIN
+            if token in {"false", "0"}:
+                return FALSE_DOMAIN
+            entry = evaluator_tokens.get(str(token))
+            if entry is None:
+                return UNKNOWN_DOMAIN
+            evaluator, original_atom = entry
+            cache_key = (id(evaluator), normalized(original_atom), int(time_step))
+            if cache_key not in atomic_cache:
+                frame = builder.estimate_frame(
+                    evaluator, original_atom, int(time_step)
+                )
+                atomic_cache[cache_key] = frame.domain
+            return atomic_cache[cache_key]
+
+        try:
+            lifted_domains = evaluate_temporal_truth_nodes(
+                tuple(record[3] for record in records),
+                dt,
+                source_anchors,
+                trace_start,
+                trace_end,
+                atomic_domain,
+            )
+        except (TypeError, ValueError):
+            lifted_domains = tuple(UNKNOWN_DOMAIN for _ in records)
+
+        for record, lifted in zip(records, lifted_domains):
+            alphabet, prop, classification, _root = record
+            estimate = next(iter(lifted)) if len(lifted) == 1 else None
+            if estimate is not None:
+                estimates[alphabet] = int(estimate)
             if predicate_debug_enabled:
                 per_prop[alphabet] = {
                     "classification": classification,
                     "estimate": estimate,
+                    "domain": sorted(int(value) for value in lifted),
                     "current": int(float(prop.ttv_value) >= 0.0),
-                    "active_count": len(active_steps),
-                    "reachable_first_last": (
-                        [
-                            builder.reachable_by_time.get(active_steps[0]),
-                            builder.reachable_by_time.get(active_steps[-1]),
-                        ]
-                        if active_steps
-                        else []
-                    ),
-                    "frame_domain_counts": {
-                        str(sorted(domain)): frame_domains.count(domain)
-                        for domain in set(frame_domains)
-                    },
-                    "frame_source_counts": {
-                        source: frame_sources.count(source)
-                        for source in sorted(set(frame_sources))
-                    },
+                    "source_anchor_count": len(source_anchors),
+                    "frame_sources": [],
                 }
 
         inference_time = time.perf_counter() - inference_start
-        builder_diagnostics = builder.get_diagnostics(
-            include_regions=predicate_debug_enabled
-        )
         diagnostics = {
             "enabled": True,
-            "mode": "critical_hybrid",
+            "mode": "critical_hybrid_temporal_lift_batch",
             "repair_mode": getattr(self, "_vp_repair_mode", "deceleration"),
             "context": context_diagnostics,
             "classification_counts": classification_counts,
-            "short_circuit_counts": short_circuit_counts,
             "certified_count": len(estimates),
             "unrestricted_count": len(prop_nodes) - len(estimates),
+            "atomic_cache_count": len(atomic_cache),
             "context_time": context_time,
             "inference_time": inference_time,
-            "builder": builder_diagnostics,
+            "builder": builder.get_diagnostics(
+                include_regions=predicate_debug_enabled
+            ),
         }
         if predicate_debug_enabled:
             diagnostics["propositions"] = per_prop
@@ -1050,53 +996,23 @@ class VPPredicateEstimation:
         if tc in s_by_time:
             reachable_by_time[tc] = (s_by_time[tc], s_by_time[tc])
 
-        if repair_mode == "deceleration":
-            for time_step, original_s in s_by_time.items():
-                if time_step <= tc:
-                    continue
-                reachable_by_time[time_step] = tuple(
-                    sorted((float(current_s), float(original_s)))
-                )
-        elif repair_mode == "acceleration":
-            dt = float(self.config.scenario.dt)
-            amin, amax, _, jmax = self._get_longitudinal_planning_limits()
-            vehicle_v_max = float(self.config.vehicle.qp_veh_config.v_lon_max)
-            path_s = [
-                float(
-                    trajectory_clcs.convert_to_curvilinear_coords(
-                        float(point[0]), float(point[1])
-                    )[0]
-                )
-                for point in (ref_path[0], ref_path[-1])
-            ]
-            path_max = max(path_s)
-            s_prev = float(current_s)
-            v_prev = max(0.0, float(current_v))
-            a_prev = float(np.clip(current_a, amin, amax))
-            future_times = sorted(
-                time_step for time_step in s_by_time if time_step > tc
-            )
-            for time_step in future_times:
-                a_next = min(float(amax), a_prev + float(jmax) * dt)
-                v_next = min(
-                    vehicle_v_max,
-                    max(0.0, v_prev + a_next * dt),
-                )
-                s_next = min(
-                    path_max,
-                    s_prev + 0.5 * (v_prev + v_next) * dt,
-                )
-                reachable_by_time[time_step] = tuple(
-                    sorted((float(current_s), float(s_next)))
-                )
-                actual_acceleration = (v_next - v_prev) / dt
-                s_prev, v_prev, a_prev = (
-                    float(s_next),
-                    float(v_next),
-                    float(np.clip(actual_acceleration, amin, amax)),
-                )
-        else:
-            raise ValueError(f"Unsupported VP repair mode: {repair_mode!r}")
+        future_times = sorted(time_step for time_step in s_by_time if time_step > tc)
+        reachable_lower, reachable_upper = self._longitudinal_reachable_s_intervals(
+            all_states, trajectory_clcs, len(future_times)
+        )
+        for index, time_step in enumerate(future_times):
+            original_s = float(s_by_time[time_step])
+            if repair_mode == "deceleration":
+                # Maximum-braking rollout versus the recorded trajectory.
+                lower = min(float(reachable_lower[index]), original_s)
+                upper = original_s
+            elif repair_mode == "acceleration":
+                # Recorded trajectory versus maximum-acceleration rollout.
+                lower = original_s
+                upper = max(original_s, float(reachable_upper[index]))
+            else:
+                raise ValueError(f"Unsupported VP repair mode: {repair_mode!r}")
+            reachable_by_time[time_step] = (lower, upper)
 
         ordered_s = [s_by_time[key] for key in sorted(s_by_time)]
         s_deltas = np.diff(ordered_s) if len(ordered_s) > 1 else np.array([])
@@ -2055,6 +1971,58 @@ class VPPredicateEstimation:
                 elif "brake" in predicate.base_name:
                     speed_limits["brake"] = speed_limit 
         return speed_limits
+
+    def _domain_dict_construct_temporal(
+        self,
+        predicate_values,
+        prop_nodes,
+        frame_domains,
+        dt,
+    ):
+        """Build RG proposition domains through the shared temporal AST."""
+        domain_dict = {}
+        all_steps = sorted({
+            int(step)
+            for by_step in frame_domains.values()
+            for step in by_step
+        })
+        if not all_steps:
+            return self._domain_dict_construct_general(
+                predicate_values, prop_nodes
+            )
+        trace_start, trace_end = all_steps[0], all_steps[-1]
+        for prop_node in prop_nodes:
+            variable = str(prop_node.alphabet[-1])
+            by_step = frame_domains.get(variable)
+            if not by_step:
+                # Retain existing proven singleton estimates for proposition
+                # kinds which have no per-frame semantic sequence.
+                fallback = self._prop_node_name_to_predicate_values_key(
+                    prop_node.name, predicate_values
+                )
+                if fallback in ({0}, {1}):
+                    domain_dict[variable] = set(fallback)
+                continue
+
+            def atomic_domain(_atom, time_step):
+                return frozenset(
+                    by_step.get(int(time_step), {0, 1})
+                )
+
+            try:
+                lifted = evaluate_temporal_truth_domain(
+                    str(prop_node.name),
+                    float(dt),
+                    range(trace_start, trace_end + 1),
+                    trace_start,
+                    trace_end,
+                    atomic_domain,
+                )
+            except (TypeError, ValueError):
+                lifted = UNKNOWN_DOMAIN
+            if lifted in (FALSE_DOMAIN, TRUE_DOMAIN):
+                domain_dict[variable] = set(lifted)
+        return domain_dict
 
     def _domain_dict_construct_general(self, predicate_values, prop_nodes):
         """Build permanent singleton RG domains from reachable-set estimates.

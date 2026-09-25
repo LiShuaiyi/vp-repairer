@@ -23,6 +23,7 @@ class SATSolver:
         self._solver_mode = getattr(config.repair, "sat_solver_mode", "dpll")
         self._domain_dict = {}
         self._repair_literals = []
+        self._admissible_polarities = {}
         self._dpll_solver = self._build_solver(rule_monitor.tv_time_step)
         self._solver_formula = self._formula
         self._dpll_model = None
@@ -57,9 +58,14 @@ class SATSolver:
         self,
         domain_dict,
         repair_literals=None,
+        admissible_polarities=None,
     ):
         self._domain_dict = dict(domain_dict) if domain_dict is not None else {}
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
+        self._admissible_polarities = {
+            str(variable): set(values)
+            for variable, values in (admissible_polarities or {}).items()
+        }
 
     def add_once_time_selectors(self, once_time_plans):
         """Encode finite existential time alternatives with local Tseitin clauses.
@@ -227,7 +233,11 @@ class SATSolver:
         self._prop_nodes = list(self._prop_nodes) + synthetic_nodes
         self._dpll_solver._prop_nodes = self._prop_nodes
         for variable in parent_variables:
+            # The local Tseitin encoding now owns the existential parent.
+            # Neither an atomic reachable-set domain nor a pre-expansion VP
+            # capability restriction may constrain that auxiliary parent.
             self._domain_dict.pop(variable, None)
+            self._admissible_polarities.pop(variable, None)
         self._repair_literals = [
             literal
             for literal in self._repair_literals
@@ -316,10 +326,13 @@ class SATSolver:
             if (
                 self._dpll_solver.domains != self._domain_dict
                 or self._dpll_solver.repair_literals != self._repair_literals
+                or self._dpll_solver.admissible_polarities
+                != self._admissible_polarities
             ):
                 self._dpll_solver.set_search_guidance(
                     self._domain_dict,
                     self._repair_literals,
+                    self._admissible_polarities,
                 )
             if self._solver_formula != self._formula:
                 self._dpll_solver.update_cnf(self._formula)

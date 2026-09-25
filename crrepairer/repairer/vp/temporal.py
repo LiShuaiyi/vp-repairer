@@ -318,3 +318,311 @@ def constraint_steps_for_anchors(
     }
     pair_count = len(anchors) * len(expansion.offsets)
     return TemporalConstraintSteps(frozenset(steps)), expansion, pair_count
+
+
+@dataclass(frozen=True)
+class TemporalTruthNode:
+    """Small AST for three-valued temporal truth propagation."""
+
+    kind: str
+    value: str = ""
+    children: Tuple["TemporalTruthNode", ...] = ()
+    offsets: Optional[Tuple[int, ...]] = ()
+
+
+def _find_top_level_operator(expression: str, tokens: Sequence[str]):
+    """Return the rightmost top-level Boolean operator and its span."""
+    depth = 0
+    matches = []
+    lowered = expression.lower()
+    index = 0
+    while index < len(expression):
+        character = expression[index]
+        if character == "(":
+            depth += 1
+            index += 1
+            continue
+        if character == ")":
+            depth -= 1
+            index += 1
+            continue
+        if depth == 0:
+            for token in tokens:
+                if not lowered.startswith(token, index):
+                    continue
+                if token.isalpha():
+                    before = lowered[index - 1] if index else " "
+                    after_index = index + len(token)
+                    after = lowered[after_index] if after_index < len(lowered) else " "
+                    if (before.isalnum() or before == "_") or (
+                        after.isalnum() or after == "_"
+                    ):
+                        continue
+                matches.append((index, index + len(token), token))
+                index += len(token)
+                break
+            else:
+                index += 1
+            continue
+        index += 1
+    return matches[-1] if matches else None
+
+
+@lru_cache(maxsize=512)
+def parse_temporal_truth_expression(
+    expression: str, dt: float
+) -> TemporalTruthNode:
+    """Parse temporal/Boolean proposition syntax without flattening nesting."""
+    current = _strip_outer_parentheses(str(expression).strip())
+    match = _TEMPORAL_PREFIX.match(current)
+    if match is not None:
+        operator = match.group(1).lower()
+        interval, operand = _extract_call(current, match.end())
+        if operator in {"previous", "prev", "pre"}:
+            offsets = (-1,)
+        elif interval is None:
+            offsets = None
+        else:
+            offsets = _seconds_to_sample_interval(
+                _parse_bound(interval[0]), _parse_bound(interval[1]), dt
+            )
+            if operator in {"once", "historically"}:
+                offsets = tuple(-item for item in offsets)
+        return TemporalTruthNode(
+            kind=operator,
+            children=(parse_temporal_truth_expression(operand, dt),),
+            offsets=offsets,
+        )
+
+    lowered = current.lower()
+    if lowered.startswith("not("):
+        _, operand = _extract_call(current, 3)
+        return TemporalTruthNode(
+            kind="not",
+            children=(parse_temporal_truth_expression(operand, dt),),
+        )
+    if current.startswith("!"):
+        return TemporalTruthNode(
+            kind="not",
+            children=(parse_temporal_truth_expression(current[1:], dt),),
+        )
+
+    # Lowest precedence first.  Rightmost splitting preserves left-associative
+    # And/Or while implication is evaluated by its Boolean truth table.
+    for kind, tokens in (
+        ("implies", ("implies", "->")),
+        ("or", ("or", "||")),
+        ("and", ("and", "&&")),
+    ):
+        found = _find_top_level_operator(current, tokens)
+        if found is None:
+            continue
+        start, end, _ = found
+        left = current[:start]
+        right = current[end:]
+        if not left.strip() or not right.strip():
+            continue
+        return TemporalTruthNode(
+            kind=kind,
+            children=(
+                parse_temporal_truth_expression(left, dt),
+                parse_temporal_truth_expression(right, dt),
+            ),
+        )
+    return TemporalTruthNode(kind="atom", value=current.strip())
+
+
+_FALSE_MASK = 0b01
+_TRUE_MASK = 0b10
+_UNKNOWN_MASK = _FALSE_MASK | _TRUE_MASK
+
+
+def _truth_domain_to_mask(domain) -> int:
+    """Encode a conservative subset of {0, 1} as two bits."""
+    mask = 0
+    for value in domain:
+        value = int(value)
+        if value == 0:
+            mask |= _FALSE_MASK
+        elif value == 1:
+            mask |= _TRUE_MASK
+        else:
+            return _UNKNOWN_MASK
+    return mask or _UNKNOWN_MASK
+
+
+def _truth_mask_to_domain(mask: int):
+    if mask == _FALSE_MASK:
+        return frozenset({0})
+    if mask == _TRUE_MASK:
+        return frozenset({1})
+    return frozenset({0, 1})
+
+
+def _build_binary_truth_table(kind: str):
+    table = [[_UNKNOWN_MASK] * 4 for _ in range(4)]
+    for left in (_FALSE_MASK, _TRUE_MASK, _UNKNOWN_MASK):
+        for right in (_FALSE_MASK, _TRUE_MASK, _UNKNOWN_MASK):
+            result = 0
+            for lhs in (0, 1):
+                if not left & (1 << lhs):
+                    continue
+                for rhs in (0, 1):
+                    if not right & (1 << rhs):
+                        continue
+                    if kind == "and":
+                        value = int(bool(lhs) and bool(rhs))
+                    elif kind == "or":
+                        value = int(bool(lhs) or bool(rhs))
+                    else:
+                        value = int((not bool(lhs)) or bool(rhs))
+                    result |= 1 << value
+            table[left][right] = result or _UNKNOWN_MASK
+    return tuple(tuple(row) for row in table)
+
+
+_NOT_MASK = (0, _TRUE_MASK, _FALSE_MASK, _UNKNOWN_MASK)
+_BOOLEAN_MASK_TABLES = {
+    kind: _build_binary_truth_table(kind)
+    for kind in ("and", "or", "implies")
+}
+
+
+def evaluate_temporal_truth_nodes(
+    roots: Sequence[TemporalTruthNode],
+    dt: float,
+    source_anchors: Iterable[int],
+    trace_start: int,
+    trace_end: int,
+    atomic_domain,
+):
+    """Batch-lift pre-resolved temporal ASTs using shared caches."""
+    roots = tuple(roots)
+    trace_start = int(trace_start)
+    trace_end = int(trace_end)
+    anchors = tuple(
+        anchor
+        for anchor in sorted({int(item) for item in source_anchors})
+        if trace_start <= anchor <= trace_end
+    )
+    cache = {}
+    atomic_cache = {}
+
+    def aggregate(kind, masks):
+        existential = kind in {"once", "eventually"}
+        seen = False
+        can_be_true = not existential
+        can_be_false = existential
+        for mask in masks:
+            seen = True
+            if existential:
+                can_be_true = can_be_true or bool(mask & _TRUE_MASK)
+                can_be_false = can_be_false and bool(mask & _FALSE_MASK)
+                if can_be_true and not can_be_false:
+                    return _TRUE_MASK
+            else:
+                can_be_true = can_be_true and bool(mask & _TRUE_MASK)
+                can_be_false = can_be_false or bool(mask & _FALSE_MASK)
+                if can_be_false and not can_be_true:
+                    return _FALSE_MASK
+        if not seen:
+            return _FALSE_MASK if existential else _TRUE_MASK
+        result = 0
+        if can_be_true:
+            result |= _TRUE_MASK
+        if can_be_false:
+            result |= _FALSE_MASK
+        return result or _UNKNOWN_MASK
+
+    def evaluate(node, anchor):
+        key = (node, int(anchor))
+        if key in cache:
+            return cache[key]
+        if node.kind == "atom":
+            atomic_key = (node.value, int(anchor))
+            if atomic_key not in atomic_cache:
+                atomic_cache[atomic_key] = _truth_domain_to_mask(
+                    atomic_domain(node.value, int(anchor))
+                )
+            result = atomic_cache[atomic_key]
+        elif node.kind == "not":
+            result = _NOT_MASK[evaluate(node.children[0], anchor)]
+        elif node.kind in {"and", "or", "implies"}:
+            result = _BOOLEAN_MASK_TABLES[node.kind][
+                evaluate(node.children[0], anchor)
+            ][evaluate(node.children[1], anchor)]
+        else:
+            child = node.children[0]
+            if node.offsets is None:
+                if node.kind in {"once", "historically"}:
+                    times = range(trace_start, min(trace_end, int(anchor)) + 1)
+                elif node.kind in {"eventually", "globally", "always"}:
+                    times = range(max(trace_start, int(anchor)), trace_end + 1)
+                else:
+                    times = ()
+            else:
+                times = tuple(
+                    int(anchor) + int(offset)
+                    for offset in node.offsets
+                    if trace_start <= int(anchor) + int(offset) <= trace_end
+                )
+            if node.kind in {"previous", "prev", "pre"}:
+                result = evaluate(child, times[0]) if times else _UNKNOWN_MASK
+            else:
+                result = aggregate(
+                    node.kind,
+                    (evaluate(child, time_step) for time_step in times),
+                )
+        cache[key] = result
+        return result
+
+    results = []
+    for root in roots:
+        possible = 0
+        for anchor in anchors:
+            possible |= evaluate(root, anchor)
+            if possible == _UNKNOWN_MASK:
+                break
+        results.append(_truth_mask_to_domain(possible or _UNKNOWN_MASK))
+    return tuple(results)
+
+
+def evaluate_temporal_truth_domains(
+    expressions: Sequence[str],
+    dt: float,
+    source_anchors: Iterable[int],
+    trace_start: int,
+    trace_end: int,
+    atomic_domain,
+):
+    """Batch-lift expression strings through shared temporal AST caches."""
+    return evaluate_temporal_truth_nodes(
+        tuple(
+            parse_temporal_truth_expression(str(expression), float(dt))
+            for expression in expressions
+        ),
+        dt,
+        source_anchors,
+        trace_start,
+        trace_end,
+        atomic_domain,
+    )
+
+
+def evaluate_temporal_truth_domain(
+    expression: str,
+    dt: float,
+    source_anchors: Iterable[int],
+    trace_start: int,
+    trace_end: int,
+    atomic_domain,
+):
+    """Backward-compatible single-expression temporal truth lifting."""
+    return evaluate_temporal_truth_domains(
+        (expression,),
+        dt,
+        source_anchors,
+        trace_start,
+        trace_end,
+        atomic_domain,
+    )[0]
