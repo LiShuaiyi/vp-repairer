@@ -1563,7 +1563,15 @@ class VPConstraintExtraction:
             if a_abrupt is None:
                 continue
             qp_veh_config = self.config.vehicle.qp_veh_config
-            qp_veh_config.a_lon_min = max(qp_veh_config.a_lon_min, a_abrupt)
+            # The monitor uses a strict sign for brakes_abruptly.  A
+            # solution exactly at a_abrupt has zero robustness and is not
+            # compliant, so retain the same small physical-unit margin as the
+            # SMT/manual constraint implementation.
+            strict_margin = 1.0e-2
+            qp_veh_config.a_lon_min = max(
+                qp_veh_config.a_lon_min,
+                float(a_abrupt) + strict_margin,
+            )
             return
 
     def _extract_intersection_constraints_manually(
@@ -3062,13 +3070,13 @@ class VPConstraintExtraction:
 
         return estimated_s_min, estimated_s_max, estimated_v_min, estimated_v_max
 
-    def _longitudinal_reachable_s_intervals(
+    def _longitudinal_reachable_state_intervals(
         self,
         all_states,
         trajectory_clcs,
         horizon,
     ):
-        """Return a sound forward reachable ``s`` envelope for VP."""
+        """Return sound extremal ``(s, v)`` rollouts for longitudinal VP."""
         current_s, current_v, current_a = (
             self._get_velocity_planning_current_conditions(
                 all_states,
@@ -3076,7 +3084,12 @@ class VPConstraintExtraction:
             )
         )
         if current_s is None or horizon <= 0:
-            return np.zeros(horizon), np.full(horizon, float(trajectory_clcs.length()))
+            return (
+                np.zeros(horizon),
+                np.full(horizon, float(trajectory_clcs.length())),
+                np.zeros(horizon),
+                np.full(horizon, float(self.config.vehicle.qp_veh_config.v_lon_max)),
+            )
 
         dt = float(self.config.scenario.dt)
         amin, amax, jmin, jmax = self._get_longitudinal_planning_limits()
@@ -3088,6 +3101,8 @@ class VPConstraintExtraction:
         lower_a = upper_a = float(np.clip(current_a, amin, amax))
         reachable_lower = []
         reachable_upper = []
+        reachable_lower_v = []
+        reachable_upper_v = []
         for _ in range(horizon):
             next_lower_a = max(float(amin), lower_a + float(jmin) * dt)
             next_upper_a = min(float(amax), upper_a + float(jmax) * dt)
@@ -3103,12 +3118,30 @@ class VPConstraintExtraction:
             )
             reachable_lower.append(lower_s)
             reachable_upper.append(upper_s)
+            reachable_lower_v.append(next_lower_v)
+            reachable_upper_v.append(next_upper_v)
             lower_v, upper_v = next_lower_v, next_upper_v
             lower_a, upper_a = next_lower_a, next_upper_a
         return (
             np.asarray(reachable_lower, dtype=float),
             np.asarray(reachable_upper, dtype=float),
+            np.asarray(reachable_lower_v, dtype=float),
+            np.asarray(reachable_upper_v, dtype=float),
         )
+
+    def _longitudinal_reachable_s_intervals(
+        self,
+        all_states,
+        trajectory_clcs,
+        horizon,
+    ):
+        """Return the position projection of the longitudinal VP envelope."""
+        lower_s, upper_s, _, _ = self._longitudinal_reachable_state_intervals(
+            all_states,
+            trajectory_clcs,
+            horizon,
+        )
+        return lower_s, upper_s
 
     @staticmethod
     def _smoothed_curvature_profile(

@@ -908,8 +908,9 @@ class VPPredicateEstimation:
                 world_ego.ref_path_lane.center_vertices, dtype=float
             )
 
-        velocity_reachable_by_time = (
-            self._semantic_in_velocity_reachable_intervals(all_states)
+        velocity_reachable_by_time = self._semantic_in_velocity_reachable_intervals(
+            all_states,
+            trajectory_clcs,
         )
         builder = build_semantic_in_predicate_region_builder(
             self,
@@ -934,24 +935,43 @@ class VPPredicateEstimation:
         self._semantic_in_region_context = context_diagnostics
         return builder, context_diagnostics
 
-    def _semantic_in_velocity_reachable_intervals(self, all_states):
-        """Return conservative per-frame velocity ranges for IN predicates."""
+    def _semantic_in_velocity_reachable_intervals(
+        self,
+        all_states,
+        trajectory_clcs,
+    ):
+        """Return phase-consistent extremal velocity ranges for IN predicates."""
         result = {}
         tc = int(self._tc)
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
-        vehicle_v_max = float(self.config.vehicle.qp_veh_config.v_lon_max)
+        future_states = [state for state in all_states if int(state.time_step) > tc]
+        _, _, reachable_lower_v, reachable_upper_v = (
+            self._longitudinal_reachable_state_intervals(
+                all_states,
+                trajectory_clcs,
+                len(future_states),
+            )
+        )
+        future_index = 0
         for state in all_states:
             step = int(state.time_step)
             velocity = max(0.0, float(getattr(state, "velocity", 0.0)))
             if step <= tc:
                 result[step] = (velocity, velocity)
             else:
-                # IN constraint extraction currently leaves v_max unbounded by
-                # the recorded velocity in both modes; optimization applies
-                # only the configured vehicle cap.  Using [0, original_v]
-                # would therefore look tighter but would not be a proof about
-                # every LP trajectory.
-                result[step] = (0.0, vehicle_v_max)
+                if repair_mode == "deceleration":
+                    result[step] = (
+                        min(float(reachable_lower_v[future_index]), velocity),
+                        velocity,
+                    )
+                elif repair_mode == "acceleration":
+                    result[step] = (
+                        velocity,
+                        max(float(reachable_upper_v[future_index]), velocity),
+                    )
+                else:
+                    raise ValueError(f"Unsupported VP repair mode: {repair_mode!r}")
+                future_index += 1
         return result
 
     def _in_longitudinal_reachability_context(self):

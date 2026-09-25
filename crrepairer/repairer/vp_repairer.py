@@ -719,6 +719,43 @@ class VPTrajectoryRepairer(
         s_hat = self._build_reference_longitudinal_positions(
             all_states, trajectory_clcs
         )
+        future_states = [
+            state for state in all_states if int(state.time_step) > int(self._tc)
+        ]
+        v_hat = np.asarray(
+            [max(0.0, float(state.velocity)) for state in future_states],
+            dtype=float,
+        )
+        if len(v_hat) != len(s_hat):
+            raise RuntimeError(
+                "Recorded position and velocity references have different horizons: "
+                f"len(s_hat)={len(s_hat)}, len(v_hat)={len(v_hat)}."
+            )
+        # Cartesian positions and reported longitudinal velocities in recorded
+        # data can differ slightly from the discrete trapezoidal VP dynamics.
+        # Build the dynamically consistent position trace induced by the
+        # recorded velocities.  Relax only the inconsistent side of the
+        # directional bound: deceleration keeps the larger upper reference,
+        # while acceleration keeps the smaller lower reference.  The repaired
+        # trajectory remains strictly one-sided relative to this feasible
+        # longitudinal representation of the recorded motion.
+        if initial_s is not None and initial_v is not None and len(s_hat):
+            integrated_s_hat = np.empty(len(s_hat), dtype=float)
+            previous_s = float(initial_s)
+            previous_v = max(0.0, float(initial_v))
+            for index, recorded_v in enumerate(v_hat):
+                current_v = max(0.0, float(recorded_v))
+                previous_s += 0.5 * (previous_v + current_v) * dt
+                integrated_s_hat[index] = previous_s
+                previous_v = current_v
+            if repair_mode == "deceleration":
+                s_hat = np.maximum(
+                    np.asarray(s_hat, dtype=float), integrated_s_hat
+                )
+            elif repair_mode == "acceleration":
+                s_hat = np.minimum(
+                    np.asarray(s_hat, dtype=float), integrated_s_hat
+                )
         if repair_mode == "deceleration" and initial_s is not None:
             # A stopped recorded vehicle can jitter a few millimetres
             # backwards after projection.  Such a sample must not become an
@@ -774,6 +811,7 @@ class VPTrajectoryRepairer(
         solve_kwargs = dict(
             dt=dt,
             s_hat=s_hat,
+            v_hat=v_hat,
             vmin=np.asarray(est_v_min),
             vmax=np.asarray(est_v_max),
             smin=np.asarray(est_s_min),

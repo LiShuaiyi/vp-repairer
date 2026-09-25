@@ -390,6 +390,7 @@ class VPOptimization:
         self,
         dt,
         s_hat,
+        v_hat,
         vmin,
         vmax,
         smin,
@@ -408,9 +409,9 @@ class VPOptimization:
         """Solve the unchanged two-stage acceleration LP using cached sparse matrices."""
         arrays = tuple(
             np.asarray(values, dtype=float)
-            for values in (s_hat, vmin, vmax, smin, smax)
+            for values in (s_hat, v_hat, vmin, vmax, smin, smax)
         )
-        s_hat, vmin, vmax, smin, smax = arrays
+        s_hat, v_hat, vmin, vmax, smin, smax = arrays
         template = self._build_acceleration_lp_template(
             dt,
             s_hat,
@@ -427,7 +428,8 @@ class VPOptimization:
         T = template["T"]
         bounds = []
         for t in range(T):
-            lb, ub = float(smin[t]), float(smax[t])
+            lb = max(float(smin[t]), float(s_hat[t]))
+            ub = float(smax[t])
             if lb > ub:
                 raise RuntimeError(
                     "Infeasible acceleration position bounds at "
@@ -436,7 +438,8 @@ class VPOptimization:
                 )
             bounds.append((lb, ub))
         for t in range(T):
-            lb, ub = float(vmin[t]), float(vmax[t])
+            lb = max(float(vmin[t]), float(v_hat[t]))
+            ub = float(vmax[t])
             if lb > ub:
                 raise RuntimeError(
                     "Infeasible acceleration velocity bounds at "
@@ -486,6 +489,7 @@ class VPOptimization:
         self,
         dt,
         s_hat,
+        v_hat,
         vmin,
         vmax,
         smin,
@@ -506,6 +510,7 @@ class VPOptimization:
             return self._solve_acceleration_velocity_planning_lp_cached(
                 dt=dt,
                 s_hat=s_hat,
+                v_hat=v_hat,
                 vmin=vmin,
                 vmax=vmax,
                 smin=smin,
@@ -524,6 +529,7 @@ class VPOptimization:
         return self._solve_velocity_planning_lp_uncached(
             dt=dt,
             s_hat=s_hat,
+            v_hat=v_hat,
             vmin=vmin,
             vmax=vmax,
             smin=smin,
@@ -545,6 +551,7 @@ class VPOptimization:
         self,
         dt,
         s_hat,
+        v_hat,
         vmin,
         vmax,
         smin,
@@ -563,6 +570,7 @@ class VPOptimization:
     ):
         """Solve the longitudinal LP under position, velocity, acceleration, and jerk bounds."""
         s_hat = np.asarray(s_hat, dtype=float)
+        v_hat = np.asarray(v_hat, dtype=float)
         vmin = np.asarray(vmin, dtype=float)
         vmax = np.asarray(vmax, dtype=float)
         smin = np.asarray(smin, dtype=float)
@@ -809,10 +817,11 @@ class VPOptimization:
 
         bounds = []
         for t in range(T):
-            lb = smin[t]
             if repair_mode == "deceleration":
+                lb = smin[t]
                 ub = min(smax[t], s_hat[t])
             elif repair_mode == "acceleration":
+                lb = max(smin[t], s_hat[t])
                 ub = smax[t]
             else:
                 raise ValueError(f"Unsupported VP repair mode: {repair_mode!r}")
@@ -836,8 +845,14 @@ class VPOptimization:
             bounds.append((lb, ub))
 
         for t in range(T):
-            lb = vmin[t]
-            ub = vmax[t]
+            if repair_mode == "deceleration":
+                lb = vmin[t]
+                ub = min(vmax[t], v_hat[t])
+            elif repair_mode == "acceleration":
+                lb = max(vmin[t], v_hat[t])
+                ub = vmax[t]
+            else:
+                raise ValueError(f"Unsupported VP repair mode: {repair_mode!r}")
             if lb > ub:
                 abs_time_step = time_offset + t
                 if repair_mode == "acceleration":
