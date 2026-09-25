@@ -127,7 +127,7 @@ class VPPredicateEstimation:
             )
             if (
                 values_key
-                in {"safe_dist", "in_same_lane", "cut_in", "in_front_of"}
+                in {"safe_dist", "in_same_lane", "in_front_of"}
                 and SemanticINPredicateRegionBuilder.supports_evaluator(
                     evaluator
                 )
@@ -275,15 +275,13 @@ class VPPredicateEstimation:
         domain_dict = self._domain_dict_construct_general(
             predicate_values, self.sat_solver._prop_nodes
         )
-        fixed_rg_count = self._fix_uncontrollable_rg_predicates(
-            domain_dict,
-            self.sat_solver._prop_nodes,
-        )
+        # ``cut_in`` is neither estimated nor fixed from the nominal
+        # monitor trace.  It remains unknown to SAT unless the formula itself
+        # determines its value.
         self._repair_literals = self._rg_controllable_repair_literals(
             self.sat_solver._prop_nodes
         )
         breakdown["infer_domain_dict"] = time.time() - start
-        breakdown["fixed_rg_predicate_count"] = fixed_rg_count
         breakdown["repair_literal_count"] = len(self._repair_literals)
         self.domain_dict_breakdown = breakdown
         return domain_dict
@@ -311,24 +309,6 @@ class VPPredicateEstimation:
             elif "brakes_abruptly" in name and current_positive:
                 literals.append(f"~{alphabet}")
         return list(dict.fromkeys(literals))
-
-    def _fix_uncontrollable_rg_predicates(self, domain_dict, prop_nodes):
-        """Initialize RG facts that velocity planning cannot change.
-
-        A cut-in event is determined by the other vehicle's lateral motion and
-        is not an action available to the ego-only velocity planner.  Its SAT
-        search domain agrees with the monitored trajectory as a permanent
-        singleton fact.
-        """
-        fixed_count = 0
-        for prop_node in prop_nodes:
-            if "cut_in" not in prop_node.name:
-                continue
-            alphabet = prop_node.alphabet[-1]
-            current_value = int(float(prop_node.ttv_value) > 0.0)
-            domain_dict[alphabet] = {current_value}
-            fixed_count += 1
-        return fixed_count
 
     def _build_domain_dict_for_sat_direct(self):
         """Build initial domains and VP-action literals for directly handled rules.
