@@ -6,9 +6,12 @@ import argparse
 import copy
 import json
 import math
+import os
 import time
 from collections import defaultdict
 from pathlib import Path
+
+os.environ["MPLBACKEND"] = "Agg"
 
 import numpy as np
 import shapely
@@ -22,6 +25,7 @@ from crmonitor.predicates.velocity import (
     PredLaneSpeedLimit,
     PredTypeSpeedLimit,
 )
+from crmonitor.predicates.predicate_factory import PredicateFactory
 
 from crrepairer.smt.monitor_wrapper import STLRuleMonitor
 from crrepairer.utils.configuration import RepairerConfiguration
@@ -33,6 +37,17 @@ from .rules import build_rulebook
 
 
 INTERSECTION_RULES = {"R_IN3", "R_IN3_hand_draft", "R_IN4", "R_IN5"}
+IN3_PRIORITY_TERMS = (
+    "turning_right_ego_turning_right_target_same_priority",
+    "turning_right_ego_turning_left_target_same_priority",
+    "turning_right_ego_going_straight_target_same_priority",
+    "turning_left_ego_turning_right_target_same_priority",
+    "turning_left_ego_turning_left_target_same_priority",
+    "turning_left_ego_going_straight_target_same_priority",
+    "going_straight_ego_turning_right_target_same_priority",
+    "going_straight_ego_turning_left_target_same_priority",
+    "going_straight_ego_going_straight_target_same_priority",
+)
 RULE_GROUPS = {"R_G1_R_G3": ("R_G1", "R_G3")}
 SUPPORTED_RULES = {
     "R_G1", "R_G2", "R_G3", "R_IN1", *INTERSECTION_RULES, *RULE_GROUPS
@@ -200,6 +215,55 @@ def _collect_coordinates(geometry, output):
         output.extend(geometry.coords)
 
 
+def _path_interval(reference_lane, region, padding=0.0):
+    if padding:
+        region = region.buffer(float(padding))
+    reference = np.asarray(reference_lane.clcs.reference_path(), dtype=float)
+    overlap = shapely.LineString(reference).intersection(region)
+    coordinates = []
+    _collect_coordinates(overlap, coordinates)
+    projected = []
+    for x, y in coordinates:
+        try:
+            projected.append(float(
+                reference_lane.clcs.convert_to_curvilinear_coords(x, y)[0]
+            ))
+        except Exception:
+            continue
+    return [min(projected), max(projected)] if projected else None
+
+
+def _causes_braking_intervals(target, ego, reference_lane, count, params):
+    result = []
+    target_lane = target.ref_path_lane
+    d_br, a_br = float(params["d_br"]), float(params["a_br"])
+    radius = math.hypot(float(ego.shape.length), float(ego.shape.width)) / 2.0
+    for k in range(count):
+        if target_lane is None or not target.start_time <= k <= target.end_time:
+            result.append(None)
+            continue
+        try:
+            acceleration = float(target.get_lon_state(k, target_lane).a)
+            front = target.front_s(k, target_lane)
+        except Exception:
+            acceleration, front = math.inf, None
+        if front is None or acceleration > a_br:
+            result.append(None)
+            continue
+        projected = []
+        for target_s in (front + radius, front + d_br + radius):
+            for target_d in (-radius - 2.0, radius + 2.0):
+                try:
+                    xy = target_lane.clcs.convert_to_cartesian_coords(target_s, target_d)
+                    projected.append(float(
+                        reference_lane.clcs.convert_to_curvilinear_coords(*xy)[0]
+                    ))
+                except Exception:
+                    continue
+        result.append([min(projected), max(projected)] if len(projected) >= 2 else None)
+    return result
+
+
 def _intersection_signal(monitor, ego, reference_lane, count, rule):
     other_id = int(monitor.other_id)
     target = monitor.world.vehicle_by_id(other_id)
@@ -251,7 +315,7 @@ def _intersection_signal(monitor, ego, reference_lane, count, rule):
         shape = target.shape.rotate_translate_local(state.position, state.orientation)
         target_in_conflict.append(bool(shape.shapely_object.intersects(conflict)))
     clearance = 1.0 if rule in {"R_IN3", "R_IN3_hand_draft"} else 0.6
-    return {
+    result = {
         "conflict_interval": [min(projected), max(projected)],
         # The monitor selected this target as the earliest violating quantified
         # witness. Its route-level priority antecedent is therefore active for
@@ -267,6 +331,64 @@ def _intersection_signal(monitor, ego, reference_lane, count, rule):
         # a longitudinal boundary cell cannot still overlap in Cartesian space.
         "clearance": 0.6 if rule == "R_IN4" else 0.0,
     }
+    if rule not in {"R_IN3", "R_IN3_hand_draft"}:
+        return result
+
+    params = get_traffic_rule_config()["traffic_rules_param"]
+    factory = PredicateFactory(params)
+    vehicle_ids = [ego.id, target.id]
+    priority_terms = [[] for _ in IN3_PRIORITY_TERMS]
+    incoming_left, relevant_light, exact_target_conflict = [], [], []
+    for k in range(count):
+        active = target.start_time <= k <= target.end_time
+        for trace, name in zip(priority_terms, IN3_PRIORITY_TERMS):
+            try:
+                value = active and factory.get_predicate(name).evaluate_boolean(
+                    monitor.world, k, vehicle_ids
+                )
+            except Exception:
+                value = False
+            trace.append(bool(value))
+        try:
+            left = active and factory.get_predicate(
+                "on_incoming_left_of"
+            ).evaluate_boolean(monitor.world, k, vehicle_ids)
+        except Exception:
+            left = False
+        try:
+            light = factory.get_predicate(
+                "relevant_traffic_light"
+            ).evaluate_boolean(monitor.world, k, [ego.id])
+        except Exception:
+            light = False
+        try:
+            target_conflict = active and factory.get_predicate(
+                "in_intersection_conflict_area"
+            ).evaluate_boolean(monitor.world, k, [target.id, ego.id])
+        except Exception:
+            target_conflict = target_in_conflict[k]
+        incoming_left.append(bool(left))
+        relevant_light.append(bool(light))
+        exact_target_conflict.append(bool(target_conflict))
+
+    all_intersection = shapely.unary_union([
+        lanelet.polygon.shapely_object for lanelet in network.lanelets
+        if LaneletType.INTERSECTION in lanelet.lanelet_type
+    ])
+    intersection_interval = _path_interval(
+        reference_lane, all_intersection, 0.5 * float(ego.shape.length)
+    ) or result["conflict_interval"]
+    result.update(
+        priority_terms=priority_terms,
+        incoming_left=incoming_left,
+        relevant_traffic_light=relevant_light,
+        target_in_conflict=exact_target_conflict,
+        intersection_intervals=[intersection_interval],
+        causes_braking_intervals=_causes_braking_intervals(
+            target, ego, reference_lane, count, params
+        ),
+    )
+    return result
 
 
 def extract_problem(monitor, rule, requested_dv, a_min, a_max, max_expansions):

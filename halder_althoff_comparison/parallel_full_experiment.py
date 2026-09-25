@@ -16,6 +16,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from types import SimpleNamespace
 
+os.environ["MPLBACKEND"] = "Agg"
+
 
 SOURCE_FILES = (
     ("vp_repairer_rg1_batch_result_updated.csv", "interstate", "R_G1"),
@@ -84,6 +86,43 @@ def build_manifest(source_dir: Path, highd_root: Path):
         case["case_index"] = index
         result.append(case)
     return result
+
+
+def build_manifest_from_consolidated(path: Path, source_dir: Path, highd_root: Path):
+    """Recreate exactly the case set recorded in the formal consolidated CSV."""
+    path_index = {}
+    for source in source_dir.glob("*.csv"):
+        try:
+            with source.open(newline="", encoding="utf-8") as stream:
+                for row in csv.DictReader(stream):
+                    if row.get("scenario_path"):
+                        path_index[(row.get("scenario_id"), int(row["ego_id"]))] = row["scenario_path"]
+        except (UnicodeDecodeError, csv.Error, KeyError, ValueError):
+            continue
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = [row for row in csv.DictReader(stream) if row.get("row_type") == "case"]
+    cases = []
+    for row in rows:
+        key = (row["scenario_id"], int(row["ego_id"]))
+        scenario_path = path_index.get(key)
+        if not scenario_path:
+            scenario_path = str(highd_root / f"{row['scenario_id']}.xml")
+        scenario_path = Path(scenario_path)
+        if not scenario_path.is_absolute():
+            scenario_path = Path.cwd() / scenario_path
+        cases.append({
+            "case_index": int(row["case_index"]),
+            "scenario_id": row["scenario_id"],
+            "scenario_path": str(scenario_path.resolve()),
+            "ego_id": int(row["ego_id"]),
+            "rule": row["rule"],
+            "scenario_type": row["scenario_type"],
+            "intersection_type": "dataset",
+            "dv": float(row["dv"]),
+            "tc_s": float(row["tc_s"]),
+            "vp_core_time_s": float(row["vp_core_time_s"]),
+        })
+    return cases
 
 
 def _run_case(case, result_dir, timeout_s, max_expansions):
@@ -191,6 +230,12 @@ def _run_case(case, result_dir, timeout_s, max_expansions):
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, old_handler)
+        try:
+            from matplotlib import pyplot as plt
+            plt.ioff()
+            plt.close("all")
+        except Exception:
+            pass
     json_path.write_text(json.dumps(base, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return base
 
@@ -265,12 +310,23 @@ def main(argv=None):
         type=Path,
         default=Path("halder_althoff_comparison/full_results_history_aware"),
     )
+    parser.add_argument(
+        "--case-csv",
+        type=Path,
+        help="use the exact case rows from an existing consolidated CSV",
+    )
     parser.add_argument("--fresh", action="store_true")
     args = parser.parse_args(argv)
     args.result_dir.mkdir(parents=True, exist_ok=True)
     (args.result_dir / "logs").mkdir(exist_ok=True)
     (args.result_dir / "cases").mkdir(exist_ok=True)
-    cases = build_manifest(args.source_dir, args.highd_root)
+    cases = (
+        build_manifest_from_consolidated(
+            args.case_csv, args.source_dir, args.highd_root
+        )
+        if args.case_csv
+        else build_manifest(args.source_dir, args.highd_root)
+    )
     if args.rules:
         selected_rules = set(args.rules)
         cases = [case for case in cases if case["rule"] in selected_rules]

@@ -8,6 +8,7 @@ lexicographic A* implementation are executed directly from the released code.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -22,8 +23,11 @@ from .history_aware_search import execute_history_aware_astar
 
 
 DEFAULT_AUTHOR_SOURCE = Path(
-    "/home/shuaiyi/Downloads/Halder-2022-ITSC/software_data/"
-    "minimum-violation-velocity-planner-master"
+    os.environ.get(
+        "HALDER_AUTHOR_SOURCE",
+        "/home/shuaiyi/Downloads/Halder-2022-ITSC/software_data/"
+        "minimum-violation-velocity-planner-master",
+    )
 )
 
 

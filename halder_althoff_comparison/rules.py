@@ -177,16 +177,45 @@ class StopLineRule(Rule):
 class IntersectionYieldRule(Rule):
     name: str
 
+    def initial_memory(self):
+        return -1 if self.name in {"R_IN3", "R_IN3_hand_draft"} else None
+
     def step(self, previous, current, memory, env):
         signal = env.intersections.get(self.name)
         if signal is None:
             raise ValueError(f"missing intersection_rules.{self.name} signal")
-        if not signal.blocked(current.k):
-            return inf, None
+        if self.name not in {"R_IN3", "R_IN3_hand_draft"}:
+            if not signal.blocked(current.k):
+                return inf, None
+            lower = signal.s_enter - signal.clearance
+            upper = signal.s_exit + signal.clearance
+            return max(lower - current.s, current.s - upper), None
+
+        forbidden_until = int(memory)
+        if forbidden_until < current.k:
+            forbidden_until = -1
+        antecedent = signal.antecedent(current.k)
+        on_intersection = signal.ego_on_intersection(current.s)
+        ego_conflict = signal.ego_in_conflict(current.s)
+        if antecedent and on_intersection and bool(signal.target_in_conflict[current.k]):
+            forbidden_until = max(
+                forbidden_until, current.k + signal.target_clearance_steps
+            )
         lower = signal.s_enter - signal.clearance
         upper = signal.s_exit + signal.clearance
-        # Robustness of s outside [lower, upper]. Boundary contact is neutral.
-        return max(lower - current.s, current.s - upper), None
+        outside_margin = max(lower - current.s, current.s - upper)
+        violations = []
+        if ego_conflict and current.k <= forbidden_until:
+            violations.append(outside_margin)
+        if antecedent and on_intersection and ego_conflict:
+            if signal.target_conflict_in_window(current.k):
+                violations.append(outside_margin)
+            if signal.causes_braking(current.k, current.s):
+                braking = signal.causes_braking_intervals[current.k]
+                violations.append(max(braking[0] - current.s, current.s - braking[1]))
+        if not violations:
+            return inf, forbidden_until
+        return min(violations), forbidden_until
 
 
 @dataclass(frozen=True)
