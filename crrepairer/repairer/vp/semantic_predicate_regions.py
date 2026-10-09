@@ -928,6 +928,9 @@ class SemanticINPredicateRegionBuilder:
                 evaluator, time_step, reachable
             )
 
+        if name == "stop_line_in_front":
+            return self._stop_line_frame(evaluator, reachable)
+
         region = self.region_for(evaluator, prop_name, time_step)
         if region.source.startswith("unsupported:"):
             return FramePredicateEstimate(
@@ -1207,6 +1210,7 @@ class SemanticINPredicateRegionBuilder:
 
     def _stop_line_region(self, evaluator: Any) -> SemanticIntervalSet:
         intervals = []
+        candidates = []
         route_ids = set(self.ego.ref_path_lane.contained_lanelets)
         network = self.world.road_network.lanelet_network
         d_sl = float(getattr(evaluator, "config", {}).get("d_sl", 0.0))
@@ -1234,6 +1238,14 @@ class SemanticINPredicateRegionBuilder:
                 stop_s - self._front_extent - d_sl,
                 stop_s - self._front_extent,
             )
+            s_star = stop_s - self._front_extent - 0.5 * d_sl
+            candidates.append(
+                {
+                    "lanelet_id": int(lanelet_id),
+                    "stop_s": float(stop_s),
+                    "s_star": float(s_star),
+                }
+            )
             lane_bounds = self._lanelet_truth_bounds(lanelet_id)
             if lane_bounds is None:
                 return SemanticIntervalSet.unknown(
@@ -1246,7 +1258,118 @@ class SemanticINPredicateRegionBuilder:
             intervals,
             uncertainty=self.uncertainty,
             source="stop_line",
-            diagnostics={"candidate_count": len(intervals)},
+            diagnostics={
+                "candidate_count": len(candidates),
+                "region_interval_count": len(intervals),
+                "d_sl": float(d_sl),
+                "front_extent": float(self._front_extent),
+                "piecewise_monotone": True,
+                "candidates": tuple(candidates),
+            },
+        )
+
+    @staticmethod
+    def _stop_line_robustness_bounds(
+        reachable: Sequence[float],
+        *,
+        stop_s: float,
+        front_extent: float,
+        d_sl: float,
+        s_star: float,
+    ) -> Tuple[float, float, int]:
+        """Bound stop-line robustness by splitting at its unique maximum.
+
+        On the left of ``s_star`` the robustness is increasing; on the right
+        it is decreasing.  Endpoint evaluation on the one or two resulting
+        monotone segments therefore gives exact extrema over the reachable
+        longitudinal interval.
+        """
+        lower, upper = sorted((float(reachable[0]), float(reachable[1])))
+        split_points = [lower]
+        if lower < float(s_star) < upper:
+            split_points.append(float(s_star))
+        split_points.append(upper)
+
+        def robustness(s_value: float) -> float:
+            delta_s = float(stop_s) - (float(s_value) + float(front_extent))
+            return min(float(d_sl) - delta_s, delta_s)
+
+        values = [robustness(value) for value in split_points]
+        return min(values), max(values), len(split_points) - 1
+
+    def _stop_line_frame(
+        self,
+        evaluator: Any,
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        """Estimate ``stop_line_in_front`` from its piecewise robustness.
+
+        Candidate stop lines are selected from the fixed reference path.  For
+        each candidate, the reachable interval is split at ``s_star`` and the
+        exact robustness range is evaluated without consulting the former
+        inner/outer truth-region classification.
+        """
+        region = self._cached_region(
+            ("stop_line_in_front", id(evaluator)),
+            lambda: self._stop_line_region(evaluator),
+        )
+        if reachable is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN, "stop_line:piecewise", region=region
+            )
+        if not region.complete:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN, "stop_line:piecewise", region=region
+            )
+
+        candidates = tuple(region.diagnostics.get("candidates", ()))
+        d_sl = float(region.diagnostics.get("d_sl", math.nan))
+        front_extent = float(
+            region.diagnostics.get("front_extent", self._front_extent)
+        )
+        lower, upper = sorted((float(reachable[0]), float(reachable[1])))
+        direct_domains = []
+        segment_count = 0
+        for candidate in candidates:
+            robustness_min, robustness_max, segments = (
+                self._stop_line_robustness_bounds(
+                    (lower, upper),
+                    stop_s=float(candidate["stop_s"]),
+                    front_extent=front_extent,
+                    d_sl=d_sl,
+                    s_star=float(candidate["s_star"]),
+                )
+            )
+            segment_count += segments
+            if robustness_min >= self.uncertainty:
+                direct_domains.append(TRUE_DOMAIN)
+            elif robustness_max < -self.uncertainty:
+                direct_domains.append(FALSE_DOMAIN)
+            else:
+                direct_domains.append(UNKNOWN_DOMAIN)
+
+        if not candidates and region.complete:
+            # No relevant stop line exists on the fixed reference path.
+            piecewise_domain = FALSE_DOMAIN
+        elif any(domain == TRUE_DOMAIN for domain in direct_domains):
+            piecewise_domain = TRUE_DOMAIN
+        elif (
+            len(direct_domains) == len(candidates)
+            and direct_domains
+            and all(domain == FALSE_DOMAIN for domain in direct_domains)
+        ):
+            piecewise_domain = FALSE_DOMAIN
+        else:
+            piecewise_domain = UNKNOWN_DOMAIN
+
+        return FramePredicateEstimate(
+            piecewise_domain,
+            "stop_line:piecewise",
+            region=region,
+            diagnostics={
+                "piecewise_domain": sorted(piecewise_domain),
+                "monotone_segment_count": int(segment_count),
+            },
         )
 
     def _stop_sign_region(self) -> SemanticIntervalSet:
