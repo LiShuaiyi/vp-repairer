@@ -1943,27 +1943,38 @@ class VPPredicateEstimation:
                 ("brake", brake_speed),
             ):
                 if key == "lane":
-                    limit_min, limit_max, has_unlimited = (
-                        self._lane_speed_limit_bounds(
+                    segment_domains, segment_diagnostics = (
+                        self._lane_speed_limit_segment_domains(
                             lane_s_min,
                             lane_s_max,
+                            v_min,
+                            v_max,
                             lanelet_clcs=lanelet_clcs,
                         )
                     )
-                    if limit_min is None:
-                        # No applicable traffic-sign limit anywhere in the
-                        # reachable interval: the predicate is always true.
-                        output.append((time_step, 1))
-                        continue
-                    surely_true = v_max <= limit_min
-                    surely_false = (
-                        not has_unlimited
-                        and limit_max is not None
-                        and v_min > limit_max
+                    possible = set()
+                    for domain in segment_domains:
+                        possible.update(domain)
+                    domain = (
+                        frozenset(possible)
+                        if possible
+                        else UNKNOWN_DOMAIN
                     )
-                    output.append(
-                        (time_step, 1 if surely_true else (0 if surely_false else 2))
+                    output.append((
+                        time_step,
+                        1 if domain == TRUE_DOMAIN else (
+                            0 if domain == FALSE_DOMAIN else 2
+                        ),
+                    ))
+                    diagnostics = getattr(
+                        self,
+                        "_vp_lane_speed_limit_segment_diagnostics",
+                        None,
                     )
+                    if diagnostics is None:
+                        diagnostics = {}
+                        self._vp_lane_speed_limit_segment_diagnostics = diagnostics
+                    diagnostics[time_step] = segment_diagnostics
                     continue
 
                 speed_limit = speed_limits[key]
@@ -2104,6 +2115,99 @@ class VPPredicateEstimation:
         if not finite:
             return None, None, True
         return min(finite), max(finite), any(limit is None for limit in matching)
+
+    def _lane_speed_limit_segments(self, s_min, s_max, lanelet_clcs=None):
+        """Return explicit route-position cells and all applicable limits.
+
+        A cell with no projected route lanelet is represented by ``limits=None``
+        and remains unknown during classification.  ``None`` inside a limits
+        tuple denotes an explicitly unlimited lanelet, which is different from
+        an unmapped projection gap.
+        """
+        s_min, s_max = sorted((float(s_min), float(s_max)))
+        profile = tuple(self._lane_speed_limit_profile(lanelet_clcs))
+        tolerance = 1.0e-6
+        points = [s_min, s_max]
+        for start, end, _limit in profile:
+            start, end = sorted((float(start), float(end)))
+            if s_min + tolerance < start < s_max - tolerance:
+                points.append(start)
+            if s_min + tolerance < end < s_max - tolerance:
+                points.append(end)
+        points.sort()
+        deduplicated = [points[0]]
+        for point in points[1:]:
+            if point - deduplicated[-1] > tolerance:
+                deduplicated.append(point)
+            else:
+                deduplicated[-1] = max(deduplicated[-1], point)
+        if len(deduplicated) == 1:
+            deduplicated.append(s_max)
+
+        segments = []
+        for lower, upper in zip(deduplicated[:-1], deduplicated[1:]):
+            probe = 0.5 * (float(lower) + float(upper))
+            matching = []
+            for start, end, limit in profile:
+                start, end = sorted((float(start), float(end)))
+                if start - tolerance <= probe <= end + tolerance:
+                    matching.append(None if limit is None else float(limit))
+            limits = tuple(matching) if matching else None
+            segments.append((float(lower), float(upper), limits))
+        return tuple(segments)
+
+    def _lane_speed_limit_segment_domains(
+        self,
+        s_min,
+        s_max,
+        v_min,
+        v_max,
+        lanelet_clcs=None,
+    ):
+        """Classify lane-speed robustness on every reachable position cell."""
+        v_min, v_max = sorted((float(v_min), float(v_max)))
+        epsilon = 1.0e-5
+        domains = []
+        diagnostics = []
+        verbose_diagnostics = bool(
+            os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
+        )
+        for lower, upper, limits in self._lane_speed_limit_segments(
+            s_min, s_max, lanelet_clcs
+        ):
+            if limits is None:
+                domain = UNKNOWN_DOMAIN
+                finite_limits = ()
+                has_unlimited = False
+            else:
+                finite_limits = tuple(
+                    float(limit) for limit in limits if limit is not None
+                )
+                has_unlimited = any(limit is None for limit in limits)
+                if not finite_limits:
+                    domain = TRUE_DOMAIN
+                elif v_max < min(finite_limits) + epsilon:
+                    domain = TRUE_DOMAIN
+                elif not has_unlimited and v_min >= max(finite_limits) + epsilon:
+                    domain = FALSE_DOMAIN
+                else:
+                    domain = UNKNOWN_DOMAIN
+            domains.append(domain)
+            if verbose_diagnostics:
+                diagnostics.append({
+                    "lower": float(lower),
+                    "upper": float(upper),
+                    "limits": None if limits is None else list(limits),
+                    "domain": sorted(domain),
+                })
+        result_diagnostics = {
+            "analysis_mode": "piecewise_monotone",
+            "analysis_axis": "s,v",
+            "segment_count": len(domains),
+        }
+        if verbose_diagnostics:
+            result_diagnostics["segments"] = diagnostics
+        return tuple(domains), result_diagnostics
 
     def _domain_dict_construct_temporal(
         self,

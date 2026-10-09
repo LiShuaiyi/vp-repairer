@@ -43,12 +43,16 @@ from crrepairer.repairer.vp.predicate_regions import (
     as_closed_interval,
     merge_intervals,
 )
-
-
-TruthDomain = FrozenSet[int]
-FALSE_DOMAIN: TruthDomain = frozenset((0,))
-TRUE_DOMAIN: TruthDomain = frozenset((1,))
-UNKNOWN_DOMAIN: TruthDomain = frozenset((0, 1))
+from crrepairer.repairer.vp.predicate_piecewise import (
+    FALSE_DOMAIN,
+    TRUE_DOMAIN,
+    UNKNOWN_DOMAIN,
+    PiecewiseEstimate,
+    TruthDomain,
+    classify_region_piecewise,
+    estimate_piecewise_monotone_1d,
+    piecewise_diagnostics,
+)
 
 
 def _domain(value: Optional[bool]) -> TruthDomain:
@@ -936,8 +940,10 @@ class SemanticINPredicateRegionBuilder:
             return FramePredicateEstimate(
                 UNKNOWN_DOMAIN, region.source, region=region
             )
-        result = self._classify_region(region, reachable)
-        return FramePredicateEstimate(result, region.source, region=region)
+        result, diagnostics = self._classify_region_estimate(region, reachable)
+        return FramePredicateEstimate(
+            result, region.source, region=region, diagnostics=diagnostics
+        )
 
     def _turning_composite_frame(
         self,
@@ -947,14 +953,20 @@ class SemanticINPredicateRegionBuilder:
         reachable: Optional[Tuple[float, float]],
     ) -> FramePredicateEstimate:
         region = self._turning_region(evaluator._turning_ego)
-        spatial = self._classify_region(region, reachable)
+        spatial, spatial_diagnostics = self._classify_region_estimate(
+            region, reachable
+        )
         if spatial == FALSE_DOMAIN:
             return FramePredicateEstimate(
                 FALSE_DOMAIN,
                 "turning_composite:spatial_false",
                 region=region,
                 gate_domain=UNKNOWN_DOMAIN,
-                diagnostics={"spatial_domain": [0], "gate_skipped": True},
+                diagnostics={
+                    "spatial_domain": [0],
+                    "gate_skipped": True,
+                    **spatial_diagnostics,
+                },
             )
         gate = self._turning_gate_domain(
             evaluator, prop_name, time_step, reachable
@@ -970,7 +982,10 @@ class SemanticINPredicateRegionBuilder:
             "turning_composite",
             region=region,
             gate_domain=gate,
-            diagnostics={"spatial_domain": sorted(spatial)},
+            diagnostics={
+                "spatial_domain": sorted(spatial),
+                **spatial_diagnostics,
+            },
         )
 
     def _turning_gate_domain(
@@ -1189,7 +1204,44 @@ class SemanticINPredicateRegionBuilder:
             return FALSE_DOMAIN
         if reachable is None:
             return UNKNOWN_DOMAIN
-        return region.classify(reachable)
+        return classify_region_piecewise(region, reachable).domain
+
+    @staticmethod
+    def _classify_region_estimate(
+        region: SemanticIntervalSet,
+        reachable: Optional[Sequence[float]],
+    ) -> Tuple[TruthDomain, Dict[str, Any]]:
+        """Return a Boolean-region domain with uniform compact diagnostics."""
+        if bool(region.diagnostics.get("constant_true", False)):
+            return TRUE_DOMAIN, {
+                "analysis_mode": "piecewise_boolean_region",
+                "analysis_axis": "s",
+                "partition_points": [],
+                "segment_count": 0,
+            }
+        if region.complete and not region.outer_true:
+            return FALSE_DOMAIN, {
+                "analysis_mode": "piecewise_boolean_region",
+                "analysis_axis": "s",
+                "partition_points": [],
+                "segment_count": 0,
+            }
+        if reachable is None:
+            return UNKNOWN_DOMAIN, {
+                "analysis_mode": "piecewise_boolean_region",
+                "analysis_axis": "s",
+                "partition_points": [],
+                "segment_count": 0,
+            }
+        estimate = classify_region_piecewise(region, reachable)
+        return estimate.domain, piecewise_diagnostics(
+            estimate,
+            analysis_mode="piecewise_boolean_region",
+            analysis_axis="s",
+            include_segments=bool(
+                os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
+            ),
+        )
 
     # ------------------------------------------------------------------
     # Definition-driven static regions
@@ -1211,6 +1263,7 @@ class SemanticINPredicateRegionBuilder:
     def _stop_line_region(self, evaluator: Any) -> SemanticIntervalSet:
         intervals = []
         candidates = []
+        route_stop_line_count = 0
         route_ids = set(self.ego.ref_path_lane.contained_lanelets)
         network = self.world.road_network.lanelet_network
         d_sl = float(getattr(evaluator, "config", {}).get("d_sl", 0.0))
@@ -1220,6 +1273,7 @@ class SemanticINPredicateRegionBuilder:
             lanelet = network.find_lanelet_by_id(lanelet_id)
             if lanelet.stop_line is None:
                 continue
+            route_stop_line_count += 1
             try:
                 stop_lane_s = min(
                     self.lanelet_clcs.convert_to_curvilinear_coords(
@@ -1239,13 +1293,6 @@ class SemanticINPredicateRegionBuilder:
                 stop_s - self._front_extent,
             )
             s_star = stop_s - self._front_extent - 0.5 * d_sl
-            candidates.append(
-                {
-                    "lanelet_id": int(lanelet_id),
-                    "stop_s": float(stop_s),
-                    "s_star": float(s_star),
-                }
-            )
             lane_bounds = self._lanelet_truth_bounds(lanelet_id)
             if lane_bounds is None:
                 return SemanticIntervalSet.unknown(
@@ -1254,12 +1301,30 @@ class SemanticINPredicateRegionBuilder:
             overlap = self._intersection(stop_window, lane_bounds)
             if overlap is not None:
                 intervals.append(overlap)
+                lane_inner = (
+                    float(lane_bounds[0]) + self.uncertainty,
+                    float(lane_bounds[1]) - self.uncertainty,
+                )
+                if lane_inner[0] > lane_inner[1]:
+                    lane_inner = None
+                candidates.append(
+                    {
+                        "lanelet_id": int(lanelet_id),
+                        "stop_s": float(stop_s),
+                        "s_star": float(s_star),
+                        "stop_window": tuple(map(float, stop_window)),
+                        "lane_interval": tuple(map(float, lane_bounds)),
+                        "certified_lane_interval": lane_inner,
+                        "truth_overlap": tuple(map(float, overlap)),
+                    }
+                )
         return SemanticIntervalSet.from_nominal(
             intervals,
             uncertainty=self.uncertainty,
             source="stop_line",
             diagnostics={
                 "candidate_count": len(candidates),
+                "route_stop_line_count": int(route_stop_line_count),
                 "region_interval_count": len(intervals),
                 "d_sl": float(d_sl),
                 "front_extent": float(self._front_extent),
@@ -1277,37 +1342,63 @@ class SemanticINPredicateRegionBuilder:
         d_sl: float,
         s_star: float,
     ) -> Tuple[float, float, int]:
-        """Bound stop-line robustness by splitting at its unique maximum.
+        """Bound fixed-offset stop-line robustness at monotone endpoints.
 
         On the left of ``s_star`` the robustness is increasing; on the right
-        it is decreasing.  Endpoint evaluation on the one or two resulting
-        monotone segments therefore gives exact extrema over the reachable
-        longitudinal interval.
+        it is decreasing.  The estimate is exact under the VP path model's
+        fixed longitudinal front-offset assumption; callers retain the
+        configured uncertainty band for occupancy/orientation mismatch.
         """
-        lower, upper = sorted((float(reachable[0]), float(reachable[1])))
-        split_points = [lower]
-        if lower < float(s_star) < upper:
-            split_points.append(float(s_star))
-        split_points.append(upper)
+        def robustness(s_value: float) -> float:
+            delta_s = float(stop_s) - (float(s_value) + float(front_extent))
+            return min(float(d_sl) - delta_s, delta_s)
+
+        estimate = estimate_piecewise_monotone_1d(
+            reachable,
+            (s_star,),
+            robustness,
+            uncertainty=0.0,
+        )
+        return (
+            min(segment.robustness_min for segment in estimate.segments),
+            max(segment.robustness_max for segment in estimate.segments),
+            len(estimate.segments),
+        )
+
+    def _stop_line_piecewise_estimate(
+        self,
+        reachable: Sequence[float],
+        *,
+        stop_s: float,
+        front_extent: float,
+        d_sl: float,
+        s_star: float,
+    ) -> PiecewiseEstimate:
+        """Estimate one stop-line candidate under a certified lane gate."""
 
         def robustness(s_value: float) -> float:
             delta_s = float(stop_s) - (float(s_value) + float(front_extent))
             return min(float(d_sl) - delta_s, delta_s)
 
-        values = [robustness(value) for value in split_points]
-        return min(values), max(values), len(split_points) - 1
+        return estimate_piecewise_monotone_1d(
+            reachable,
+            (s_star,),
+            robustness,
+            uncertainty=self.uncertainty,
+        )
 
     def _stop_line_frame(
         self,
         evaluator: Any,
         reachable: Optional[Tuple[float, float]],
     ) -> FramePredicateEstimate:
-        """Estimate ``stop_line_in_front`` from its piecewise robustness.
+        """Estimate ``stop_line_in_front`` from certified piecewise geometry.
 
-        Candidate stop lines are selected from the fixed reference path.  For
-        each candidate, the reachable interval is split at ``s_star`` and the
-        exact robustness range is evaluated without consulting the former
-        inner/outer truth-region classification.
+        A single candidate uses quantitative endpoint bounds only when its
+        lane/lateral gate is certified throughout the reachable interval.
+        Multiple candidates and intervals crossing a gate boundary use the
+        union of certified Boolean truth regions instead; this accounts for
+        different stop-line windows jointly covering the reachable interval.
         """
         region = self._cached_region(
             ("stop_line_in_front", id(evaluator)),
@@ -1327,49 +1418,59 @@ class SemanticINPredicateRegionBuilder:
         front_extent = float(
             region.diagnostics.get("front_extent", self._front_extent)
         )
-        lower, upper = sorted((float(reachable[0]), float(reachable[1])))
-        direct_domains = []
-        segment_count = 0
-        for candidate in candidates:
-            robustness_min, robustness_max, segments = (
-                self._stop_line_robustness_bounds(
-                    (lower, upper),
+        reachable_interval = tuple(
+            sorted((float(reachable[0]), float(reachable[1])))
+        )
+        estimate = None
+        analysis_mode = "piecewise_boolean_region"
+        if not candidates:
+            # No relevant stop line exists on the fixed reference path.
+            piecewise_domain = FALSE_DOMAIN
+        elif len(candidates) == 1:
+            candidate = candidates[0]
+            certified_lane = candidate.get("certified_lane_interval")
+            gate_certified = (
+                certified_lane is not None
+                and float(certified_lane[0]) <= reachable_interval[0]
+                and reachable_interval[1] <= float(certified_lane[1])
+            )
+            if gate_certified:
+                analysis_mode = "piecewise_monotone"
+                estimate = self._stop_line_piecewise_estimate(
+                    reachable_interval,
                     stop_s=float(candidate["stop_s"]),
                     front_extent=front_extent,
                     d_sl=d_sl,
                     s_star=float(candidate["s_star"]),
                 )
-            )
-            segment_count += segments
-            if robustness_min >= self.uncertainty:
-                direct_domains.append(TRUE_DOMAIN)
-            elif robustness_max < -self.uncertainty:
-                direct_domains.append(FALSE_DOMAIN)
             else:
-                direct_domains.append(UNKNOWN_DOMAIN)
-
-        if not candidates and region.complete:
-            # No relevant stop line exists on the fixed reference path.
-            piecewise_domain = FALSE_DOMAIN
-        elif any(domain == TRUE_DOMAIN for domain in direct_domains):
-            piecewise_domain = TRUE_DOMAIN
-        elif (
-            len(direct_domains) == len(candidates)
-            and direct_domains
-            and all(domain == FALSE_DOMAIN for domain in direct_domains)
-        ):
-            piecewise_domain = FALSE_DOMAIN
+                estimate = classify_region_piecewise(region, reachable_interval)
+            piecewise_domain = estimate.domain
         else:
-            piecewise_domain = UNKNOWN_DOMAIN
+            estimate = classify_region_piecewise(region, reachable_interval)
+            piecewise_domain = estimate.domain
+
+        diagnostics = {
+            "piecewise_domain": sorted(piecewise_domain),
+            "candidate_count": len(candidates),
+        }
+        if estimate is not None:
+            diagnostics.update(
+                piecewise_diagnostics(
+                    estimate,
+                    analysis_mode=analysis_mode,
+                    analysis_axis="s",
+                    include_segments=bool(
+                        os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
+                    ),
+                )
+            )
 
         return FramePredicateEstimate(
             piecewise_domain,
             "stop_line:piecewise",
             region=region,
-            diagnostics={
-                "piecewise_domain": sorted(piecewise_domain),
-                "monotone_segment_count": int(segment_count),
-            },
+            diagnostics=diagnostics,
         )
 
     def _stop_sign_region(self) -> SemanticIntervalSet:
@@ -1664,8 +1765,10 @@ class SemanticINPredicateRegionBuilder:
             region = self._build_on_incoming_left_of_region(int(time_step))
             self._timing["region_build"] += time.perf_counter() - started
             self._region_cache[key] = region
-        domain = self._classify_region(region, reachable)
-        return FramePredicateEstimate(domain, region.source, region=region)
+        domain, diagnostics = self._classify_region_estimate(region, reachable)
+        return FramePredicateEstimate(
+            domain, region.source, region=region, diagnostics=diagnostics
+        )
 
     def _build_on_incoming_left_of_region(
         self, time_step: int
@@ -1891,8 +1994,157 @@ class SemanticINPredicateRegionBuilder:
             region = self._build_causes_braking_region(evaluator, int(time_step))
             self._timing["region_build"] += time.perf_counter() - started
             self._region_cache[key] = region
-        domain = self._classify_region(region, reachable)
-        return FramePredicateEstimate(domain, region.source, region=region)
+        if reachable is None or not region.complete:
+            domain = self._classify_region(region, reachable)
+            return FramePredicateEstimate(domain, region.source, region=region)
+        if not region.outer_true:
+            return FramePredicateEstimate(FALSE_DOMAIN, region.source, region=region)
+
+        estimate = self._causes_braking_piecewise_estimate(
+            evaluator, int(time_step), reachable
+        )
+        if estimate is None:
+            domain = self._classify_region(region, reachable)
+            return FramePredicateEstimate(domain, region.source, region=region)
+        diagnostics = piecewise_diagnostics(
+            estimate,
+            analysis_mode="piecewise_monotone",
+            analysis_axis="s",
+            include_segments=bool(
+                os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
+            ),
+        )
+        return FramePredicateEstimate(
+            estimate.domain,
+            "causes_braking_intersection:piecewise",
+            region=region,
+            diagnostics=diagnostics,
+        )
+
+    def _causes_braking_piecewise_estimate(
+        self,
+        evaluator: Any,
+        time_step: int,
+        reachable: Sequence[float],
+    ) -> Optional[PiecewiseEstimate]:
+        """Analyze valid target-path interpolation cells quantitatively.
+
+        Each cell stores the mapped ego-rear value at both endpoints.  Linear
+        interpolation is monotone within that cell, and the distance
+        robustness changes direction only where ``rear-front_target=d_br/2``.
+        Invalid cells remain unknown instead of being bridged by a global
+        linear assumption.
+        """
+        if self.other_id is None:
+            return None
+        try:
+            d_br = float(evaluator.config["d_br"])
+            a_br = float(evaluator.config["a_br"])
+            target = self.world.vehicle_by_id(self.other_id)
+            target_feature = self._target_front_rear(target, int(time_step))
+            if target_feature is None:
+                return None
+            front_target, _, acceleration_target = target_feature
+            if front_target is None or acceleration_target is None:
+                return None
+            cells = self._target_path_rear_cells(target)
+            if cells is None:
+                return None
+            acceleration_robustness = float(
+                evaluator._scale_acc(a_br - float(acceleration_target))
+            )
+            distance_zero = float(evaluator._scale_lon_dist(0.0))
+            distance_uncertainty = max(
+                abs(
+                    float(evaluator._scale_lon_dist(self.uncertainty))
+                    - distance_zero
+                ),
+                abs(
+                    float(evaluator._scale_lon_dist(-self.uncertainty))
+                    - distance_zero
+                ),
+            )
+        except Exception:
+            return None
+        if not (
+            math.isfinite(acceleration_robustness)
+            and math.isfinite(distance_uncertainty)
+        ):
+            return None
+
+        reachable_lower, reachable_upper = sorted(
+            (float(reachable[0]), float(reachable[1]))
+        )
+        estimates = []
+        partition_points = [reachable_lower]
+        covered_until = reachable_lower
+        s_lower_values = np.asarray(cells["s_lower"], dtype=float)
+        s_upper_values = np.asarray(cells["s_upper"], dtype=float)
+        rear_left_values = np.asarray(cells["rear_left"], dtype=float)
+        rear_right_values = np.asarray(cells["rear_right"], dtype=float)
+        valid_values = np.asarray(cells["valid"], dtype=bool)
+        for index, (cell_lower, cell_upper) in enumerate(
+            zip(s_lower_values, s_upper_values)
+        ):
+            lower = max(reachable_lower, float(cell_lower))
+            upper = min(reachable_upper, float(cell_upper))
+            if upper < lower:
+                continue
+            if lower > covered_until + 1.0e-8:
+                return None
+            covered_until = max(covered_until, upper)
+            if not bool(valid_values[index]):
+                # Preserve the existing conservative region semantics for any
+                # reachable interval touching an uncertified mapping cell.
+                return None
+            rear_left = float(rear_left_values[index])
+            rear_right = float(rear_right_values[index])
+            cell_span = float(cell_upper) - float(cell_lower)
+            if cell_span <= 1.0e-12:
+                continue
+
+            def rear_at(s_value: float) -> float:
+                ratio = (float(s_value) - float(cell_lower)) / cell_span
+                return rear_left + ratio * (rear_right - rear_left)
+
+            def robustness(s_value: float) -> float:
+                distance = rear_at(s_value) - float(front_target)
+                distance_robustness = min(distance, d_br - distance)
+                return min(
+                    float(evaluator._scale_lon_dist(distance_robustness)),
+                    acceleration_robustness,
+                )
+
+            critical_points = []
+            rear_delta = rear_right - rear_left
+            critical_rear = float(front_target) + 0.5 * d_br
+            if abs(rear_delta) > 1.0e-12:
+                ratio = (critical_rear - rear_left) / rear_delta
+                if 0.0 < ratio < 1.0:
+                    critical_points.append(
+                        float(cell_lower) + ratio * cell_span
+                    )
+            estimate = estimate_piecewise_monotone_1d(
+                (lower, upper),
+                critical_points,
+                robustness,
+                uncertainty=distance_uncertainty,
+            )
+            estimates.append(estimate)
+            partition_points.extend(estimate.partition_points[1:])
+        if covered_until < reachable_upper - 1.0e-8 or not estimates:
+            return None
+
+        possible = set()
+        segments = []
+        for estimate in estimates:
+            possible.update(estimate.domain)
+            segments.extend(estimate.segments)
+        return PiecewiseEstimate(
+            domain=frozenset(possible) if possible else UNKNOWN_DOMAIN,
+            partition_points=tuple(partition_points),
+            segments=tuple(segments),
+        )
 
     def _build_causes_braking_region(
         self, evaluator: Any, time_step: int
@@ -2000,8 +2252,10 @@ class SemanticINPredicateRegionBuilder:
             vehicle_ids[1] if vehicle_ids[0] == self.ego_id else vehicle_ids[0]
         )
         region = self._same_lane_region(int(target_id), int(time_step))
-        domain = self._classify_region(region, reachable)
-        return FramePredicateEstimate(domain, region.source, region=region)
+        domain, diagnostics = self._classify_region_estimate(region, reachable)
+        return FramePredicateEstimate(
+            domain, region.source, region=region, diagnostics=diagnostics
+        )
 
     def _same_lane_region(
         self, target_id: int, time_step: int
@@ -2330,10 +2584,9 @@ class SemanticINPredicateRegionBuilder:
             float(threshold),
             "in_front_of:longitudinal_boundary",
         )
+        domain, diagnostics = self._classify_region_estimate(region, reachable)
         return FramePredicateEstimate(
-            self._classify_region(region, reachable),
-            region.source,
-            region=region,
+            domain, region.source, region=region, diagnostics=diagnostics
         )
 
     @staticmethod
@@ -2430,10 +2683,9 @@ class SemanticINPredicateRegionBuilder:
             threshold_outer,
             "safe_distance:position_velocity_boundary",
         )
+        domain, diagnostics = self._classify_region_estimate(region, reachable)
         return FramePredicateEstimate(
-            self._classify_region(region, reachable),
-            region.source,
-            region=region,
+            domain, region.source, region=region, diagnostics=diagnostics
         )
 
     def _cut_in_frame(
@@ -2478,13 +2730,17 @@ class SemanticINPredicateRegionBuilder:
             region = self._intersect_semantic_regions(
                 same_lane, lateral, "cut_in:reachable_lane_lateral"
             )
+            domain, region_diagnostics = self._classify_region_estimate(
+                region, reachable
+            )
             return FramePredicateEstimate(
-                self._classify_region(region, reachable),
+                domain,
                 region.source,
                 region=region,
                 diagnostics={
                     "same_lane_source": same_lane.source,
                     "lateral_source": lateral.source,
+                    **region_diagnostics,
                 },
             )
 
@@ -2870,6 +3126,8 @@ class SemanticINPredicateRegionBuilder:
             "s_upper": s_upper,
             "rear_lower": np.minimum(rear_left, rear_right),
             "rear_upper": np.maximum(rear_left, rear_right),
+            "rear_left": rear_left,
+            "rear_right": rear_right,
             "front_lower": np.minimum(front_left, front_right),
             "front_upper": np.maximum(front_left, front_right),
             "valid": valid,
@@ -2992,17 +3250,39 @@ class SemanticINPredicateRegionBuilder:
             return FramePredicateEstimate(
                 UNKNOWN_DOMAIN, "standstill:invalid_threshold"
             )
-        lower, upper = velocity
-        # Monitor boolean semantics use strict inequalities.  Equality remains
-        # false, so no geometric uncertainty band is needed for this exact
-        # velocity interval test.
-        if lower > -epsilon and upper < epsilon:
-            result = TRUE_DOMAIN
-        elif upper <= -epsilon or lower >= epsilon:
-            result = FALSE_DOMAIN
-        else:
-            result = UNKNOWN_DOMAIN
-        return FramePredicateEstimate(result, "standstill:velocity_interval")
+        if epsilon < 0.0:
+            return FramePredicateEstimate(
+                FALSE_DOMAIN, "standstill:negative_threshold"
+            )
+
+        def robustness(velocity_value: float) -> float:
+            return min(
+                float(velocity_value) + epsilon,
+                epsilon - float(velocity_value),
+            )
+
+        estimate = estimate_piecewise_monotone_1d(
+            velocity,
+            (0.0,),
+            robustness,
+            # The reachable velocity interval is already analytic.  Keep the
+            # shared zero-robustness convention explicit without adding a
+            # longitudinal geometry uncertainty to the velocity axis.
+            uncertainty=0.0,
+        )
+        diagnostics = piecewise_diagnostics(
+            estimate,
+            analysis_mode="piecewise_monotone",
+            analysis_axis="v",
+            include_segments=bool(
+                os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
+            ),
+        )
+        return FramePredicateEstimate(
+            estimate.domain,
+            "standstill:piecewise_velocity",
+            diagnostics=diagnostics,
+        )
 
     def _default_vehicle_ids(
         self, evaluator: Any, prop_name: str
