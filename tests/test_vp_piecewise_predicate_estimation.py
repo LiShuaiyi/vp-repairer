@@ -264,3 +264,238 @@ def test_causes_braking_preserves_invalid_mapping_as_unknown_fallback():
         builder._causes_braking_piecewise_estimate(evaluator, 0, (4.0, 6.0))
         is None
     )
+
+
+def _longitudinal_feature_cells(front_values, rear_values=None, valid=None):
+    front_values = np.asarray(front_values, dtype=float)
+    rear_values = np.asarray(
+        front_values - 1.0 if rear_values is None else rear_values,
+        dtype=float,
+    )
+    count = len(front_values) - 1
+    return {
+        "s_lower": np.arange(count, dtype=float),
+        "s_upper": np.arange(1, count + 1, dtype=float),
+        "front_left": front_values[:-1],
+        "front_right": front_values[1:],
+        "rear_left": rear_values[:-1],
+        "rear_right": rear_values[1:],
+        "front_lower": np.minimum(front_values[:-1], front_values[1:]),
+        "front_upper": np.maximum(front_values[:-1], front_values[1:]),
+        "rear_lower": np.minimum(rear_values[:-1], rear_values[1:]),
+        "rear_upper": np.maximum(rear_values[:-1], rear_values[1:]),
+        "valid": (
+            np.ones(count, dtype=bool)
+            if valid is None
+            else np.asarray(valid, dtype=bool)
+        ),
+    }
+
+
+def _endpoint_builder(cells, *, uncertainty=0.1):
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.ego = SimpleNamespace(id=1)
+    builder.uncertainty = float(uncertainty)
+    builder._target_path_rear_cells = lambda _ego, path_lane=None: cells
+    return builder
+
+
+def test_lane_feature_endpoint_mapping_is_nonlinear_and_cache_compatible():
+    cells = _longitudinal_feature_cells(
+        (0.0, 1.0, 4.0), (-1.0, 0.0, 3.0)
+    )
+    builder = _endpoint_builder(cells)
+    endpoints, diagnostics = builder._ego_lane_feature_endpoints(
+        (0.25, 1.75), path_lane=object(), coordinate="front"
+    )
+    assert endpoints == (0.25, 3.25)
+    assert diagnostics["mapping_assumption"] == (
+        "fixed_reference_path_lane_forward"
+    )
+
+    cells.pop("front_left")
+    cells.pop("front_right")
+    endpoints, _ = builder._ego_lane_feature_endpoints(
+        (0.25, 1.75), path_lane=object(), coordinate="front"
+    )
+    assert endpoints == (0.25, 3.25)
+
+
+def test_lane_feature_endpoint_projection_failure_is_unknown():
+    builder = _endpoint_builder(
+        _longitudinal_feature_cells(
+            (0.0, 1.0, 2.0), valid=(True, False)
+        )
+    )
+    endpoints, diagnostics = builder._ego_lane_feature_endpoints(
+        (0.25, 1.75), path_lane=object(), coordinate="front"
+    )
+    assert endpoints is None
+    assert diagnostics["unknown_reason"] == "endpoint_projection_failure"
+
+
+def _vehicle(vehicle_id, lane, *, front=0.0, rear=0.0, velocity=1.0):
+    return SimpleNamespace(
+        id=int(vehicle_id),
+        get_lane=lambda _step: lane,
+        front_s=lambda _step, *args: float(front),
+        rear_s=lambda _step, *args: float(rear),
+        states_cr={0: SimpleNamespace(velocity=float(velocity))},
+        vehicle_param={"a_min": -2.0, "t_react": 1.0},
+    )
+
+
+def _predicate_builder(*, ego_id, vehicles, endpoints, uncertainty=0.1):
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.ego_id = int(ego_id)
+    builder.ego = vehicles[int(ego_id)]
+    builder.world = SimpleNamespace(
+        vehicle_by_id=lambda vehicle_id: vehicles[int(vehicle_id)]
+    )
+    builder.uncertainty = float(uncertainty)
+    builder.reachable_velocity_by_time = {0: (0.0, 2.0)}
+    builder._ego_lane_feature_endpoints = (
+        lambda reachable, path_lane, coordinate: (
+            tuple(map(float, endpoints)),
+            {"analysis_mode": "monotone_endpoint", "coordinate": coordinate},
+        )
+    )
+    builder._longitudinal_cell_region = lambda *args, **kwargs: (
+        (_ for _ in ()).throw(
+            AssertionError("cell-region estimator must not be used")
+        )
+    )
+    builder._constant_path_region = lambda value, source: SimpleNamespace(
+        source=source
+    )
+    return builder
+
+
+def test_in_front_of_endpoint_ranges_cover_both_argument_orders():
+    lane = object()
+    for threshold, expected in (
+        (10.0, TRUE_DOMAIN),
+        (1.0, FALSE_DOMAIN),
+        (3.0, UNKNOWN_DOMAIN),
+        (4.05, UNKNOWN_DOMAIN),
+    ):
+        vehicles = {
+            1: _vehicle(1, lane),
+            2: _vehicle(2, lane, rear=threshold),
+        }
+        builder = _predicate_builder(
+            ego_id=1, vehicles=vehicles, endpoints=(2.0, 4.0)
+        )
+        estimate = builder._in_front_of_frame(0, (1, 2), (0.0, 1.0))
+        assert estimate.domain == expected
+        assert estimate.source == "in_front_of:monotone_endpoint"
+
+    for threshold, expected in (
+        (1.0, TRUE_DOMAIN),
+        (7.0, FALSE_DOMAIN),
+        (5.0, UNKNOWN_DOMAIN),
+        (3.95, UNKNOWN_DOMAIN),
+    ):
+        vehicles = {
+            1: _vehicle(1, lane, front=threshold),
+            2: _vehicle(2, lane),
+        }
+        builder = _predicate_builder(
+            ego_id=2, vehicles=vehicles, endpoints=(4.0, 6.0)
+        )
+        estimate = builder._in_front_of_frame(0, (1, 2), (0.0, 1.0))
+        assert estimate.domain == expected
+
+
+def test_safe_distance_velocity_envelope_covers_both_argument_orders():
+    lane = object()
+    for lead_rear, expected in (
+        (10.0, TRUE_DOMAIN),
+        (0.0, FALSE_DOMAIN),
+        (5.0, UNKNOWN_DOMAIN),
+    ):
+        vehicles = {
+            1: _vehicle(1, lane, velocity=1.0),
+            2: _vehicle(2, lane, rear=lead_rear, velocity=1.0),
+        }
+        builder = _predicate_builder(
+            ego_id=1, vehicles=vehicles, endpoints=(1.0, 3.0)
+        )
+        estimate = builder._safe_distance_frame(0, (1, 2), (0.0, 1.0))
+        assert estimate.domain == expected
+        assert estimate.diagnostics["safe_distance_max"] == 2.75
+        assert estimate.source == "safe_distance:velocity_envelope_endpoint"
+
+    for follow_front, expected in (
+        (1.0, TRUE_DOMAIN),
+        (10.0, FALSE_DOMAIN),
+        (5.0, UNKNOWN_DOMAIN),
+    ):
+        vehicles = {
+            1: _vehicle(1, lane, front=follow_front, velocity=1.0),
+            2: _vehicle(2, lane, velocity=1.0),
+        }
+        builder = _predicate_builder(
+            ego_id=2, vehicles=vehicles, endpoints=(5.0, 7.0)
+        )
+        estimate = builder._safe_distance_frame(0, (1, 2), (0.0, 1.0))
+        assert estimate.domain == expected
+        assert estimate.diagnostics["safe_distance_max"] == 1.25
+
+
+def test_safe_distance_velocity_monotonicity_and_negative_rejection():
+    safe = SemanticINPredicateRegionBuilder._safe_distance_value
+    assert safe(2.0, 2.0, -2.0, -2.0, 1.0) > safe(
+        1.0, 2.0, -2.0, -2.0, 1.0
+    )
+    assert safe(1.0, 2.0, -2.0, -2.0, 1.0) < safe(
+        1.0, 1.0, -2.0, -2.0, 1.0
+    )
+
+    lane = object()
+    vehicles = {
+        1: _vehicle(1, lane),
+        2: _vehicle(2, lane, rear=10.0),
+    }
+    builder = _predicate_builder(
+        ego_id=1, vehicles=vehicles, endpoints=(1.0, 3.0)
+    )
+    builder.reachable_velocity_by_time = {0: (-0.01, 2.0)}
+    estimate = builder._safe_distance_frame(0, (1, 2), (0.0, 1.0))
+    assert estimate.domain == UNKNOWN_DOMAIN
+    assert estimate.diagnostics["unknown_reason"] == (
+        "negative_reachable_velocity"
+    )
+
+
+def test_endpoint_velocity_envelope_is_sound_against_dense_samples():
+    safe = SemanticINPredicateRegionBuilder._safe_distance_value
+    for mapping in (
+        lambda value: value,
+        lambda value: value * value,
+        lambda value: np.sqrt(value + 1.0),
+    ):
+        positions = np.linspace(0.0, 2.0, 101)
+        velocities = np.linspace(0.0, 2.0, 81)
+        samples = np.asarray(
+            [
+                5.0 - mapping(position) - safe(
+                    velocity, 1.0, -2.0, -2.0, 1.0
+                )
+                for position in positions
+                for velocity in velocities
+            ]
+        )
+        endpoint_features = (mapping(0.0), mapping(2.0))
+        safe_values = (
+            safe(0.0, 1.0, -2.0, -2.0, 1.0),
+            safe(2.0, 1.0, -2.0, -2.0, 1.0),
+        )
+        robustness_min = 5.0 - max(endpoint_features) - max(safe_values)
+        robustness_max = 5.0 - min(endpoint_features) - min(safe_values)
+        if robustness_min > 0.1:
+            assert np.all(samples > 0.0)
+        elif robustness_max < -0.1:
+            assert np.all(samples < 0.0)
+        elif np.any(samples > 0.0) and np.any(samples < 0.0):
+            assert robustness_min <= 0.1 and robustness_max >= -0.1

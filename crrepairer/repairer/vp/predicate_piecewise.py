@@ -92,7 +92,7 @@ def _partition_points(
     return tuple(points)
 
 
-def _classify_robustness_range(
+def classify_robustness_range(
     robustness_min: float,
     robustness_max: float,
     *,
@@ -105,6 +105,11 @@ def _classify_robustness_range(
     if robustness_max < -uncertainty:
         return FALSE_DOMAIN
     return UNKNOWN_DOMAIN
+
+
+# Keep the former private name available for local/out-of-tree callers while
+# exposing one shared classifier to predicate-specific estimators.
+_classify_robustness_range = classify_robustness_range
 
 
 def estimate_piecewise_monotone_1d(
@@ -136,7 +141,7 @@ def estimate_piecewise_monotone_1d(
         else:
             robustness_min = min(value_lower, value_upper)
             robustness_max = max(value_lower, value_upper)
-            domain = _classify_robustness_range(
+            domain = classify_robustness_range(
                 robustness_min,
                 robustness_max,
                 uncertainty=uncertainty,

@@ -49,6 +49,7 @@ from crrepairer.repairer.vp.predicate_piecewise import (
     UNKNOWN_DOMAIN,
     PiecewiseEstimate,
     TruthDomain,
+    classify_robustness_range,
     classify_region_piecewise,
     estimate_piecewise_monotone_1d,
     piecewise_diagnostics,
@@ -603,6 +604,7 @@ class SemanticINPredicateRegionBuilder:
         self._incoming_geometry_cache: Optional[Any] = None
         self._target_longitudinal_cache: Dict[Any, Any] = {}
         self._target_path_rear_cells_cache: Dict[Any, Any] = {}
+        self._ego_lane_feature_cache: Dict[Any, Optional[float]] = {}
         self._front_extent, self._rear_extent = self._vehicle_extents()
         self._timing = {
             "initialization": time.perf_counter() - started,
@@ -2540,6 +2542,142 @@ class SemanticINPredicateRegionBuilder:
             },
         )
 
+    def _ego_lane_feature_at_progress(
+        self,
+        progress: float,
+        *,
+        path_lane: Any,
+        coordinate: str,
+    ) -> Optional[float]:
+        """Evaluate an ego footprint endpoint at one VP path progress.
+
+        The sampled path map is used only as a numerical coordinate converter
+        at the requested endpoint.  Its cells are not predicate truth regions.
+        Forward monotonicity is the fixed-reference-path model assumption.
+        """
+        if coordinate not in {"front", "rear"}:
+            return None
+        try:
+            progress = float(progress)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(progress):
+            return None
+
+        cache = getattr(self, "_ego_lane_feature_cache", None)
+        if cache is None:
+            cache = {}
+            self._ego_lane_feature_cache = cache
+        cache_key = (id(path_lane), str(coordinate), round(progress, 10))
+        if cache_key in cache:
+            return cache[cache_key]
+
+        cells = self._target_path_rear_cells(self.ego, path_lane=path_lane)
+        if cells is None:
+            cache[cache_key] = None
+            return None
+        try:
+            lower = np.asarray(cells["s_lower"], dtype=float)
+            upper = np.asarray(cells["s_upper"], dtype=float)
+            valid = np.asarray(cells["valid"], dtype=bool)
+            left_key = f"{coordinate}_left"
+            right_key = f"{coordinate}_right"
+            if left_key in cells and right_key in cells:
+                left = np.asarray(cells[left_key], dtype=float)
+                right = np.asarray(cells[right_key], dtype=float)
+            else:
+                # Compatibility with the compact RG mapping cache.  Under the
+                # lane-forward model, its extrema are the ordered endpoints.
+                left = np.asarray(cells[f"{coordinate}_lower"], dtype=float)
+                right = np.asarray(cells[f"{coordinate}_upper"], dtype=float)
+        except (KeyError, TypeError, ValueError):
+            cache[cache_key] = None
+            return None
+
+        tolerance = 1.0e-8 * max(1.0, abs(progress))
+        # Cells are ordered by path progress.  Only the insertion cell and its
+        # immediate neighbours can contain an endpoint (two cells may meet at
+        # a shared boundary), so avoid a full-array scan for every frame.
+        insertion = int(np.searchsorted(upper, progress, side="left"))
+        candidates = range(
+            max(0, insertion - 1),
+            min(len(upper), insertion + 2),
+        )
+        values = []
+        for index in candidates:
+            if not valid[index]:
+                continue
+            if progress < float(lower[index]) - tolerance:
+                continue
+            if progress > float(upper[index]) + tolerance:
+                continue
+            cell_lower = float(lower[index])
+            cell_upper = float(upper[index])
+            span = cell_upper - cell_lower
+            if not math.isfinite(span) or span <= 1.0e-12:
+                continue
+            fraction = min(1.0, max(0.0, (progress - cell_lower) / span))
+            value = float(left[index]) + fraction * (
+                float(right[index]) - float(left[index])
+            )
+            if math.isfinite(value):
+                values.append(value)
+        if not values:
+            cache[cache_key] = None
+            return None
+
+        # At a shared cell boundary both adjacent interpolants may contribute.
+        # A disagreement larger than the numerical projection band is treated
+        # as failed coordinate evaluation, never as a singleton truth value.
+        projection_tolerance = max(
+            1.0e-6, min(1.0e-2, 0.1 * float(self.uncertainty))
+        )
+        if max(values) - min(values) > projection_tolerance:
+            cache[cache_key] = None
+            return None
+        result = float(sum(values) / len(values))
+        cache[cache_key] = result
+        return result
+
+    def _ego_lane_feature_endpoints(
+        self,
+        reachable: Sequence[float],
+        *,
+        path_lane: Any,
+        coordinate: str,
+    ) -> Tuple[Optional[Tuple[float, float]], Dict[str, Any]]:
+        """Map exactly the two reachable-position endpoints."""
+        reachable_pair = _finite_pair(reachable)
+        diagnostics: Dict[str, Any] = {
+            "analysis_mode": "monotone_endpoint",
+            "analysis_axis": "s",
+            "coordinate": str(coordinate),
+            "mapping_assumption": "fixed_reference_path_lane_forward",
+        }
+        if reachable_pair is None:
+            diagnostics["unknown_reason"] = "reachable_interval_unavailable"
+            return None, diagnostics
+        feature_values = tuple(
+            self._ego_lane_feature_at_progress(
+                progress,
+                path_lane=path_lane,
+                coordinate=coordinate,
+            )
+            for progress in reachable_pair
+        )
+        if any(value is None for value in feature_values):
+            diagnostics["unknown_reason"] = "endpoint_projection_failure"
+            return None, diagnostics
+        result = tuple(float(value) for value in feature_values)
+        diagnostics.update(
+            {
+                "endpoint_progress": [float(value) for value in reachable_pair],
+                "endpoint_features": [float(value) for value in result],
+                "projection_uncertainty": float(self.uncertainty),
+            }
+        )
+        return result, diagnostics
+
     def _in_front_of_frame(
         self,
         time_step: int,
@@ -2548,6 +2686,16 @@ class SemanticINPredicateRegionBuilder:
     ) -> FramePredicateEstimate:
         if len(vehicle_ids) != 2 or self.ego_id not in vehicle_ids:
             return FramePredicateEstimate(UNKNOWN_DOMAIN, "in_front_of:fixed")
+        reachable_pair = _finite_pair(reachable)
+        if reachable_pair is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN,
+                "in_front_of:endpoint_unknown",
+                diagnostics={
+                    "analysis_mode": "monotone_endpoint",
+                    "unknown_reason": "reachable_interval_unavailable",
+                },
+            )
         rear_id, front_id = vehicle_ids
         try:
             if rear_id == self.ego_id:
@@ -2555,38 +2703,56 @@ class SemanticINPredicateRegionBuilder:
                 lane = rear_vehicle.get_lane(int(time_step))
                 front_vehicle = self.world.vehicle_by_id(int(front_id))
                 threshold = front_vehicle.rear_s(int(time_step), lane)
-                cells = self._target_path_rear_cells(
-                    self.ego, path_lane=lane
-                )
                 coordinate = "front"
-                relation = "below"
+                direction = "decreasing"
             else:
                 rear_vehicle = self.world.vehicle_by_id(int(rear_id))
                 lane = rear_vehicle.get_lane(int(time_step))
                 threshold = rear_vehicle.front_s(int(time_step))
-                cells = self._target_path_rear_cells(
-                    self.ego, path_lane=lane
-                )
                 coordinate = "rear"
-                relation = "above"
+                direction = "increasing"
         except Exception:
-            cells = None
+            lane = None
             threshold = None
-        if cells is None or threshold is None or not math.isfinite(float(threshold)):
+        if lane is None or threshold is None or not math.isfinite(float(threshold)):
             return FramePredicateEstimate(
                 UNKNOWN_DOMAIN, "in_front_of:path_mapping_unavailable"
             )
-        region = self._longitudinal_cell_region(
-            cells,
-            coordinate,
-            relation,
-            float(threshold),
-            float(threshold),
-            "in_front_of:longitudinal_boundary",
+        features, diagnostics = self._ego_lane_feature_endpoints(
+            reachable_pair,
+            path_lane=lane,
+            coordinate=coordinate,
         )
-        domain, diagnostics = self._classify_region_estimate(region, reachable)
+        diagnostics = dict(diagnostics)
+        diagnostics["robustness_direction"] = direction
+        if features is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN,
+                "in_front_of:endpoint_unknown",
+                diagnostics=diagnostics,
+            )
+        if rear_id == self.ego_id:
+            robustness = tuple(float(threshold) - value for value in features)
+        else:
+            robustness = tuple(value - float(threshold) for value in features)
+        robustness_min = min(robustness)
+        robustness_max = max(robustness)
+        domain = classify_robustness_range(
+            robustness_min,
+            robustness_max,
+            uncertainty=self.uncertainty,
+        )
+        diagnostics.update(
+            {
+                "robustness_endpoints": [float(value) for value in robustness],
+                "robustness_min": float(robustness_min),
+                "robustness_max": float(robustness_max),
+            }
+        )
         return FramePredicateEstimate(
-            domain, region.source, region=region, diagnostics=diagnostics
+            domain,
+            "in_front_of:monotone_endpoint",
+            diagnostics=diagnostics,
         )
 
     @staticmethod
@@ -2611,10 +2777,20 @@ class SemanticINPredicateRegionBuilder:
     ) -> FramePredicateEstimate:
         if len(vehicle_ids) != 2 or self.ego_id not in vehicle_ids:
             return FramePredicateEstimate(UNKNOWN_DOMAIN, "safe_distance:fixed")
+        reachable_pair = _finite_pair(reachable)
+        if reachable_pair is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN,
+                "safe_distance:endpoint_unknown",
+                diagnostics={
+                    "analysis_mode": "velocity_envelope_endpoint",
+                    "unknown_reason": "reachable_interval_unavailable",
+                },
+            )
         follow_id, lead_id = vehicle_ids
-        follow = self.world.vehicle_by_id(int(follow_id))
-        lead = self.world.vehicle_by_id(int(lead_id))
         try:
+            follow = self.world.vehicle_by_id(int(follow_id))
+            lead = self.world.vehicle_by_id(int(lead_id))
             if lead.get_lane(int(time_step)) is None:
                 region = self._constant_path_region(
                     True, "safe_distance:lead_lane_missing"
@@ -2627,10 +2803,28 @@ class SemanticINPredicateRegionBuilder:
             )
             if velocity_interval is None:
                 raise ValueError("reachable velocity missing")
-            v_lower, v_upper = velocity_interval
+            velocity_pair = _finite_pair(velocity_interval)
+            if velocity_pair is None:
+                raise ValueError("reachable velocity is non-finite")
+            v_lower, v_upper = velocity_pair
+            if v_lower < 0.0:
+                return FramePredicateEstimate(
+                    UNKNOWN_DOMAIN,
+                    "safe_distance:velocity_unknown",
+                    diagnostics={
+                        "analysis_mode": "velocity_envelope_endpoint",
+                        "unknown_reason": "negative_reachable_velocity",
+                        "velocity_interval": [float(v_lower), float(v_upper)],
+                    },
+                )
             a_min_follow = float(follow.vehicle_param.get("a_min"))
             a_min_lead = float(lead.vehicle_param.get("a_min"))
             t_react = float(follow.vehicle_param.get("t_react"))
+            if not all(
+                math.isfinite(value)
+                for value in (a_min_follow, a_min_lead, t_react)
+            ):
+                raise ValueError("safe-distance parameter is non-finite")
             if follow_id == self.ego_id:
                 fixed_velocity = float(lead.states_cr[int(time_step)].velocity)
                 safe_values = [
@@ -2645,11 +2839,8 @@ class SemanticINPredicateRegionBuilder:
                 ]
                 threshold = float(lead.rear_s(int(time_step)))
                 lane = follow.get_lane(int(time_step))
-                cells = self._target_path_rear_cells(self.ego, path_lane=lane)
                 coordinate = "front"
-                relation = "below"
-                threshold_inner = threshold - max(safe_values)
-                threshold_outer = threshold - min(safe_values)
+                direction = "decreasing"
             else:
                 fixed_velocity = float(follow.states_cr[int(time_step)].velocity)
                 safe_values = [
@@ -2664,28 +2855,69 @@ class SemanticINPredicateRegionBuilder:
                 ]
                 threshold = float(follow.front_s(int(time_step)))
                 lane = follow.get_lane(int(time_step))
-                cells = self._target_path_rear_cells(self.ego, path_lane=lane)
                 coordinate = "rear"
-                relation = "above"
-                threshold_inner = threshold + max(safe_values)
-                threshold_outer = threshold + min(safe_values)
+                direction = "increasing"
         except Exception:
-            cells = None
-        if cells is None:
+            lane = None
+            threshold = None
+        if (
+            lane is None
+            or threshold is None
+            or not math.isfinite(float(threshold))
+            or not math.isfinite(float(fixed_velocity))
+            or not all(math.isfinite(float(value)) for value in safe_values)
+        ):
             return FramePredicateEstimate(
                 UNKNOWN_DOMAIN, "safe_distance:path_mapping_unavailable"
             )
-        region = self._longitudinal_cell_region(
-            cells,
-            coordinate,
-            relation,
-            threshold_inner,
-            threshold_outer,
-            "safe_distance:position_velocity_boundary",
+        safe_min = min(float(value) for value in safe_values)
+        safe_max = max(float(value) for value in safe_values)
+        features, diagnostics = self._ego_lane_feature_endpoints(
+            reachable_pair,
+            path_lane=lane,
+            coordinate=coordinate,
         )
-        domain, diagnostics = self._classify_region_estimate(region, reachable)
+        diagnostics = dict(diagnostics)
+        diagnostics.update(
+            {
+                "analysis_mode": "velocity_envelope_endpoint",
+                "robustness_direction": direction,
+                "velocity_interval": [float(v_lower), float(v_upper)],
+                "safe_distance_endpoints": [
+                    float(safe_values[0]),
+                    float(safe_values[1]),
+                ],
+                "safe_distance_min": float(safe_min),
+                "safe_distance_max": float(safe_max),
+            }
+        )
+        if features is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN,
+                "safe_distance:endpoint_unknown",
+                diagnostics=diagnostics,
+            )
+        if follow_id == self.ego_id:
+            robustness_min = float(threshold) - max(features) - safe_max
+            robustness_max = float(threshold) - min(features) - safe_min
+        else:
+            robustness_min = min(features) - float(threshold) - safe_max
+            robustness_max = max(features) - float(threshold) - safe_min
+        domain = classify_robustness_range(
+            robustness_min,
+            robustness_max,
+            uncertainty=self.uncertainty,
+        )
+        diagnostics.update(
+            {
+                "robustness_min": float(robustness_min),
+                "robustness_max": float(robustness_max),
+            }
+        )
         return FramePredicateEstimate(
-            domain, region.source, region=region, diagnostics=diagnostics
+            domain,
+            "safe_distance:velocity_envelope_endpoint",
+            diagnostics=diagnostics,
         )
 
     def _cut_in_frame(
