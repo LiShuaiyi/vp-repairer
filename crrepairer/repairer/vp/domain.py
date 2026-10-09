@@ -7,6 +7,8 @@ import time
 import numpy as np
 from shapely import affinity
 
+from commonroad.scenario.traffic_sign_interpreter import TrafficSignInterpreter
+
 from crrepairer.repairer.vp.semantic_predicate_regions import (
     FALSE_DOMAIN,
     SemanticINPredicateRegionBuilder,
@@ -1922,32 +1924,57 @@ class VPPredicateEstimation:
         fov_speed = []
         brake_speed = []
         speed_limits = self._extract_speed_limit_values()
+        lanelet_clcs = self._get_vp_lanelet_clcs()
+        lane_reachable_intervals = {}
         started = time.time()
         for row in cl_reach:
             time_step = int(row[0])
             v_min = float(row[3])
             v_max = float(row[4])
+            lane_s_min = float(np.asarray(row[1], dtype=float).reshape(-1)[0])
+            lane_s_max = float(np.asarray(row[2], dtype=float).reshape(-1)[0])
+            if lane_s_min > lane_s_max:
+                lane_s_min, lane_s_max = lane_s_max, lane_s_min
+            lane_reachable_intervals[time_step] = (lane_s_min, lane_s_max)
             for key, output in (
                 ("lane", lane_speed),
                 ("type", type_speed),
                 ("fov", fov_speed),
                 ("brake", brake_speed),
             ):
+                if key == "lane":
+                    limit_min, limit_max, has_unlimited = (
+                        self._lane_speed_limit_bounds(
+                            lane_s_min,
+                            lane_s_max,
+                            lanelet_clcs=lanelet_clcs,
+                        )
+                    )
+                    if limit_min is None:
+                        # No applicable traffic-sign limit anywhere in the
+                        # reachable interval: the predicate is always true.
+                        output.append((time_step, 1))
+                        continue
+                    surely_true = v_max <= limit_min
+                    surely_false = (
+                        not has_unlimited
+                        and limit_max is not None
+                        and v_min > limit_max
+                    )
+                    output.append(
+                        (time_step, 1 if surely_true else (0 if surely_false else 2))
+                    )
+                    continue
+
                 speed_limit = speed_limits[key]
                 if speed_limit is None:
                     continue
                 value_min = self._keep_speed_limit_eval(v_min, speed_limit)
                 value_max = self._keep_speed_limit_eval(v_max, speed_limit)
                 output.append(
-                    (
-                        time_step,
-                        (
-                            2
-                            if value_min != value_max
-                            else int(value_min)
-                        ),
-                    )
+                    (time_step, 2 if value_min != value_max else int(value_min))
                 )
+        self._vp_lane_reachable_interval_by_time = lane_reachable_intervals
         predicate_values = {
             "safe_dist": [],
             "in_same_lane": [],
@@ -1991,6 +2018,92 @@ class VPPredicateEstimation:
                 elif "brake" in predicate.base_name:
                     speed_limits["brake"] = speed_limit 
         return speed_limits
+
+    def _lane_speed_limit_evaluator(self):
+        """Return the monitor evaluator defining the lane speed predicate."""
+        for proposition in self.rule_monitor.proposition_nodes:
+            for predicate in proposition.children:
+                base_name = str(getattr(predicate, "base_name", ""))
+                if "lane" in base_name and "speed" in base_name:
+                    return predicate.evaluator
+        return None
+
+    def _lane_speed_limit_profile(self, lanelet_clcs=None):
+        """Build a cached piecewise lane-speed profile on the VP route CLCS."""
+        if lanelet_clcs is None:
+            lanelet_clcs = self._get_vp_lanelet_clcs()
+        evaluator = self._lane_speed_limit_evaluator()
+        if evaluator is None:
+            return ()
+
+        cache = getattr(self, "_vp_lane_speed_limit_profile_cache", None)
+        cache_key = (id(lanelet_clcs), id(evaluator))
+        if cache is not None and cache.get("key") == cache_key:
+            return cache["profile"]
+
+        world = self.rule_monitor.world
+        lanelet_network = world.road_network.lanelet_network
+        ego = world.vehicle_by_id(self.ego_vehicle.obstacle_id)
+        route = getattr(ego, "ref_path_lane", None)
+        route_ids = set(getattr(route, "contained_lanelets", ()) or ())
+        interpreter = TrafficSignInterpreter(
+            evaluator.country, lanelet_network
+        )
+        profile = []
+        for lanelet_id in route_ids:
+            try:
+                lanelet = lanelet_network.find_lanelet_by_id(int(lanelet_id))
+            except Exception:
+                continue
+            progress = []
+            for point in np.asarray(lanelet.center_vertices, dtype=float):
+                try:
+                    progress.append(
+                        float(
+                            lanelet_clcs.convert_to_curvilinear_coords(
+                                float(point[0]), float(point[1])
+                            )[0]
+                        )
+                    )
+                except Exception:
+                    continue
+            if not progress:
+                continue
+            try:
+                speed_limit = interpreter.speed_limit(frozenset({int(lanelet_id)}))
+            except Exception:
+                speed_limit = None
+            profile.append(
+                (min(progress), max(progress), None if speed_limit is None else float(speed_limit))
+            )
+        profile.sort(key=lambda item: (item[0], item[1]))
+        profile = tuple(profile)
+        self._vp_lane_speed_limit_profile_cache = {
+            "key": cache_key,
+            "profile": profile,
+        }
+        return profile
+
+    def _lane_speed_limit_bounds(self, s_min, s_max, lanelet_clcs=None):
+        """Return finite min/max limits and whether an unlimited segment is reachable."""
+        s_min, s_max = sorted((float(s_min), float(s_max)))
+        matching = [
+            limit
+            for start, end, limit in self._lane_speed_limit_profile(lanelet_clcs)
+            if end + 1e-6 >= s_min and start - 1e-6 <= s_max
+        ]
+        if not matching:
+            # Projection gaps should not silently remove the monitor's
+            # nominal limit.  Preserve the old value as a narrow fallback.
+            nominal = self._extract_speed_limit_values()["lane"]
+            if nominal is None:
+                return None, None, True
+            nominal = float(nominal)
+            return nominal, nominal, False
+        finite = [float(limit) for limit in matching if limit is not None]
+        if not finite:
+            return None, None, True
+        return min(finite), max(finite), any(limit is None for limit in matching)
 
     def _domain_dict_construct_temporal(
         self,

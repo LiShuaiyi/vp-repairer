@@ -1395,7 +1395,10 @@ class VPConstraintExtraction:
         v_min = np.zeros(horizon)
         v_max = np.ones(horizon) * math.inf
         self._rg1_safe_distance_lane_constraints = {}
-        speed_limits = self._extract_speed_limit_values() 
+        speed_limits = self._extract_speed_limit_values()
+        lane_reachable_intervals = getattr(
+            self, "_vp_lane_reachable_interval_by_time", {}
+        )
         if self._once_time_mode() == "legacy":
             constraint_propositions = self._sel_prop
             temporal_steps = self._temporal_constraint_steps(all_states)
@@ -1522,8 +1525,22 @@ class VPConstraintExtraction:
                     s_min_list.append(s_low)
                     s_max_list.append(min(s_up, s_up_safe))
                     v_max_list.append(v_up_safe)
-                elif "lane" in prop.name and "speed" in prop.name and speed_limits["lane"] is not None:
-                    v_max_list.append(speed_limits["lane"] - 0.01)
+                elif "lane" in prop.name and "speed" in prop.name:
+                    reachable_interval = lane_reachable_intervals.get(time_step)
+                    if reachable_interval is None:
+                        state = all_states[
+                            time_step - all_states[0].time_step
+                        ]
+                        nominal_s = lanelet_clcs.convert_to_curvilinear_coords(
+                            float(state.position[0]), float(state.position[1])
+                        )[0]
+                        reachable_interval = (nominal_s, nominal_s)
+                    lane_limit, _, _ = self._lane_speed_limit_bounds(
+                        *reachable_interval,
+                        lanelet_clcs=lanelet_clcs,
+                    )
+                    if lane_limit is not None:
+                        v_max_list.append(lane_limit - 0.01)
                 elif "type" in prop.name and "speed" in prop.name and speed_limits["type"] is not None:
                     v_max_list.append(speed_limits["type"] - 0.01)
                 elif "fov" in prop.name and "speed" in prop.name and speed_limits["fov"] is not None:
