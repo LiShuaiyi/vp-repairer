@@ -15,6 +15,7 @@ from crrepairer.repairer.vp.semantic_predicate_regions import (
     TRUE_DOMAIN,
     UNKNOWN_DOMAIN,
     build_semantic_in_predicate_region_builder,
+    estimate_acceleration_predicate_frame,
 )
 from crrepairer.repairer.vp.temporal import (
     evaluate_temporal_truth_domain,
@@ -126,6 +127,10 @@ class VPPredicateEstimation:
             int(time_step): (float(v_min), float(v_max))
             for time_step, _, _, v_min, v_max, _, _ in cl_reach
         }
+        reachable_acceleration_by_time = {
+            int(time_step): (float(a_min), float(a_max))
+            for time_step, _, _, _, _, a_min, a_max in cl_reach
+        }
         semantic_prop_nodes = []
         for prop_node in self.sat_solver._prop_nodes:
             children = list(getattr(prop_node, "children", ()) or ())
@@ -139,7 +144,14 @@ class VPPredicateEstimation:
             )
             if (
                 values_key
-                in {"safe_dist", "in_same_lane", "cut_in", "in_front_of"}
+                in {
+                    "safe_dist",
+                    "in_same_lane",
+                    "cut_in",
+                    "in_front_of",
+                    "brakes_abruptly",
+                    "rel_brakes_abruptly",
+                }
                 and SemanticINPredicateRegionBuilder.supports_evaluator(
                     evaluator
                 )
@@ -155,6 +167,9 @@ class VPPredicateEstimation:
                     reachable_by_time,
                     lanelet_clcs=lanelet_clcs,
                     reachable_velocity_by_time=reachable_velocity_by_time,
+                    reachable_acceleration_by_time=(
+                        reachable_acceleration_by_time
+                    ),
                     fixed_domain_cache=self._semantic_fixed_domain_cache,
                     uncertainty=float(
                         os.environ.get(
@@ -173,7 +188,11 @@ class VPPredicateEstimation:
                 frame_domains = {}
                 possible_values = set()
                 time_steps = sorted(reachable_by_time)
-                needs_temporal_sequence = values_key == "cut_in"
+                needs_temporal_sequence = values_key in {
+                    "cut_in",
+                    "brakes_abruptly",
+                    "rel_brakes_abruptly",
+                }
                 if needs_temporal_sequence:
                     evaluation_order = time_steps
                 else:
@@ -234,6 +253,8 @@ class VPPredicateEstimation:
                     "in_same_lane",
                     "cut_in",
                     "in_front_of",
+                    "brakes_abruptly",
+                    "rel_brakes_abruptly",
                 }:
                     predicate_values[values_key] = [
                         (int(time_step), 2)
@@ -357,13 +378,7 @@ class VPPredicateEstimation:
                 pred_dict, self.sat_solver._prop_nodes
             )
         if "R_G2" in self.config.repair.rules:
-            pred_dict = self._eval_abrupt_brake(
-                0,
-                len(self.ego_vehicle.prediction.trajectory.state_list),
-            )
-            return self._domain_dict_construct_abrupt_brake(
-                pred_dict, self.sat_solver._prop_nodes
-            )
+            return self._build_rg2_reachable_acceleration_domains()
         if any(
             rule in self.config.repair.rules
             for rule in ("R_IN3", "R_IN3_hand_draft")
@@ -1469,7 +1484,125 @@ class VPPredicateEstimation:
                 else:
                     pred_dict[key].add(0)
         return pred_dict
-    
+
+    def _reachable_acceleration_by_time(self, all_states=None):
+        """Return the VP jerk-limited acceleration envelope by frame."""
+        if all_states is None:
+            all_states = self._get_states_with_initial()
+        if not all_states:
+            return {}
+        first_step = int(all_states[0].time_step)
+        current_index = int(self._tc) - first_step
+        if not (0 <= current_index < len(all_states)):
+            return {}
+        try:
+            current_acceleration = float(all_states[current_index].acceleration)
+        except (AttributeError, TypeError, ValueError):
+            return {}
+        if not math.isfinite(current_acceleration):
+            return {}
+
+        amin, amax, jmin, jmax = self._get_longitudinal_planning_limits()
+        future_states = [
+            state for state in all_states if int(state.time_step) > int(self._tc)
+        ]
+        lower, upper = self._rollout_reachable_acceleration_intervals(
+            current_acceleration,
+            len(future_states),
+            dt=float(self.config.scenario.dt),
+            amin=amin,
+            amax=amax,
+            jmin=jmin,
+            jmax=jmax,
+        )
+        result = {}
+        for state in all_states:
+            step = int(state.time_step)
+            if step > int(self._tc):
+                continue
+            try:
+                acceleration = float(state.acceleration)
+            except (AttributeError, TypeError, ValueError):
+                continue
+            if math.isfinite(acceleration):
+                result[step] = (acceleration, acceleration)
+        for state, lower_value, upper_value in zip(future_states, lower, upper):
+            result[int(state.time_step)] = (
+                float(lower_value),
+                float(upper_value),
+            )
+        return result
+
+    def _build_rg2_reachable_acceleration_domains(self):
+        """Build R_G2 domains from affine acceleration robustness bounds."""
+        all_states = self._get_states_with_initial()
+        if not all_states:
+            self.domain_dict_breakdown = {}
+            return {}
+        steps = tuple(sorted(int(state.time_step) for state in all_states))
+        acceleration_by_time = self._reachable_acceleration_by_time(all_states)
+        frame_domains = {}
+        for prop_node in self.sat_solver._prop_nodes:
+            if "brakes_abruptly" not in str(prop_node.name):
+                continue
+            children = list(getattr(prop_node, "children", ()) or ())
+            evaluator = (
+                getattr(children[0], "evaluator", None)
+                if len(children) == 1
+                else None
+            )
+            if evaluator is None:
+                continue
+            if int(getattr(evaluator, "arity", 0) or 0) == 1:
+                vehicle_ids = (int(self.config.repair.ego_id),)
+            elif "__1_0" in str(prop_node.name):
+                vehicle_ids = (
+                    int(self.rule_monitor.other_id),
+                    int(self.config.repair.ego_id),
+                )
+            else:
+                vehicle_ids = (
+                    int(self.config.repair.ego_id),
+                    int(self.rule_monitor.other_id),
+                )
+            frame_domains[str(prop_node.alphabet[-1])] = {
+                step: set(
+                    estimate_acceleration_predicate_frame(
+                        evaluator,
+                        step,
+                        vehicle_ids,
+                        ego_id=int(self.config.repair.ego_id),
+                        world=self.rule_monitor.world,
+                        reachable_acceleration_by_time=acceleration_by_time,
+                    ).domain
+                )
+                for step in steps
+            }
+
+        pred_dict = self._eval_abrupt_brake(
+            0,
+            len(self.ego_vehicle.prediction.trajectory.state_list),
+        )
+        domain_dict = self._domain_dict_construct_abrupt_brake(
+            pred_dict, self.sat_solver._prop_nodes
+        )
+        temporal_domains = self._domain_dict_construct_temporal(
+            {},
+            self.sat_solver._prop_nodes,
+            frame_domains,
+            float(self.config.scenario.dt),
+        )
+        domain_dict.update(temporal_domains)
+        self._predicate_frame_domain_cache = frame_domains
+        self._repair_literals = self._rg_controllable_repair_literals(
+            self.sat_solver._prop_nodes
+        )
+        self.domain_dict_breakdown = {
+            "reachable_acceleration_frames": len(acceleration_by_time),
+            "acceleration_proposition_count": len(frame_domains),
+        }
+        return domain_dict
+
     def _domain_dict_construct_abrupt_brake(self, pred_dict, prop_nodes):
         domain_dict = {}
         for prop_node in prop_nodes:
@@ -2311,6 +2444,10 @@ class VPPredicateEstimation:
             key = "fov_speed"
         elif "brake" in prop_name and "speed" in prop_name:
             key = "brake_speed"
+        elif "rel_brakes_abruptly" in prop_name:
+            key = "rel_brakes_abruptly"
+        elif "brakes_abruptly" in prop_name:
+            key = "brakes_abruptly"
         return key
 
     def _apply_once_operator(self, cut_in):

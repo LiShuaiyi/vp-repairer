@@ -3115,14 +3115,24 @@ class VPConstraintExtraction:
 
         lower_s = upper_s = float(current_s)
         lower_v = upper_v = max(0.0, float(current_v))
-        lower_a = upper_a = float(np.clip(current_a, amin, amax))
+        reachable_lower_a, reachable_upper_a = (
+            self._rollout_reachable_acceleration_intervals(
+                current_a,
+                horizon,
+                dt=dt,
+                amin=amin,
+                amax=amax,
+                jmin=jmin,
+                jmax=jmax,
+            )
+        )
         reachable_lower = []
         reachable_upper = []
         reachable_lower_v = []
         reachable_upper_v = []
-        for _ in range(horizon):
-            next_lower_a = max(float(amin), lower_a + float(jmin) * dt)
-            next_upper_a = min(float(amax), upper_a + float(jmax) * dt)
+        for next_lower_a, next_upper_a in zip(
+            reachable_lower_a, reachable_upper_a
+        ):
             next_lower_v = max(0.0, lower_v + next_lower_a * dt)
             next_upper_v = min(v_max, upper_v + next_upper_a * dt)
             lower_s = max(
@@ -3138,13 +3148,40 @@ class VPConstraintExtraction:
             reachable_lower_v.append(next_lower_v)
             reachable_upper_v.append(next_upper_v)
             lower_v, upper_v = next_lower_v, next_upper_v
-            lower_a, upper_a = next_lower_a, next_upper_a
         return (
             np.asarray(reachable_lower, dtype=float),
             np.asarray(reachable_upper, dtype=float),
             np.asarray(reachable_lower_v, dtype=float),
             np.asarray(reachable_upper_v, dtype=float),
         )
+
+    @staticmethod
+    def _rollout_reachable_acceleration_intervals(
+        current_acceleration,
+        horizon,
+        *,
+        dt,
+        amin,
+        amax,
+        jmin,
+        jmax,
+    ):
+        """Return the jerk-limited acceleration envelope used by VP.
+
+        Keeping this small rollout independent of CLCS construction lets
+        predicate estimation reuse exactly the acceleration dynamics of the
+        longitudinal reachable set without paying for unrelated geometry.
+        """
+        horizon = max(0, int(horizon))
+        lower = upper = float(np.clip(current_acceleration, amin, amax))
+        reachable_lower = np.empty(horizon, dtype=float)
+        reachable_upper = np.empty(horizon, dtype=float)
+        for index in range(horizon):
+            lower = max(float(amin), lower + float(jmin) * float(dt))
+            upper = min(float(amax), upper + float(jmax) * float(dt))
+            reachable_lower[index] = lower
+            reachable_upper[index] = upper
+        return reachable_lower, reachable_upper
 
     def _longitudinal_reachable_s_intervals(
         self,

@@ -107,6 +107,90 @@ def _finite_pair(value: Any) -> Optional[Tuple[float, float]]:
     return (lower, upper) if lower <= upper else (upper, lower)
 
 
+def estimate_acceleration_predicate_frame(
+    evaluator: Any,
+    time_step: int,
+    vehicle_ids: Sequence[int],
+    *,
+    ego_id: int,
+    world: Any,
+    reachable_acceleration_by_time: Mapping[int, Sequence[float]],
+) -> FramePredicateEstimate:
+    """Estimate acceleration predicates over the complete VP envelope.
+
+    Acceleration robustness is affine, so its extrema occur at the reachable
+    acceleration endpoints.  No longitudinal-distance uncertainty is applied
+    on this independent physical axis; exact zero remains unknown through the
+    shared strict-sign classifier.
+    """
+    name = _predicate_name(evaluator)
+    reachable = _finite_pair(
+        reachable_acceleration_by_time.get(int(time_step))
+    )
+    try:
+        threshold = float(evaluator.config["a_abrupt"])
+    except (AttributeError, KeyError, TypeError, ValueError):
+        threshold = math.nan
+    if reachable is None or not math.isfinite(threshold):
+        return FramePredicateEstimate(
+            UNKNOWN_DOMAIN, f"{name}:acceleration_unavailable"
+        )
+
+    ids = tuple(int(item) for item in vehicle_ids)
+    lower, upper = reachable
+    if name == "brakes_abruptly":
+        if ids != (int(ego_id),):
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN, "brakes_abruptly:non_ego"
+            )
+        robustness_min = threshold - upper
+        robustness_max = threshold - lower
+    elif name == "rel_brakes_abruptly" and len(ids) == 2:
+        if ids.count(int(ego_id)) != 1:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN, "rel_brakes_abruptly:unsupported_arguments"
+            )
+        other_index = 1 if ids[0] == int(ego_id) else 0
+        try:
+            other_state = world.vehicle_by_id(ids[other_index]).states_cr[
+                int(time_step)
+            ]
+            other_acceleration = float(other_state.acceleration)
+        except (AttributeError, IndexError, KeyError, TypeError, ValueError):
+            other_acceleration = math.nan
+        if not math.isfinite(other_acceleration):
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN, "rel_brakes_abruptly:target_acceleration_unavailable"
+            )
+        if ids[0] == int(ego_id):
+            robustness_min = -upper + other_acceleration + threshold
+            robustness_max = -lower + other_acceleration + threshold
+        else:
+            robustness_min = -other_acceleration + lower + threshold
+            robustness_max = -other_acceleration + upper + threshold
+    else:
+        return FramePredicateEstimate(
+            UNKNOWN_DOMAIN, f"unsupported_acceleration:{name}"
+        )
+
+    domain = classify_robustness_range(
+        robustness_min,
+        robustness_max,
+        uncertainty=0.0,
+    )
+    return FramePredicateEstimate(
+        domain,
+        f"{name}:reachable_acceleration",
+        diagnostics={
+            "analysis_axis": "a",
+            "acceleration_lower": float(lower),
+            "acceleration_upper": float(upper),
+            "robustness_min": float(robustness_min),
+            "robustness_max": float(robustness_max),
+        },
+    )
+
+
 def _project_points_to_s(
     clcs: Any,
     points: Any,
@@ -494,6 +578,9 @@ class SemanticINPredicateRegionBuilder:
             "cut_in",
         }
     )
+    ACCELERATION_NAMES = frozenset(
+        {"brakes_abruptly", "rel_brakes_abruptly"}
+    )
 
     @classmethod
     def supports_evaluator(cls, evaluator: Any) -> bool:
@@ -507,7 +594,10 @@ class SemanticINPredicateRegionBuilder:
         if getattr(evaluator, "_turning_ego", None) is not None:
             return True
         return _predicate_name(evaluator) in (
-            cls.QUANTITATIVE_NAMES | cls.BOOLEAN_NAMES | cls.TURNING_NAMES
+            cls.QUANTITATIVE_NAMES
+            | cls.BOOLEAN_NAMES
+            | cls.TURNING_NAMES
+            | cls.ACCELERATION_NAMES
         )
 
     def __init__(
@@ -519,6 +609,9 @@ class SemanticINPredicateRegionBuilder:
         *,
         lanelet_clcs: Any = None,
         reachable_velocity_by_time: Optional[
+            Mapping[int, Sequence[float]]
+        ] = None,
+        reachable_acceleration_by_time: Optional[
             Mapping[int, Sequence[float]]
         ] = None,
         fixed_domain_cache: Optional[Dict[Any, TruthDomain]] = None,
@@ -573,6 +666,11 @@ class SemanticINPredicateRegionBuilder:
         self.reachable_velocity_by_time = {
             int(step): pair
             for step, value in (reachable_velocity_by_time or {}).items()
+            if (pair := _finite_pair(value)) is not None
+        }
+        self.reachable_acceleration_by_time = {
+            int(step): pair
+            for step, value in (reachable_acceleration_by_time or {}).items()
             if (pair := _finite_pair(value)) is not None
         }
         self.uncertainty = max(0.0, float(uncertainty))
@@ -897,6 +995,18 @@ class SemanticINPredicateRegionBuilder:
         name = _predicate_name(evaluator)
         if evaluator is None:
             return FramePredicateEstimate(UNKNOWN_DOMAIN, "missing_evaluator")
+
+        if name in self.ACCELERATION_NAMES:
+            return estimate_acceleration_predicate_frame(
+                evaluator,
+                time_step,
+                vehicle_ids,
+                ego_id=self.ego_id,
+                world=self.world,
+                reachable_acceleration_by_time=(
+                    self.reachable_acceleration_by_time
+                ),
+            )
 
         if name == "in_same_lane":
             return self._same_lane_frame(
@@ -3580,4 +3690,5 @@ __all__ = [
     "INPredicateRegionBuilder",
     "INSemanticRegionEstimator",
     "build_semantic_in_predicate_region_builder",
+    "estimate_acceleration_predicate_frame",
 ]
