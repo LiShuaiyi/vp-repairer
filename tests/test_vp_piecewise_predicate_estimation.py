@@ -2,7 +2,9 @@ from types import SimpleNamespace
 
 import math
 import numpy as np
+import pytest
 
+from crrepairer.repairer.vp.predicate_regions import ClosedInterval
 from crrepairer.repairer.vp.predicate_piecewise import (
     FALSE_DOMAIN,
     TRUE_DOMAIN,
@@ -13,6 +15,8 @@ from crrepairer.repairer.vp.predicate_piecewise import (
 from crrepairer.repairer.vp.semantic_predicate_regions import (
     SemanticINPredicateRegionBuilder,
     SemanticIntervalSet,
+    _SignedDistanceGeometry,
+    _signed_distance_robustness_range,
 )
 from crrepairer.repairer.vp.domain import VPPredicateEstimation
 
@@ -80,6 +84,494 @@ def test_piecewise_boolean_region_preserves_uncertainty_band():
     assert classify_region_piecewise(region, (-0.05, 0.2)).domain == UNKNOWN_DOMAIN
     assert classify_region_piecewise(region, (0.2, 0.8)).domain == TRUE_DOMAIN
     assert classify_region_piecewise(region, (1.2, 1.4)).domain == FALSE_DOMAIN
+
+
+def _identity_distance_evaluator(name="test_predicate"):
+    return SimpleNamespace(
+        predicate_name=name,
+        _scale_lon_dist=lambda value: float(value),
+    )
+
+
+def _nominal_region(intervals, *, complete=True, source="nominal_test"):
+    base = SemanticIntervalSet.from_nominal(
+        intervals,
+        uncertainty=0.1,
+        source=source,
+        complete=complete,
+        diagnostics={"nominal_intervals": tuple(intervals)},
+    )
+    return base
+
+
+def _continuous_test_builder(*, uncertainty=0.1):
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.uncertainty = float(uncertainty)
+    builder._signed_distance_geometry_cache = {}
+    builder._scaled_longitudinal_uncertainty_cache = {}
+    builder._evaluator_semantic_key_cache = {}
+    return builder
+
+
+def test_lanelet_and_conflict_predicates_default_to_quantitative_metadata():
+    expected = {
+        "at_traffic_sign_stop",
+        "relevant_traffic_light",
+        "on_lanelet_with_type_intersection",
+        "in_intersection_conflict_area",
+        "on_incoming_left_of",
+    }
+
+    assert expected <= SemanticINPredicateRegionBuilder.QUANTITATIVE_NAMES
+    assert expected.isdisjoint(SemanticINPredicateRegionBuilder.BOOLEAN_NAMES)
+
+
+def test_acceleration_predicates_have_a_separate_quantitative_metadata_group():
+    expected = {"brakes_abruptly", "rel_brakes_abruptly"}
+
+    assert expected == SemanticINPredicateRegionBuilder.ACCELERATION_NAMES
+    assert expected.isdisjoint(SemanticINPredicateRegionBuilder.BOOLEAN_NAMES)
+
+
+def test_signed_distance_single_interval_exact_inside_outside_and_boundary():
+    geometry = _SignedDistanceGeometry.from_intervals(((0.0, 10.0),))
+    evaluator = _identity_distance_evaluator()
+
+    inside = _signed_distance_robustness_range(
+        geometry, (2.0, 4.0), evaluator
+    )
+    outside = _signed_distance_robustness_range(
+        geometry, (-3.0, -2.0), evaluator
+    )
+    crossing = _signed_distance_robustness_range(
+        geometry, (-0.05, 0.05), evaluator
+    )
+    containing_peak = _signed_distance_robustness_range(
+        geometry, (4.0, 6.0), evaluator
+    )
+
+    assert inside == (2.0, 4.0, (2.0, 4.0))
+    assert outside == (-3.0, -2.0, (-3.0, -2.0))
+    assert crossing[:2] == (-0.05, 0.05)
+    assert containing_peak == (4.0, 5.0, (4.0, 5.0, 6.0))
+
+
+def test_signed_distance_merges_adjacent_components_and_uses_gap_midpoint():
+    geometry = _SignedDistanceGeometry.from_intervals(
+        ((0.0, 1.0), (1.0, 2.0), (4.0, 5.0))
+    )
+    result = _signed_distance_robustness_range(
+        geometry, (2.5, 3.5), _identity_distance_evaluator()
+    )
+
+    assert [(item.lower, item.upper) for item in geometry.components] == [
+        (0.0, 2.0),
+        (4.0, 5.0),
+    ]
+    assert geometry.component_midpoints == (1.0, 4.5)
+    assert geometry.gap_midpoints == (3.0,)
+    assert result == (-1.0, -0.5, (2.5, 3.0, 3.5))
+
+
+@pytest.mark.parametrize(
+    ("reachable", "expected"),
+    [
+        ((2.0, 4.0), TRUE_DOMAIN),
+        ((-3.0, -2.0), FALSE_DOMAIN),
+        ((-0.05, 0.05), UNKNOWN_DOMAIN),
+    ],
+)
+def test_continuous_region_frame_classifies_reachable_range(
+    reachable, expected
+):
+    builder = _continuous_test_builder()
+    estimate = builder._continuous_region_frame(
+        _identity_distance_evaluator("at_traffic_sign_stop"),
+        "at_traffic_sign_stop",
+        _nominal_region(((0.0, 10.0),)),
+        reachable,
+    )
+
+    assert estimate.domain == expected
+    assert estimate.source == "continuous_signed_distance"
+
+
+def test_continuous_region_constant_false_and_geometry_fallback():
+    builder = _continuous_test_builder()
+    evaluator = _identity_distance_evaluator("relevant_traffic_light")
+    empty = SemanticIntervalSet.empty("no_relevant_lanelet")
+    incomplete = SemanticIntervalSet.unknown("projection_failed")
+
+    constant_false = builder._continuous_region_frame(
+        evaluator, "relevant_traffic_light", empty, (0.0, 1.0)
+    )
+    fallback = builder._continuous_region_frame(
+        evaluator, "relevant_traffic_light", incomplete, (0.0, 1.0)
+    )
+
+    assert constant_false.domain == FALSE_DOMAIN
+    assert constant_false.source == "constant_false_topology"
+    assert fallback.domain == UNKNOWN_DOMAIN
+    assert fallback.source == "region_fallback"
+    assert fallback.diagnostics["fallback_source"] == "projection_failed"
+
+
+def test_conflict_continuous_range_retains_shape_ambiguity_fallback():
+    builder = _continuous_test_builder()
+    evaluator = _identity_distance_evaluator(
+        "in_intersection_conflict_area"
+    )
+    region = SemanticIntervalSet(
+        inner_true=(ClosedInterval(2.0, 4.0),),
+        outer_true=(ClosedInterval(1.0, 5.0),),
+        complete=True,
+        source="ego_conflict:boolean_lanelet_assignment",
+        diagnostics={"nominal_intervals": ((2.0, 4.0),)},
+    )
+
+    estimate = builder._continuous_region_frame(
+        evaluator,
+        "in_intersection_conflict_area",
+        region,
+        (1.2, 1.8),
+    )
+
+    assert estimate.domain == UNKNOWN_DOMAIN
+    assert estimate.source == "region_fallback"
+    assert estimate.diagnostics["fallback_reason"] == (
+        "conflict_occupancy_ambiguity"
+    )
+
+
+def test_continuous_region_reuses_cached_static_geometry():
+    builder = _continuous_test_builder()
+    evaluator = _identity_distance_evaluator(
+        "on_lanelet_with_type_intersection"
+    )
+    region = _nominal_region(((0.0, 2.0), (4.0, 6.0)))
+
+    builder._continuous_region_frame(
+        evaluator, "on_lanelet_with_type_intersection", region, (0.2, 0.8)
+    )
+    cached = next(iter(builder._signed_distance_geometry_cache.values()))
+    builder._continuous_region_frame(
+        evaluator, "on_lanelet_with_type_intersection", region, (4.2, 4.8)
+    )
+
+    assert len(builder._signed_distance_geometry_cache) == 1
+    assert next(iter(builder._signed_distance_geometry_cache.values())) is cached
+
+
+def test_conflict_dispatch_only_estimates_varying_ego_argument():
+    builder = _continuous_test_builder()
+    builder.ego_id = 1
+    builder.other_id = 2
+    region = _nominal_region(((0.0, 2.0),), source="ego_conflict")
+    builder.region_for = lambda *_args, **_kwargs: region
+    fixed_calls = []
+    builder._fixed_domain = lambda _e, _t, ids: (
+        fixed_calls.append(tuple(ids)) or FALSE_DOMAIN
+    )
+    evaluator = SimpleNamespace(
+        predicate_name="in_intersection_conflict_area",
+        arity=2,
+        _scale_lon_dist=lambda value: float(value),
+    )
+
+    ego_estimate = builder._estimate_frame_uncached(
+        evaluator,
+        "in_intersection_conflict_area__0_1",
+        0,
+        (1, 2),
+        (0.2, 0.8),
+    )
+    target_estimate = builder._estimate_frame_uncached(
+        evaluator,
+        "in_intersection_conflict_area__1_0",
+        0,
+        (2, 1),
+        (0.2, 0.8),
+    )
+
+    assert ego_estimate.source == "continuous_signed_distance"
+    assert target_estimate.source == "fixed_target_conflict"
+    assert fixed_calls == [(2, 1)]
+
+
+def _turning_quantitative_builder(fixed_values, *, region=None):
+    builder = _continuous_test_builder()
+    builder.ego_id = 1
+    builder.other_id = 2
+    builder._fixed_cache = {}
+    builder._timing = {"fixed_gate": 0.0}
+    builder._evaluator_semantic_key_cache = {}
+    region = region or _nominal_region(
+        ((0.0, 10.0),), source="turning:turning_left"
+    )
+    builder._turning_region = lambda _turning: region
+    calls = []
+
+    def fixed_value(atom, _step, ids, **_kwargs):
+        calls.append((_predicate_name_for_test(atom), tuple(ids)))
+        return fixed_values.get(_predicate_name_for_test(atom))
+
+    builder._fixed_robustness_value = fixed_value
+    builder._turning_gate_domain = lambda *_args, **_kwargs: TRUE_DOMAIN
+    return builder, calls
+
+
+def _predicate_name_for_test(evaluator):
+    value = getattr(evaluator, "predicate_name", "")
+    return str(getattr(value, "value", value))
+
+
+def _turning_composite(
+    name,
+    *,
+    priority_kind="same_priority",
+    with_oncoming=False,
+):
+    evaluator = SimpleNamespace(
+        predicate_name=name,
+        _turning_ego=_identity_distance_evaluator("turning_left"),
+        _turning_target=SimpleNamespace(predicate_name="turning_target"),
+    )
+    setattr(
+        evaluator,
+        "_same_priority"
+        if priority_kind == "same_priority"
+        else "_target_has_priority",
+        SimpleNamespace(predicate_name=priority_kind),
+    )
+    if with_oncoming:
+        evaluator._on_oncoming_of = SimpleNamespace(predicate_name="oncoming")
+    return evaluator
+
+
+@pytest.mark.parametrize(
+    ("reachable", "expected"),
+    [
+        ((2.0, 4.0), TRUE_DOMAIN),
+        ((-3.0, -2.0), FALSE_DOMAIN),
+        ((-0.05, 0.05), UNKNOWN_DOMAIN),
+    ],
+)
+def test_turning_composite_ego_interval_inside_outside_and_boundary(
+    reachable, expected
+):
+    builder, _ = _turning_quantitative_builder(
+        {"turning_target": 5.0, "same_priority": 5.0}
+    )
+    evaluator = _turning_composite(
+        "turning_left_ego_turning_right_target_same_priority"
+    )
+
+    estimate = builder._turning_composite_frame(
+        evaluator, str(evaluator.predicate_name), 0, reachable
+    )
+
+    assert estimate.domain == expected
+    assert estimate.source == "continuous_turning_composite"
+
+
+@pytest.mark.parametrize("false_gate", ["turning_target", "same_priority"])
+def test_turning_composite_false_target_or_same_priority_gate(false_gate):
+    values = {"turning_target": 2.0, "same_priority": 2.0}
+    values[false_gate] = -1.0
+    builder, calls = _turning_quantitative_builder(values)
+    evaluator = _turning_composite(
+        "turning_left_ego_turning_right_target_same_priority"
+    )
+
+    estimate = builder._turning_composite_frame(
+        evaluator, str(evaluator.predicate_name), 0, (2.0, 4.0)
+    )
+
+    assert estimate.domain == FALSE_DOMAIN
+    assert estimate.source == "constant_false_gate"
+    assert ("turning_target", (2,)) in calls
+    assert ("same_priority", (1, 2)) in calls
+
+
+def test_turning_composite_target_priority_order_and_fixed_cap():
+    builder, calls = _turning_quantitative_builder(
+        {"turning_target": 3.0, "target_has_priority": 0.5}
+    )
+    evaluator = _turning_composite(
+        "turning_right_target_turning_left_ego_target_has_priority",
+        priority_kind="target_has_priority",
+    )
+
+    estimate = builder._turning_composite_frame(
+        evaluator, str(evaluator.predicate_name), 0, (2.0, 4.0)
+    )
+
+    assert estimate.domain == TRUE_DOMAIN
+    assert estimate.diagnostics["fixed_cap"] == 0.5
+    assert estimate.diagnostics["robustness_min"] == 0.5
+    assert ("target_has_priority", (2, 1)) in calls
+
+
+@pytest.mark.parametrize(
+    ("name", "oncoming_value", "expected"),
+    [
+        (
+            "turning_right_target_turning_left_ego_"
+            "target_has_priority_oncoming",
+            1.0,
+            TRUE_DOMAIN,
+        ),
+        (
+            "turning_right_target_turning_left_ego_"
+            "target_has_priority_not_oncoming",
+            1.0,
+            FALSE_DOMAIN,
+        ),
+        (
+            "turning_right_target_turning_left_ego_"
+            "target_has_priority_not_oncoming",
+            -1.0,
+            TRUE_DOMAIN,
+        ),
+    ],
+)
+def test_turning_composite_oncoming_sign_direction(
+    name, oncoming_value, expected
+):
+    builder, calls = _turning_quantitative_builder(
+        {
+            "turning_target": 2.0,
+            "target_has_priority": 2.0,
+            "oncoming": oncoming_value,
+        }
+    )
+    evaluator = _turning_composite(
+        name, priority_kind="target_has_priority", with_oncoming=True
+    )
+
+    estimate = builder._turning_composite_frame(
+        evaluator, name, 0, (2.0, 4.0)
+    )
+
+    assert estimate.domain == expected
+    assert ("oncoming", (2, 1)) in calls
+
+
+def test_turning_composite_gate_failure_uses_boolean_region_fallback():
+    builder, _ = _turning_quantitative_builder(
+        {"turning_target": None, "same_priority": 2.0}
+    )
+    evaluator = _turning_composite(
+        "turning_left_ego_turning_right_target_same_priority"
+    )
+
+    estimate = builder._turning_composite_frame(
+        evaluator, str(evaluator.predicate_name), 0, (2.0, 4.0)
+    )
+
+    assert estimate.domain == TRUE_DOMAIN
+    assert estimate.source == "region_fallback"
+    assert estimate.diagnostics["fallback_source"] == "turning_composite"
+
+
+_TURNING_COMPOSITE_VARIANTS = (
+    "turning_right_ego_turning_right_target_same_priority",
+    "turning_right_ego_turning_left_target_same_priority",
+    "turning_right_ego_going_straight_target_same_priority",
+    "turning_left_ego_turning_right_target_same_priority",
+    "turning_left_ego_turning_left_target_same_priority",
+    "turning_left_ego_going_straight_target_same_priority",
+    "going_straight_ego_turning_right_target_same_priority",
+    "going_straight_ego_turning_left_target_same_priority",
+    "going_straight_ego_going_straight_target_same_priority",
+    "turning_right_target_turning_right_ego_target_has_priority",
+    "turning_right_target_turning_left_ego_target_has_priority_not_oncoming",
+    "turning_right_target_going_straight_ego_target_has_priority",
+    "going_straight_target_turning_right_ego_target_has_priority",
+    "going_straight_target_turning_left_ego_target_has_priority_not_oncoming",
+    "going_straight_target_going_straight_ego_target_has_priority",
+    "turning_left_target_turning_left_ego_target_has_priority",
+    "turning_left_target_turning_right_ego_target_has_priority",
+    "turning_left_target_going_straight_ego_target_has_priority",
+    "turning_right_target_turning_left_ego_target_has_priority_oncoming",
+    "going_straight_target_turning_left_ego_target_has_priority_oncoming",
+)
+
+
+@pytest.mark.parametrize("name", _TURNING_COMPOSITE_VARIANTS)
+def test_all_turning_priority_variants_use_continuous_estimator(name):
+    same_priority = "same_priority" in name
+    with_oncoming = "oncoming" in name
+    oncoming_value = -1.0 if "not_oncoming" in name else 1.0
+    priority_name = "same_priority" if same_priority else "target_has_priority"
+    values = {"turning_target": 2.0, priority_name: 2.0}
+    if with_oncoming:
+        values["oncoming"] = oncoming_value
+    builder, _ = _turning_quantitative_builder(values)
+    evaluator = _turning_composite(
+        name,
+        priority_kind=priority_name,
+        with_oncoming=with_oncoming,
+    )
+
+    estimate = builder._turning_composite_frame(
+        evaluator, name, 0, (2.0, 4.0)
+    )
+
+    assert estimate.domain == TRUE_DOMAIN
+    assert estimate.source == "continuous_turning_composite"
+
+
+def test_fixed_turning_gate_robustness_is_cached_per_frame_and_ids():
+    calls = []
+    evaluator = SimpleNamespace(
+        predicate_name="target_turning",
+        config={},
+        evaluate_robustness=lambda _world, step, ids: (
+            calls.append((step, tuple(ids))) or 1.5
+        ),
+    )
+    predicate_cache = SimpleNamespace(get_robustness=lambda *_args: None)
+    vehicle = SimpleNamespace(predicate_cache=predicate_cache)
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.world = SimpleNamespace(vehicle_by_id=lambda _vehicle_id: vehicle)
+    builder._fixed_cache = {}
+    builder._timing = {"fixed_gate": 0.0}
+    builder._evaluator_semantic_key_cache = {}
+
+    first = builder._fixed_robustness_value(evaluator, 3, (2,))
+    second = builder._fixed_robustness_value(evaluator, 3, (2,))
+
+    assert first == second == 1.5
+    assert calls == [(3, (2,))]
+
+
+def test_fixed_topology_robustness_reuses_value_across_frame_aliases():
+    calls = []
+    evaluator = SimpleNamespace(
+        predicate_name="same_priority",
+        config={},
+        evaluate_robustness=lambda _world, step, ids: (
+            calls.append((step, tuple(ids))) or 0.75
+        ),
+    )
+    predicate_cache = SimpleNamespace(get_robustness=lambda *_args: None)
+    vehicle = SimpleNamespace(predicate_cache=predicate_cache)
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.world = SimpleNamespace(vehicle_by_id=lambda _vehicle_id: vehicle)
+    builder._fixed_cache = {}
+    builder._timing = {"fixed_gate": 0.0}
+    builder._evaluator_semantic_key_cache = {}
+
+    first = builder._fixed_robustness_value(
+        evaluator, 3, (1, 2), cache_across_time=True
+    )
+    second = builder._fixed_robustness_value(
+        evaluator, 7, (1, 2), cache_across_time=True
+    )
+
+    assert first == second == 0.75
+    assert calls == [(3, (1, 2))]
 
 
 def _incoming_quantitative_builder(

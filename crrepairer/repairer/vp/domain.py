@@ -812,7 +812,10 @@ class VPPredicateEstimation:
                 ).lower()
                 if hasattr(evaluator, "_turning_ego"):
                     classification = "temporal_turning_lift"
-                elif base_name in builder.QUANTITATIVE_NAMES:
+                elif (
+                    base_name in builder.QUANTITATIVE_NAMES
+                    or base_name in builder.ACCELERATION_NAMES
+                ):
                     classification = "temporal_quantitative_lift"
                 else:
                     classification = "temporal_boolean_lift"

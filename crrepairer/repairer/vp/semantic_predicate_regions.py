@@ -1,4 +1,4 @@
-"""Definition-driven truth regions for intersection predicates.
+"""Definition-driven robustness regions for intersection predicates.
 
 The velocity planner changes the ego vehicle's longitudinal progress along a
 fixed reference path.  For many intersection predicates, the monitor
@@ -7,10 +7,13 @@ definition can therefore be represented as a set of longitudinal intervals:
 * ``inner_true`` is guaranteed to be part of the predicate's true set;
 * ``outer_true`` is guaranteed to contain the predicate's complete true set.
 
-For an ego reachable interval ``R`` this gives the sound three-valued test
+For an ego reachable interval ``R`` this gives the conservative three-valued
+fallback
 
 ``R subset inner_true -> {1}``, ``R disjoint outer_true -> {0}``, otherwise
-``{0, 1}``.
+``{0, 1}``.  Predicates with reliable nominal path geometry use their
+continuous signed-distance robustness by default; the inner/outer regions are
+retained for incomplete or ambiguous geometry.
 
 Unlike the older experimental estimator, this module never fits a region to
 the ego vehicle's recorded predicate trace.  It derives boundaries from the
@@ -428,6 +431,118 @@ class FramePredicateEstimate:
         return next(iter(self.domain))
 
 
+@dataclass(frozen=True)
+class _SignedDistanceGeometry:
+    """Cached critical geometry for a union of longitudinal truth intervals."""
+
+    components: Tuple[ClosedInterval, ...]
+    component_midpoints: Tuple[float, ...]
+    gap_midpoints: Tuple[float, ...]
+
+    @classmethod
+    def from_intervals(
+        cls, intervals: Iterable[Sequence[float]]
+    ) -> "_SignedDistanceGeometry":
+        components = merge_intervals(intervals)
+        component_midpoints = tuple(
+            0.5 * (item.lower + item.upper) for item in components
+        )
+        gap_midpoints = tuple(
+            0.5 * (left.upper + right.lower)
+            for left, right in zip(components[:-1], components[1:])
+        )
+        return cls(components, component_midpoints, gap_midpoints)
+
+    def signed_distance(self, progress: float) -> float:
+        """Return ``max_i min(s-a_i, b_i-s)`` for non-empty components."""
+        progress = float(progress)
+        if not math.isfinite(progress) or not self.components:
+            raise ValueError("signed-distance geometry is empty or non-finite")
+        return max(
+            min(progress - item.lower, item.upper - progress)
+            for item in self.components
+        )
+
+    def critical_points(
+        self, reachable: Sequence[float]
+    ) -> Tuple[float, ...]:
+        """Return endpoints and in-range component/gap extrema once each."""
+        reachable_pair = _finite_pair(reachable)
+        if reachable_pair is None:
+            raise ValueError("reachable interval is unavailable")
+        lower, upper = reachable_pair
+        candidates = [lower, upper]
+        candidates.extend(
+            point
+            for point in self.component_midpoints + self.gap_midpoints
+            if lower <= point <= upper
+        )
+        points = []
+        for point in sorted(candidates):
+            if not points or point - points[-1] > 1.0e-9:
+                points.append(float(point))
+        return tuple(points)
+
+
+def _scaled_longitudinal_uncertainty(
+    evaluator: Any, uncertainty: float
+) -> float:
+    """Convert a metric longitudinal band to evaluator robustness units."""
+    scale = evaluator._scale_lon_dist
+    zero = float(scale(0.0))
+    result = max(
+        abs(float(scale(float(uncertainty))) - zero),
+        abs(float(scale(-float(uncertainty))) - zero),
+    )
+    if not math.isfinite(result):
+        raise ValueError("non-finite scaled longitudinal uncertainty")
+    return result
+
+
+def _signed_distance_robustness_range(
+    geometry: _SignedDistanceGeometry,
+    reachable: Sequence[float],
+    evaluator: Any,
+) -> Tuple[float, float, Tuple[float, ...]]:
+    """Evaluate the exact extrema of a union signed-distance robustness."""
+    points = geometry.critical_points(reachable)
+    raw_values = tuple(geometry.signed_distance(point) for point in points)
+    if not raw_values or not all(
+        math.isfinite(value) for value in raw_values
+    ):
+        raise ValueError("non-finite signed-distance robustness")
+    # Longitudinal robustness scaling is monotone, so transform only the two
+    # extrema rather than every critical point.
+    raw_min, raw_max = min(raw_values), max(raw_values)
+    scaler = getattr(evaluator, "_scaler", None)
+    constants = getattr(scaler, "_scale_constants", None)
+    max_distance = getattr(constants, "MAX_LONG_DIST", None)
+    if scaler is not None and getattr(scaler, "scale", None) is False:
+        robustness_min, robustness_max = float(raw_min), float(raw_max)
+    elif (
+        scaler is not None
+        and getattr(scaler, "scale", None) is True
+        and max_distance is not None
+        and math.isfinite(float(max_distance))
+        and float(max_distance) > 0.0
+    ):
+        denominator = float(max_distance)
+
+        def scale_known(value: float) -> float:
+            return max(-1.0, min(1.0, float(value) / denominator))
+
+        robustness_min = scale_known(raw_min)
+        robustness_max = scale_known(raw_max)
+    else:
+        robustness_min = float(evaluator._scale_lon_dist(raw_min))
+        robustness_max = float(evaluator._scale_lon_dist(raw_max))
+    if not (
+        math.isfinite(robustness_min) and math.isfinite(robustness_max)
+    ):
+        raise ValueError("non-finite scaled signed-distance robustness")
+    return robustness_min, robustness_max, points
+
+
 class _ProgressMap:
     """Monotone map from monitor lane progress to VP trajectory progress."""
 
@@ -529,7 +644,7 @@ class _ProgressMap:
 
 
 class SemanticINPredicateRegionBuilder:
-    """Build monitor-definition-based regions for IN predicates.
+    """Build monitor-definition-based robustness models for IN predicates.
 
     Parameters
     ----------
@@ -561,19 +676,19 @@ class SemanticINPredicateRegionBuilder:
     QUANTITATIVE_NAMES = frozenset(
         {
             "stop_line_in_front",
+            "at_traffic_sign_stop",
             "relevant_traffic_light",
             "on_lanelet_with_type_intersection",
+            "in_intersection_conflict_area",
             "in_front_of",
             "keeps_safe_distance_prec",
             "causes_braking_intersection",
             "in_standstill",
+            "on_incoming_left_of",
         }
     )
     BOOLEAN_NAMES = frozenset(
         {
-            "at_traffic_sign_stop",
-            "on_incoming_left_of",
-            "in_intersection_conflict_area",
             "in_same_lane",
             "cut_in",
         }
@@ -614,7 +729,7 @@ class SemanticINPredicateRegionBuilder:
         reachable_acceleration_by_time: Optional[
             Mapping[int, Sequence[float]]
         ] = None,
-        fixed_domain_cache: Optional[Dict[Any, TruthDomain]] = None,
+        fixed_domain_cache: Optional[Dict[Any, Any]] = None,
         uncertainty: float = 0.10,
     ) -> None:
         started = time.perf_counter()
@@ -696,6 +811,10 @@ class SemanticINPredicateRegionBuilder:
         self._cut_in_single_lane_cache: Dict[Any, TruthDomain] = {}
         self._turning_spatial_domain_cache: Dict[Any, TruthDomain] = {}
         self._lanelet_bounds_cache: Dict[int, Optional[Tuple[float, float]]] = {}
+        self._signed_distance_geometry_cache: Dict[
+            Any, Optional[_SignedDistanceGeometry]
+        ] = {}
+        self._scaled_longitudinal_uncertainty_cache: Dict[Any, float] = {}
         # These caches contain only definition-derived route geometry and
         # fixed target-trajectory features.  In particular, no entry is fitted
         # from the recorded ego predicate trace.
@@ -848,9 +967,12 @@ class SemanticINPredicateRegionBuilder:
             possible = set()
             for step in steps:
                 possible.update(
-                    self._classify_region(
-                        region, self.reachable_by_time.get(int(step))
-                    )
+                    self._continuous_region_frame(
+                        turning_evaluator,
+                        f"turning:{name}",
+                        region,
+                        self.reachable_by_time.get(int(step)),
+                    ).domain
                 )
                 if possible == {0, 1}:
                     break
@@ -931,6 +1053,12 @@ class SemanticINPredicateRegionBuilder:
             "cached_frame_count": len(self._frame_cache),
             "cached_turning_spatial_domain_count": len(
                 self._turning_spatial_domain_cache
+            ),
+            "cached_signed_distance_geometry_count": len(
+                self._signed_distance_geometry_cache
+            ),
+            "cached_scaled_longitudinal_uncertainty_count": len(
+                self._scaled_longitudinal_uncertainty_cache
             ),
             "cached_target_frame_count": len(self._target_longitudinal_cache),
             "cached_target_path_mapping_count": len(
@@ -1031,6 +1159,33 @@ class SemanticINPredicateRegionBuilder:
             fixed = self._fixed_domain(evaluator, time_step, vehicle_ids)
             return FramePredicateEstimate(fixed, "fixed_target_conflict")
 
+        if name in {
+            "at_traffic_sign_stop",
+            "relevant_traffic_light",
+            "on_lanelet_with_type_intersection",
+        }:
+            if vehicle_ids != (self.ego_id,):
+                fixed = self._fixed_domain(evaluator, time_step, vehicle_ids)
+                return FramePredicateEstimate(fixed, "fixed_non_ego_predicate")
+            region = self.region_for(evaluator, prop_name, time_step)
+            return self._continuous_region_frame(
+                evaluator, name, region, reachable
+            )
+
+        if name == "in_intersection_conflict_area":
+            if (
+                len(vehicle_ids) != 2
+                or vehicle_ids[0] != self.ego_id
+                or self.other_id is None
+                or vehicle_ids[1] != self.other_id
+            ):
+                fixed = self._fixed_domain(evaluator, time_step, vehicle_ids)
+                return FramePredicateEstimate(fixed, "fixed_target_conflict")
+            region = self.region_for(evaluator, prop_name, time_step)
+            return self._continuous_region_frame(
+                evaluator, name, region, reachable
+            )
+
         if name == "in_standstill":
             return self._standstill_frame(evaluator, time_step)
 
@@ -1057,6 +1212,145 @@ class SemanticINPredicateRegionBuilder:
             result, region.source, region=region, diagnostics=diagnostics
         )
 
+    def _region_fallback_frame(
+        self,
+        predicate_name: str,
+        region: SemanticIntervalSet,
+        reachable: Optional[Tuple[float, float]],
+        *,
+        reason: str,
+    ) -> FramePredicateEstimate:
+        """Classify with the retained Boolean inner/outer implementation."""
+        domain, diagnostics = self._classify_region_estimate(region, reachable)
+        return FramePredicateEstimate(
+            domain,
+            "region_fallback",
+            region=region,
+            diagnostics={
+                "predicate": str(predicate_name),
+                "fallback_reason": str(reason),
+                "fallback_source": region.source,
+                **diagnostics,
+            },
+        )
+
+    def _longitudinal_uncertainty(self, evaluator: Any) -> float:
+        """Return the cached metric-to-robustness uncertainty conversion."""
+        key = (self._semantic_evaluator_key(evaluator), float(self.uncertainty))
+        cache = self._scaled_longitudinal_uncertainty_cache
+        if key not in cache:
+            cache[key] = _scaled_longitudinal_uncertainty(
+                evaluator, self.uncertainty
+            )
+        return cache[key]
+
+    def _continuous_region_frame(
+        self,
+        evaluator: Any,
+        predicate_name: str,
+        region: SemanticIntervalSet,
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        """Estimate a lanelet/conflict truth region by signed distance."""
+        if region.complete and not region.outer_true:
+            return FramePredicateEstimate(
+                FALSE_DOMAIN,
+                "constant_false_topology",
+                region=region,
+                diagnostics={
+                    "predicate": str(predicate_name),
+                    "topology_source": region.source,
+                },
+            )
+        if not region.complete:
+            return self._region_fallback_frame(
+                predicate_name, region, reachable, reason="incomplete_geometry"
+            )
+        nominal = region.diagnostics.get("nominal_intervals")
+        if nominal is None:
+            return self._region_fallback_frame(
+                predicate_name, region, reachable, reason="nominal_geometry_missing"
+            )
+        try:
+            geometry_key = (
+                "signed_distance",
+                str(predicate_name),
+                id(region),
+            )
+            if geometry_key not in self._signed_distance_geometry_cache:
+                self._signed_distance_geometry_cache[geometry_key] = (
+                    _SignedDistanceGeometry.from_intervals(nominal)
+                )
+            geometry = self._signed_distance_geometry_cache[geometry_key]
+            if geometry is None or not geometry.components:
+                return FramePredicateEstimate(
+                    FALSE_DOMAIN,
+                    "constant_false_topology",
+                    region=region,
+                    diagnostics={
+                        "predicate": str(predicate_name),
+                        "topology_source": region.source,
+                    },
+                )
+            robustness_min, robustness_max, points = (
+                _signed_distance_robustness_range(
+                    geometry, reachable, evaluator
+                )
+            )
+            scaled_uncertainty = self._longitudinal_uncertainty(evaluator)
+            domain = classify_robustness_range(
+                robustness_min,
+                robustness_max,
+                uncertainty=scaled_uncertainty,
+            )
+            if str(predicate_name) == "in_intersection_conflict_area":
+                # The monitor assigns the complete oriented vehicle shape to
+                # conflict lanelets.  The nominal longitudinal interval is
+                # exact only away from the lateral/rotation ambiguity band
+                # certified by the retained inner/outer construction.  Do
+                # not let a one-dimensional signed distance collapse that
+                # band to a singleton: this is precisely a geometry-
+                # ambiguity fallback, not a nominal-value override.
+                fallback_domain, _ = self._classify_region_estimate(
+                    region, reachable
+                )
+                if domain != fallback_domain:
+                    return self._region_fallback_frame(
+                        predicate_name,
+                        region,
+                        reachable,
+                        reason="conflict_occupancy_ambiguity",
+                    )
+        except Exception as exc:
+            return self._region_fallback_frame(
+                predicate_name,
+                region,
+                reachable,
+                reason=type(exc).__name__,
+            )
+        diagnostics = {
+            "predicate": str(predicate_name),
+            "nominal_source": region.source,
+            "component_count": len(geometry.components),
+            "robustness_min": float(robustness_min),
+            "robustness_max": float(robustness_max),
+            "scaled_uncertainty": float(scaled_uncertainty),
+        }
+        if os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG"):
+            diagnostics.update(
+                {
+                    "component_midpoints": list(geometry.component_midpoints),
+                    "gap_midpoints": list(geometry.gap_midpoints),
+                    "critical_points": list(points),
+                }
+            )
+        return FramePredicateEstimate(
+            domain,
+            "continuous_signed_distance",
+            region=region,
+            diagnostics=diagnostics,
+        )
+
     def _turning_composite_frame(
         self,
         evaluator: Any,
@@ -1064,6 +1358,179 @@ class SemanticINPredicateRegionBuilder:
         time_step: int,
         reachable: Optional[Tuple[float, float]],
     ) -> FramePredicateEstimate:
+        quantitative = self._turning_composite_quantitative_estimate(
+            evaluator, prop_name, time_step, reachable
+        )
+        if quantitative is not None:
+            return quantitative
+        return self._turning_composite_region_fallback(
+            evaluator, prop_name, time_step, reachable
+        )
+
+    def _turning_composite_quantitative_estimate(
+        self,
+        evaluator: Any,
+        prop_name: str,
+        time_step: int,
+        reachable: Optional[Tuple[float, float]],
+    ) -> Optional[FramePredicateEstimate]:
+        """Estimate a turning conjunction from one ego tent and fixed caps."""
+        region = self._turning_region(evaluator._turning_ego)
+        if region.complete and not region.outer_true:
+            return FramePredicateEstimate(
+                FALSE_DOMAIN,
+                "constant_false_topology",
+                region=region,
+                diagnostics={
+                    "predicate": _predicate_name(evaluator),
+                    "turning_source": region.source,
+                },
+            )
+        nominal = region.diagnostics.get("nominal_intervals")
+        if (
+            not region.complete
+            or nominal is None
+            or reachable is None
+            or self.other_id is None
+        ):
+            return None
+        try:
+            turning_name = _predicate_name(evaluator._turning_ego)
+            geometry_key = (
+                "turning_signed_distance",
+                turning_name,
+                id(region),
+            )
+            if geometry_key not in self._signed_distance_geometry_cache:
+                self._signed_distance_geometry_cache[geometry_key] = (
+                    _SignedDistanceGeometry.from_intervals(nominal)
+                )
+            geometry = self._signed_distance_geometry_cache[geometry_key]
+            if geometry is None or not geometry.components:
+                return FramePredicateEstimate(
+                    FALSE_DOMAIN,
+                    "constant_false_topology",
+                    region=region,
+                    diagnostics={"turning_type": turning_name},
+                )
+            ego_lower, ego_upper, points = _signed_distance_robustness_range(
+                geometry, reachable, evaluator._turning_ego
+            )
+            scaled_uncertainty = self._longitudinal_uncertainty(
+                evaluator._turning_ego
+            )
+
+            gate_values = {
+                "target_turning": self._fixed_robustness_value(
+                    evaluator._turning_target,
+                    time_step,
+                    (self.other_id,),
+                )
+            }
+            if hasattr(evaluator, "_same_priority"):
+                gate_values["same_priority"] = self._fixed_robustness_value(
+                    evaluator._same_priority,
+                    time_step,
+                    (self.ego_id, self.other_id),
+                    cache_across_time=True,
+                )
+            elif hasattr(evaluator, "_target_has_priority"):
+                gate_values["target_has_priority"] = (
+                    self._fixed_robustness_value(
+                        evaluator._target_has_priority,
+                        time_step,
+                        (self.other_id, self.ego_id),
+                        cache_across_time=True,
+                    )
+                )
+            else:
+                return None
+
+            if hasattr(evaluator, "_on_oncoming_of"):
+                oncoming = self._fixed_robustness_value(
+                    evaluator._on_oncoming_of,
+                    time_step,
+                    (self.other_id, self.ego_id),
+                    cache_across_time=True,
+                )
+                if oncoming is None:
+                    return None
+                composite_name = (
+                    f"{_predicate_name(evaluator)} {str(prop_name).lower()}"
+                )
+                if "not_oncoming" in composite_name:
+                    oncoming = -oncoming
+                    gate_values["not_oncoming"] = oncoming
+                else:
+                    gate_values["oncoming"] = oncoming
+
+            if any(value is None for value in gate_values.values()):
+                return None
+            finite_gate_values = {
+                key: float(value) for key, value in gate_values.items()
+            }
+            if not all(
+                math.isfinite(value) for value in finite_gate_values.values()
+            ):
+                return None
+            fixed_cap = min(finite_gate_values.values())
+            if fixed_cap < 0.0:
+                return FramePredicateEstimate(
+                    FALSE_DOMAIN,
+                    "constant_false_gate",
+                    region=region,
+                    gate_domain=FALSE_DOMAIN,
+                    diagnostics={
+                        "turning_type": turning_name,
+                        "fixed_components": finite_gate_values,
+                        "fixed_cap": float(fixed_cap),
+                    },
+                )
+            robustness_min = min(ego_lower, fixed_cap)
+            robustness_max = min(ego_upper, fixed_cap)
+            domain = classify_robustness_range(
+                robustness_min,
+                robustness_max,
+                uncertainty=scaled_uncertainty,
+            )
+        except Exception:
+            return None
+
+        diagnostics = {
+            "turning_type": turning_name,
+            "component_count": len(geometry.components),
+            "fixed_cap": float(fixed_cap),
+            "robustness_min": float(robustness_min),
+            "robustness_max": float(robustness_max),
+            "scaled_uncertainty": float(scaled_uncertainty),
+        }
+        if os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG"):
+            diagnostics.update(
+                {
+                    "component_midpoints": list(geometry.component_midpoints),
+                    "gap_midpoints": list(geometry.gap_midpoints),
+                    "critical_points": list(points),
+                    "ego_turning_robustness_lower": float(ego_lower),
+                    "ego_turning_robustness_upper": float(ego_upper),
+                    "fixed_components": finite_gate_values,
+                }
+            )
+        return FramePredicateEstimate(
+            domain,
+            "continuous_turning_composite",
+            region=region,
+            gate_domain=TRUE_DOMAIN,
+            diagnostics=diagnostics,
+        )
+
+    def _turning_composite_region_fallback(
+        self,
+        evaluator: Any,
+        prop_name: str,
+        time_step: int,
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        """Retained Boolean/three-valued turning-composite implementation."""
         region = self._turning_region(evaluator._turning_ego)
         spatial, spatial_diagnostics = self._classify_region_estimate(
             region, reachable
@@ -1071,10 +1538,11 @@ class SemanticINPredicateRegionBuilder:
         if spatial == FALSE_DOMAIN:
             return FramePredicateEstimate(
                 FALSE_DOMAIN,
-                "turning_composite:spatial_false",
+                "region_fallback",
                 region=region,
                 gate_domain=UNKNOWN_DOMAIN,
                 diagnostics={
+                    "fallback_source": "turning_composite:spatial_false",
                     "spatial_domain": [0],
                     "gate_skipped": True,
                     **spatial_diagnostics,
@@ -1091,10 +1559,11 @@ class SemanticINPredicateRegionBuilder:
             combined = UNKNOWN_DOMAIN
         return FramePredicateEstimate(
             combined,
-            "turning_composite",
+            "region_fallback",
             region=region,
             gate_domain=gate,
             diagnostics={
+                "fallback_source": "turning_composite",
                 "spatial_domain": sorted(spatial),
                 **spatial_diagnostics,
             },
@@ -1282,6 +1751,63 @@ class SemanticINPredicateRegionBuilder:
                     result = UNKNOWN_DOMAIN
         self._timing["fixed_gate"] += time.perf_counter() - started
         self._fixed_cache[key] = result
+        return result
+
+    def _fixed_robustness_value(
+        self,
+        evaluator: Any,
+        time_step: int,
+        vehicle_ids: Sequence[int],
+        *,
+        cache_across_time: bool = False,
+    ) -> Optional[float]:
+        """Evaluate and cache one target/topology robustness scalar."""
+        ids = tuple(int(item) for item in vehicle_ids)
+        semantic_key = self._semantic_evaluator_key(evaluator)
+        key = (
+            "robustness_value",
+            semantic_key,
+            int(time_step),
+            ids,
+        )
+        if key in self._fixed_cache:
+            cached = self._fixed_cache[key]
+            return None if cached is None else float(cached)
+        static_key = ("robustness_value_static", semantic_key, ids)
+        if cache_across_time and static_key in self._fixed_cache:
+            cached = self._fixed_cache[static_key]
+            self._fixed_cache[key] = cached
+            return None if cached is None else float(cached)
+        started = time.perf_counter()
+        value = None
+        if evaluator is not None and ids:
+            try:
+                vehicle = self.world.vehicle_by_id(ids[0])
+                value = vehicle.predicate_cache.get_robustness(
+                    int(time_step), evaluator.predicate_name, ids[1:]
+                )
+            except Exception:
+                value = None
+            if value is None:
+                try:
+                    value = evaluator.evaluate_robustness(
+                        self.world, int(time_step), list(ids)
+                    )
+                except Exception:
+                    value = None
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            numeric = math.nan
+        result = numeric if math.isfinite(numeric) else None
+        self._timing["fixed_gate"] += time.perf_counter() - started
+        self._fixed_cache[key] = result
+        if cache_across_time:
+            # Priority and oncoming evaluators depend only on immutable
+            # incoming/successor topology.  Keep the required per-frame alias
+            # above while sharing the underlying scalar across all frames and
+            # equivalent composite evaluator instances.
+            self._fixed_cache[static_key] = result
         return result
 
     @staticmethod
@@ -1730,6 +2256,13 @@ class SemanticINPredicateRegionBuilder:
             outer_nominal = self._path_polygon_intervals(
                 path_line, conflict_polygon.buffer(circumradius)
             )
+            occupancy_nominal = merge_intervals(
+                (
+                    float(item.lower) - self._front_extent,
+                    float(item.upper) + self._rear_extent,
+                )
+                for item in inner_nominal
+            )
         except Exception:
             return SemanticIntervalSet.unknown(
                 "ego_conflict:boolean_lanelet_geometry"
@@ -1757,6 +2290,25 @@ class SemanticINPredicateRegionBuilder:
                 "circumradius": float(circumradius),
                 "inner_component_count": len(inner_nominal),
                 "outer_component_count": len(outer_nominal),
+                "conflict_lanelet_ids": tuple(sorted(conflict_ids)),
+                # Nominal occupancy follows the fixed ego path through the
+                # selected conflict polygons.  The legacy Boolean inner/outer
+                # regions above intentionally remain unchanged as fallback.
+                # A path which misses the nominal polygon but intersects its
+                # vehicle-size cover has no reliable one-dimensional nominal
+                # occupancy interval.  Omitting the field deliberately sends
+                # that ambiguous geometry through the old conservative
+                # inner/outer classifier instead of claiming constant false.
+                **(
+                    {
+                        "nominal_intervals": tuple(
+                            (float(item.lower), float(item.upper))
+                            for item in occupancy_nominal
+                        )
+                    }
+                    if occupancy_nominal or not outer_nominal
+                    else {}
+                ),
             },
         )
 
@@ -1836,19 +2388,29 @@ class SemanticINPredicateRegionBuilder:
     def _lanelet_union_region(
         self, lanelet_ids: Iterable[int], source: str
     ) -> SemanticIntervalSet:
+        lanelet_ids = tuple(sorted(set(int(item) for item in lanelet_ids)))
         intervals = []
-        for lanelet_id in set(int(item) for item in lanelet_ids):
+        for lanelet_id in lanelet_ids:
             bounds = self._lanelet_truth_bounds(lanelet_id)
             if bounds is None:
                 return SemanticIntervalSet.unknown(
                     source, failed_lanelet=int(lanelet_id)
                 )
             intervals.append(bounds)
+        nominal = merge_intervals(intervals)
         return SemanticIntervalSet.from_nominal(
-            intervals,
+            nominal,
             uncertainty=self.uncertainty,
             source=source,
-            diagnostics={"lanelet_count": len(intervals)},
+            diagnostics={
+                "lanelet_count": len(lanelet_ids),
+                "lanelet_ids": lanelet_ids,
+                # This is the direct lanelet/path geometry, not either of the
+                # uncertainty-expanded Boolean inner/outer approximations.
+                "nominal_intervals": tuple(
+                    (float(item.lower), float(item.upper)) for item in nominal
+                ),
+            },
         )
 
     # ------------------------------------------------------------------
