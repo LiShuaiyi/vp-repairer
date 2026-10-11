@@ -222,21 +222,29 @@ def test_lane_speed_can_certify_false_under_every_reachable_limit():
     assert domains == (FALSE_DOMAIN, FALSE_DOMAIN)
 
 
-def _causes_braking_builder(*, valid=True):
-    target = SimpleNamespace(id=2)
+def _causes_braking_endpoint_builder(
+    rear_endpoints, *, target_acceleration=-2.0, uncertainty=0.1
+):
+    target_lane = object()
+    target = SimpleNamespace(id=2, ref_path_lane=target_lane)
     builder = object.__new__(SemanticINPredicateRegionBuilder)
     builder.other_id = 2
-    builder.uncertainty = 0.1
+    builder.uncertainty = float(uncertainty)
     builder.world = SimpleNamespace(vehicle_by_id=lambda _target_id: target)
-    builder._target_front_rear = lambda _target, _step: (0.0, None, -2.0)
-    cells = {
-        "s_lower": np.asarray([0.0]),
-        "s_upper": np.asarray([10.0]),
-        "rear_left": np.asarray([0.0]),
-        "rear_right": np.asarray([10.0]),
-        "valid": np.asarray([valid]),
-    }
-    builder._target_path_rear_cells = lambda _target: cells
+    builder._target_front_rear = lambda _target, _step: (
+        0.0,
+        None,
+        float(target_acceleration),
+    )
+    builder._ego_lane_feature_endpoints = (
+        lambda reachable, path_lane, coordinate: (
+            tuple(float(value) for value in rear_endpoints),
+            {
+                "analysis_mode": "monotone_endpoint",
+                "mapping_assumption": "fixed_reference_path_lane_forward",
+            },
+        )
+    )
     evaluator = SimpleNamespace(
         config={"d_br": 10.0, "a_br": -1.0},
         _scale_acc=lambda value: value,
@@ -245,25 +253,39 @@ def _causes_braking_builder(*, valid=True):
     return builder, evaluator
 
 
-def test_causes_braking_splits_mapping_cell_at_distance_maximum():
-    builder, evaluator = _causes_braking_builder()
+def test_causes_braking_uses_reachable_endpoint_range_and_tent_peak():
+    builder, evaluator = _causes_braking_endpoint_builder((4.0, 6.0))
 
-    estimate = builder._causes_braking_piecewise_estimate(
-        evaluator, 0, (4.0, 6.0)
-    )
+    estimate = builder._causes_braking_frame(evaluator, 0, (2.0, 8.0))
 
-    assert estimate is not None
-    assert estimate.partition_points == (4.0, 5.0, 6.0)
     assert estimate.domain == TRUE_DOMAIN
+    assert estimate.source.endswith("monotone_endpoint")
+    assert estimate.diagnostics["distance_interval"] == [4.0, 6.0]
+    assert estimate.diagnostics["distance_critical_reachable"] is True
 
 
-def test_causes_braking_preserves_invalid_mapping_as_unknown_fallback():
-    builder, evaluator = _causes_braking_builder(valid=False)
-
-    assert (
-        builder._causes_braking_piecewise_estimate(evaluator, 0, (4.0, 6.0))
-        is None
+def test_causes_braking_reachable_endpoint_range_certifies_false_and_unknown():
+    false_builder, evaluator = _causes_braking_endpoint_builder((-2.0, -1.0))
+    false_estimate = false_builder._causes_braking_frame(
+        evaluator, 0, (2.0, 8.0)
     )
+    assert false_estimate.domain == FALSE_DOMAIN
+
+    unknown_builder, evaluator = _causes_braking_endpoint_builder((-1.0, 1.0))
+    unknown_estimate = unknown_builder._causes_braking_frame(
+        evaluator, 0, (2.0, 8.0)
+    )
+    assert unknown_estimate.domain == UNKNOWN_DOMAIN
+
+
+def test_causes_braking_acceleration_boundary_remains_unknown():
+    builder, evaluator = _causes_braking_endpoint_builder(
+        (4.0, 6.0), target_acceleration=-1.0
+    )
+
+    estimate = builder._causes_braking_frame(evaluator, 0, (2.0, 8.0))
+
+    assert estimate.domain == UNKNOWN_DOMAIN
 
 
 def _longitudinal_feature_cells(front_values, rear_values=None, valid=None):

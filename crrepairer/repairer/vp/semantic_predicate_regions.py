@@ -2099,72 +2099,44 @@ class SemanticINPredicateRegionBuilder:
         time_step: int,
         reachable: Optional[Tuple[float, float]],
     ) -> FramePredicateEstimate:
-        key = ("causes_braking_intersection", id(evaluator), int(time_step))
-        region = self._region_cache.get(key)
-        if region is None:
-            started = time.perf_counter()
-            region = self._build_causes_braking_region(evaluator, int(time_step))
-            self._timing["region_build"] += time.perf_counter() - started
-            self._region_cache[key] = region
-        if reachable is None or not region.complete:
-            domain = self._classify_region(region, reachable)
-            return FramePredicateEstimate(domain, region.source, region=region)
-        if not region.outer_true:
-            return FramePredicateEstimate(FALSE_DOMAIN, region.source, region=region)
+        """Estimate directly over the complete ego reachable interval.
 
-        estimate = self._causes_braking_piecewise_estimate(
-            evaluator, int(time_step), reachable
-        )
-        if estimate is None:
-            domain = self._classify_region(region, reachable)
-            return FramePredicateEstimate(domain, region.source, region=region)
-        diagnostics = piecewise_diagnostics(
-            estimate,
-            analysis_mode="piecewise_monotone",
-            analysis_axis="s",
-            include_segments=bool(
-                os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
-            ),
-        )
-        return FramePredicateEstimate(
-            estimate.domain,
-            "causes_braking_intersection:piecewise",
-            region=region,
-            diagnostics=diagnostics,
-        )
-
-    def _causes_braking_piecewise_estimate(
-        self,
-        evaluator: Any,
-        time_step: int,
-        reachable: Sequence[float],
-    ) -> Optional[PiecewiseEstimate]:
-        """Analyze valid target-path interpolation cells quantitatively.
-
-        Each cell stores the mapped ego-rear value at both endpoints.  Linear
-        interpolation is monotone within that cell, and the distance
-        robustness changes direction only where ``rear-front_target=d_br/2``.
-        Invalid cells remain unknown instead of being bridged by a global
-        linear assumption.
+        The fixed reference path is assumed lane-forward, consistently with
+        ``in_front_of`` and safe-distance estimation.  Therefore the ego rear
+        coordinate on the target lane attains its extrema at the two reachable
+        path endpoints.  The distance robustness is a concave tent whose only
+        internal maximum is at ``distance=d_br/2``; its exact range follows
+        from those endpoint extrema without iterating over mapping cells.
         """
-        if self.other_id is None:
-            return None
+        reachable_pair = _finite_pair(reachable)
+        if self.other_id is None or reachable_pair is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN,
+                "causes_braking_intersection:endpoint_unknown",
+                diagnostics={
+                    "analysis_mode": "monotone_endpoint",
+                    "unknown_reason": (
+                        "target_unavailable"
+                        if self.other_id is None
+                        else "reachable_interval_unavailable"
+                    ),
+                },
+            )
         try:
             d_br = float(evaluator.config["d_br"])
             a_br = float(evaluator.config["a_br"])
             target = self.world.vehicle_by_id(self.other_id)
             target_feature = self._target_front_rear(target, int(time_step))
             if target_feature is None:
-                return None
+                raise ValueError("target state unavailable")
             front_target, _, acceleration_target = target_feature
-            if front_target is None or acceleration_target is None:
-                return None
-            cells = self._target_path_rear_cells(target)
-            if cells is None:
-                return None
-            acceleration_robustness = float(
-                evaluator._scale_acc(a_br - float(acceleration_target))
-            )
+            front_target = float(front_target)
+            acceleration_target = float(acceleration_target)
+            if not all(
+                math.isfinite(value)
+                for value in (d_br, a_br, front_target, acceleration_target)
+            ):
+                raise ValueError("non-finite predicate input")
             distance_zero = float(evaluator._scale_lon_dist(0.0))
             distance_uncertainty = max(
                 abs(
@@ -2176,161 +2148,85 @@ class SemanticINPredicateRegionBuilder:
                     - distance_zero
                 ),
             )
-        except Exception:
-            return None
-        if not (
-            math.isfinite(acceleration_robustness)
-            and math.isfinite(distance_uncertainty)
-        ):
-            return None
-
-        reachable_lower, reachable_upper = sorted(
-            (float(reachable[0]), float(reachable[1]))
-        )
-        estimates = []
-        partition_points = [reachable_lower]
-        covered_until = reachable_lower
-        s_lower_values = np.asarray(cells["s_lower"], dtype=float)
-        s_upper_values = np.asarray(cells["s_upper"], dtype=float)
-        rear_left_values = np.asarray(cells["rear_left"], dtype=float)
-        rear_right_values = np.asarray(cells["rear_right"], dtype=float)
-        valid_values = np.asarray(cells["valid"], dtype=bool)
-        for index, (cell_lower, cell_upper) in enumerate(
-            zip(s_lower_values, s_upper_values)
-        ):
-            lower = max(reachable_lower, float(cell_lower))
-            upper = min(reachable_upper, float(cell_upper))
-            if upper < lower:
-                continue
-            if lower > covered_until + 1.0e-8:
-                return None
-            covered_until = max(covered_until, upper)
-            if not bool(valid_values[index]):
-                # Preserve the existing conservative region semantics for any
-                # reachable interval touching an uncertified mapping cell.
-                return None
-            rear_left = float(rear_left_values[index])
-            rear_right = float(rear_right_values[index])
-            cell_span = float(cell_upper) - float(cell_lower)
-            if cell_span <= 1.0e-12:
-                continue
-
-            def rear_at(s_value: float) -> float:
-                ratio = (float(s_value) - float(cell_lower)) / cell_span
-                return rear_left + ratio * (rear_right - rear_left)
-
-            def robustness(s_value: float) -> float:
-                distance = rear_at(s_value) - float(front_target)
-                distance_robustness = min(distance, d_br - distance)
-                return min(
-                    float(evaluator._scale_lon_dist(distance_robustness)),
-                    acceleration_robustness,
+            acceleration_robustness = float(
+                evaluator._scale_acc(a_br - acceleration_target)
+            )
+            if d_br < 0.0 or acceleration_robustness < -distance_uncertainty:
+                return FramePredicateEstimate(
+                    FALSE_DOMAIN,
+                    "causes_braking_intersection:constant_false",
+                    diagnostics={
+                        "analysis_mode": "monotone_endpoint",
+                        "target_acceleration": acceleration_target,
+                        "acceleration_robustness": acceleration_robustness,
+                    },
                 )
-
-            critical_points = []
-            rear_delta = rear_right - rear_left
-            critical_rear = float(front_target) + 0.5 * d_br
-            if abs(rear_delta) > 1.0e-12:
-                ratio = (critical_rear - rear_left) / rear_delta
-                if 0.0 < ratio < 1.0:
-                    critical_points.append(
-                        float(cell_lower) + ratio * cell_span
-                    )
-            estimate = estimate_piecewise_monotone_1d(
-                (lower, upper),
-                critical_points,
-                robustness,
-                uncertainty=distance_uncertainty,
+            rear_endpoints, diagnostics = self._ego_lane_feature_endpoints(
+                reachable_pair,
+                path_lane=target.ref_path_lane,
+                coordinate="rear",
             )
-            estimates.append(estimate)
-            partition_points.extend(estimate.partition_points[1:])
-        if covered_until < reachable_upper - 1.0e-8 or not estimates:
-            return None
+        except Exception as exc:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN,
+                "causes_braking_intersection:endpoint_unknown",
+                diagnostics={
+                    "analysis_mode": "monotone_endpoint",
+                    "unknown_reason": type(exc).__name__,
+                },
+            )
+        diagnostics = dict(diagnostics)
+        if rear_endpoints is None:
+            return FramePredicateEstimate(
+                UNKNOWN_DOMAIN,
+                "causes_braking_intersection:endpoint_unknown",
+                diagnostics=diagnostics,
+            )
 
-        possible = set()
-        segments = []
-        for estimate in estimates:
-            possible.update(estimate.domain)
-            segments.extend(estimate.segments)
-        return PiecewiseEstimate(
-            domain=frozenset(possible) if possible else UNKNOWN_DOMAIN,
-            partition_points=tuple(partition_points),
-            segments=tuple(segments),
+        distance_lower, distance_upper = sorted(
+            float(value) - front_target for value in rear_endpoints
         )
 
-    def _build_causes_braking_region(
-        self, evaluator: Any, time_step: int
-    ) -> SemanticIntervalSet:
-        if self.other_id is None:
-            return SemanticIntervalSet.unknown("causes_braking:no_target")
-        try:
-            d_br = float(evaluator.config["d_br"])
-            a_br = float(evaluator.config["a_br"])
-        except Exception:
-            return SemanticIntervalSet.unknown("causes_braking:invalid_config")
-        if d_br < 0.0:
-            return SemanticIntervalSet.empty("causes_braking:negative_distance")
+        def distance_robustness(distance: float) -> float:
+            return min(float(distance), d_br - float(distance))
 
-        target = self.world.vehicle_by_id(self.other_id)
-        target_feature = self._target_front_rear(target, int(time_step))
-        if target_feature is None:
-            return self._unknown_path_region("causes_braking:target_state_missing")
-        front_target, _, acceleration_target = target_feature
-        if front_target is None or acceleration_target is None:
-            return self._unknown_path_region("causes_braking:target_state_missing")
-
-        acceleration_band = max(1.0e-9, abs(a_br) * 1.0e-9)
-        if acceleration_target > a_br + acceleration_band:
-            return SemanticIntervalSet.empty(
-                "causes_braking:target_not_braking",
-                target_acceleration=float(acceleration_target),
-            )
-        acceleration_certain = acceleration_target < a_br - acceleration_band
-
-        cells = self._target_path_rear_cells(target)
-        if cells is None:
-            return SemanticIntervalSet.unknown(
-                "causes_braking:path_target_mapping_unavailable"
-            )
-        valid = cells["valid"]
-        rear_lower = cells["rear_lower"]
-        rear_upper = cells["rear_upper"]
-        band_lower = float(front_target)
-        band_upper = float(front_target) + d_br
-        distance_band = self.uncertainty
-
-        outer_mask = np.logical_not(valid).copy()
-        outer_mask |= valid & (
-            (rear_upper >= band_lower - distance_band)
-            & (rear_lower <= band_upper + distance_band)
+        raw_endpoint_robustness = (
+            distance_robustness(distance_lower),
+            distance_robustness(distance_upper),
         )
-        if acceleration_certain and band_lower + distance_band <= band_upper - distance_band:
-            inner_mask = valid & (
-                (rear_lower >= band_lower + distance_band)
-                & (rear_upper <= band_upper - distance_band)
-            )
-        else:
-            # At a_target == a_br, monitor robustness is exactly zero.  Its
-            # Boolean and SAT sign conventions differ, so only the outer set
-            # may be certified in this boundary band.
-            inner_mask = np.zeros_like(valid, dtype=bool)
-
-        inner = self._cell_mask_to_intervals(cells, inner_mask)
-        outer = self._cell_mask_to_intervals(cells, outer_mask)
-        return SemanticIntervalSet(
-            inner_true=inner,
-            outer_true=outer,
-            complete=True,
-            source="causes_braking_intersection",
-            diagnostics={
-                "cell_count": int(len(valid)),
-                "mapped_point_count": int(
-                    cells.get("mapped_point_count", len(valid) + 1)
+        raw_distance_min = min(raw_endpoint_robustness)
+        distance_peak = 0.5 * d_br
+        raw_distance_max = (
+            distance_peak
+            if distance_lower <= distance_peak <= distance_upper
+            else max(raw_endpoint_robustness)
+        )
+        distance_min = float(evaluator._scale_lon_dist(raw_distance_min))
+        distance_max = float(evaluator._scale_lon_dist(raw_distance_max))
+        robustness_min = min(distance_min, acceleration_robustness)
+        robustness_max = min(distance_max, acceleration_robustness)
+        domain = classify_robustness_range(
+            robustness_min,
+            robustness_max,
+            uncertainty=distance_uncertainty,
+        )
+        diagnostics.update(
+            {
+                "distance_interval": [distance_lower, distance_upper],
+                "distance_critical_point": distance_peak,
+                "distance_critical_reachable": bool(
+                    distance_lower <= distance_peak <= distance_upper
                 ),
-                "invalid_cell_count": int(np.count_nonzero(~valid)),
-                "target_acceleration": float(acceleration_target),
-                "acceleration_gate_certain": bool(acceleration_certain),
-            },
+                "target_acceleration": acceleration_target,
+                "acceleration_robustness": acceleration_robustness,
+                "robustness_min": robustness_min,
+                "robustness_max": robustness_max,
+            }
+        )
+        return FramePredicateEstimate(
+            domain,
+            "causes_braking_intersection:monotone_endpoint",
+            diagnostics=diagnostics,
         )
 
     def _constant_path_region(
