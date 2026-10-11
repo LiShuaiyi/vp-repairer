@@ -1860,16 +1860,186 @@ class SemanticINPredicateRegionBuilder:
         time_step: int,
         reachable: Optional[Tuple[float, float]],
     ) -> FramePredicateEstimate:
-        """Classify ``on_incoming_left_of`` without an ego trace fit.
+        """Estimate the monitor's continuous incoming-distance robustness.
 
-        For one intersection, the monitor's ego distance is
+        The current experiment maps contain one intersection, so normally
+        there is at most one topology-compatible candidate.  Its ego distance
+        is the tent
 
-        ``min(front_ego - incoming_start, incoming_end - rear_ego)``.
+        ``min(s-L, U-s)``
 
-        Its non-negative set is therefore a longitudinal interval on the
-        fixed VP path.  The target distance is evaluated from the immutable
-        target trajectory at ``time_step`` and acts as a per-frame gate.
+        on the fixed VP path.  The target distance is immutable at one frame
+        and caps this tent exactly as in the monitor.  Geometry or numerical
+        failures retain the former certified Boolean-region implementation.
         """
+        quantitative = self._on_incoming_left_of_quantitative_estimate(
+            evaluator, int(time_step), reachable
+        )
+        if quantitative is not None:
+            return quantitative
+        return self._on_incoming_left_of_region_estimate(
+            evaluator, int(time_step), reachable
+        )
+
+    def _on_incoming_left_of_quantitative_estimate(
+        self,
+        evaluator: Any,
+        time_step: int,
+        reachable: Optional[Tuple[float, float]],
+    ) -> Optional[FramePredicateEstimate]:
+        """Return the exact single-candidate robustness range when available."""
+        try:
+            geometry = self._incoming_left_of_geometry()
+            if geometry is None or not bool(geometry.get("complete", False)):
+                return None
+            candidates = tuple(geometry.get("candidates", ()))
+            if len(candidates) > 1:
+                return None
+
+            distance_zero = float(evaluator._scale_lon_dist(0.0))
+            distance_uncertainty = max(
+                abs(
+                    float(evaluator._scale_lon_dist(self.uncertainty))
+                    - distance_zero
+                ),
+                abs(
+                    float(evaluator._scale_lon_dist(-self.uncertainty))
+                    - distance_zero
+                ),
+            )
+            if not math.isfinite(distance_uncertainty):
+                return None
+
+            # The monitor initializes robustness to -1.  With complete
+            # topology and no matching left-of candidate this value is exact
+            # and independent of ego progress and target state.
+            if not candidates:
+                domain = classify_robustness_range(
+                    -1.0, -1.0, uncertainty=distance_uncertainty
+                )
+                return FramePredicateEstimate(
+                    domain,
+                    "on_incoming_left_of:quantitative",
+                    diagnostics={
+                        "analysis_mode": "piecewise_monotone",
+                        "analysis_axis": "s",
+                        "candidate_count": 0,
+                        "partition_points": [],
+                        "segment_count": 0,
+                        "robustness_min": -1.0,
+                        "robustness_max": -1.0,
+                        "robustness_floor": -1.0,
+                    },
+                )
+
+            reachable_pair = _finite_pair(reachable)
+            if reachable_pair is None or self.other_id is None:
+                return None
+            candidate = candidates[0]
+            lower = float(candidate["ego_lower"])
+            upper = float(candidate["ego_upper"])
+            lower, upper = sorted((lower, upper))
+            target_start = float(candidate["target_start"])
+            target_end = float(candidate["target_end"])
+            target = self.world.vehicle_by_id(self.other_id)
+            target_feature = self._target_front_rear(target, int(time_step))
+            if target_feature is None:
+                return None
+            front_target, rear_target, _ = target_feature
+            front_target = float(front_target)
+            rear_target = float(rear_target)
+            values = (
+                lower,
+                upper,
+                target_start,
+                target_end,
+                front_target,
+                rear_target,
+                float(reachable_pair[0]),
+                float(reachable_pair[1]),
+            )
+            if not all(math.isfinite(value) for value in values):
+                return None
+
+            target_distance = min(
+                front_target - target_start,
+                target_end - rear_target,
+            )
+            target_cap = float(evaluator._scale_lon_dist(target_distance))
+            if not math.isfinite(target_cap):
+                return None
+
+            reachable_lower, reachable_upper = sorted(reachable_pair)
+            peak = 0.5 * (lower + upper)
+
+            def robustness(progress: float) -> float:
+                ego_distance = min(
+                    float(progress) - lower,
+                    upper - float(progress),
+                )
+                ego_robustness = float(
+                    evaluator._scale_lon_dist(ego_distance)
+                )
+                return max(-1.0, min(ego_robustness, target_cap))
+
+            partition_points = [reachable_lower]
+            evaluation_points = [reachable_lower, reachable_upper]
+            peak_reachable = reachable_lower <= peak <= reachable_upper
+            if reachable_lower < peak < reachable_upper:
+                partition_points.append(peak)
+                evaluation_points.append(peak)
+            partition_points.append(reachable_upper)
+            robustness_values = [robustness(point) for point in evaluation_points]
+            if not robustness_values or not all(
+                math.isfinite(value) for value in robustness_values
+            ):
+                return None
+            robustness_min = min(robustness_values)
+            robustness_max = max(robustness_values)
+            domain = classify_robustness_range(
+                robustness_min,
+                robustness_max,
+                uncertainty=distance_uncertainty,
+            )
+            return FramePredicateEstimate(
+                domain,
+                "on_incoming_left_of:quantitative",
+                diagnostics={
+                    "analysis_mode": "piecewise_monotone",
+                    "analysis_axis": "s",
+                    "candidate_count": 1,
+                    "partition_points": [
+                        float(point) for point in partition_points
+                    ],
+                    "segment_count": max(0, len(partition_points) - 1),
+                    "reachable_interval": [
+                        float(reachable_lower),
+                        float(reachable_upper),
+                    ],
+                    "ego_incoming_interval": [lower, upper],
+                    "tent_peak": peak,
+                    "tent_peak_reachable": bool(peak_reachable),
+                    "target_distance": target_distance,
+                    "target_cap": target_cap,
+                    "robustness_min": robustness_min,
+                    "robustness_max": robustness_max,
+                    "robustness_floor": -1.0,
+                },
+            )
+        except Exception:
+            # Quantitative estimation is an optimization over the existing
+            # certified Boolean-region path.  Any unavailable monitor/map
+            # input must therefore preserve the established fallback rather
+            # than changing the predicate domain or aborting repair.
+            return None
+
+    def _on_incoming_left_of_region_estimate(
+        self,
+        evaluator: Any,
+        time_step: int,
+        reachable: Optional[Tuple[float, float]],
+    ) -> FramePredicateEstimate:
+        """Former Boolean truth-region estimator retained as fallback."""
         key = ("on_incoming_left_of", int(time_step), self.other_id)
         region = self._region_cache.get(key)
         if region is None:
@@ -2014,6 +2184,8 @@ class SemanticINPredicateRegionBuilder:
                             uncertainty=self.uncertainty,
                             source="on_incoming_left_of:ego_incoming",
                         ),
+                        "ego_lower": float(nominal[0]),
+                        "ego_upper": float(nominal[1]),
                         "target_start": float(target_start),
                         "target_end": float(target_end),
                     }

@@ -82,6 +82,137 @@ def test_piecewise_boolean_region_preserves_uncertainty_band():
     assert classify_region_piecewise(region, (1.2, 1.4)).domain == FALSE_DOMAIN
 
 
+def _incoming_quantitative_builder(
+    *,
+    candidates=None,
+    complete=True,
+    target_feature=(8.0, 2.0, 0.0),
+    uncertainty=0.1,
+    fallback_region=None,
+):
+    evaluator = SimpleNamespace(_scale_lon_dist=lambda value: float(value))
+    candidate = {
+        "ego_lower": 0.0,
+        "ego_upper": 10.0,
+        "target_start": 0.0,
+        "target_end": 10.0,
+    }
+    candidates = (candidate,) if candidates is None else tuple(candidates)
+    target = SimpleNamespace(id=2)
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.other_id = 2
+    builder.uncertainty = float(uncertainty)
+    builder.world = SimpleNamespace(vehicle_by_id=lambda _target_id: target)
+    builder._target_front_rear = lambda _target, _step: target_feature
+    builder._incoming_left_of_geometry = lambda: {
+        "candidates": candidates,
+        "complete": bool(complete),
+    }
+    builder._region_cache = {}
+    builder._timing = {"region_build": 0.0}
+    if fallback_region is not None:
+        builder._region_cache[("on_incoming_left_of", 0, 2)] = fallback_region
+    return builder, evaluator, candidate
+
+
+def test_incoming_quantitative_no_candidate_is_monitor_floor_false():
+    builder, evaluator, _ = _incoming_quantitative_builder(candidates=())
+
+    estimate = builder._on_incoming_left_of_frame(evaluator, 0, (2.0, 4.0))
+
+    assert estimate.domain == FALSE_DOMAIN
+    assert estimate.source == "on_incoming_left_of:quantitative"
+    assert estimate.diagnostics["robustness_min"] == -1.0
+    assert estimate.diagnostics["robustness_max"] == -1.0
+
+
+def test_incoming_quantitative_unique_candidate_true_false_unknown():
+    builder, evaluator, _ = _incoming_quantitative_builder()
+
+    true_estimate = builder._on_incoming_left_of_frame(
+        evaluator, 0, (2.0, 4.0)
+    )
+    false_estimate = builder._on_incoming_left_of_frame(
+        evaluator, 0, (-3.0, -2.0)
+    )
+    unknown_estimate = builder._on_incoming_left_of_frame(
+        evaluator, 0, (-0.05, 0.05)
+    )
+
+    assert true_estimate.domain == TRUE_DOMAIN
+    assert false_estimate.domain == FALSE_DOMAIN
+    assert unknown_estimate.domain == UNKNOWN_DOMAIN
+
+
+def test_incoming_quantitative_adds_tent_peak_only_when_reachable():
+    builder, evaluator, _ = _incoming_quantitative_builder()
+
+    containing = builder._on_incoming_left_of_frame(evaluator, 0, (4.0, 6.0))
+    excluding = builder._on_incoming_left_of_frame(evaluator, 0, (1.0, 2.0))
+
+    assert containing.diagnostics["partition_points"] == [4.0, 5.0, 6.0]
+    assert containing.diagnostics["tent_peak_reachable"] is True
+    assert containing.diagnostics["robustness_max"] == 5.0
+    assert excluding.diagnostics["partition_points"] == [1.0, 2.0]
+    assert excluding.diagnostics["tent_peak_reachable"] is False
+    assert excluding.diagnostics["robustness_max"] == 2.0
+
+
+def test_incoming_quantitative_target_cap_and_negative_one_floor():
+    capped_builder, evaluator, _ = _incoming_quantitative_builder(
+        target_feature=(0.05, 5.0, 0.0)
+    )
+    floored_builder, evaluator, _ = _incoming_quantitative_builder()
+
+    capped = capped_builder._on_incoming_left_of_frame(
+        evaluator, 0, (2.0, 4.0)
+    )
+    floored = floored_builder._on_incoming_left_of_frame(
+        evaluator, 0, (-5.0, -4.0)
+    )
+
+    assert capped.domain == UNKNOWN_DOMAIN
+    assert capped.diagnostics["target_cap"] == 0.05
+    assert capped.diagnostics["robustness_max"] == 0.05
+    assert floored.domain == FALSE_DOMAIN
+    assert floored.diagnostics["robustness_min"] == -1.0
+    assert floored.diagnostics["robustness_max"] == -1.0
+
+
+def test_incoming_quantitative_falls_back_for_multiple_or_failed_geometry():
+    fallback = SemanticIntervalSet.from_nominal(
+        ((0.0, 1.0),), uncertainty=0.0, source="incoming:fallback"
+    )
+    _, _, candidate = _incoming_quantitative_builder()
+    multiple_builder, evaluator, _ = _incoming_quantitative_builder(
+        candidates=(candidate, dict(candidate)), fallback_region=fallback
+    )
+    failed_builder, evaluator, _ = _incoming_quantitative_builder(
+        complete=False, fallback_region=fallback
+    )
+    missing_builder, evaluator, _ = _incoming_quantitative_builder(
+        fallback_region=fallback
+    )
+    missing_builder._incoming_left_of_geometry = lambda: None
+
+    multiple = multiple_builder._on_incoming_left_of_frame(
+        evaluator, 0, (0.2, 0.8)
+    )
+    failed = failed_builder._on_incoming_left_of_frame(
+        evaluator, 0, (0.2, 0.8)
+    )
+    missing = missing_builder._on_incoming_left_of_frame(
+        evaluator, 0, (0.2, 0.8)
+    )
+
+    assert multiple.domain == TRUE_DOMAIN
+    assert multiple.source == "incoming:fallback"
+    assert failed.domain == TRUE_DOMAIN
+    assert failed.source == "incoming:fallback"
+    assert missing.domain == TRUE_DOMAIN
+    assert missing.source == "incoming:fallback"
+
+
 def _stop_line_builder(region, *, uncertainty=0.1):
     evaluator = SimpleNamespace()
     builder = object.__new__(SemanticINPredicateRegionBuilder)
