@@ -124,8 +124,9 @@ def estimate_piecewise_monotone_1d(
 
     Completeness of ``critical_points`` and monotonicity between adjacent
     points are preconditions supplied by the predicate-specific caller.
-    Robustness at zero and throughout the configured uncertainty band remains
-    unknown, so Boolean boundary conventions are never silently changed.
+    Robustness at zero remains unknown even when ``uncertainty`` is zero.
+    Callers may supply a non-zero band only when the underlying construction
+    has an explicit certified spatial error; analytic ranges pass zero.
     """
     points = _partition_points(
         reachable, critical_points, tolerance=point_tolerance

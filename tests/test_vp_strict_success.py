@@ -19,7 +19,7 @@ class FakeSatSolver:
         self.remaining -= 1
         return [], []
 
-    def update_formula(self):
+    def update_formula(self, **_kwargs):
         self.update_count += 1
 
 
@@ -32,8 +32,17 @@ def make_repairer(candidate_tvs):
     repairer.domain_dict_time = 0.0
     repairer._domain_dict_initialized = False
     repairer._model = None
+    repairer._sel_prop = []
     repairer._tc = 0
     repairer._tv = -1
+    # This unit test exercises strict candidate acceptance, not phase setup.
+    # Keep the injected fake SAT solver instead of rebuilding a real solver.
+    def begin_phase(mode):
+        repairer._vp_repair_mode = mode
+        return True
+
+    repairer._begin_vp_repair_phase = begin_phase
+    repairer._supports_acceleration_fallback = lambda: False
     repairer._assign_proposition = lambda *_args: None
     trajectories = [SimpleNamespace(state_list=[]) for _ in candidate_tvs]
     repairer._repair_with_velocity_planning = lambda: trajectories.pop(0)

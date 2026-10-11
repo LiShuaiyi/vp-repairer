@@ -171,6 +171,9 @@ class VPPredicateEstimation:
                         reachable_acceleration_by_time
                     ),
                     fixed_domain_cache=self._semantic_fixed_domain_cache,
+                    # Spatial construction margin for sampled cells and
+                    # footprint inner/outer fallbacks only.  Analytic
+                    # robustness estimators explicitly classify with zero.
                     uncertainty=float(
                         os.environ.get(
                             "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY",
@@ -940,6 +943,8 @@ class VPPredicateEstimation:
             lanelet_clcs=self._get_vp_lanelet_clcs(),
             reachable_velocity_by_time=velocity_reachable_by_time,
             fixed_domain_cache=self._semantic_fixed_domain_cache,
+            # Keep the configurable spatial margin available to certified
+            # cells and footprint fallbacks; analytic ranges do not use it.
             uncertainty=(
                 float(
                     os.environ.get(

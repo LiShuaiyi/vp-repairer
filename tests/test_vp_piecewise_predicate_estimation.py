@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import math
 import numpy as np
 import pytest
+from shapely.geometry import box
 
 from crrepairer.repairer.vp.predicate_regions import ClosedInterval
 from crrepairer.repairer.vp.predicate_piecewise import (
@@ -108,7 +109,6 @@ def _continuous_test_builder(*, uncertainty=0.1):
     builder = object.__new__(SemanticINPredicateRegionBuilder)
     builder.uncertainty = float(uncertainty)
     builder._signed_distance_geometry_cache = {}
-    builder._scaled_longitudinal_uncertainty_cache = {}
     builder._evaluator_semantic_key_cache = {}
     return builder
 
@@ -196,6 +196,29 @@ def test_continuous_region_frame_classifies_reachable_range(
     assert estimate.source == "continuous_signed_distance"
 
 
+@pytest.mark.parametrize(
+    ("reachable", "expected"),
+    [
+        ((0.01, 0.02), TRUE_DOMAIN),
+        ((-0.02, -0.01), FALSE_DOMAIN),
+        ((0.0, 0.01), UNKNOWN_DOMAIN),
+    ],
+)
+def test_continuous_region_uses_strict_sign_without_spatial_margin(
+    reachable, expected
+):
+    builder = _continuous_test_builder(uncertainty=0.1)
+    estimate = builder._continuous_region_frame(
+        _identity_distance_evaluator("at_traffic_sign_stop"),
+        "at_traffic_sign_stop",
+        _nominal_region(((0.0, 10.0),)),
+        reachable,
+    )
+
+    assert estimate.domain == expected
+    assert "scaled_uncertainty" not in estimate.diagnostics
+
+
 def test_continuous_region_constant_false_and_geometry_fallback():
     builder = _continuous_test_builder()
     evaluator = _identity_distance_evaluator("relevant_traffic_light")
@@ -241,6 +264,8 @@ def test_conflict_continuous_range_retains_shape_ambiguity_fallback():
     assert estimate.diagnostics["fallback_reason"] == (
         "conflict_occupancy_ambiguity"
     )
+    assert region.inner_true == (ClosedInterval(2.0, 4.0),)
+    assert region.outer_true == (ClosedInterval(1.0, 5.0),)
 
 
 def test_continuous_region_reuses_cached_static_geometry():
@@ -410,6 +435,23 @@ def test_turning_composite_target_priority_order_and_fixed_cap():
     assert estimate.diagnostics["fixed_cap"] == 0.5
     assert estimate.diagnostics["robustness_min"] == 0.5
     assert ("target_has_priority", (2, 1)) in calls
+
+
+def test_turning_composite_tiny_positive_cap_is_true_without_spatial_margin():
+    builder, _ = _turning_quantitative_builder(
+        {"turning_target": 2.0, "same_priority": 0.01}
+    )
+    evaluator = _turning_composite(
+        "turning_left_ego_turning_right_target_same_priority"
+    )
+
+    estimate = builder._turning_composite_frame(
+        evaluator, str(evaluator.predicate_name), 0, (2.0, 4.0)
+    )
+
+    assert estimate.domain == TRUE_DOMAIN
+    assert estimate.diagnostics["robustness_min"] == 0.01
+    assert "scaled_uncertainty" not in estimate.diagnostics
 
 
 @pytest.mark.parametrize(
@@ -663,7 +705,7 @@ def test_incoming_quantitative_target_cap_and_negative_one_floor():
         evaluator, 0, (-5.0, -4.0)
     )
 
-    assert capped.domain == UNKNOWN_DOMAIN
+    assert capped.domain == TRUE_DOMAIN
     assert capped.diagnostics["target_cap"] == 0.05
     assert capped.diagnostics["robustness_max"] == 0.05
     assert floored.domain == FALSE_DOMAIN
@@ -768,6 +810,24 @@ def test_stop_line_piecewise_cases_and_lane_gate():
     # The robustness is positive on part of this interval, but the certified
     # lane/lateral gate ends at 9.9 m.  Crossing it must never certify true.
     assert builder._stop_line_frame(evaluator, (9.8, 10.2)).domain == UNKNOWN_DOMAIN
+
+
+@pytest.mark.parametrize(
+    ("reachable", "expected"),
+    [
+        ((6.01, 6.02), TRUE_DOMAIN),
+        ((5.98, 5.99), FALSE_DOMAIN),
+        ((6.0, 6.01), UNKNOWN_DOMAIN),
+    ],
+)
+def test_stop_line_analytic_range_uses_strict_sign_without_spatial_margin(
+    reachable, expected
+):
+    candidate = _candidate()
+    region = _stop_line_region((candidate,))
+    builder, evaluator = _stop_line_builder(region, uncertainty=0.1)
+
+    assert builder._stop_line_frame(evaluator, reachable).domain == expected
 
 
 def test_stop_line_multiple_windows_use_union_coverage():
@@ -911,6 +971,26 @@ def test_causes_braking_acceleration_boundary_remains_unknown():
     assert estimate.domain == UNKNOWN_DOMAIN
 
 
+@pytest.mark.parametrize(
+    ("rear_endpoints", "expected"),
+    [
+        ((0.01, 0.02), TRUE_DOMAIN),
+        ((-0.02, -0.01), FALSE_DOMAIN),
+        ((0.0, 0.01), UNKNOWN_DOMAIN),
+    ],
+)
+def test_causes_braking_analytic_range_uses_strict_sign_without_spatial_margin(
+    rear_endpoints, expected
+):
+    builder, evaluator = _causes_braking_endpoint_builder(
+        rear_endpoints, uncertainty=0.1
+    )
+
+    estimate = builder._causes_braking_frame(evaluator, 0, (2.0, 8.0))
+
+    assert estimate.domain == expected
+
+
 def _longitudinal_feature_cells(front_values, rear_values=None, valid=None):
     front_values = np.asarray(front_values, dtype=float)
     rear_values = np.asarray(
@@ -979,6 +1059,62 @@ def test_lane_feature_endpoint_projection_failure_is_unknown():
     assert diagnostics["unknown_reason"] == "endpoint_projection_failure"
 
 
+def test_cut_in_lateral_cell_bound_retains_spatial_uncertainty():
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.uncertainty = 0.1
+    builder._same_lane_sample_context = lambda: {
+        "points": np.asarray(((0.0, 0.0), (1.0, 0.0))),
+        "trajectory_s": np.asarray((0.0, 1.0)),
+    }
+    lane = SimpleNamespace(
+        clcs=SimpleNamespace(
+            convert_list_of_points_to_curvilinear_coords=lambda points, _: (
+                np.column_stack((points[:, 0], (0.2, 0.3)))
+            )
+        )
+    )
+
+    context = builder._build_cut_in_lateral_context(lane)
+
+    assert context is not None
+    assert context["error"].tolist() == pytest.approx([1.1])
+
+
+def test_same_lane_footprint_region_retains_inner_outer_uncertainty_band():
+    target = SimpleNamespace(lanelet_assignment={0: {7}})
+    lane = SimpleNamespace(contained_lanelets={7})
+    network = SimpleNamespace(
+        find_lanelet_by_id=lambda _lanelet_id: SimpleNamespace(
+            polygon=SimpleNamespace(shapely_object=box(-2.0, -2.0, 2.0, 2.0))
+        )
+    )
+    road_network = SimpleNamespace(
+        lanelet_network=network,
+        find_lanes_by_lanelets=lambda _ids: (lane,),
+    )
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.uncertainty = 0.1
+    builder.ego = SimpleNamespace(shape=SimpleNamespace(length=2.0, width=2.0))
+    builder.world = SimpleNamespace(
+        vehicle_by_id=lambda _target_id: target,
+        road_network=road_network,
+    )
+    builder._path_line = object()
+    builder._region_cache = {}
+    projected = iter(
+        (
+            (ClosedInterval(0.0, 10.0),),
+            (ClosedInterval(-1.0, 11.0),),
+        )
+    )
+    builder._path_polygon_intervals = lambda *_args: next(projected)
+
+    region = builder._same_lane_region(2, 0)
+
+    assert region.inner_true == (ClosedInterval(0.1, 9.9),)
+    assert region.outer_true == (ClosedInterval(-1.1, 11.1),)
+
+
 def _vehicle(vehicle_id, lane, *, front=0.0, rear=0.0, velocity=1.0):
     return SimpleNamespace(
         id=int(vehicle_id),
@@ -1022,7 +1158,8 @@ def test_in_front_of_endpoint_ranges_cover_both_argument_orders():
         (10.0, TRUE_DOMAIN),
         (1.0, FALSE_DOMAIN),
         (3.0, UNKNOWN_DOMAIN),
-        (4.05, UNKNOWN_DOMAIN),
+        (4.05, TRUE_DOMAIN),
+        (4.0, UNKNOWN_DOMAIN),
     ):
         vehicles = {
             1: _vehicle(1, lane),
@@ -1039,7 +1176,8 @@ def test_in_front_of_endpoint_ranges_cover_both_argument_orders():
         (1.0, TRUE_DOMAIN),
         (7.0, FALSE_DOMAIN),
         (5.0, UNKNOWN_DOMAIN),
-        (3.95, UNKNOWN_DOMAIN),
+        (3.95, TRUE_DOMAIN),
+        (4.0, UNKNOWN_DOMAIN),
     ):
         vehicles = {
             1: _vehicle(1, lane, front=threshold),
@@ -1086,6 +1224,34 @@ def test_safe_distance_velocity_envelope_covers_both_argument_orders():
         estimate = builder._safe_distance_frame(0, (1, 2), (0.0, 1.0))
         assert estimate.domain == expected
         assert estimate.diagnostics["safe_distance_max"] == 1.25
+
+
+@pytest.mark.parametrize(
+    ("lead_rear", "expected"),
+    [
+        (5.76, TRUE_DOMAIN),
+        (0.74, FALSE_DOMAIN),
+        (5.75, UNKNOWN_DOMAIN),
+    ],
+)
+def test_safe_distance_analytic_range_uses_strict_sign_without_spatial_margin(
+    lead_rear, expected
+):
+    lane = object()
+    vehicles = {
+        1: _vehicle(1, lane, velocity=1.0),
+        2: _vehicle(2, lane, rear=lead_rear, velocity=1.0),
+    }
+    builder = _predicate_builder(
+        ego_id=1,
+        vehicles=vehicles,
+        endpoints=(1.0, 3.0),
+        uncertainty=0.1,
+    )
+
+    estimate = builder._safe_distance_frame(0, (1, 2), (0.0, 1.0))
+
+    assert estimate.domain == expected
 
 
 def test_safe_distance_velocity_monotonicity_and_negative_rejection():

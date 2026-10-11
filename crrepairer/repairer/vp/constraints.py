@@ -40,6 +40,11 @@ from crrepairer.smt.vp_proposition_capabilities import (
 )
 
 
+# Numerical separation for strict LP inequalities.  This is deliberately
+# independent of the predicate-estimation spatial geometry margin.
+_STRICT_BOUND_TOLERANCE = 1.0e-6
+
+
 class UnsupportedVPCandidateError(RuntimeError):
     """A SAT assignment that cannot be represented by VP constraints."""
 
@@ -2322,8 +2327,7 @@ class VPConstraintExtraction:
         )
         if require_true:
             return float(interval.lower), float(interval.upper)
-        strict_margin = max(1e-6, float(builder.uncertainty) * 1e-3)
-        return -math.inf, float(interval.lower) - strict_margin
+        return -math.inf, float(interval.lower) - _STRICT_BOUND_TOLERANCE
 
     def _constraint_in_same_lane(
         self,
@@ -2428,8 +2432,7 @@ class VPConstraintExtraction:
         # Remaining before an interval which already contains the fixed
         # current progress would require moving backwards, which VP forbids.
         trajectory_upper = float(interval.lower)
-        strict_margin = max(1e-6, float(builder.uncertainty) * 1e-3)
-        trajectory_upper -= strict_margin
+        trajectory_upper -= _STRICT_BOUND_TOLERANCE
         try:
             boundary_point = builder.trajectory_clcs.convert_to_cartesian_coords(
                 trajectory_upper, 0.0

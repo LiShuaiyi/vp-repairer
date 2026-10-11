@@ -24,6 +24,13 @@ fixed target-vehicle facts and topology/priority gates.
 The builder is intentionally independent of :mod:`domain`; callers can enable
 it experimentally without changing the baseline DomainDPLL implementation.
 Unsupported or incomplete geometry always returns an unknown domain.
+
+``SemanticINPredicateRegionBuilder.uncertainty`` is a spatial construction
+margin only.  It is used to certify sampled path cells and conservative
+vehicle-footprint inner/outer regions.  Analytic robustness ranges, monotone
+endpoints, and exact critical points use the strict-sign classifier with zero
+extra uncertainty; an interval containing robustness zero therefore remains
+unknown.
 """
 
 from __future__ import annotations
@@ -57,6 +64,9 @@ from crrepairer.repairer.vp.predicate_piecewise import (
     estimate_piecewise_monotone_1d,
     piecewise_diagnostics,
 )
+
+
+_ENDPOINT_PROJECTION_CONSISTENCY_TOLERANCE = 1.0e-6
 
 
 def _domain(value: Optional[bool]) -> TruthDomain:
@@ -484,21 +494,6 @@ class _SignedDistanceGeometry:
         return tuple(points)
 
 
-def _scaled_longitudinal_uncertainty(
-    evaluator: Any, uncertainty: float
-) -> float:
-    """Convert a metric longitudinal band to evaluator robustness units."""
-    scale = evaluator._scale_lon_dist
-    zero = float(scale(0.0))
-    result = max(
-        abs(float(scale(float(uncertainty))) - zero),
-        abs(float(scale(-float(uncertainty))) - zero),
-    )
-    if not math.isfinite(result):
-        raise ValueError("non-finite scaled longitudinal uncertainty")
-    return result
-
-
 def _signed_distance_robustness_range(
     geometry: _SignedDistanceGeometry,
     reachable: Sequence[float],
@@ -658,8 +653,9 @@ class SemanticINPredicateRegionBuilder:
     reachable_velocity_by_time:
         Optional velocity intervals used by ``in_standstill``.
     uncertainty:
-        Longitudinal boundary band in metres.  It accounts for path sampling,
-        projection, and strict monitor boundary conventions.
+        Spatial boundary margin in metres.  It is used only by sampled-cell
+        certified bounds and conservative vehicle-footprint inner/outer
+        region construction.  Analytic robustness estimators do not apply it.
     """
 
     STATIC_REGION_NAMES = frozenset(
@@ -814,7 +810,6 @@ class SemanticINPredicateRegionBuilder:
         self._signed_distance_geometry_cache: Dict[
             Any, Optional[_SignedDistanceGeometry]
         ] = {}
-        self._scaled_longitudinal_uncertainty_cache: Dict[Any, float] = {}
         # These caches contain only definition-derived route geometry and
         # fixed target-trajectory features.  In particular, no entry is fitted
         # from the recorded ego predicate trace.
@@ -1057,14 +1052,11 @@ class SemanticINPredicateRegionBuilder:
             "cached_signed_distance_geometry_count": len(
                 self._signed_distance_geometry_cache
             ),
-            "cached_scaled_longitudinal_uncertainty_count": len(
-                self._scaled_longitudinal_uncertainty_cache
-            ),
             "cached_target_frame_count": len(self._target_longitudinal_cache),
             "cached_target_path_mapping_count": len(
                 self._target_path_rear_cells_cache
             ),
-            "uncertainty": float(self.uncertainty),
+            "spatial_geometry_uncertainty": float(self.uncertainty),
             "front_extent": float(self._front_extent),
             "rear_extent": float(self._rear_extent),
             "full_ref_path_count": self._full_ref_path_count,
@@ -1234,16 +1226,6 @@ class SemanticINPredicateRegionBuilder:
             },
         )
 
-    def _longitudinal_uncertainty(self, evaluator: Any) -> float:
-        """Return the cached metric-to-robustness uncertainty conversion."""
-        key = (self._semantic_evaluator_key(evaluator), float(self.uncertainty))
-        cache = self._scaled_longitudinal_uncertainty_cache
-        if key not in cache:
-            cache[key] = _scaled_longitudinal_uncertainty(
-                evaluator, self.uncertainty
-            )
-        return cache[key]
-
     def _continuous_region_frame(
         self,
         evaluator: Any,
@@ -1297,11 +1279,10 @@ class SemanticINPredicateRegionBuilder:
                     geometry, reachable, evaluator
                 )
             )
-            scaled_uncertainty = self._longitudinal_uncertainty(evaluator)
             domain = classify_robustness_range(
                 robustness_min,
                 robustness_max,
-                uncertainty=scaled_uncertainty,
+                uncertainty=0.0,
             )
             if str(predicate_name) == "in_intersection_conflict_area":
                 # The monitor assigns the complete oriented vehicle shape to
@@ -1334,7 +1315,6 @@ class SemanticINPredicateRegionBuilder:
             "component_count": len(geometry.components),
             "robustness_min": float(robustness_min),
             "robustness_max": float(robustness_max),
-            "scaled_uncertainty": float(scaled_uncertainty),
         }
         if os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG"):
             diagnostics.update(
@@ -1416,10 +1396,6 @@ class SemanticINPredicateRegionBuilder:
             ego_lower, ego_upper, points = _signed_distance_robustness_range(
                 geometry, reachable, evaluator._turning_ego
             )
-            scaled_uncertainty = self._longitudinal_uncertainty(
-                evaluator._turning_ego
-            )
-
             gate_values = {
                 "target_turning": self._fixed_robustness_value(
                     evaluator._turning_target,
@@ -1491,7 +1467,7 @@ class SemanticINPredicateRegionBuilder:
             domain = classify_robustness_range(
                 robustness_min,
                 robustness_max,
-                uncertainty=scaled_uncertainty,
+                uncertainty=0.0,
             )
         except Exception:
             return None
@@ -1502,7 +1478,6 @@ class SemanticINPredicateRegionBuilder:
             "fixed_cap": float(fixed_cap),
             "robustness_min": float(robustness_min),
             "robustness_max": float(robustness_max),
-            "scaled_uncertainty": float(scaled_uncertainty),
         }
         if os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG"):
             diagnostics.update(
@@ -1984,8 +1959,8 @@ class SemanticINPredicateRegionBuilder:
 
         On the left of ``s_star`` the robustness is increasing; on the right
         it is decreasing.  The estimate is exact under the VP path model's
-        fixed longitudinal front-offset assumption; callers retain the
-        configured uncertainty band for occupancy/orientation mismatch.
+        fixed longitudinal front-offset assumption.  Exact zero remains
+        unknown through strict-sign classification without a spatial margin.
         """
         def robustness(s_value: float) -> float:
             delta_s = float(stop_s) - (float(s_value) + float(front_extent))
@@ -2022,7 +1997,7 @@ class SemanticINPredicateRegionBuilder:
             reachable,
             (s_star,),
             robustness,
-            uncertainty=self.uncertainty,
+            uncertainty=0.0,
         )
 
     def _stop_line_frame(
@@ -2458,26 +2433,12 @@ class SemanticINPredicateRegionBuilder:
             if len(candidates) > 1:
                 return None
 
-            distance_zero = float(evaluator._scale_lon_dist(0.0))
-            distance_uncertainty = max(
-                abs(
-                    float(evaluator._scale_lon_dist(self.uncertainty))
-                    - distance_zero
-                ),
-                abs(
-                    float(evaluator._scale_lon_dist(-self.uncertainty))
-                    - distance_zero
-                ),
-            )
-            if not math.isfinite(distance_uncertainty):
-                return None
-
             # The monitor initializes robustness to -1.  With complete
             # topology and no matching left-of candidate this value is exact
             # and independent of ego progress and target state.
             if not candidates:
                 domain = classify_robustness_range(
-                    -1.0, -1.0, uncertainty=distance_uncertainty
+                    -1.0, -1.0, uncertainty=0.0
                 )
                 return FramePredicateEstimate(
                     domain,
@@ -2561,7 +2522,7 @@ class SemanticINPredicateRegionBuilder:
             domain = classify_robustness_range(
                 robustness_min,
                 robustness_max,
-                uncertainty=distance_uncertainty,
+                uncertainty=0.0,
             )
             return FramePredicateEstimate(
                 domain,
@@ -2871,21 +2832,10 @@ class SemanticINPredicateRegionBuilder:
                 for value in (d_br, a_br, front_target, acceleration_target)
             ):
                 raise ValueError("non-finite predicate input")
-            distance_zero = float(evaluator._scale_lon_dist(0.0))
-            distance_uncertainty = max(
-                abs(
-                    float(evaluator._scale_lon_dist(self.uncertainty))
-                    - distance_zero
-                ),
-                abs(
-                    float(evaluator._scale_lon_dist(-self.uncertainty))
-                    - distance_zero
-                ),
-            )
             acceleration_robustness = float(
                 evaluator._scale_acc(a_br - acceleration_target)
             )
-            if d_br < 0.0 or acceleration_robustness < -distance_uncertainty:
+            if d_br < 0.0 or acceleration_robustness < 0.0:
                 return FramePredicateEstimate(
                     FALSE_DOMAIN,
                     "causes_braking_intersection:constant_false",
@@ -2942,7 +2892,7 @@ class SemanticINPredicateRegionBuilder:
         domain = classify_robustness_range(
             robustness_min,
             robustness_max,
-            uncertainty=distance_uncertainty,
+            uncertainty=0.0,
         )
         diagnostics.update(
             {
@@ -3367,11 +3317,10 @@ class SemanticINPredicateRegionBuilder:
             return None
 
         # At a shared cell boundary both adjacent interpolants may contribute.
-        # A disagreement larger than the numerical projection band is treated
-        # as failed coordinate evaluation, never as a singleton truth value.
-        projection_tolerance = max(
-            1.0e-6, min(1.0e-2, 0.1 * float(self.uncertainty))
-        )
+        # This is a floating-point/interpolation consistency tolerance, not a
+        # spatial predicate uncertainty, so keep it independent of the
+        # configurable sampled-geometry margin.
+        projection_tolerance = _ENDPOINT_PROJECTION_CONSISTENCY_TOLERANCE
         if max(values) - min(values) > projection_tolerance:
             cache[cache_key] = None
             return None
@@ -3413,7 +3362,9 @@ class SemanticINPredicateRegionBuilder:
             {
                 "endpoint_progress": [float(value) for value in reachable_pair],
                 "endpoint_features": [float(value) for value in result],
-                "projection_uncertainty": float(self.uncertainty),
+                "projection_consistency_tolerance": float(
+                    _ENDPOINT_PROJECTION_CONSISTENCY_TOLERANCE
+                ),
             }
         )
         return result, diagnostics
@@ -3480,7 +3431,7 @@ class SemanticINPredicateRegionBuilder:
         domain = classify_robustness_range(
             robustness_min,
             robustness_max,
-            uncertainty=self.uncertainty,
+            uncertainty=0.0,
         )
         diagnostics.update(
             {
@@ -3646,7 +3597,7 @@ class SemanticINPredicateRegionBuilder:
         domain = classify_robustness_range(
             robustness_min,
             robustness_max,
-            uncertainty=self.uncertainty,
+            uncertainty=0.0,
         )
         diagnostics.update(
             {
