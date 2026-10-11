@@ -11,6 +11,11 @@ import time
 import traceback
 from pathlib import Path
 
+if "GRB_LICENSE_FILE" not in os.environ:
+    user_gurobi_license = Path.home() / "gurobi.lic"
+    if user_gurobi_license.is_file():
+        os.environ["GRB_LICENSE_FILE"] = str(user_gurobi_license)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 repo_root_str = str(REPO_ROOT)
 if sys.path[0] != repo_root_str:
@@ -361,6 +366,8 @@ def run_smt_case_with_fallback(
     attempts = [
         (1, 2),
         (2, 2),
+        (1, 1),
+        (2, 1),
     ]
     results = []
     for planner, constraint_mode in attempts:
