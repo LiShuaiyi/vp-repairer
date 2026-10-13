@@ -22,6 +22,11 @@ from crrepairer.repairer.vp.domain import VPPredicateEstimation
 from crrepairer.repairer.vp.optimization import VPOptimization
 from crrepairer.repairer.vp.trajectory_context import VPTrajectoryContext
 from crrepairer.repairer.vp.utils import VPUtils
+from crrepairer.smt.vp_proposition_capabilities import (
+    additional_constraint_extraction_enabled,
+    is_deferred_constraint_kind,
+    supported_constraint_kinds,
+)
 
 
 class VPTrajectoryRepairer(
@@ -66,6 +71,7 @@ class VPTrajectoryRepairer(
         self.domain_dict_breakdown = {}
         self._domain_predicate_timing = {}
         self._repair_literals = []
+        self._repair_literal_tiers = {}
         self._constraint_repair_literals = []
         self._vp_admissible_polarities = {}
         self._constraint_repair_analysis_complete = False
@@ -74,6 +80,7 @@ class VPTrajectoryRepairer(
         self._use_monitor_conflict_geometry = False
         self._monitor_conflict_safety_margin = 1.0e-4
         self._vp_repair_mode = "deceleration"
+        self._vp_deferred_constraints_active = False
         self.successful_repair_mode = None
         self.phase_iterations = {"deceleration": 0, "acceleration": 0}
         self.domain_dict_breakdown_by_mode = {}
@@ -144,9 +151,74 @@ class VPTrajectoryRepairer(
             )
         )
 
+    def _begin_deferred_constraint_fallback(self):
+        """Enable experimental actions only after all core phases fail."""
+        if (
+            self._vp_deferred_constraints_active
+            or not additional_constraint_extraction_enabled()
+            or not any(
+                is_deferred_constraint_kind(kind)
+                for kind in supported_constraint_kinds(
+                    self.config.repair.rules
+                )
+            )
+            or self.sat_solver.solver_mode != "domain_dpll"
+        ):
+            return False
+        self._vp_deferred_constraints_active = True
+        print(
+            "* \t<VPRepairer>: core constraint phases exhausted; "
+            "starting deferred semantic-region fallback"
+        )
+        if self._begin_vp_repair_phase("deceleration"):
+            return True
+        if (
+            self._supports_acceleration_fallback()
+            and self._begin_vp_repair_phase("acceleration")
+        ):
+            return True
+        return False
+
     def _begin_vp_repair_phase(self, repair_mode):
         """Start one independent SAT/domain search for a VP branch."""
+        previous_mode = getattr(self, "_vp_repair_mode", None)
+        phase_preprocess_cache = getattr(
+            self, "_vp_phase_preprocess_cache", None
+        )
+        if (
+            additional_constraint_extraction_enabled()
+            and any(
+                is_deferred_constraint_kind(kind)
+                for kind in supported_constraint_kinds(
+                    self.config.repair.rules
+                )
+            )
+            and phase_preprocess_cache is not None
+            and previous_mode is not None
+            and getattr(self, "_domain_dict_initialized", False)
+        ):
+            # A deferred retry of the same repair mode uses the same original
+            # trajectory and reachable envelope.  Retain only immutable/read-
+            # only geometry products; SAT domains and candidate state are
+            # rebuilt normally below.
+            phase_preprocess_cache[previous_mode] = {
+                "shared_trajectory_clcs": self._shared_trajectory_clcs,
+                "conflict_interval_cache": dict(
+                    self._conflict_trajectory_interval_cache
+                ),
+                "acceleration_curvature_cache": dict(
+                    self._acceleration_curvature_cache
+                ),
+                "reachability_context": self._in_reachability_context_cache,
+                "semantic_region_builder": self._semantic_in_region_builder,
+            }
         self._vp_repair_mode = repair_mode
+        reusable_preprocess = (
+            phase_preprocess_cache.get(repair_mode)
+            if self._vp_deferred_constraints_active
+            and phase_preprocess_cache is not None
+            else None
+        )
         # Each phase owns its trajectory geometry and reachability caches.
         # RG2 acceleration can extend the recorded trajectory just like IN.
         self._shared_trajectory_clcs = None
@@ -163,6 +235,7 @@ class VPTrajectoryRepairer(
         self.domain_dict_breakdown = {}
         self._domain_predicate_timing = {}
         self._repair_literals = []
+        self._repair_literal_tiers = {}
         self._constraint_repair_literals = []
         self._vp_admissible_polarities = {}
         self._constraint_repair_analysis_complete = False
@@ -181,6 +254,22 @@ class VPTrajectoryRepairer(
         self._active_sat_once_intervals = {}
         self._sat_once_time_plans = {}
         self.sat_once_intervals_tried = []
+        if reusable_preprocess is not None:
+            self._shared_trajectory_clcs = reusable_preprocess[
+                "shared_trajectory_clcs"
+            ]
+            self._conflict_trajectory_interval_cache = dict(
+                reusable_preprocess["conflict_interval_cache"]
+            )
+            self._acceleration_curvature_cache = dict(
+                reusable_preprocess["acceleration_curvature_cache"]
+            )
+            self._in_reachability_context_cache = reusable_preprocess[
+                "reachability_context"
+            ]
+            self._semantic_in_region_builder = reusable_preprocess[
+                "semantic_region_builder"
+            ]
         # Failed deceleration models are valid candidates for the alternative
         # exit branch, so the acceleration phase must start from the original
         # CNF rather than the formula containing deceleration blocking clauses.
@@ -189,7 +278,20 @@ class VPTrajectoryRepairer(
             self.ensure_domain_dict_initialized()
         once_time_estimate_start = time.time()
         self._install_sat_once_time_expansion()
+        if (
+            self._vp_deferred_constraints_active
+            and self.sat_solver.solver_mode == "domain_dpll"
+        ):
+            deferred_literals = (
+                self._filter_deferred_constraint_repair_literals()
+            )
         self.sat_solver.sort_domain_repair_literals()
+        if (
+            self._vp_deferred_constraints_active
+            and self.sat_solver.solver_mode == "domain_dpll"
+        ):
+            if not self.sat_solver.require_any_literals(deferred_literals):
+                return False
         # Temporal expansion may add (and optionally reorder) executable SAT
         # once-time selectors.  Keep the repairer's copy synchronized with
         # that expanded guidance.
@@ -268,6 +370,8 @@ class VPTrajectoryRepairer(
         }
         self.candidate_tvs = []
         self.candidate_diagnostics = []
+        self._vp_deferred_constraints_active = False
+        self._vp_phase_preprocess_cache = {}
         if not self._begin_vp_repair_phase("deceleration"):
             # Even though domain analysis can reject this phase before a SAT
             # model is enumerated, it is still one logical repair attempt in
@@ -286,15 +390,17 @@ class VPTrajectoryRepairer(
                 if self._supports_acceleration_fallback():
                     self.nr_iter += 1
                     self.phase_iterations["acceleration"] += 1
+                if not self._begin_deferred_constraint_fallback():
+                    print(
+                        "* \t<VPRepairer>: acceleration predicate estimate found "
+                        "no reachable constraint-backed literal"
+                    )
+                    return None
+            else:
                 print(
-                    "* \t<VPRepairer>: acceleration predicate estimate found "
-                    "no reachable constraint-backed literal"
+                    "* \t<VPRepairer>: starting acceleration exit fallback "
+                    "without SAT-enumerating an uncontrollable deceleration phase"
                 )
-                return None
-            print(
-                "* \t<VPRepairer>: starting acceleration exit fallback "
-                "without SAT-enumerating an uncontrollable deceleration phase"
-            )
         print("******** Velocity-Planning Trajectory Repairing starts! ********")
         reuse_sat_model = False
         while True:
@@ -317,6 +423,8 @@ class VPTrajectoryRepairer(
                             "* \t<VPRepairer>: acceleration predicate estimate "
                             "found no reachable conflict-exit literal"
                         )
+                    if self._begin_deferred_constraint_fallback():
+                        continue
                     break
 
                 self.nr_iter += 1

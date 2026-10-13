@@ -27,6 +27,8 @@ from crrepairer.repairer.vp.temporal import (
 )
 from crrepairer.smt.vp_proposition_capabilities import (
     VPConstraintKind,
+    additional_constraint_extraction_enabled,
+    is_deferred_constraint_kind,
     proposition_constraint_kind,
     supported_constraint_kinds,
 )
@@ -61,6 +63,9 @@ class VPPredicateEstimation:
             repair_literals=self._repair_literals,
             admissible_polarities=getattr(
                 self, "_vp_admissible_polarities", {}
+            ),
+            repair_literal_tiers=getattr(
+                self, "_repair_literal_tiers", {}
             ),
         )
         self._domain_dict_initialized = True
@@ -414,7 +419,12 @@ class VPPredicateEstimation:
         admissible_polarities = {}
         unsupported_polarity_limited_vars = []
         repair_literals = []
+        core_constraint_repair_literals = []
         deferred_region_repair_literals = []
+        current_guidance_literals = []
+        use_deferred_fallback = bool(
+            getattr(self, "_vp_deferred_constraints_active", False)
+        )
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
         acceleration_reachability = {}
         acceleration_diagnostics = {}
@@ -531,6 +541,17 @@ class VPPredicateEstimation:
             )
             if (
                 extractable
+                and is_deferred_constraint_kind(constraint_kind)
+                and not getattr(
+                    self, "_vp_deferred_constraints_active", False
+                )
+            ):
+                # Experimental semantic-region constraints are a final
+                # fallback.  The repairer first exhausts the established core
+                # actions in both deceleration and acceleration phases.
+                extractable = False
+            if (
+                extractable
                 and repair_mode == "deceleration"
                 and deceleration_reachability.get(alphabet) is False
             ):
@@ -580,10 +601,7 @@ class VPPredicateEstimation:
                     repair_value = 1 if is_in1 else 0
                     if repair_value in initial_domains[alphabet]:
                         literal = alphabet if repair_value else f"~{alphabet}"
-                        if constraint_kind in {
-                            VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
-                            VPConstraintKind.OUTSIDE_INTERSECTION,
-                        }:
+                        if is_deferred_constraint_kind(constraint_kind):
                             # These semantic-region actions extend VP's
                             # controllable set.  Keep the established
                             # ego-conflict action first, and try these only as
@@ -591,18 +609,19 @@ class VPPredicateEstimation:
                             # changes the first SAT model of existing cases.
                             deferred_region_repair_literals.append(literal)
                         else:
-                            repair_literals.append(literal)
+                            core_constraint_repair_literals.append(literal)
+                            if not use_deferred_fallback:
+                                repair_literals.append(literal)
                 continue
 
             if extractable:
                 literal = alphabet if is_in1 else f"~{alphabet}"
-                if constraint_kind in {
-                    VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
-                    VPConstraintKind.OUTSIDE_INTERSECTION,
-                }:
+                if is_deferred_constraint_kind(constraint_kind):
                     deferred_region_repair_literals.append(literal)
                 else:
-                    repair_literals.append(literal)
+                    core_constraint_repair_literals.append(literal)
+                    if not use_deferred_fallback:
+                        repair_literals.append(literal)
             else:
                 initial_domains[alphabet] = {int(current_value)}
 
@@ -612,12 +631,13 @@ class VPPredicateEstimation:
         # repair phase cannot produce any trajectory constraint and therefore
         # cannot repair an already violating trajectory.
         self._constraint_repair_literals = list(dict.fromkeys(
-            repair_literals + deferred_region_repair_literals
+            core_constraint_repair_literals
+            + deferred_region_repair_literals
         ))
         self._constraint_repair_analysis_complete = (
             constraint_repair_analysis_complete
         )
-        if use_critical_hybrid:
+        if use_critical_hybrid and not use_deferred_fallback:
             constraint_guided_variables = {
                 literal[-1] for literal in repair_literals
             }
@@ -635,9 +655,9 @@ class VPPredicateEstimation:
                 ):
                     continue
                 current_value = float(prop_node.ttv_value) >= 0.0
-                repair_literals.append(
-                    alphabet if current_value else f"~{alphabet}"
-                )
+                guidance_literal = alphabet if current_value else f"~{alphabet}"
+                repair_literals.append(guidance_literal)
+                current_guidance_literals.append(guidance_literal)
                 current_value_guidance_count += 1
 
         # Retain the new executable polarities in the branch order, but after
@@ -646,6 +666,25 @@ class VPPredicateEstimation:
         repair_literals.extend(deferred_region_repair_literals)
 
         self._repair_literals = repair_literals
+        if additional_constraint_extraction_enabled():
+            literal_tiers = {
+                literal: 1 for literal in current_guidance_literals
+            }
+            # A core executable literal remains Tier 0 even when it also
+            # matches the currently monitored polarity.
+            literal_tiers.update(
+                {literal: 0 for literal in core_constraint_repair_literals}
+            )
+            # An identical literal can be both the current polarity and an
+            # experimental executable action.  It remains Tier 2 because
+            # selecting it invokes the additional extractor.
+            literal_tiers.update(
+                {literal: 2 for literal in deferred_region_repair_literals}
+            )
+            self._repair_literal_tiers = literal_tiers
+        else:
+            # An empty tier map selects SATSolver's exact historical ordering.
+            self._repair_literal_tiers = {}
         self._vp_admissible_polarities = admissible_polarities
         self.domain_dict_breakdown = {
             "repair_mode": repair_mode,
@@ -669,6 +708,15 @@ class VPPredicateEstimation:
             "current_value_branch_guidance_count": (
                 current_value_guidance_count
             ),
+            "repair_literal_tier_counts": {
+                str(tier): sum(
+                    value == tier
+                    for value in getattr(
+                        self, "_repair_literal_tiers", {}
+                    ).values()
+                )
+                for tier in (0, 1, 2)
+            },
             "critical_region_estimation": region_diagnostics,
             "estimate_critical_regions": region_estimation_time,
             "deceleration_reachability": deceleration_diagnostics,

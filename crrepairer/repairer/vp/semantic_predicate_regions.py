@@ -2440,9 +2440,14 @@ class SemanticINPredicateRegionBuilder:
                 domain = classify_robustness_range(
                     -1.0, -1.0, uncertainty=0.0
                 )
+                region = SemanticIntervalSet.empty(
+                    "on_incoming_left_of:constant_false_topology",
+                    candidate_count=0,
+                )
                 return FramePredicateEstimate(
                     domain,
                     "on_incoming_left_of:quantitative",
+                    region=region,
                     diagnostics={
                         "analysis_mode": "piecewise_monotone",
                         "analysis_axis": "s",
@@ -2492,6 +2497,28 @@ class SemanticINPredicateRegionBuilder:
             if not math.isfinite(target_cap):
                 return None
 
+            # This is the same zero-level set used by the quantitative tent
+            # robustness below.  The target cap is fixed under ego VP: a
+            # negative cap makes the conjunction identically false; otherwise
+            # the ego incoming interval is its exact controllable true set.
+            region = (
+                SemanticIntervalSet.empty(
+                    "on_incoming_left_of:constant_false_gate",
+                    target_cap=float(target_cap),
+                )
+                if target_cap < 0.0
+                else SemanticIntervalSet.from_nominal(
+                    ((lower, upper),),
+                    uncertainty=0.0,
+                    source="on_incoming_left_of:quantitative_region",
+                    diagnostics={
+                        "candidate_count": 1,
+                        "target_cap": float(target_cap),
+                        "nominal_intervals": ((lower, upper),),
+                    },
+                )
+            )
+
             reachable_lower, reachable_upper = sorted(reachable_pair)
             peak = 0.5 * (lower + upper)
 
@@ -2527,6 +2554,7 @@ class SemanticINPredicateRegionBuilder:
             return FramePredicateEstimate(
                 domain,
                 "on_incoming_left_of:quantitative",
+                region=region,
                 diagnostics={
                     "analysis_mode": "piecewise_monotone",
                     "analysis_axis": "s",
@@ -2836,9 +2864,14 @@ class SemanticINPredicateRegionBuilder:
                 evaluator._scale_acc(a_br - acceleration_target)
             )
             if d_br < 0.0 or acceleration_robustness < 0.0:
+                region = SemanticIntervalSet.empty(
+                    "causes_braking_intersection:constant_false_gate",
+                    acceleration_robustness=float(acceleration_robustness),
+                )
                 return FramePredicateEstimate(
                     FALSE_DOMAIN,
                     "causes_braking_intersection:constant_false",
+                    region=region,
                     diagnostics={
                         "analysis_mode": "monotone_endpoint",
                         "target_acceleration": acceleration_target,
@@ -2870,6 +2903,20 @@ class SemanticINPredicateRegionBuilder:
         distance_lower, distance_upper = sorted(
             float(value) - front_target for value in rear_endpoints
         )
+        try:
+            constraint_region = self._lane_forward_feature_true_region(
+                reachable_pair,
+                path_lane=target.ref_path_lane,
+                coordinate="rear",
+                feature_lower=front_target,
+                feature_upper=front_target + d_br,
+                source="causes_braking_intersection:monotone_region",
+            )
+        except Exception:
+            # Domain estimation still has the exact endpoint robustness range
+            # when the inverse coordinate map is unavailable.  Constraint
+            # extraction sees ``region=None`` and rejects this candidate.
+            constraint_region = None
 
         def distance_robustness(distance: float) -> float:
             return min(float(distance), d_br - float(distance))
@@ -2910,7 +2957,167 @@ class SemanticINPredicateRegionBuilder:
         return FramePredicateEstimate(
             domain,
             "causes_braking_intersection:monotone_endpoint",
+            region=constraint_region,
             diagnostics=diagnostics,
+        )
+
+    def _lane_forward_feature_true_region(
+        self,
+        reachable: Sequence[float],
+        *,
+        path_lane: Any,
+        coordinate: str,
+        feature_lower: float,
+        feature_upper: float,
+        source: str,
+    ) -> Optional[SemanticIntervalSet]:
+        """Invert two robustness zeros on the cached lane-forward map.
+
+        The cached cells are used only as the piecewise-linear coordinate map
+        already used by ``_ego_lane_feature_at_progress``.  This is not the
+        former cell-wise Boolean predicate approximation: no displacement
+        error or spatial uncertainty is added, and the exact zero crossings
+        of the same ``d(s,k)`` used by the estimator are returned.
+
+        The returned set is complete over the certified per-frame reachable
+        interval.  VP dynamics cannot leave that extremal envelope.
+        """
+        reachable_pair = _finite_pair(reachable)
+        if reachable_pair is None or coordinate not in {"front", "rear"}:
+            return None
+        lower_s, upper_s = sorted(map(float, reachable_pair))
+        feature_lower, feature_upper = sorted(
+            (float(feature_lower), float(feature_upper))
+        )
+        if not all(
+            math.isfinite(value)
+            for value in (lower_s, upper_s, feature_lower, feature_upper)
+        ):
+            return None
+
+        cells = self._target_path_rear_cells(self.ego, path_lane=path_lane)
+        if cells is None:
+            return None
+        try:
+            s_left = np.asarray(cells["s_lower"], dtype=float)
+            s_right = np.asarray(cells["s_upper"], dtype=float)
+            value_left = np.asarray(cells[f"{coordinate}_left"], dtype=float)
+            value_right = np.asarray(cells[f"{coordinate}_right"], dtype=float)
+            valid = np.asarray(cells["valid"], dtype=bool)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+        tolerance = _ENDPOINT_PROJECTION_CONSISTENCY_TOLERANCE
+        segments = []
+        for index in np.flatnonzero(valid):
+            cell_lower = max(lower_s, float(s_left[index]))
+            cell_upper = min(upper_s, float(s_right[index]))
+            if cell_upper < cell_lower - tolerance:
+                continue
+            span = float(s_right[index]) - float(s_left[index])
+            if not math.isfinite(span) or span <= 1.0e-12:
+                continue
+
+            def interpolate(progress: float) -> float:
+                fraction = (float(progress) - float(s_left[index])) / span
+                return float(value_left[index]) + fraction * (
+                    float(value_right[index]) - float(value_left[index])
+                )
+
+            left_value = interpolate(cell_lower)
+            right_value = interpolate(cell_upper)
+            if not all(math.isfinite(item) for item in (left_value, right_value)):
+                return None
+            if right_value < left_value - tolerance:
+                return None
+            segments.append(
+                (cell_lower, cell_upper, left_value, right_value)
+            )
+
+        segments.sort(key=lambda item: item[0])
+        if not segments:
+            return None
+        covered_until = lower_s
+        previous_value = None
+        for cell_lower, cell_upper, left_value, right_value in segments:
+            if cell_lower > covered_until + tolerance:
+                return None
+            if previous_value is not None and left_value < previous_value - tolerance:
+                return None
+            covered_until = max(covered_until, cell_upper)
+            previous_value = right_value
+        if covered_until < upper_s - tolerance:
+            return None
+
+        endpoint_features, _ = self._ego_lane_feature_endpoints(
+            reachable_pair,
+            path_lane=path_lane,
+            coordinate=coordinate,
+        )
+        if endpoint_features is None:
+            return None
+        reachable_feature_lower, reachable_feature_upper = map(
+            float, endpoint_features
+        )
+        if reachable_feature_upper < reachable_feature_lower - tolerance:
+            return None
+        if (
+            reachable_feature_upper < feature_lower - tolerance
+            or reachable_feature_lower > feature_upper + tolerance
+        ):
+            return SemanticIntervalSet.empty(
+                source,
+                scope="reachable_interval",
+                reachable_interval=(lower_s, upper_s),
+            )
+
+        def crossing(threshold: float, *, first: bool) -> Optional[float]:
+            candidates = segments if first else reversed(segments)
+            for cell_lower, cell_upper, left_value, right_value in candidates:
+                if threshold < left_value - tolerance:
+                    if first:
+                        return float(cell_lower)
+                    continue
+                if threshold > right_value + tolerance:
+                    if first:
+                        continue
+                    return float(cell_upper)
+                delta = right_value - left_value
+                if abs(delta) <= tolerance:
+                    return float(cell_lower if first else cell_upper)
+                fraction = min(1.0, max(0.0, (threshold - left_value) / delta))
+                return float(cell_lower + fraction * (cell_upper - cell_lower))
+            return None
+
+        region_lower = (
+            lower_s
+            if reachable_feature_lower >= feature_lower - tolerance
+            else crossing(feature_lower, first=True)
+        )
+        region_upper = (
+            upper_s
+            if reachable_feature_upper <= feature_upper + tolerance
+            else crossing(feature_upper, first=False)
+        )
+        if region_lower is None or region_upper is None:
+            return None
+        if region_lower > region_upper + tolerance:
+            return SemanticIntervalSet.empty(
+                source,
+                scope="reachable_interval",
+                reachable_interval=(lower_s, upper_s),
+            )
+        interval = (float(region_lower), float(region_upper))
+        return SemanticIntervalSet.from_nominal(
+            (interval,),
+            uncertainty=0.0,
+            source=source,
+            diagnostics={
+                "scope": "reachable_interval",
+                "reachable_interval": (lower_s, upper_s),
+                "feature_interval": (feature_lower, feature_upper),
+                "nominal_intervals": (interval,),
+            },
         )
 
     def _constant_path_region(

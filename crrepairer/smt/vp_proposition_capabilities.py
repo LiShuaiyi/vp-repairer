@@ -21,6 +21,8 @@ class VPConstraintKind(str, Enum):
     OUTSIDE_EGO_CONFLICT = "outside_ego_conflict"
     OUTSIDE_CAUSES_BRAKING = "outside_causes_braking"
     OUTSIDE_INTERSECTION = "outside_intersection"
+    INSIDE_SEMANTIC_REGION = "inside_semantic_region"
+    OUTSIDE_SEMANTIC_REGION = "outside_semantic_region"
 
 
 _PREDICATE_CAPABILITIES = {
@@ -41,12 +43,78 @@ _ADDITIONAL_CONSTRAINT_KINDS = frozenset(
     {
         VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
         VPConstraintKind.OUTSIDE_INTERSECTION,
+        VPConstraintKind.INSIDE_SEMANTIC_REGION,
+        VPConstraintKind.OUTSIDE_SEMANTIC_REGION,
     }
 )
 
+CORE_CONSTRAINT_KINDS = frozenset(
+    {
+        VPConstraintKind.STOP_LINE_UPPER,
+        VPConstraintKind.STOP_LINE_BEFORE_REGION,
+        VPConstraintKind.STANDSTILL_VELOCITY,
+        VPConstraintKind.OUTSIDE_EGO_CONFLICT,
+    }
+)
+DEFERRED_CONSTRAINT_KINDS = _ADDITIONAL_CONSTRAINT_KINDS
+
+
+def is_deferred_constraint_kind(kind: Optional[VPConstraintKind]) -> bool:
+    """Return whether a constraint action belongs to experimental Tier 2."""
+    return kind in DEFERRED_CONSTRAINT_KINDS
+
+# Quantitative estimation by itself is not an executable capability.  The
+# experimental registry is deliberately explicit by predicate and polarity;
+# every entry below has a constraint-ready longitudinal true region.
+TURNING_PRIORITY_COMPOSITE = "turning_priority_composite"
+_EGO_UNARY_ADDITIONAL_PREDICATES = frozenset(
+    {
+        "at_traffic_sign_stop",
+        "relevant_traffic_light",
+        "on_lanelet_with_type_intersection",
+        "turning_left",
+        "turning_right",
+        "going_straight",
+    }
+)
+_EGO_FIRST_BINARY_ADDITIONAL_PREDICATES = frozenset(
+    {
+        "in_intersection_conflict_area",
+        "on_incoming_left_of",
+        "causes_braking_intersection",
+    }
+)
+_ADDITIONAL_POSITIVE_PREDICATE_CAPABILITIES = {
+    name: VPConstraintKind.INSIDE_SEMANTIC_REGION
+    for name in (
+        "at_traffic_sign_stop",
+        "relevant_traffic_light",
+        "on_lanelet_with_type_intersection",
+        "in_intersection_conflict_area",
+        "turning_left",
+        "turning_right",
+        "going_straight",
+        "on_incoming_left_of",
+        "causes_braking_intersection",
+        TURNING_PRIORITY_COMPOSITE,
+    )
+}
+_ADDITIONAL_NEGATIVE_PREDICATE_CAPABILITIES = {
+    name: VPConstraintKind.OUTSIDE_SEMANTIC_REGION
+    for name in (
+        "at_traffic_sign_stop",
+        "relevant_traffic_light",
+        "turning_left",
+        "turning_right",
+        "going_straight",
+        "on_incoming_left_of",
+        TURNING_PRIORITY_COMPOSITE,
+    )
+}
+
 
 def additional_constraint_extraction_enabled() -> bool:
-    """Whether the two additional IN predicate constraints are extracted.
+    """Whether experimental semantic-region IN constraints are extracted.
 
     They are disabled by default to avoid their additional predicate-estimate,
     SAT-search, and constraint-extraction cost.  This also preserves the
@@ -58,12 +126,24 @@ def additional_constraint_extraction_enabled() -> bool:
 
 _RULE_CAPABILITIES = {
     "R_IN1": frozenset(
-        (*_PREDICATE_CAPABILITIES.values(), VPConstraintKind.STOP_LINE_BEFORE_REGION)
+        (
+            *_PREDICATE_CAPABILITIES.values(),
+            VPConstraintKind.STOP_LINE_BEFORE_REGION,
+            *_ADDITIONAL_CONSTRAINT_KINDS,
+        )
     ),
-    "R_IN3": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
-    "R_IN3_hand_draft": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
-    "R_IN4": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
-    "R_IN5": frozenset(_NEGATED_PREDICATE_CAPABILITIES.values()),
+    "R_IN3": frozenset(
+        (*_NEGATED_PREDICATE_CAPABILITIES.values(), *_ADDITIONAL_CONSTRAINT_KINDS)
+    ),
+    "R_IN3_hand_draft": frozenset(
+        (*_NEGATED_PREDICATE_CAPABILITIES.values(), *_ADDITIONAL_CONSTRAINT_KINDS)
+    ),
+    "R_IN4": frozenset(
+        (*_NEGATED_PREDICATE_CAPABILITIES.values(), *_ADDITIONAL_CONSTRAINT_KINDS)
+    ),
+    "R_IN5": frozenset(
+        (*_NEGATED_PREDICATE_CAPABILITIES.values(), *_ADDITIONAL_CONSTRAINT_KINDS)
+    ),
 }
 
 # Only conjunctions whose leaves all occur here may be relaxed by distributing
@@ -85,18 +165,20 @@ def proposition_predicate_names(proposition) -> frozenset[str]:
     """Return explicit leaf identities carried by a proposition node."""
     result = set()
     for child in getattr(proposition, "children", ()):
+        evaluator = getattr(child, "evaluator", None)
+        if getattr(evaluator, "_turning_ego", None) is not None:
+            result.add(TURNING_PRIORITY_COMPOSITE)
+            continue
         candidates = (
             getattr(child, "base_name", None),
             getattr(child, "name", None),
-            getattr(getattr(child, "evaluator", None), "predicate_name", None),
+            getattr(evaluator, "predicate_name", None),
         )
         for candidate in candidates:
             if candidate is None:
                 continue
             base_name = predicate_base_name(candidate)
-            if base_name in (
-                _PREDICATE_CAPABILITIES | _NEGATED_PREDICATE_CAPABILITIES
-            ):
+            if base_name in _registered_predicate_names():
                 result.add(base_name)
                 break
 
@@ -110,9 +192,26 @@ def proposition_predicate_names(proposition) -> frozenset[str]:
             base_name
             for token in tokens
             if (base_name := predicate_base_name(token))
-            in (_PREDICATE_CAPABILITIES | _NEGATED_PREDICATE_CAPABILITIES)
+            in _registered_predicate_names()
         )
     return frozenset(result)
+
+
+def _registered_predicate_names() -> frozenset[str]:
+    return frozenset(
+        _PREDICATE_CAPABILITIES
+        | _NEGATED_PREDICATE_CAPABILITIES
+        | _ADDITIONAL_POSITIVE_PREDICATE_CAPABILITIES
+        | _ADDITIONAL_NEGATIVE_PREDICATE_CAPABILITIES
+    )
+
+
+def proposition_predicate_identity(proposition) -> Optional[str]:
+    """Return the unique structurally identified predicate capability."""
+    names = proposition_predicate_names(proposition)
+    if len(names) != 1:
+        return None
+    return next(iter(names))
 
 
 def proposition_constraint_kind(
@@ -132,10 +231,20 @@ def proposition_constraint_kind(
         else not bool(desired_value)
     )
     expression = str(getattr(proposition, "name", proposition))
-    names = proposition_predicate_names(proposition)
-    if len(names) != 1:
+    name = proposition_predicate_identity(proposition)
+    if name is None:
         return None
-    name = next(iter(names))
+    if (
+        name in _EGO_UNARY_ADDITIONAL_PREDICATES
+        and f"{name}__0" not in expression
+    ):
+        return None
+    if (
+        name in _EGO_FIRST_BINARY_ADDITIONAL_PREDICATES
+        and f"{name}__0_1" not in expression
+    ):
+        # Only ego-first occurrences are controllable by ego longitudinal VP.
+        return None
     if re.search(r"\bnot\s*\(", expression, flags=re.IGNORECASE):
         # A past predicate derived from the negation of a controllable
         # stop-line atom is not a fixed fact.  In a deceleration phase VP can
@@ -155,17 +264,23 @@ def proposition_constraint_kind(
     if negative:
         kind = _NEGATED_PREDICATE_CAPABILITIES.get(name)
         if (
-            kind == VPConstraintKind.OUTSIDE_EGO_CONFLICT
-            and "__0_1" not in expression
-        ):
-            return None
-        if (
             kind in _ADDITIONAL_CONSTRAINT_KINDS
             and not additional_constraint_extraction_enabled()
         ):
             return None
+        if kind is not None:
+            return kind
+        kind = _ADDITIONAL_NEGATIVE_PREDICATE_CAPABILITIES.get(name)
+        if kind is not None and additional_constraint_extraction_enabled():
+            return kind
+        return None
+    kind = _PREDICATE_CAPABILITIES.get(name)
+    if kind is not None:
         return kind
-    return _PREDICATE_CAPABILITIES.get(name)
+    kind = _ADDITIONAL_POSITIVE_PREDICATE_CAPABILITIES.get(name)
+    if kind is not None and additional_constraint_extraction_enabled():
+        return kind
+    return None
 
 
 def has_constraint_kind(proposition, kinds: Iterable[VPConstraintKind]) -> bool:

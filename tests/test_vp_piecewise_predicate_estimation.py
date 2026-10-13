@@ -706,11 +706,28 @@ def test_incoming_quantitative_target_cap_and_negative_one_floor():
     )
 
     assert capped.domain == TRUE_DOMAIN
+    assert capped.region is not None
+    assert capped.region.inner_true == (ClosedInterval(0.0, 10.0),)
     assert capped.diagnostics["target_cap"] == 0.05
     assert capped.diagnostics["robustness_max"] == 0.05
     assert floored.domain == FALSE_DOMAIN
     assert floored.diagnostics["robustness_min"] == -1.0
     assert floored.diagnostics["robustness_max"] == -1.0
+
+
+def test_incoming_negative_target_cap_returns_fixed_false_region():
+    builder, evaluator, _ = _incoming_quantitative_builder(
+        target_feature=(-0.1, 5.0, 0.0)
+    )
+
+    estimate = builder._on_incoming_left_of_frame(
+        evaluator, 0, (2.0, 4.0)
+    )
+
+    assert estimate.domain == FALSE_DOMAIN
+    assert estimate.region is not None
+    assert estimate.region.complete is True
+    assert estimate.region.outer_true == ()
 
 
 def test_incoming_quantitative_falls_back_for_multiple_or_failed_geometry():
@@ -928,6 +945,13 @@ def _causes_braking_endpoint_builder(
             },
         )
     )
+    builder._lane_forward_feature_true_region = lambda *args, **kwargs: (
+        SemanticIntervalSet.from_nominal(
+            ((2.0, 8.0),),
+            uncertainty=0.0,
+            source="causes_braking_intersection:monotone_region",
+        )
+    )
     evaluator = SimpleNamespace(
         config={"d_br": 10.0, "a_br": -1.0},
         _scale_acc=lambda value: value,
@@ -943,6 +967,8 @@ def test_causes_braking_uses_reachable_endpoint_range_and_tent_peak():
 
     assert estimate.domain == TRUE_DOMAIN
     assert estimate.source.endswith("monotone_endpoint")
+    assert estimate.region is not None
+    assert estimate.region.inner_true == (ClosedInterval(2.0, 8.0),)
     assert estimate.diagnostics["distance_interval"] == [4.0, 6.0]
     assert estimate.diagnostics["distance_critical_reachable"] is True
 
@@ -969,6 +995,49 @@ def test_causes_braking_acceleration_boundary_remains_unknown():
     estimate = builder._causes_braking_frame(evaluator, 0, (2.0, 8.0))
 
     assert estimate.domain == UNKNOWN_DOMAIN
+
+
+def test_causes_braking_negative_acceleration_gate_returns_empty_region():
+    builder, evaluator = _causes_braking_endpoint_builder(
+        (4.0, 6.0), target_acceleration=0.0
+    )
+
+    estimate = builder._causes_braking_frame(evaluator, 0, (2.0, 8.0))
+
+    assert estimate.domain == FALSE_DOMAIN
+    assert estimate.region is not None
+    assert estimate.region.complete is True
+    assert estimate.region.outer_true == ()
+
+
+def test_lane_forward_zero_crossings_build_exact_causes_braking_region():
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder.ego = SimpleNamespace(id=1)
+    builder._target_path_rear_cells = lambda *_args, **_kwargs: {
+        "s_lower": np.asarray((0.0, 5.0)),
+        "s_upper": np.asarray((5.0, 10.0)),
+        "rear_left": np.asarray((0.0, 5.0)),
+        "rear_right": np.asarray((5.0, 10.0)),
+        "valid": np.asarray((True, True)),
+    }
+    builder._ego_lane_feature_endpoints = lambda *_args, **_kwargs: (
+        (0.0, 10.0),
+        {},
+    )
+
+    region = builder._lane_forward_feature_true_region(
+        (0.0, 10.0),
+        path_lane=object(),
+        coordinate="rear",
+        feature_lower=2.0,
+        feature_upper=7.0,
+        source="causes_braking_intersection:monotone_region",
+    )
+
+    assert region is not None
+    assert region.complete is True
+    assert region.inner_true == (ClosedInterval(2.0, 7.0),)
+    assert region.outer_true == (ClosedInterval(2.0, 7.0),)
 
 
 @pytest.mark.parametrize(

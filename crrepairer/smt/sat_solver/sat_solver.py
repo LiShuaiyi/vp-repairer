@@ -23,6 +23,7 @@ class SATSolver:
         self._solver_mode = getattr(config.repair, "sat_solver_mode", "dpll")
         self._domain_dict = {}
         self._repair_literals = []
+        self._repair_literal_tiers = {}
         self._admissible_polarities = {}
         self._dpll_solver = self._build_solver(rule_monitor.tv_time_step)
         self._solver_formula = self._formula
@@ -59,12 +60,17 @@ class SATSolver:
         domain_dict,
         repair_literals=None,
         admissible_polarities=None,
+        repair_literal_tiers=None,
     ):
         self._domain_dict = dict(domain_dict) if domain_dict is not None else {}
         self._repair_literals = list(dict.fromkeys(repair_literals or ()))
         self._admissible_polarities = {
             str(variable): set(values)
             for variable, values in (admissible_polarities or {}).items()
+        }
+        self._repair_literal_tiers = {
+            str(literal): int(tier)
+            for literal, tier in (repair_literal_tiers or {}).items()
         }
 
     def add_once_time_selectors(self, once_time_plans):
@@ -99,6 +105,7 @@ class SATSolver:
         available = [character for character in symbol_pool if character not in used]
         synthetic_nodes = []
         selector_debug = {}
+        selector_tiers = {}
         linking_clauses = []
         once_parent_nodes = []
 
@@ -183,6 +190,16 @@ class SATSolver:
                     )
                 )
             parent_variable = str(parent.alphabet).lstrip("~")
+            parent_tier = min(
+                (
+                    tier
+                    for literal, tier in self._repair_literal_tiers.items()
+                    if literal.lstrip("~") == parent_variable
+                ),
+                default=1,
+            )
+            for selector in selectors:
+                selector_tiers[selector] = parent_tier
             parent_symbol = sp.Symbol(parent_variable)
             # p -> OR(z_w).  With no dynamically possible end time this reduces
             # to ~p, which is the exact finite-trace result.
@@ -243,23 +260,43 @@ class SATSolver:
             for literal in self._repair_literals
             if literal.lstrip("~") not in parent_variables
         ]
+        self._repair_literal_tiers = {
+            literal: tier
+            for literal, tier in self._repair_literal_tiers.items()
+            if literal.lstrip("~") not in parent_variables
+        }
         self._formula = str(expanded_expression)
         self._once_time_selectors = selector_debug
         self._expanded_decomposition_groups.update(selector_debug)
         # In exact once-time mode each positive selector denotes an immediately
         # executable VP candidate.  Prefer these candidates to arbitrary
         # completions of the surrounding Boolean formula.
+        selector_literals = [
+            selector
+            for selectors in selector_debug.values()
+            for selector, _window, _obligations in selectors
+        ]
         self._repair_literals = list(
             dict.fromkeys(
                 list(self._repair_literals)
-                + [
-                    selector
-                    for selectors in selector_debug.values()
-                    for selector, _window, _obligations in selectors
-                ]
+                + selector_literals
             )
         )
+        if self._repair_literal_tiers:
+            for selector in selector_literals:
+                self._repair_literal_tiers.setdefault(
+                    selector, selector_tiers.get(selector, 1)
+                )
         return selector_debug
+
+    def require_any_literals(self, literals):
+        """Constrain a dedicated fallback phase to use one of its actions."""
+        literals = list(dict.fromkeys(str(item) for item in literals))
+        if not literals:
+            return False
+        clause = " | ".join(literals)
+        self._formula = f"({self._formula}) & ({clause})"
+        return True
 
     def sort_domain_repair_literals(self):
         """Order DomainDPLL guidance using executable polarity first."""
@@ -296,13 +333,28 @@ class SATSolver:
             current = float(node.ttv_value) >= 0.0
             return int(requested == current)
 
-        self._repair_literals.sort(
-            key=lambda literal: (
-                already_has_requested_polarity(literal),
-                rank.get(literal.lstrip("~"), len(rank)),
-                original_order[literal],
+        if self._repair_literal_tiers:
+            # Explicit experimental tiers are authoritative.  Plain-DPLL rank
+            # and the original stable order may only reorder literals within
+            # one tier: core constraints, current-polarity guidance, then
+            # deferred semantic-region constraints.
+            self._repair_literals.sort(
+                key=lambda literal: (
+                    self._repair_literal_tiers.get(literal, 1),
+                    already_has_requested_polarity(literal),
+                    rank.get(literal.lstrip("~"), len(rank)),
+                    original_order[literal],
+                )
             )
-        )
+        else:
+            # Feature flag off: preserve the historical ordering exactly.
+            self._repair_literals.sort(
+                key=lambda literal: (
+                    already_has_requested_polarity(literal),
+                    rank.get(literal.lstrip("~"), len(rank)),
+                    original_order[literal],
+                )
+            )
 
     def add_certified_false_units(self, variables):
         """Conjoin certified-false auxiliary variables as root CNF units."""

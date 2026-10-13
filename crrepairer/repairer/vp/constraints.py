@@ -21,6 +21,7 @@ from crmonitor.common.world import World
 
 from crrepairer.repairer.vp.semantic_predicate_regions import (
     FALSE_DOMAIN,
+    SemanticIntervalSet,
     SemanticINPredicateRegionBuilder,
     TRUE_DOMAIN,
     UNKNOWN_DOMAIN,
@@ -33,9 +34,12 @@ from crrepairer.repairer.vp.temporal import (
     expand_temporal_expression,
 )
 from crrepairer.smt.vp_proposition_capabilities import (
+    TURNING_PRIORITY_COMPOSITE,
     VPConstraintKind,
+    is_deferred_constraint_kind,
     predicate_base_name,
     proposition_constraint_kind,
+    proposition_predicate_identity,
     supported_constraint_kinds,
 )
 
@@ -1793,9 +1797,10 @@ class VPConstraintExtraction:
                 if constraint_kind in {
                     VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
                     VPConstraintKind.OUTSIDE_INTERSECTION,
+                    VPConstraintKind.INSIDE_SEMANTIC_REGION,
+                    VPConstraintKind.OUTSIDE_SEMANTIC_REGION,
                 }:
-                    branch, boundary, region_source = (
-                        self._apply_negative_semantic_region_constraint(
+                    result = self._apply_semantic_region_constraint(
                             proposition=prop,
                             constraint_kind=constraint_kind,
                             time_step=time_step,
@@ -1804,19 +1809,20 @@ class VPConstraintExtraction:
                             trajectory_s_max_cap=trajectory_s_max_cap,
                             index=idx,
                         )
-                    )
                     if not prop_debug_recorded:
                         self._last_extraction_debug.append(
                             {
                                 "proposition": prop.name,
                                 "kind": str(constraint_kind.value),
                                 "start_s": float(first_plan_s_trajectory),
-                                "boundary": boundary,
+                                "lower_bound": result["lower_bound"],
+                                "upper_bound": result["upper_bound"],
+                                "bound_tightened": result["bound_tightened"],
                                 "repair_mode": getattr(
                                     self, "_vp_repair_mode", "deceleration"
                                 ),
-                                "branch": branch,
-                                "region_source": region_source,
+                                "branch": result["branch"],
+                                "region_source": result["region_source"],
                             }
                         )
                         prop_debug_recorded = True
@@ -1985,47 +1991,38 @@ class VPConstraintExtraction:
     def _proposition_predicate_evaluator(proposition, predicate_name):
         """Return the atomic evaluator which owns a registered VP action."""
         for predicate in getattr(proposition, "children", ()):
+            evaluator = getattr(predicate, "evaluator", None)
+            if (
+                predicate_name == TURNING_PRIORITY_COMPOSITE
+                and getattr(evaluator, "_turning_ego", None) is not None
+            ):
+                return evaluator
             candidates = (
                 getattr(predicate, "base_name", None),
                 getattr(predicate, "name", None),
-                getattr(
-                    getattr(predicate, "evaluator", None),
-                    "predicate_name",
-                    None,
-                ),
+                getattr(evaluator, "predicate_name", None),
             )
             if any(
                 candidate is not None
                 and predicate_base_name(candidate) == predicate_name
                 for candidate in candidates
             ):
-                return getattr(predicate, "evaluator", None)
+                return evaluator
         return None
 
-    def _apply_negative_semantic_region_constraint(
+    def _semantic_constraint_region(
         self,
         *,
         proposition,
-        constraint_kind,
         time_step,
-        start_s,
-        trajectory_s_min_cap,
-        trajectory_s_max_cap,
-        index,
-    ):
-        """Keep the ego outside a certified predicate-true ``s`` region.
-
-        ``outer_true`` is an over-approximation of every path position where
-        the monitor predicate may be true.  Constraining the LP strictly before
-        or after that set therefore guarantees the selected negative literal.
-        """
-        predicate_names = {
-            VPConstraintKind.OUTSIDE_CAUSES_BRAKING:
-                "causes_braking_intersection",
-            VPConstraintKind.OUTSIDE_INTERSECTION:
-                "on_lanelet_with_type_intersection",
-        }
-        predicate_name = predicate_names[constraint_kind]
+    ) -> tuple[str, SemanticIntervalSet]:
+        """Return the constraint-ready true region for one selected atom."""
+        predicate_name = proposition_predicate_identity(proposition)
+        if predicate_name is None:
+            raise UnsupportedVPCandidateError(
+                "Selected proposition has no unique semantic predicate "
+                f"identity: {proposition.name}."
+            )
         evaluator = self._proposition_predicate_evaluator(
             proposition, predicate_name
         )
@@ -2037,7 +2034,15 @@ class VPConstraintExtraction:
 
         try:
             builder, _ = self._ensure_semantic_in_region_builder()
-            if constraint_kind == VPConstraintKind.OUTSIDE_INTERSECTION:
+            if predicate_name in {
+                "at_traffic_sign_stop",
+                "relevant_traffic_light",
+                "on_lanelet_with_type_intersection",
+                "in_intersection_conflict_area",
+                "turning_left",
+                "turning_right",
+                "going_straight",
+            }:
                 region = builder.region_for(
                     evaluator, str(proposition.name), int(time_step)
                 )
@@ -2046,46 +2051,524 @@ class VPConstraintExtraction:
                     evaluator,
                     str(proposition.name),
                     int(time_step),
-                    reachable=(float(start_s), float(start_s)),
+                    reachable=builder.reachable_by_time.get(int(time_step)),
                 )
-                region = estimate.region
+                if (
+                    predicate_name == TURNING_PRIORITY_COMPOSITE
+                    and estimate.gate_domain == FALSE_DOMAIN
+                ):
+                    region = SemanticIntervalSet.empty(
+                        "turning_composite:constant_false_gate"
+                    )
+                else:
+                    region = estimate.region
         except Exception as exc:
             raise UnsupportedVPCandidateError(
                 f"Cannot construct {predicate_name} VP region at "
                 f"time_step={time_step}: {exc}"
             ) from exc
 
-        if region is None or not region.complete:
-            source = None if region is None else region.source
+        if region is None:
             raise UnsupportedVPCandidateError(
-                f"Incomplete {predicate_name} VP region at "
-                f"time_step={time_step}: {source}."
+                f"Missing {predicate_name} VP region at time_step={time_step}."
             )
-        intervals = tuple(region.outer_true)
-        if not intervals:
-            return "fixed_false_no_constraint", None, region.source
+        return predicate_name, region
 
-        margin = 1.0e-6
+    def _deferred_semantic_polarity_precheck(
+        self,
+        *,
+        proposition,
+        desired_positive,
+        all_states,
+        builder,
+        start_s,
+        phase_reachable_upper=None,
+    ):
+        """Return whether one experimental polarity is executable.
+
+        This is a necessary-condition check over the same certified regions
+        and phase-specific reachable envelope used by extraction.  It never
+        declares a candidate feasible merely from the monitored value.  The
+        LP and final monitor remain the sufficient feasibility checks.
+        """
+        constraint_kind = proposition_constraint_kind(
+            proposition, desired_value=bool(desired_positive)
+        )
+        if not is_deferred_constraint_kind(constraint_kind):
+            return None
+        require_true = constraint_kind == VPConstraintKind.INSIDE_SEMANTIC_REGION
+        try:
+            active = self._temporal_constraint_steps(
+                all_states, propositions=(proposition,)
+            )[id(proposition)]
+        except Exception as exc:
+            return {
+                "executable": False,
+                "actionable": False,
+                "reason": f"temporal_steps:{type(exc).__name__}",
+            }
+        if active.count == 0:
+            return {
+                "executable": True,
+                "actionable": False,
+                "reason": "no_active_frames",
+            }
+
+        active_time_steps = (
+            sorted(active.steps)
+            if hasattr(active, "steps")
+            else range(int(active.start), int(active.end) + 1)
+        )
+        actionable = False
+        repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
+        for time_step in active_time_steps:
+            try:
+                _predicate_name, region = self._semantic_constraint_region(
+                    proposition=proposition,
+                    time_step=int(time_step),
+                )
+            except UnsupportedVPCandidateError as exc:
+                return {
+                    "executable": False,
+                    "actionable": False,
+                    "reason": str(exc),
+                }
+
+            if not require_true and not region.complete:
+                return {
+                    "executable": False,
+                    "actionable": False,
+                    "reason": "incomplete_outer_true",
+                }
+            intervals = tuple(
+                region.inner_true if require_true else region.outer_true
+            )
+            if not intervals:
+                if require_true:
+                    return {
+                        "executable": False,
+                        "actionable": False,
+                        "reason": "fixed_false",
+                    }
+                continue
+            if len(intervals) != 1:
+                return {
+                    "executable": False,
+                    "actionable": False,
+                    "reason": "multiple_components",
+                }
+
+            reachable = builder.reachable_by_time.get(int(time_step))
+            if reachable is None or len(reachable) != 2:
+                return {
+                    "executable": False,
+                    "actionable": False,
+                    "reason": "missing_reachable_interval",
+                }
+            reachable_lower, reachable_upper = sorted(map(float, reachable))
+            if phase_reachable_upper is not None:
+                constrained_upper = phase_reachable_upper.get(int(time_step))
+                if constrained_upper is not None:
+                    reachable_upper = min(
+                        reachable_upper, float(constrained_upper)
+                    )
+            interval = intervals[0]
+            lower = float(interval.lower)
+            upper = float(interval.upper)
+
+            if require_true:
+                if max(reachable_lower, lower) > min(reachable_upper, upper):
+                    return {
+                        "executable": False,
+                        "actionable": False,
+                        "reason": "positive_region_unreachable",
+                    }
+                actionable = actionable or (
+                    reachable_lower < lower or reachable_upper > upper
+                )
+                continue
+
+            if repair_mode == "acceleration":
+                boundary = upper + _STRICT_BOUND_TOLERANCE
+                if float(start_s) >= boundary:
+                    continue
+                if reachable_upper < boundary:
+                    return {
+                        "executable": False,
+                        "actionable": False,
+                        "reason": "after_region_unreachable",
+                    }
+                actionable = actionable or reachable_lower < boundary
+                continue
+
+            if upper < float(start_s):
+                continue
+            boundary = lower - _STRICT_BOUND_TOLERANCE
+            if reachable_lower > boundary:
+                return {
+                    "executable": False,
+                    "actionable": False,
+                    "reason": "before_region_unreachable",
+                }
+            actionable = actionable or reachable_upper > boundary
+
+        return {
+            "executable": True,
+            "actionable": bool(actionable),
+            "reason": "actionable" if actionable else "already_guaranteed",
+        }
+
+    def _deferred_acceleration_reachable_upper(
+        self,
+        *,
+        all_states,
+        trajectory_clcs,
+        builder,
+    ):
+        """Return the planner's curvature-aware maximum progress envelope.
+
+        The ordinary predicate estimator intentionally uses an optimistic
+        longitudinal envelope.  Deferred constraint prechecks need one extra
+        necessary condition: a requested lower bound must be reachable under
+        the same per-frame curvature speed caps as the acceleration LP.  This
+        rollout is used only to reject a bound which exceeds that maximum; it
+        does not replace or relax the LP.
+        """
+        if getattr(self, "_vp_repair_mode", "deceleration") != "acceleration":
+            return None
+        future_times = [
+            int(state.time_step)
+            for state in all_states
+            if int(state.time_step) > int(self._tc)
+        ]
+        if not future_times:
+            return {}
+        path_length = float(trajectory_clcs.length())
+        lower = []
+        upper = []
+        for time_step in future_times:
+            reachable = builder.reachable_by_time.get(time_step)
+            if reachable is None or len(reachable) != 2:
+                lower.append(0.0)
+                upper.append(path_length)
+                continue
+            reachable_lower, reachable_upper = sorted(map(float, reachable))
+            lower.append(reachable_lower)
+            upper.append(reachable_upper)
+
+        curvature_v_max = self._acceleration_curvature_velocity_limits(
+            trajectory_clcs,
+            np.asarray(lower, dtype=float),
+            np.asarray(upper, dtype=float),
+            float(self.config.vehicle.qp_veh_config.a_lat_max),
+        )
+        current_s, current_v, current_a = (
+            self._get_velocity_planning_current_conditions(
+                all_states, trajectory_clcs
+            )
+        )
+        if current_s is None:
+            return None
+        dt = float(self.config.scenario.dt)
+        amin, amax, _jmin, jmax = self._get_longitudinal_planning_limits()
+        smoothing_jerk_limit = max(
+            0.0,
+            float(self.config.repair.acceleration_smoothing_jerk_limit),
+        )
+        if smoothing_jerk_limit > 0.0:
+            jmax = min(float(jmax), smoothing_jerk_limit)
+        global_v_max = float(self.config.vehicle.qp_veh_config.v_lon_max)
+        previous_s = float(current_s)
+        previous_v = max(0.0, float(current_v))
+        previous_a = float(np.clip(current_a, amin, amax))
+        result = {}
+        for index, time_step in enumerate(future_times):
+            next_a = min(float(amax), previous_a + float(jmax) * dt)
+            next_v = min(
+                global_v_max,
+                float(curvature_v_max[index]),
+                max(0.0, previous_v + next_a * dt),
+            )
+            next_s = min(
+                path_length,
+                previous_s + 0.5 * (previous_v + next_v) * dt,
+            )
+            result[time_step] = float(next_s)
+            actual_a = (next_v - previous_v) / dt
+            previous_s, previous_v, previous_a = (
+                float(next_s),
+                float(next_v),
+                float(np.clip(actual_a, amin, amax)),
+            )
+        return result
+
+    def _filter_deferred_constraint_repair_literals(self):
+        """Prune impossible Tier-2 polarities before SAT enumeration.
+
+        The filter is active only in the experimental deferred phase.  It
+        consumes the same cached semantic regions as constraint extraction;
+        no core constraint, SAT formula, or LP objective is changed.
+        """
+        if not getattr(self, "_vp_deferred_constraints_active", False):
+            return []
+        tier_map = getattr(self.sat_solver, "_repair_literal_tiers", {})
+        deferred_literals = [
+            literal
+            for literal in self.sat_solver._repair_literals
+            if tier_map.get(literal) == 2
+        ]
+        if not deferred_literals:
+            return []
+
+        all_states = self._get_states_with_initial()
+        try:
+            # The actual planner must be able to construct this phase's CLCS;
+            # the semantic builder's deceleration-only lanelet fallback is not
+            # a certificate that the VP extraction path itself is usable.
+            trajectory_clcs, _ref_path = self._get_shared_trajectory_clcs(
+                all_states
+            )
+            builder, _ = self._ensure_semantic_in_region_builder()
+            first_plan_state = next(
+                state
+                for state in all_states
+                if int(state.time_step) > int(self._tc)
+            )
+            start_s = float(
+                trajectory_clcs.convert_to_curvilinear_coords(
+                    float(first_plan_state.position[0]),
+                    float(first_plan_state.position[1]),
+                )[0]
+            )
+            phase_reachable_upper = (
+                self._deferred_acceleration_reachable_upper(
+                    all_states=all_states,
+                    trajectory_clcs=trajectory_clcs,
+                    builder=builder,
+                )
+            )
+        except Exception as exc:
+            self.domain_dict_breakdown["deferred_precheck"] = {
+                "actionable_literal_count": 0,
+                "phase_error": f"{type(exc).__name__}: {exc}",
+            }
+            self.sat_solver._repair_literals = [
+                literal
+                for literal in self.sat_solver._repair_literals
+                if tier_map.get(literal) != 2
+            ]
+            return []
+
+        nodes_by_variable = {
+            str(prop.alphabet).lstrip("~"): prop
+            for prop in self.sat_solver._prop_nodes
+        }
+        # Check every registered deferred polarity, not only the polarity used
+        # as Tier-2 branch guidance.  A satisfying model can assign the
+        # opposite polarity as a sibling obligation; eliminating a polarity
+        # which the same certified regions prove impossible avoids generating
+        # a complete model that extraction must reject later.
+        verdicts = {}
+        diagnostics = {}
+        for variable, proposition in nodes_by_variable.items():
+            for desired_positive in (False, True):
+                constraint_kind = proposition_constraint_kind(
+                    proposition, desired_value=desired_positive
+                )
+                if not is_deferred_constraint_kind(constraint_kind):
+                    continue
+                verdict = self._deferred_semantic_polarity_precheck(
+                    proposition=proposition,
+                    desired_positive=desired_positive,
+                    all_states=all_states,
+                    builder=builder,
+                    start_s=start_s,
+                    phase_reachable_upper=phase_reachable_upper,
+                )
+                if verdict is None:
+                    continue
+                literal = variable if desired_positive else f"~{variable}"
+                verdicts[(variable, desired_positive)] = verdict
+                diagnostics[literal] = dict(verdict)
+                if verdict["executable"]:
+                    continue
+                allowed = set(
+                    self.sat_solver._admissible_polarities.get(
+                        variable, {0, 1}
+                    )
+                )
+                allowed.discard(1 if desired_positive else 0)
+                self.sat_solver._admissible_polarities[variable] = allowed
+
+        actionable_literals = []
+        for literal in deferred_literals:
+            variable = str(literal).lstrip("~")
+            desired_positive = not str(literal).startswith("~")
+            verdict = verdicts.get((variable, desired_positive))
+            if verdict is None:
+                diagnostics[str(literal)] = {
+                    "executable": False,
+                    "actionable": False,
+                    "reason": "missing_deferred_precheck",
+                }
+                continue
+            if verdict["actionable"]:
+                actionable_literals.append(literal)
+
+        actionable_set = set(actionable_literals)
+        self.sat_solver._repair_literals = [
+            literal
+            for literal in self.sat_solver._repair_literals
+            if tier_map.get(literal) != 2 or literal in actionable_set
+        ]
+        self.sat_solver._repair_literal_tiers = {
+            literal: tier
+            for literal, tier in tier_map.items()
+            if tier != 2 or literal in actionable_set
+        }
+        self._vp_admissible_polarities = dict(
+            self.sat_solver._admissible_polarities
+        )
+        self.domain_dict_breakdown["deferred_precheck"] = {
+            "candidate_literal_count": len(deferred_literals),
+            "actionable_literal_count": len(actionable_literals),
+            "literals": diagnostics,
+        }
+        return actionable_literals
+
+    def _apply_semantic_region_constraint(
+        self,
+        *,
+        proposition,
+        constraint_kind,
+        time_step,
+        start_s,
+        trajectory_s_min_cap,
+        trajectory_s_max_cap,
+        index,
+    ):
+        """Translate one certified true region into longitudinal LP bounds.
+
+        Positive literals use only ``inner_true``.  Negative literals use the
+        complement of a complete ``outer_true`` and retain the established
+        deceleration-before / acceleration-after branch semantics.  A union
+        with more than one connected component is rejected rather than filled
+        across a false gap.
+        """
+        predicate_name, region = self._semantic_constraint_region(
+            proposition=proposition,
+            time_step=int(time_step),
+        )
+        require_true = constraint_kind == VPConstraintKind.INSIDE_SEMANTIC_REGION
+        if constraint_kind in {
+            VPConstraintKind.OUTSIDE_CAUSES_BRAKING,
+            VPConstraintKind.OUTSIDE_INTERSECTION,
+            VPConstraintKind.OUTSIDE_SEMANTIC_REGION,
+        }:
+            require_true = False
+        elif not require_true:
+            raise UnsupportedVPCandidateError(
+                f"Unsupported semantic-region constraint kind: {constraint_kind}."
+            )
+
+        if not require_true and not region.complete:
+            raise UnsupportedVPCandidateError(
+                f"Incomplete {predicate_name} outer true region at "
+                f"time_step={time_step}: {region.source}."
+            )
+        intervals = tuple(region.inner_true if require_true else region.outer_true)
+        if not intervals:
+            if require_true:
+                raise UnsupportedVPCandidateError(
+                    f"{predicate_name} is fixed false at time_step={time_step}; "
+                    "the selected positive literal is not executable."
+                )
+            return {
+                "branch": "fixed_false_no_constraint",
+                "lower_bound": None,
+                "upper_bound": None,
+                "bound_tightened": False,
+                "region_source": region.source,
+            }
+        if len(intervals) != 1:
+            raise UnsupportedVPCandidateError(
+                f"{predicate_name} has {len(intervals)} disconnected true "
+                f"components at time_step={time_step}; branch enumeration is "
+                "not enabled."
+            )
+
+        interval = intervals[0]
+        lower = float(interval.lower)
+        upper = float(interval.upper)
+        if require_true:
+            old_lower = float(trajectory_s_min_cap[index])
+            old_upper = float(trajectory_s_max_cap[index])
+            trajectory_s_min_cap[index] = max(old_lower, lower)
+            trajectory_s_max_cap[index] = min(old_upper, upper)
+            tightened = (
+                trajectory_s_min_cap[index] > old_lower
+                or trajectory_s_max_cap[index] < old_upper
+            )
+            if trajectory_s_min_cap[index] > trajectory_s_max_cap[index]:
+                raise UnsupportedVPCandidateError(
+                    f"{predicate_name} positive interval is infeasible at "
+                    f"time_step={time_step}."
+                )
+            return {
+                "branch": "inside_region",
+                "lower_bound": lower,
+                "upper_bound": upper,
+                "bound_tightened": bool(tightened),
+                "region_source": region.source,
+            }
+
         repair_mode = getattr(self, "_vp_repair_mode", "deceleration")
         if repair_mode == "acceleration":
-            boundary = max(float(item.upper) for item in intervals) + margin
+            boundary = upper + _STRICT_BOUND_TOLERANCE
             if float(start_s) >= boundary:
-                return "already_after_region", boundary, region.source
+                return {
+                    "branch": "already_after_region",
+                    "lower_bound": boundary,
+                    "upper_bound": None,
+                    "bound_tightened": False,
+                    "region_source": region.source,
+                }
+            old_lower = float(trajectory_s_min_cap[index])
             trajectory_s_min_cap[index] = max(
                 trajectory_s_min_cap[index], boundary
             )
-            return "after_region_lower", boundary, region.source
+            return {
+                "branch": "after_region_lower",
+                "lower_bound": boundary,
+                "upper_bound": None,
+                "bound_tightened": bool(
+                    trajectory_s_min_cap[index] > old_lower
+                ),
+                "region_source": region.source,
+            }
 
-        future_intervals = [
-            item for item in intervals if float(item.upper) >= float(start_s)
-        ]
-        if not future_intervals:
-            return "already_after_region", None, region.source
-        boundary = min(float(item.lower) for item in future_intervals) - margin
+        if upper < float(start_s):
+            return {
+                "branch": "already_after_region",
+                "lower_bound": None,
+                "upper_bound": upper,
+                "bound_tightened": False,
+                "region_source": region.source,
+            }
+        boundary = lower - _STRICT_BOUND_TOLERANCE
+        old_upper = float(trajectory_s_max_cap[index])
         trajectory_s_max_cap[index] = min(
             trajectory_s_max_cap[index], boundary
         )
-        return "before_region_upper", boundary, region.source
+        return {
+            "branch": "before_region_upper",
+            "lower_bound": None,
+            "upper_bound": boundary,
+            "bound_tightened": bool(
+                trajectory_s_max_cap[index] < old_upper
+            ),
+            "region_source": region.source,
+        }
 
     def _get_intersection_conflict_trajectory_interval(
         self,
