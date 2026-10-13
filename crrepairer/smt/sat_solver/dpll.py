@@ -40,38 +40,15 @@ class DPLL:
 
     @staticmethod
     def get_literal(cnf, prop_nodes, tv_time_step: int):
-        def robustness_degree(alp):
-            node = next(
-                (x for x in prop_nodes if x.alphabet[-1] == alp[-1]),
-                None,
-            )
-            if node is None:
-                return math.inf
-            value = getattr(node, "ttv_h_min", math.inf)
-            try:
-                distance = abs(float(value))
-            except (TypeError, ValueError):
-                distance = math.inf
-            if not math.isfinite(distance):
-                distance = math.inf
-            target_penalty = sum(
-                getattr(predicate, "agent_placeholders", None) == (1, 0)
-                for predicate in node.children
-            )
-            return target_penalty + distance
-
         literals = []
         for sub in cnf:
             split_cnf = sub.split()
             for lit in split_cnf:
                 if lit[-1] not in literals and "~" + lit[-1] not in literals:
-                    test = lit[-1]
                     literals.append(lit)
-        # use robustness as heuristics to rank the literals
-        if prop_nodes is not None and tv_time_step is not math.inf:
-            return sorted(literals, key=robustness_degree)
-        else:
-            return literals
+        # Plain DPLL deliberately follows the literal order in the CNF.  It
+        # does not inspect monitored robustness or any reachable-set domain.
+        return literals
 
     @staticmethod
     def get_domain_guided_literal(cnf, prop_nodes, tv_time_step: int):

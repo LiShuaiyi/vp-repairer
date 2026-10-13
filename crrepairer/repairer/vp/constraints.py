@@ -410,10 +410,18 @@ class VPConstraintExtraction:
         is used before a SAT model exists (during domain estimation) and if the
         monitor formula cannot be evaluated reliably.
         """
-        # Plain DPLL is the no-predicate-estimation ablation.  Keep its
-        # constraint extraction on the legacy all-anchor expansion; only
-        # DomainDPLL may use reachable predicate estimates to prune anchors.
-        if getattr(self.sat_solver, "solver_mode", "dpll") == "dpll":
+        # Plain DPLL is the no-predicate-estimation ablation by default.  The
+        # opt-in switch below is used only for the orthogonal experiment that
+        # keeps plain SAT enumeration while enabling reachable-estimate-based
+        # constraint-time filtering.  It does not install SAT domains,
+        # selector pruning, or capability rejection.
+        plain_estimate_filter = os.environ.get(
+            "CRREPAIR_VP_ENABLE_PLAIN_CONSTRAINT_ESTIMATE_FILTER", "0"
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if (
+            getattr(self.sat_solver, "solver_mode", "dpll") == "dpll"
+            and not plain_estimate_filter
+        ):
             return None
         # Use the same formula-aware filtering path for intersection and
         # interstate rules.  The pointwise-monitor alignment check below is
