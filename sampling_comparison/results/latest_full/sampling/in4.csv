@@ -117,3 +117,6 @@ Traceback (most recent call last):
     raise Exception(""Initial state or reference incorrect! Curvilinear velocity is negative which indicates""
 Exception: Initial state or reference incorrect! Curvilinear velocity is negative which indicatesthat the ego vehicle is not driving in the same direction as specified by the reference
 ",,0,paper_example
+DEU_AachenBendplatz-1_151837_T-1856,/data_linux/Lab/commonroad-repairer-vp/scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_151837_T-1856.xml,10123,R_IN4,0,19,rule_filtered,True,False,False,False,4.69377606299895,5.1419926960006705,5.1419926960006705,,10124,,,394,0,paper_batch
+DEU_AachenBendplatz-1_174299_T-4318,/data_linux/Lab/commonroad-repairer-vp/scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_174299_T-4318.xml,10316,R_IN4,0,15,rule_filtered,False,False,False,False,4.8918781529973785,0.279192994999903,0.279192994999903,,10318,,,0,0,paper_batch
+DEU_AachenBendplatz-1_83416_T-3435,/data_linux/Lab/commonroad-repairer-vp/scenarios/experiment_scenarios/generated_sampling/in4/DEU_AachenBendplatz-1_83416_T-3435.xml,10259,R_IN4,0,19,rule_filtered,True,False,False,False,4.762443309002265,2.0949562070018146,2.0949562070018146,,10262,,,160,0,paper_batch
