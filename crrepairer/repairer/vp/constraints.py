@@ -3268,6 +3268,13 @@ class VPConstraintExtraction:
                     front = front_by_vehicle[candidate_id]
                     same = same_by_vehicle[candidate_id]
                     cutin = cutin_by_vehicle.get(candidate_id, ())
+                    candidate_vehicle = monitor.world.vehicle_by_id(candidate_id)
+                    # Per-vehicle proposition traces contain only frames where
+                    # that quantified target exists, so index zero corresponds
+                    # to the target's first state rather than the monitor start.
+                    trace_offset = int(
+                        min(candidate_vehicle.states_cr) - monitor.start_time_step
+                    )
                     for index in range(min(len(front), len(same))):
                         cutin_value = cutin[index] if index < len(cutin) else -1.0
                         if (
@@ -3275,7 +3282,9 @@ class VPConstraintExtraction:
                             and float(same[index]) > 0.0
                             and float(cutin_value) <= 0.0
                         ):
-                            active_by_index.setdefault(index, []).append(candidate_id)
+                            active_by_index.setdefault(
+                                trace_offset + index, []
+                            ).append(candidate_id)
 
                 # Deceleration can only delay the ego's longitudinal passage
                 # through a lane/front relation boundary.  Consequently an
@@ -3285,7 +3294,10 @@ class VPConstraintExtraction:
                 # are not silently dropped at the nominal boundary.
                 active_prefix = set()
                 active_with_closure = {}
-                last_index = max((len(values) for values in same_by_vehicle.values()), default=0)
+                ego_vehicle = monitor.world.vehicle_by_id(monitor.vehicle_id)
+                last_index = int(
+                    ego_vehicle.end_time - monitor.start_time_step + 1
+                )
                 for index in range(last_index):
                     active_prefix.update(active_by_index.get(index, ()))
                     active_with_closure[index] = tuple(sorted(active_prefix))
