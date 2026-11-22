@@ -48,6 +48,24 @@ from crrepairer.smt.vp_proposition_capabilities import (
 # independent of the predicate-estimation spatial geometry margin.
 _STRICT_BOUND_TOLERANCE = 1.0e-6
 
+# Opt-in switch for a rule-level (unified) constraint-activation set.  The
+# default per-variable set K_i treats the selected proposition as unknown and
+# proves both cofactors; the unified set K evaluates every proposition,
+# including the selected one, at its own reachable-set estimate and is shared
+# by all assigned propositions of the rule.
+_UNIFIED_CONSTRAINT_ANCHORS_ENV = "CRREPAIR_VP_UNIFIED_CONSTRAINT_ANCHORS"
+# Placeholder target that never occurs in a rule formula.  Using it as the
+# "unknown" target makes the two-cofactor proof collapse to one proof in
+# which every formula symbol uses its reachable-set estimate.
+_UNIFIED_ANCHOR_TARGET = "__unified_constraint_anchors__"
+
+
+def _unified_constraint_anchors_enabled():
+    """Return whether rule-level unified constraint anchors are requested."""
+    return os.environ.get(
+        _UNIFIED_CONSTRAINT_ANCHORS_ENV, "0"
+    ).strip().lower() in {"1", "true", "yes", "on"}
+
 
 class UnsupportedVPCandidateError(RuntimeError):
     """A SAT assignment that cannot be represented by VP constraints."""
@@ -433,6 +451,15 @@ class VPConstraintExtraction:
         ``None`` asks the caller to use the legacy all-anchor expansion.  This
         is used before a SAT model exists (during domain estimation) and if the
         monitor formula cannot be evaluated reliably.
+
+        With ``CRREPAIR_VP_UNIFIED_CONSTRAINT_ANCHORS=1`` the selected
+        proposition is not treated as unknown: every proposition of the rule,
+        including the selected one, uses its own reachable-set estimate, and
+        the anchor is omitted when the complete formula is certified true.
+        The resulting set is the same for all assigned propositions of the
+        rule.  It is implemented by running the same proof with a placeholder
+        target that does not occur in the formula, so the nominal guard and
+        the reachable-set proof both reduce to single evaluations.
         """
         # Plain DPLL is the no-predicate-estimation ablation by default.  The
         # opt-in switch below is used only for the orthogonal experiment that
@@ -459,7 +486,11 @@ class VPConstraintExtraction:
         )
         if formula_anchor_cache is None:
             formula_anchor_cache = self._complete_formula_active_anchor_cache = {}
-        target_variable = str(proposition.alphabet).lstrip("~")
+        unified_anchors = _unified_constraint_anchors_enabled()
+        proposition_variable = str(proposition.alphabet).lstrip("~")
+        target_variable = (
+            _UNIFIED_ANCHOR_TARGET if unified_anchors else proposition_variable
+        )
         selected_value = not str(proposition.alphabet).startswith("~")
         residual_target_value = not selected_value
         # Test the previously used unsatisfied value first so anchors that
@@ -488,7 +519,9 @@ class VPConstraintExtraction:
         except (AttributeError, KeyError, TypeError, ValueError):
             return None
 
-        if target_variable not in formula_symbols:
+        # The selected proposition must occur in its rule formula in both
+        # modes; the unified placeholder target deliberately does not.
+        if proposition_variable not in formula_symbols:
             return None
 
         formula_variables = {str(symbol) for symbol in formula.free_symbols}
@@ -1050,6 +1083,7 @@ class VPConstraintExtraction:
                 "anchor_evaluations": [],
                 "formula": str(formula),
                 "reason": "empty_nominal_two_cofactor_mask",
+                "unified_anchors": unified_anchors,
             }
             if os.environ.get("CRREPAIR_VP_FORMULA_DEBUG"):
                 print(
@@ -1159,6 +1193,7 @@ class VPConstraintExtraction:
             "unknown_source_anchors": unknown_anchors,
             "anchor_evaluations": anchor_evaluations,
             "formula": str(formula),
+            "unified_anchors": unified_anchors,
         }
         if os.environ.get("CRREPAIR_VP_FORMULA_DEBUG"):
             print(
