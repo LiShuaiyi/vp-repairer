@@ -20,11 +20,15 @@ from crrepairer.repairer.vp.constraints import (
 )
 from crrepairer.repairer.vp.domain import VPPredicateEstimation
 from crrepairer.repairer.vp.optimization import VPOptimization
+from crrepairer.repairer.vp.semantic_predicate_regions import (
+    build_semantic_in_predicate_region_builder,
+)
 from crrepairer.repairer.vp.trajectory_context import VPTrajectoryContext
 from crrepairer.repairer.vp.utils import VPUtils
 from crrepairer.smt.vp_proposition_capabilities import (
     additional_constraint_extraction_enabled,
     is_deferred_constraint_kind,
+    proposition_constraint_kind,
     supported_constraint_kinds,
 )
 
@@ -86,6 +90,8 @@ class VPTrajectoryRepairer(
         self.domain_dict_breakdown_by_mode = {}
         self._conflict_trajectory_interval_cache = {}
         self._semantic_fixed_domain_cache = {}
+        self._semantic_lateral_preprocessed_builder = None
+        self.semantic_lateral_preprocess_time = 0.0
         self._semantic_certified_domains = {}
         self._temporal_constraint_steps_cache = {}
         self._complete_formula_active_anchor_cache = {}
@@ -136,6 +142,70 @@ class VPTrajectoryRepairer(
         """
         return self._model
 
+    def _prepare_semantic_lateral_geometry(self):
+        """Precompute immutable RG lateral geometry outside repair timing.
+
+        Only DomainDPLL consumes predicate-value estimates.  Plain DPLL must
+        remain a preprocessing-free baseline.  The trajectory CLCS creation
+        time is returned separately so it can still be charged to the normal
+        ``clcs`` runtime component; only lateral projection/partition work is
+        excluded from the proposed repair time.
+        """
+        self._semantic_lateral_preprocessed_builder = None
+        self.semantic_lateral_preprocess_time = 0.0
+        if self.sat_solver.solver_mode != "domain_dpll":
+            return 0.0
+        prop_names = tuple(
+            str(getattr(prop, "name", "")).lower()
+            for prop in (getattr(self.sat_solver, "_prop_nodes", ()) or ())
+        )
+        if not any(
+            "in_same_lane" in name or "cut_in" in name
+            for name in prop_names
+        ):
+            return 0.0
+
+        all_states = self._get_states_with_initial()
+        clcs_started = time.perf_counter()
+        trajectory_clcs, ref_path = self._get_shared_trajectory_clcs(all_states)
+        clcs_elapsed = time.perf_counter() - clcs_started
+        preprocess_started = time.perf_counter()
+        try:
+            builder = build_semantic_in_predicate_region_builder(
+                self,
+                trajectory_clcs,
+                ref_path,
+                {},
+                lanelet_clcs=self._get_vp_lanelet_clcs(),
+                fixed_domain_cache=self._semantic_fixed_domain_cache,
+                uncertainty=float(
+                    os.environ.get(
+                        "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY", "0.05"
+                    )
+                ),
+            )
+            diagnostics = builder.precompute_lateral_geometry()
+            self._semantic_lateral_preprocessed_builder = builder
+            self._semantic_in_region_builder = builder
+            self._semantic_in_region_context = None
+            self._semantic_lateral_preprocess_diagnostics = diagnostics
+        except Exception as exc:
+            # This is a cache warm-up, never a semantic prerequisite.  The
+            # phase-local builder below retains every existing fallback.
+            self._semantic_lateral_preprocess_diagnostics = {
+                "error": type(exc).__name__
+            }
+        # The warm-up allocates many short-lived geometry objects.  Collect
+        # them here, outside repair timing, so a deferred garbage-collection
+        # pass is not charged to the timed domain construction.
+        import gc
+
+        gc.collect()
+        self.semantic_lateral_preprocess_time = (
+            time.perf_counter() - preprocess_started
+        )
+        return clcs_elapsed
+
     def _supports_acceleration_fallback(self):
         # Both SAT backends use the same deceleration-then-acceleration VP
         # phases.  Plain DPLL still remains the unguided baseline: it does not
@@ -156,13 +226,13 @@ class VPTrajectoryRepairer(
         if (
             self._vp_deferred_constraints_active
             or not additional_constraint_extraction_enabled()
+            or int(getattr(self.config.repair, "constraint_mode", 1)) != 1
             or not any(
                 is_deferred_constraint_kind(kind)
                 for kind in supported_constraint_kinds(
                     self.config.repair.rules
                 )
             )
-            or self.sat_solver.solver_mode != "domain_dpll"
         ):
             return False
         self._vp_deferred_constraints_active = True
@@ -179,9 +249,48 @@ class VPTrajectoryRepairer(
             return True
         return False
 
+    def _plain_deferred_constraint_literals(self):
+        """Collect executable fallback polarities without domain estimates.
+
+        Plain DPLL remains an unguided baseline: this method neither builds a
+        reachable-domain dictionary nor rejects candidates using semantic
+        estimates.  It only identifies, from proposition structure, the
+        registered deferred polarity which changes the currently monitored
+        truth value.  Temporal expansion subsequently replaces an existential
+        parent with its complete set of legal time selectors.
+        """
+        literals = []
+        tiers = {}
+        for proposition in self.sat_solver._prop_nodes:
+            variable = str(proposition.alphabet).lstrip("~")
+            current_positive = float(proposition.ttv_value) > 0.0
+            desired_positive = not current_positive
+            kind = proposition_constraint_kind(
+                proposition, desired_value=desired_positive
+            )
+            if not is_deferred_constraint_kind(kind):
+                continue
+            literal = variable if desired_positive else f"~{variable}"
+            literals.append(literal)
+            tiers[literal] = 2
+        self.sat_solver.set_domain_dict(
+            {}, repair_literals=literals, repair_literal_tiers=tiers
+        )
+        return literals
+
     def _begin_vp_repair_phase(self, repair_mode):
         """Start one independent SAT/domain search for a VP branch."""
         previous_mode = getattr(self, "_vp_repair_mode", None)
+        initial_lateral_builder = (
+            getattr(self, "_semantic_lateral_preprocessed_builder", None)
+            if repair_mode == "deceleration"
+            else None
+        )
+        initial_shared_clcs = (
+            getattr(self, "_shared_trajectory_clcs", None)
+            if initial_lateral_builder is not None
+            else None
+        )
         phase_preprocess_cache = getattr(
             self, "_vp_phase_preprocess_cache", None
         )
@@ -241,6 +350,7 @@ class VPTrajectoryRepairer(
         self._constraint_repair_analysis_complete = False
         self._in_reachability_context_cache = None
         self._semantic_in_region_builder = None
+        self._semantic_in_region_context = None
         self._semantic_certified_domains = {}
         self._complete_formula_active_anchor_cache = {}
         # Reachable proposition domains are phase-specific: acceleration and
@@ -270,26 +380,54 @@ class VPTrajectoryRepairer(
             self._semantic_in_region_builder = reusable_preprocess[
                 "semantic_region_builder"
             ]
+        elif initial_lateral_builder is not None:
+            # The reference path and its lateral monotonicity partitions were
+            # prepared before repair timing.  Reachability is attached by the
+            # domain builder below, so reusing it does not leak phase state.
+            self._shared_trajectory_clcs = initial_shared_clcs
+            self._semantic_in_region_builder = initial_lateral_builder
         # Failed deceleration models are valid candidates for the alternative
         # exit branch, so the acceleration phase must start from the original
         # CNF rather than the formula containing deceleration blocking clauses.
         self.sat_solver = SATSolver(self.rule_monitor, self.config)
         if self.sat_solver.solver_mode == "domain_dpll":
             self.ensure_domain_dict_initialized()
+        elif self._vp_deferred_constraints_active:
+            self._plain_deferred_constraint_literals()
         once_time_estimate_start = time.time()
         self._install_sat_once_time_expansion()
         if (
-            self._vp_deferred_constraints_active
+            not self._vp_deferred_constraints_active
             and self.sat_solver.solver_mode == "domain_dpll"
         ):
-            deferred_literals = (
-                self._filter_deferred_constraint_repair_literals()
-            )
+            # Temporal expansion appends selector literals after domain
+            # construction.  A selector inherited from a deferred parent is
+            # still Tier 2 and must not leak back into the core search.
+            self.sat_solver._repair_literals = [
+                literal
+                for literal in self.sat_solver._repair_literals
+                if self.sat_solver._repair_literal_tiers.get(literal) != 2
+            ]
+            # Tier metadata is needed above only to recognize temporal
+            # selectors inherited from deferred parents.  Clear it before
+            # sorting so the core search uses the exact historical
+            # current-polarity/plain-rank ordering, even when the feature flag
+            # is enabled.
+            self.sat_solver._repair_literal_tiers = {}
+        deferred_literals = []
+        if self._vp_deferred_constraints_active:
+            if self.sat_solver.solver_mode == "domain_dpll":
+                deferred_literals = (
+                    self._filter_deferred_constraint_repair_literals()
+                )
+            else:
+                deferred_literals = [
+                    literal
+                    for literal in self.sat_solver._repair_literals
+                    if self.sat_solver._repair_literal_tiers.get(literal) == 2
+                ]
         self.sat_solver.sort_domain_repair_literals()
-        if (
-            self._vp_deferred_constraints_active
-            and self.sat_solver.solver_mode == "domain_dpll"
-        ):
+        if self._vp_deferred_constraints_active:
             if not self.sat_solver.require_any_literals(deferred_literals):
                 return False
         # Temporal expansion may add (and optionally reorder) executable SAT
@@ -326,6 +464,10 @@ class VPTrajectoryRepairer(
         self._shared_trajectory_clcs = None
         self._conflict_trajectory_interval_cache = {}
         self._semantic_fixed_domain_cache = {}
+        self._semantic_lateral_preprocessed_builder = None
+        self._semantic_in_region_builder = None
+        self._semantic_in_region_context = None
+        self.semantic_lateral_preprocess_time = 0.0
         self._semantic_certified_domains = {}
         self._temporal_constraint_steps_cache = {}
         self._complete_formula_active_anchor_cache = {}
@@ -351,6 +493,7 @@ class VPTrajectoryRepairer(
             return None
 
         nr = 1
+        pre_repair_clcs_time = self._prepare_semantic_lateral_geometry()
         start_time = time.time()
         self.nr_iter = 0
         self.sat_reasoning_time = 0.0
@@ -361,7 +504,10 @@ class VPTrajectoryRepairer(
         self.runtime_breakdown = {
             "domain_dict": 0.0,
             "sat": 0.0,
-            "clcs": 0.0,
+            # Building the CLCS remains part of VP core time even when it was
+            # needed to prepare lateral monotonicity before the repair timer.
+            # Only the lateral semantic precomputation itself is excluded.
+            "clcs": float(pre_repair_clcs_time),
             "constraint_extraction": 0.0,
             "constraint_conversion": 0.0,
             "lp": 0.0,

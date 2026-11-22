@@ -333,6 +333,13 @@ class SATSolver:
             current = float(node.ttv_value) >= 0.0
             return int(requested == current)
 
+        def is_once_time_selector(literal):
+            """Prefer an executable temporal witness over its parent atoms."""
+            node = node_by_variable.get(literal.lstrip("~"))
+            return int(
+                not bool(getattr(node, "vp_once_time_auxiliary", False))
+            )
+
         if self._repair_literal_tiers:
             # Explicit experimental tiers are authoritative.  Plain-DPLL rank
             # and the original stable order may only reorder literals within
@@ -341,15 +348,18 @@ class SATSolver:
             self._repair_literals.sort(
                 key=lambda literal: (
                     self._repair_literal_tiers.get(literal, 1),
+                    is_once_time_selector(literal),
                     already_has_requested_polarity(literal),
                     rank.get(literal.lstrip("~"), len(rank)),
                     original_order[literal],
                 )
             )
         else:
-            # Feature flag off: preserve the historical ordering exactly.
+            # Without explicit tiers, keep the established polarity/rank
+            # order after executable temporal witnesses.
             self._repair_literals.sort(
                 key=lambda literal: (
+                    is_once_time_selector(literal),
                     already_has_requested_polarity(literal),
                     rank.get(literal.lstrip("~"), len(rank)),
                     original_order[literal],

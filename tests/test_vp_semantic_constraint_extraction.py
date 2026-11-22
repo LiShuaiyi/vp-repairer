@@ -8,6 +8,7 @@ from crrepairer.repairer.vp.constraints import (
     VPConstraintExtraction,
     _STRICT_BOUND_TOLERANCE,
 )
+from crrepairer.repairer.vp_repairer import VPTrajectoryRepairer
 from crrepairer.repairer.vp.predicate_regions import ClosedInterval
 from crrepairer.repairer.vp.semantic_predicate_regions import (
     FALSE_DOMAIN,
@@ -76,10 +77,59 @@ def test_positive_semantic_region_uses_single_inner_component():
     result, lower, upper = _apply(
         region, VPConstraintKind.INSIDE_SEMANTIC_REGION
     )
-    assert lower.tolist() == [2.0]
-    assert upper.tolist() == [4.0]
+    assert lower[0] == pytest.approx(2.0 + _STRICT_BOUND_TOLERANCE)
+    assert upper[0] == pytest.approx(4.0 - _STRICT_BOUND_TOLERANCE)
     assert result["branch"] == "inside_region"
     assert result["bound_tightened"] is True
+
+
+def test_positive_semantic_region_rejects_empty_strict_interior():
+    region = SemanticIntervalSet.from_nominal(
+        ((2.0, 2.0 + _STRICT_BOUND_TOLERANCE),),
+        uncertainty=0.0,
+        source="boundary_only",
+    )
+    with pytest.raises(UnsupportedVPCandidateError, match="strictly positive"):
+        _apply(region, VPConstraintKind.INSIDE_SEMANTIC_REGION)
+
+
+def test_constraint_phase_gate_is_solver_independent():
+    extractor = object.__new__(VPConstraintExtraction)
+    extractor._vp_deferred_constraints_active = False
+    assert extractor._constraint_kind_enabled_for_current_phase(
+        VPConstraintKind.STOP_LINE_UPPER
+    )
+    assert not extractor._constraint_kind_enabled_for_current_phase(
+        VPConstraintKind.INSIDE_SEMANTIC_REGION
+    )
+    extractor._vp_deferred_constraints_active = True
+    assert extractor._constraint_kind_enabled_for_current_phase(
+        VPConstraintKind.INSIDE_SEMANTIC_REGION
+    )
+
+
+def test_fixed_false_negative_region_is_not_an_effective_deferred_action():
+    empty = SemanticIntervalSet.empty("fixed_false")
+    result, lower, upper = _apply(
+        empty, VPConstraintKind.OUTSIDE_SEMANTIC_REGION
+    )
+    assert result["branch"] == "fixed_false_no_constraint"
+    assert result["bound_tightened"] is False
+    assert np.isneginf(lower[0]) and np.isposinf(upper[0])
+
+
+def test_deferred_phase_rejects_model_without_effective_bound():
+    extractor = object.__new__(VPConstraintExtraction)
+    extractor._vp_deferred_constraints_active = True
+    with pytest.raises(UnsupportedVPCandidateError, match="no effective"):
+        extractor._require_effective_deferred_constraint(False)
+    extractor._require_effective_deferred_constraint(True)
+
+
+def test_core_phase_does_not_require_deferred_bound():
+    extractor = object.__new__(VPConstraintExtraction)
+    extractor._vp_deferred_constraints_active = False
+    extractor._require_effective_deferred_constraint(False)
 
 
 @pytest.mark.parametrize(
@@ -345,6 +395,74 @@ def test_dynamic_predicates_reuse_estimator_region(predicate_name):
     assert region is expected
 
 
+@pytest.mark.parametrize(
+    ("predicate_name", "diagnostic_key"),
+    [
+        ("on_incoming_left_of", "target_cap"),
+        ("causes_braking_intersection", "acceleration_robustness"),
+    ],
+)
+def test_zero_fixed_cap_has_no_strictly_positive_constraint_region(
+    predicate_name, diagnostic_key
+):
+    region = SemanticIntervalSet.from_nominal(
+        ((3.0, 6.0),), uncertainty=0.0, source=predicate_name
+    )
+    estimate = FramePredicateEstimate(
+        TRUE_DOMAIN,
+        f"{predicate_name}:quantitative",
+        region=region,
+        gate_domain=TRUE_DOMAIN,
+        diagnostics={diagnostic_key: 0.0},
+    )
+    builder = SimpleNamespace(
+        reachable_by_time={4: (0.0, 8.0)},
+        estimate_frame=lambda *_args, **_kwargs: estimate,
+    )
+    extractor = object.__new__(VPConstraintExtraction)
+    extractor._ensure_semantic_in_region_builder = lambda: (builder, {})
+    prop = _prop(
+        f"{predicate_name}__0_1", predicate_name=predicate_name
+    )
+
+    _, extracted = extractor._semantic_constraint_region(
+        proposition=prop, time_step=4
+    )
+
+    assert extracted.complete is True
+    assert extracted.outer_true == ()
+
+
+def test_turning_composite_zero_fixed_cap_has_no_positive_region():
+    region = SemanticIntervalSet.from_nominal(
+        ((2.0, 4.0),), uncertainty=0.0, source="turning"
+    )
+    evaluator = SimpleNamespace(
+        predicate_name="opaque_composite",
+        _turning_ego=SimpleNamespace(predicate_name="turning_left"),
+    )
+    estimate = FramePredicateEstimate(
+        TRUE_DOMAIN,
+        "continuous_turning_composite",
+        region=region,
+        gate_domain=TRUE_DOMAIN,
+        diagnostics={"fixed_cap": 0.0},
+    )
+    builder = SimpleNamespace(
+        reachable_by_time={3: (0.0, 5.0)},
+        estimate_frame=lambda *_args, **_kwargs: estimate,
+    )
+    extractor = object.__new__(VPConstraintExtraction)
+    extractor._ensure_semantic_in_region_builder = lambda: (builder, {})
+    prop = _prop("opaque__0_1", evaluator=evaluator)
+
+    _, extracted = extractor._semantic_constraint_region(
+        proposition=prop, time_step=3
+    )
+
+    assert extracted.outer_true == ()
+
+
 def test_causes_braking_additional_extractor_adds_a_real_bound(monkeypatch):
     monkeypatch.setenv("CRREPAIR_VP_ENABLE_ADDITIONAL_CONSTRAINT_EXTRACTION", "1")
     region = SemanticIntervalSet.from_nominal(
@@ -496,12 +614,145 @@ def test_sort_without_tiers_preserves_historical_current_polarity_key():
     assert solver._repair_literals == ["b", "a"]
 
 
+def test_sort_without_tiers_prefers_exact_temporal_selector():
+    solver = object.__new__(SATSolver)
+    solver._solver_mode = "domain_dpll"
+    solver._formula = "a & b"
+    solver._repair_literals = ["a", "b"]
+    solver._repair_literal_tiers = {}
+    solver._prop_nodes = [
+        SimpleNamespace(alphabet="a", ttv_value=-1.0),
+        SimpleNamespace(
+            alphabet="b",
+            ttv_value=-1.0,
+            vp_once_time_auxiliary=True,
+        ),
+    ]
+    solver._dpll_solver = SimpleNamespace(
+        _tv_time_step=0,
+        _assign_cnf=lambda _formula: [],
+        get_literal=lambda *_args: ["a", "b"],
+    )
+
+    solver.sort_domain_repair_literals()
+
+    assert solver._repair_literals == ["b", "a"]
+
+
 def test_deferred_phase_requires_at_least_one_deferred_literal():
     solver = object.__new__(SATSolver)
     solver._formula = "a & (b | c)"
     assert solver.require_any_literals(["~b", "c", "~b"]) is True
     assert solver._formula == "(a & (b | c)) & (~b | c)"
     assert solver.require_any_literals([]) is False
+
+
+def test_plain_dpll_structurally_collects_deferred_action(monkeypatch):
+    monkeypatch.setenv("CRREPAIR_VP_ENABLE_ADDITIONAL_CONSTRAINT_EXTRACTION", "1")
+    repairer = object.__new__(VPTrajectoryRepairer)
+    proposition = _prop(
+        "at_traffic_sign_stop__0",
+        alphabet="a",
+        predicate_name="at_traffic_sign_stop",
+    )
+    proposition.ttv_value = -1.0
+    solver = object.__new__(SATSolver)
+    solver._prop_nodes = [proposition]
+    solver._solver_mode = "dpll"
+    repairer.sat_solver = solver
+
+    literals = repairer._plain_deferred_constraint_literals()
+
+    assert literals == ["a"]
+    assert solver._domain_dict == {}
+    assert solver._admissible_polarities == {}
+    assert solver._repair_literals == ["a"]
+    assert solver._repair_literal_tiers == {"a": 2}
+
+
+def test_plain_dpll_can_enter_independent_deferred_phase(monkeypatch):
+    monkeypatch.setenv("CRREPAIR_VP_ENABLE_ADDITIONAL_CONSTRAINT_EXTRACTION", "1")
+    repairer = object.__new__(VPTrajectoryRepairer)
+    repairer._vp_deferred_constraints_active = False
+    repairer.config = SimpleNamespace(
+        repair=SimpleNamespace(
+            rules=("R_IN1",), constraint_mode=1, sat_solver_mode="dpll"
+        )
+    )
+    repairer.sat_solver = SimpleNamespace(solver_mode="dpll")
+    phases = []
+    repairer._begin_vp_repair_phase = lambda mode: phases.append(mode) or True
+
+    assert repairer._begin_deferred_constraint_fallback() is True
+    assert repairer._vp_deferred_constraints_active is True
+    assert phases == ["deceleration"]
+
+
+def test_corridor_mode_never_enters_semantic_deferred_phase(monkeypatch):
+    monkeypatch.setenv("CRREPAIR_VP_ENABLE_ADDITIONAL_CONSTRAINT_EXTRACTION", "1")
+    repairer = object.__new__(VPTrajectoryRepairer)
+    repairer._vp_deferred_constraints_active = False
+    repairer.config = SimpleNamespace(
+        repair=SimpleNamespace(
+            rules=("R_IN1",), constraint_mode=2, sat_solver_mode="dpll"
+        )
+    )
+    repairer.sat_solver = SimpleNamespace(solver_mode="dpll")
+    repairer._begin_vp_repair_phase = lambda _mode: pytest.fail(
+        "corridor mode must not start semantic fallback"
+    )
+
+    assert repairer._begin_deferred_constraint_fallback() is False
+    assert repairer._vp_deferred_constraints_active is False
+
+
+def test_plain_dpll_does_not_run_domain_deferred_precheck(monkeypatch):
+    monkeypatch.setenv("CRREPAIR_VP_ENABLE_ADDITIONAL_CONSTRAINT_EXTRACTION", "1")
+    repairer = object.__new__(VPTrajectoryRepairer)
+    repairer._vp_deferred_constraints_active = True
+    repairer._vp_repair_mode = "deceleration"
+    repairer._vp_phase_preprocess_cache = None
+    repairer._domain_dict_initialized = False
+    repairer._shared_trajectory_clcs = None
+    repairer._conflict_trajectory_interval_cache = {}
+    repairer._acceleration_curvature_cache = {}
+    repairer.config = SimpleNamespace(
+        repair=SimpleNamespace(sat_solver_mode="dpll", rules=("R_IN1",))
+    )
+    repairer.rule_monitor = SimpleNamespace(
+        sat_formula="a", proposition_nodes=[], rob_abstraction={}, tv_time_step=0
+    )
+    repairer.domain_dict = {}
+    repairer.domain_dict_breakdown = {}
+    repairer._domain_predicate_timing = {}
+    repairer._repair_literals = []
+    repairer._repair_literal_tiers = {}
+    repairer._constraint_repair_literals = []
+    repairer._vp_admissible_polarities = {}
+    repairer._constraint_repair_analysis_complete = False
+    repairer._in_reachability_context_cache = None
+    repairer._semantic_in_region_builder = None
+    repairer._semantic_certified_domains = {}
+    repairer._complete_formula_active_anchor_cache = {}
+    repairer._anchor_proposition_domain_cache = {}
+    repairer._predicate_frame_domain_cache = {}
+    repairer._once_time_plans = {}
+    repairer._once_time_choice = {}
+    repairer._active_sat_once_intervals = {}
+    repairer._sat_once_time_plans = {}
+    repairer.sat_once_intervals_tried = []
+    repairer.domain_dict_time = 0.0
+    repairer.sat_reasoning_time = 0.0
+    repairer.runtime_breakdown = {"domain_dict": 0.0, "sat": 0.0}
+    repairer._install_sat_once_time_expansion = lambda: {}
+    repairer._plain_deferred_constraint_literals = lambda: ["a"]
+    repairer._filter_deferred_constraint_repair_literals = lambda: pytest.fail(
+        "plain DPLL must not call DomainDPLL deferred precheck"
+    )
+
+    # No structural literal was installed by the stub, so the phase exits
+    # cleanly after proving that it never invoked the domain-only filter.
+    assert repairer._begin_vp_repair_phase("deceleration") is False
 
 
 def test_deferred_precheck_rejects_unreachable_positive_region(monkeypatch):

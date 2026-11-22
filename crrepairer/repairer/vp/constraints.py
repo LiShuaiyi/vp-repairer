@@ -137,6 +137,30 @@ class VPConstraintExtraction:
             seen.add(id(prop))
         return selected
 
+    def _constraint_kind_enabled_for_current_phase(self, constraint_kind):
+        """Return whether a registered action belongs to the active phase.
+
+        This is the single phase gate for extraction.  Predicate-specific
+        extractors therefore do not need solver-mode checks, and enabling the
+        capability registry cannot alter the legacy core phase.
+        """
+        if is_deferred_constraint_kind(constraint_kind):
+            return bool(
+                getattr(self, "_vp_deferred_constraints_active", False)
+            )
+        return True
+
+    def _require_effective_deferred_constraint(self, bound_tightened):
+        """Reject a fallback model which contains no executable VP action."""
+        if (
+            getattr(self, "_vp_deferred_constraints_active", False)
+            and not bool(bound_tightened)
+        ):
+            raise UnsupportedVPCandidateError(
+                "Deferred SAT candidate produced no effective longitudinal "
+                "constraint."
+            )
+
     @staticmethod
     def _once_historically_duration(expression):
         """Parse O(H[0,T](...)); return T seconds or None."""
@@ -1674,6 +1698,8 @@ class VPConstraintExtraction:
                 all_states, propositions=constraint_propositions
             )
         self._last_extraction_debug = []
+        deferred_bound_tightened = False
+        deferred_tightened_bounds = []
         selected_constraint_kinds = {
             proposition_constraint_kind(prop) for prop in constraint_propositions
         }
@@ -1808,6 +1834,14 @@ class VPConstraintExtraction:
                     VPConstraintKind.INSIDE_SEMANTIC_REGION,
                     VPConstraintKind.OUTSIDE_SEMANTIC_REGION,
                 }:
+                    # Additional semantic-region actions are isolated in a
+                    # second SAT search.  In the legacy core search they are
+                    # deliberately ignored, exactly as unsupported extra
+                    # literals were before the experimental registry existed.
+                    if not self._constraint_kind_enabled_for_current_phase(
+                        constraint_kind
+                    ):
+                        continue
                     result = self._apply_semantic_region_constraint(
                             proposition=prop,
                             constraint_kind=constraint_kind,
@@ -1816,6 +1850,21 @@ class VPConstraintExtraction:
                             trajectory_s_min_cap=trajectory_s_min_cap,
                             trajectory_s_max_cap=trajectory_s_max_cap,
                             index=idx,
+                        )
+                    deferred_bound_tightened = (
+                        deferred_bound_tightened
+                        or bool(result["bound_tightened"])
+                    )
+                    if result["bound_tightened"]:
+                        deferred_tightened_bounds.append(
+                            {
+                                "proposition": prop.name,
+                                "time_step": int(time_step),
+                                "kind": str(constraint_kind.value),
+                                "branch": result["branch"],
+                                "lower_bound": result["lower_bound"],
+                                "upper_bound": result["upper_bound"],
+                            }
                         )
                     if not prop_debug_recorded:
                         self._last_extraction_debug.append(
@@ -1993,6 +2042,18 @@ class VPConstraintExtraction:
                     # the complete STL monitor check below the optimizer.
                     continue
         
+        self._require_effective_deferred_constraint(
+            deferred_bound_tightened
+        )
+        if getattr(self, "_vp_deferred_constraints_active", False):
+            self._last_extraction_debug.append(
+                {
+                    "kind": "deferred_effective_bounds",
+                    "count": len(deferred_tightened_bounds),
+                    "bounds": deferred_tightened_bounds,
+                }
+            )
+
         return s_min, s_max, v_min, v_max, trajectory_s_min_cap, trajectory_s_max_cap
 
     @staticmethod
@@ -2061,12 +2122,24 @@ class VPConstraintExtraction:
                     int(time_step),
                     reachable=builder.reachable_by_time.get(int(time_step)),
                 )
+                diagnostics = getattr(estimate, "diagnostics", {}) or {}
+                fixed_cap = None
+                if predicate_name == TURNING_PRIORITY_COMPOSITE:
+                    fixed_cap = diagnostics.get("fixed_cap")
+                elif predicate_name == "on_incoming_left_of":
+                    fixed_cap = diagnostics.get("target_cap")
+                elif predicate_name == "causes_braking_intersection":
+                    fixed_cap = diagnostics.get("acceleration_robustness")
                 if (
-                    predicate_name == TURNING_PRIORITY_COMPOSITE
-                    and estimate.gate_domain == FALSE_DOMAIN
+                    estimate.gate_domain == FALSE_DOMAIN
+                    or (
+                        fixed_cap is not None
+                        and math.isfinite(float(fixed_cap))
+                        and float(fixed_cap) <= 0.0
+                    )
                 ):
                     region = SemanticIntervalSet.empty(
-                        "turning_composite:constant_false_gate"
+                        f"{predicate_name}:strict_positive_gate_unavailable"
                     )
                 else:
                     region = estimate.region
@@ -2185,6 +2258,14 @@ class VPConstraintExtraction:
             upper = float(interval.upper)
 
             if require_true:
+                lower += _STRICT_BOUND_TOLERANCE
+                upper -= _STRICT_BOUND_TOLERANCE
+                if lower > upper:
+                    return {
+                        "executable": False,
+                        "actionable": False,
+                        "reason": "strict_positive_region_empty",
+                    }
                 if max(reachable_lower, lower) > min(reachable_upper, upper):
                     return {
                         "executable": False,
@@ -2509,6 +2590,16 @@ class VPConstraintExtraction:
         lower = float(interval.lower)
         upper = float(interval.upper)
         if require_true:
+            # The monitor uses robustness > 0.  A continuous signed-distance
+            # truth region has robustness exactly zero at both endpoints, so
+            # a closed LP bound must be moved strictly into the region.
+            lower += _STRICT_BOUND_TOLERANCE
+            upper -= _STRICT_BOUND_TOLERANCE
+            if lower > upper:
+                raise UnsupportedVPCandidateError(
+                    f"{predicate_name} has no strictly positive interior at "
+                    f"time_step={time_step}."
+                )
             old_lower = float(trajectory_s_min_cap[index])
             old_upper = float(trajectory_s_max_cap[index])
             trajectory_s_min_cap[index] = max(old_lower, lower)

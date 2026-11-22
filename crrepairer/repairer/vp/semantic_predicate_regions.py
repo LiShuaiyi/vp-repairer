@@ -39,7 +39,7 @@ from dataclasses import dataclass, field
 import math
 import os
 import time
-from typing import Any, Dict, FrozenSet, Iterable, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import shapely
@@ -67,6 +67,45 @@ from crrepairer.repairer.vp.predicate_piecewise import (
 
 
 _ENDPOINT_PROJECTION_CONSISTENCY_TOLERANCE = 1.0e-6
+
+
+LATERAL_DISTANCE_ESTIMATION_ENV = "CRREPAIR_VP_LATERAL_DISTANCE_ESTIMATION"
+
+
+_LATERAL_STATS: Dict[str, int] = {}
+_LATERAL_STATS_ENABLED = bool(os.environ.get("CRREPAIR_VP_LATERAL_STATS_FILE"))
+
+
+def _lateral_stat(name: str) -> None:
+    _LATERAL_STATS[name] = _LATERAL_STATS.get(name, 0) + 1
+
+
+def _write_lateral_stats() -> None:
+    path = os.environ.get("CRREPAIR_VP_LATERAL_STATS_FILE")
+    if not path or not _LATERAL_STATS:
+        return
+    try:
+        import json
+
+        with open(path, "a") as handle:
+            handle.write(json.dumps(_LATERAL_STATS) + "\n")
+    except Exception:
+        pass
+
+
+import atexit as _atexit
+
+_atexit.register(_write_lateral_stats)
+
+
+def lateral_distance_estimation_enabled() -> bool:
+    """Whether ``in_same_lane``/``cut_in`` use the lateral-distance profile.
+
+    Enabled by default.  Set ``CRREPAIR_VP_LATERAL_DISTANCE_ESTIMATION=0`` to
+    fall back to the footprint inner/outer estimate only (A/B baseline).
+    """
+    value = os.environ.get(LATERAL_DISTANCE_ESTIMATION_ENV, "1")
+    return str(value).strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _domain(value: Optional[bool]) -> TruthDomain:
@@ -681,14 +720,11 @@ class SemanticINPredicateRegionBuilder:
             "causes_braking_intersection",
             "in_standstill",
             "on_incoming_left_of",
-        }
-    )
-    BOOLEAN_NAMES = frozenset(
-        {
             "in_same_lane",
             "cut_in",
         }
     )
+    BOOLEAN_NAMES = frozenset()
     ACCELERATION_NAMES = frozenset(
         {"brakes_abruptly", "rel_brakes_abruptly"}
     )
@@ -801,6 +837,29 @@ class SemanticINPredicateRegionBuilder:
         self._path_line = LineString(np.asarray(self.ref_path, dtype=float)[:, :2])
         self._same_lane_sample_context_cache: Optional[Mapping[str, Any]] = None
         self._same_lane_robustness_region_cache: Dict[Any, SemanticIntervalSet] = {}
+        self._same_lane_lateral_profile_cache: Dict[Any, Mapping[str, Any]] = {}
+        # Monitor-consistent lateral-distance profiles for ``in_same_lane``.
+        # ``_ego_pose_samples_cache`` holds the exact ego poses on the
+        # reference path, ``_ego_lane_signature_cache`` the per-sample shape
+        # lanelet assignment, ``_monitor_lane_distance_cache`` the term
+        # ``D(ego, lanes(target))`` per target lane union, and
+        # ``_monitor_same_lane_profile_cache`` the combined profile.
+        self._ego_pose_samples_cache: Optional[Mapping[str, Any]] = None
+        self._ego_lane_signature_cache: Optional[Mapping[str, Any]] = None
+        self._monitor_lane_distance_cache: Dict[Any, Optional[np.ndarray]] = {}
+        self._monitor_same_lane_profile_cache: Dict[
+            Any, Optional[Mapping[str, Any]]
+        ] = {}
+        self._monitor_same_lane_estimate_memo: Dict[Any, Any] = {}
+        # Signed-distance partitions induced by lateral lane geometry.  The
+        # cached functions are piecewise monotone in trajectory progress: the
+        # only extrema are reachable endpoints, component midpoints, and gap
+        # midpoints.  They are deliberately separate from the longitudinal
+        # intersection-predicate cache because their intervals originate from
+        # footprint/lateral certified regions.
+        self._lateral_region_geometry_cache: Dict[
+            Any, Optional[_SignedDistanceGeometry]
+        ] = {}
         # Path samples expressed in a cutting vehicle's lane coordinates.
         # Projection depends only on that lane, not on the repair phase.
         self._cut_in_path_lateral_cache: Dict[Any, Optional[Mapping[str, Any]]] = {}
@@ -825,6 +884,136 @@ class SemanticINPredicateRegionBuilder:
             "fixed_gate": 0.0,
         }
         self._counts: Dict[str, int] = {}
+
+    def update_reachable_envelopes(
+        self,
+        reachable_by_time: Mapping[int, Sequence[float]],
+        *,
+        reachable_velocity_by_time: Optional[
+            Mapping[int, Sequence[float]]
+        ] = None,
+        reachable_acceleration_by_time: Optional[
+            Mapping[int, Sequence[float]]
+        ] = None,
+    ) -> None:
+        """Attach phase reachability to precomputed path geometry.
+
+        Lateral path projections and their monotonicity partitions depend on
+        the immutable reference path, not on the deceleration reachable set.
+        A builder may therefore be prepared before repair timing begins and
+        receive the phase-specific envelopes immediately before SAT-domain
+        estimation.  Frame estimates are cleared because they do depend on
+        those envelopes; all geometry caches remain valid.
+        """
+        self.reachable_by_time = {
+            int(step): pair
+            for step, value in (reachable_by_time or {}).items()
+            if (pair := _finite_pair(value)) is not None
+        }
+        if reachable_velocity_by_time is not None:
+            self.reachable_velocity_by_time = {
+                int(step): pair
+                for step, value in reachable_velocity_by_time.items()
+                if (pair := _finite_pair(value)) is not None
+            }
+        if reachable_acceleration_by_time is not None:
+            self.reachable_acceleration_by_time = {
+                int(step): pair
+                for step, value in reachable_acceleration_by_time.items()
+                if (pair := _finite_pair(value)) is not None
+            }
+        self._frame_cache.clear()
+
+    def precompute_lateral_geometry(self) -> Dict[str, int]:
+        """Warm immutable ``in_same_lane``/``cut_in`` path geometry.
+
+        This method intentionally performs no reachable-set classification.
+        It projects the fixed reference path into every target lane used by
+        the monitored vehicle, constructs the footprint inner/outer regions,
+        and prepares their exact piecewise-monotone signed-distance critical
+        points.  Callers can run it before starting the repair timer.
+        """
+        if _LATERAL_STATS_ENABLED:
+            general = getattr(self.repairer.config, "general", None)
+            _LATERAL_STATS["case"] = (
+                f"{getattr(general, 'name_scenario', '')}:{self.ego_id}"
+            )
+        target_ids = () if self.other_id is None else (int(self.other_id),)
+        same_lane_signatures = set()
+        lateral_lane_signatures = set()
+        for target_id in target_ids:
+            try:
+                target = self.world.vehicle_by_id(target_id)
+            except Exception:
+                continue
+            assignments = getattr(target, "lanelet_assignment", {}) or {}
+            for time_step in sorted(assignments):
+                try:
+                    region = self._same_lane_region(target_id, int(time_step))
+                    same_lane_signatures.add(
+                        tuple(sorted(int(item) for item in assignments[time_step]))
+                    )
+                    self._prepare_lateral_region_geometry(region)
+                    # The sharper occupancy-bound region is shared with
+                    # semantic constraint extraction and is expensive enough
+                    # that it should be warmed at the same time.
+                    monitor_region = self._same_lane_robustness_region(
+                        target_id, int(time_step)
+                    )
+                    self._prepare_lateral_region_geometry(monitor_region)
+                    if lateral_distance_estimation_enabled():
+                        # Sampled monitor lateral-distance profile and its
+                        # monotone partition depend only on the fixed path
+                        # and the recorded target state.
+                        profiles = self._lateral_profiles(
+                            target_id, int(time_step)
+                        )
+                        if profiles is not None:
+                            for evaluator in self._repairer_evaluators("cut_in"):
+                                self._cut_in_profile(
+                                    evaluator, target_id, int(time_step)
+                                )
+                except Exception:
+                    # Precomputation is an optimization only.  The normal
+                    # estimator retains its existing conservative fallback.
+                    pass
+                try:
+                    lane = target.get_lane(int(time_step))
+                    lane_key = self._cut_in_lane_key(lane)
+                    if lane_key is None or lane_key in lateral_lane_signatures:
+                        continue
+                    lateral_lane_signatures.add(lane_key)
+                    self._cut_in_path_lateral_cache[lane_key] = (
+                        self._build_cut_in_lateral_context(lane)
+                    )
+                except Exception:
+                    continue
+        return {
+            "same_lane_signature_count": len(same_lane_signatures),
+            "cut_in_lane_count": len(lateral_lane_signatures),
+            "lateral_partition_count": len(
+                self._lateral_region_geometry_cache
+            ),
+        }
+
+    def _repairer_evaluators(self, name: str) -> List[Any]:
+        """Monitor predicate evaluators named ``name`` in the SAT formula."""
+        found: Dict[int, Any] = {}
+        stack = list(
+            getattr(getattr(self.repairer, "sat_solver", None), "_prop_nodes", ())
+            or ()
+        )
+        seen = set()
+        while stack:
+            node = stack.pop()
+            if id(node) in seen:
+                continue
+            seen.add(id(node))
+            evaluator = getattr(node, "evaluator", None)
+            if evaluator is not None and _predicate_name(evaluator) == name:
+                found[id(evaluator)] = evaluator
+            stack.extend(list(getattr(node, "children", ()) or ()))
+        return list(found.values())
 
     def _semantic_evaluator_key(self, evaluator: Any) -> Tuple[Any, ...]:
         object_key = id(evaluator)
@@ -1855,6 +2044,141 @@ class SemanticINPredicateRegionBuilder:
                 os.environ.get("CRREPAIR_VP_PREDICATE_DEBUG")
             ),
         )
+
+    @staticmethod
+    def _lateral_region_geometry_key(
+        intervals: Sequence[ClosedInterval],
+    ) -> Tuple[Tuple[float, float], ...]:
+        return tuple(
+            (float(item.lower), float(item.upper)) for item in intervals
+        )
+
+    def _lateral_signed_distance_geometry(
+        self, intervals: Sequence[ClosedInterval]
+    ) -> Optional[_SignedDistanceGeometry]:
+        key = self._lateral_region_geometry_key(intervals)
+        if not key:
+            return None
+        cache = getattr(self, "_lateral_region_geometry_cache", None)
+        if cache is None:
+            cache = {}
+            self._lateral_region_geometry_cache = cache
+        if key not in cache:
+            cache[key] = (
+                _SignedDistanceGeometry.from_intervals(key)
+            )
+        return cache[key]
+
+    def _prepare_lateral_region_geometry(
+        self, region: SemanticIntervalSet
+    ) -> None:
+        """Cache monotonicity partitions for both certified truth bounds."""
+        self._lateral_signed_distance_geometry(region.inner_true)
+        self._lateral_signed_distance_geometry(region.outer_true)
+
+    @staticmethod
+    def _raw_signed_distance_range(
+        geometry: _SignedDistanceGeometry,
+        reachable: Sequence[float],
+    ) -> Tuple[float, float, Tuple[float, ...]]:
+        points = geometry.critical_points(reachable)
+        values = tuple(geometry.signed_distance(point) for point in points)
+        if not values or not all(math.isfinite(value) for value in values):
+            raise ValueError("non-finite lateral signed-distance range")
+        return float(min(values)), float(max(values)), points
+
+    def _classify_lateral_region_estimate(
+        self,
+        region: SemanticIntervalSet,
+        reachable: Optional[Sequence[float]],
+    ) -> Tuple[TruthDomain, Dict[str, Any]]:
+        """Classify a lateral truth region through monotone robustness ranges.
+
+        ``inner_true`` supplies a lower certificate and ``outer_true`` an
+        upper certificate for the unknown monitor robustness.  Their signed
+        distances are piecewise affine/tent shaped in path progress.  Exact
+        extrema therefore occur only at interval endpoints, component peaks,
+        and gap troughs.  This is equivalent to the former inner/outer set
+        test, while exposing the robustness envelope used by the common
+        three-valued logic.
+        """
+        fallback_domain, fallback_diagnostics = self._classify_region_estimate(
+            region, reachable
+        )
+        if reachable is None:
+            return fallback_domain, fallback_diagnostics
+        if bool(region.diagnostics.get("constant_true", False)):
+            return fallback_domain, fallback_diagnostics
+        if region.complete and not region.outer_true:
+            return fallback_domain, fallback_diagnostics
+
+        diagnostics: Dict[str, Any] = {
+            "analysis_mode": "piecewise_monotone_lateral_region",
+            "analysis_axis": "s",
+            "inner_partition_points": [],
+            "outer_partition_points": [],
+        }
+        try:
+            inner_geometry = self._lateral_signed_distance_geometry(
+                region.inner_true
+            )
+            outer_geometry = self._lateral_signed_distance_geometry(
+                region.outer_true
+            )
+            inner_range = None
+            outer_range = None
+            if inner_geometry is not None:
+                inner_range = self._raw_signed_distance_range(
+                    inner_geometry, reachable
+                )
+                diagnostics.update(
+                    {
+                        "inner_robustness_min": inner_range[0],
+                        "inner_robustness_max": inner_range[1],
+                        "inner_partition_points": list(inner_range[2]),
+                    }
+                )
+            if outer_geometry is not None:
+                outer_range = self._raw_signed_distance_range(
+                    outer_geometry, reachable
+                )
+                diagnostics.update(
+                    {
+                        "outer_robustness_min": outer_range[0],
+                        "outer_robustness_max": outer_range[1],
+                        "outer_partition_points": list(outer_range[2]),
+                    }
+                )
+
+            # Boolean certified regions include their closed boundaries.
+            # Accordingly zero lower robustness still proves membership in
+            # inner_true, whereas zero upper robustness cannot prove that the
+            # reachable set is outside outer_true.
+            if inner_range is not None and inner_range[0] >= 0.0:
+                domain = TRUE_DOMAIN
+            elif (
+                region.complete
+                and outer_range is not None
+                and outer_range[1] < 0.0
+            ):
+                domain = FALSE_DOMAIN
+            else:
+                domain = UNKNOWN_DOMAIN
+        except (TypeError, ValueError):
+            diagnostics.update(fallback_diagnostics)
+            diagnostics["analysis_mode"] = "piecewise_boolean_region_fallback"
+            return fallback_domain, diagnostics
+
+        # Preserve the previous certified-set semantics exactly.  This guard
+        # is intentionally retained even though the two classifications are
+        # mathematically equivalent; malformed/incomplete geometry can only
+        # reduce precision, never alter an existing singleton proof.
+        if domain != fallback_domain:
+            diagnostics.update(fallback_diagnostics)
+            diagnostics["analysis_mode"] = "piecewise_boolean_region_fallback"
+            diagnostics["lateral_range_domain"] = sorted(domain)
+            return fallback_domain, diagnostics
+        return domain, diagnostics
 
     # ------------------------------------------------------------------
     # Definition-driven static regions
@@ -3151,10 +3475,391 @@ class SemanticINPredicateRegionBuilder:
             vehicle_ids[1] if vehicle_ids[0] == self.ego_id else vehicle_ids[0]
         )
         region = self._same_lane_region(int(target_id), int(time_step))
-        domain, diagnostics = self._classify_region_estimate(region, reachable)
+        decisive = self._decisive_same_lane_domain(
+            evaluator, int(target_id), int(time_step), reachable
+        )
+        if decisive is not None:
+            return FramePredicateEstimate(
+                decisive[0], region.source, region=region,
+                diagnostics=decisive[1],
+            )
+        _lateral_stat("same_lane_footprint_fallback")
+        domain, diagnostics = self._classify_lateral_region_estimate(
+            region, reachable
+        )
+        domain, diagnostics = self._refine_same_lane_domain(
+            evaluator, int(target_id), int(time_step), reachable,
+            domain, diagnostics,
+        )
         return FramePredicateEstimate(
             domain, region.source, region=region, diagnostics=diagnostics
         )
+
+    def _decisive_same_lane_domain(
+        self,
+        evaluator: Any,
+        target_id: int,
+        time_step: int,
+        reachable: Optional[Sequence[float]],
+    ) -> Optional[Tuple[TruthDomain, Dict[str, Any]]]:
+        """Domain of ``in_same_lane`` from the piecewise-monotone profile.
+
+        ``None`` (profile unavailable) is the only case in which the caller
+        falls back to the footprint estimate; it is counted.
+        """
+        if not lateral_distance_estimation_enabled():
+            return None
+        pair = _finite_pair(reachable)
+        profiles = self._lateral_profiles(int(target_id), int(time_step))
+        if pair is None and profiles is not None:
+            # No reachable interval for this frame: the whole sampled path
+            # is a sound superset of the ego progress.
+            _lateral_stat("same_lane_no_reachable_full_path")
+            grid = profiles["geometry"].grid
+            pair = (float(grid[0]), float(grid[-1]))
+        if profiles is None:
+            if not self._target_has_state(target_id, time_step):
+                # The other vehicle has no state/lanelet assignment at this
+                # frame (it left the recorded scenario): the monitor value is
+                # not defined by the ego path; keep the frame unknown.
+                _lateral_stat("same_lane_target_absent")
+                return UNKNOWN_DOMAIN, {"analysis_mode": "target_absent"}
+            _lateral_stat("same_lane_fallback_profile_unavailable")
+            return None
+        key = ("same", int(target_id), int(time_step), pair)
+        memo = self._monitor_same_lane_estimate_memo
+        bounds = memo.get(key, False)
+        if bounds is False:
+            bounds = profiles["same_query"].query(pair[0], pair[1], _LATERAL_STATS)
+            memo[key] = bounds
+        if bounds is None:
+            _lateral_stat("same_lane_fallback_outside_profile")
+            return None
+        _lateral_stat("same_lane_profile_queries")
+        lower, upper = bounds
+        if lower == -math.inf:
+            _lateral_stat("same_lane_unbounded_lower")
+        domain = classify_robustness_range(lower, upper, uncertainty=0.0)
+        if domain == UNKNOWN_DOMAIN and _LATERAL_STATS_ENABLED:
+            self._count_margin_effect(
+                "same_lane", profiles["same_query"], profiles["geometry"], pair
+            )
+        return domain, {
+            "analysis_mode": "piecewise_monotone_lateral_robustness",
+            "robustness_min": lower,
+            "robustness_max": upper,
+        }
+
+    def _cut_in_alpha_domain(
+        self,
+        evaluator: Any,
+        cutting_id: int,
+        time_step: int,
+        reachable: Optional[Sequence[float]],
+    ) -> Optional[Tuple[TruthDomain, Dict[str, Any]]]:
+        if not lateral_distance_estimation_enabled():
+            return None
+        pair = _finite_pair(reachable)
+        profile = self._cut_in_profile(evaluator, int(cutting_id), int(time_step))
+        if pair is None and profile is not None:
+            _lateral_stat("cut_in_no_reachable_full_path")
+            pair = (float(profile.grid[0]), float(profile.grid[-1]))
+        if profile is None:
+            if not self._target_has_state(cutting_id, time_step):
+                _lateral_stat("cut_in_target_absent")
+                return UNKNOWN_DOMAIN, {"analysis_mode": "target_absent"}
+            _lateral_stat("cut_in_fallback_profile_unavailable")
+            return None
+        key = ("cut_in", int(cutting_id), int(time_step), pair)
+        memo = self._monitor_same_lane_estimate_memo
+        bounds = memo.get(key, False)
+        if bounds is False:
+            bounds = profile.query(pair[0], pair[1], _LATERAL_STATS)
+            memo[key] = bounds
+        if bounds is None:
+            _lateral_stat("cut_in_fallback_outside_profile")
+            return None
+        _lateral_stat("cut_in_profile_queries")
+        lower, upper = bounds
+        if lower == -math.inf:
+            _lateral_stat("cut_in_unbounded_lower")
+        domain = classify_robustness_range(lower, upper, uncertainty=0.0)
+        if domain == UNKNOWN_DOMAIN and _LATERAL_STATS_ENABLED:
+            self._count_margin_effect("cut_in", profile, profile.geometry, pair)
+        return domain, {
+            "analysis_mode": "piecewise_monotone_cut_in_robustness",
+            "robustness_min": lower,
+            "robustness_max": upper,
+        }
+
+    def _target_has_state(self, target_id: int, time_step: int) -> bool:
+        try:
+            target = self.world.vehicle_by_id(int(target_id))
+            target.lanelet_assignment[int(time_step)]
+            return int(time_step) in target.states_cr
+        except Exception:
+            return False
+
+    @staticmethod
+    def _count_margin_effect(kind, query, geometry, pair) -> None:
+        """Count UNKNOWN results that only the heading-zone margin causes."""
+        geometry.margin_scale = 0.0
+        try:
+            # Rebuild piece tables without the margin (diagnostics only).
+            from crrepairer.repairer.vp.lateral_piecewise_profile import (
+                RangeTable,
+                SameLaneProfile,
+                SameLaneQuery,
+                CutInProfile,
+            )
+
+            if isinstance(query, CutInProfile):
+                same = SameLaneProfile(geometry, query.same_lane.target_term)
+                rebuilt = CutInProfile(
+                    same, query.choice_points, query.choice_pieces,
+                    query.scale_lat, query.single_term, query.cutting_d,
+                    query.o1, query.o2,
+                )
+            else:
+                rebuilt = SameLaneQuery(
+                    SameLaneProfile(geometry, query.profile.target_term)
+                )
+            bounds = rebuilt.query(pair[0], pair[1])
+            if bounds is not None and (bounds[0] > 0.0 or bounds[1] < 0.0):
+                _lateral_stat(f"{kind}_unknown_due_to_zone_margin")
+        finally:
+            geometry.margin_scale = 1.0
+
+    # -- piecewise-monotone profile construction (outside repair timing) --
+
+    def _lateral_context(self) -> Optional[Mapping[str, Any]]:
+        cached = getattr(self, "_lateral_context_cache", None)
+        if cached is not None:
+            return cached or None
+        context = {}
+        try:
+            if self._analytic_lateral_applicable():
+                from crrepairer.repairer.vp.lateral_piecewise_profile import (
+                    EgoPath,
+                    LaneletAssignment,
+                )
+
+                clcs = self.trajectory_clcs
+                path = EgoPath(
+                    np.asarray(clcs.reference_path(), dtype=float),
+                    np.asarray(clcs.segments_longitudinal_coordinates(), dtype=float),
+                    np.asarray(self.ego.shape.vertices[:-1], dtype=float),
+                )
+                sample = self._same_lane_sample_context()
+                s_values = np.asarray(sample["trajectory_s"], dtype=float)
+                s_min, s_max = float(s_values[0]), float(s_values[-1])
+                assignment = LaneletAssignment(self.world)
+                context = {
+                    "path": path,
+                    "s_min": s_min,
+                    "s_max": s_max,
+                    "assignment": assignment,
+                    "events": assignment.events(path, s_min, s_max),
+                }
+        except Exception:
+            context = {}
+        self._lateral_context_cache = context
+        return context or None
+
+    def _polyline_frame(self, key: Any, vertices: Any):
+        from crrepairer.repairer.vp.lateral_clcs_monotone import (
+            MonitorPolylineFrame,
+        )
+
+        cache = getattr(self, "_polyline_frame_cache", None)
+        if cache is None:
+            cache = {}
+            self._polyline_frame_cache = cache
+        if key not in cache:
+            cache[key] = MonitorPolylineFrame(np.asarray(vertices, dtype=float))
+        return cache[key]
+
+    def _lateral_geometry(self, union: FrozenSet[int], cutting_lane: Any):
+        from crrepairer.repairer.vp.lateral_piecewise_profile import (
+            SameLaneGeometry,
+            boundary_polylines,
+        )
+
+        context = self._lateral_context()
+        if context is None:
+            return None
+        lane_key = self._cut_in_lane_key(cutting_lane)
+        key = (union, lane_key)
+        cache = getattr(self, "_lateral_geometry_cache", None)
+        if cache is None:
+            cache = {}
+            self._lateral_geometry_cache = cache
+        if key in cache:
+            return cache[key]
+        left, right = boundary_polylines(self.world, union)
+        path = context["path"]
+        center_frames = []
+        center_clcs = []
+        crossings: List[float] = []
+        if cutting_lane is not None:
+            from crrepairer.repairer.vp.lateral_piecewise_profile import (
+                polygon_crossings,
+            )
+
+            # Monitor (_compute_curvilinear_state): lane.clcs, and
+            # lane.clcs_large_step when the centre is outside the projection
+            # domain of lane.clcs.
+            for attribute in ("clcs", "clcs_large_step"):
+                clcs = getattr(cutting_lane, attribute, None)
+                if clcs is None:
+                    continue
+                center_frames.append(
+                    (
+                        self._polyline_frame(
+                            (attribute, lane_key),
+                            np.asarray(clcs.reference_path()),
+                        ),
+                        0.0,
+                    )
+                )
+                center_clcs.append(clcs)
+                domain = np.asarray(clcs.projection_domain(), dtype=float)
+                for start, end, center, direction, _ in path.rigid_pieces(
+                    context["s_min"], context["s_max"]
+                ):
+                    crossings.extend(
+                        start + polygon_crossings(center, direction, end - start, domain)
+                    )
+        geometry = SameLaneGeometry(
+            path,
+            context["assignment"],
+            context["s_min"],
+            context["s_max"],
+            [self._polyline_frame(item[:2], item[2]) for item in left],
+            [self._polyline_frame(item[:2], item[2]) for item in right],
+            context["events"],
+            center_frames,
+            np.asarray(crossings, dtype=float),
+        )
+        if center_clcs:
+            grid = geometry.grid
+            middle = 0.5 * (grid[:-1] + grid[1:])
+
+            def choice(points):
+                result = np.full(len(points), -1, dtype=int)
+                for index, point in enumerate(points):
+                    if not np.all(np.isfinite(point)):
+                        continue
+                    for frame_index, clcs in enumerate(center_clcs):
+                        if clcs.cartesian_point_inside_projection_domain(
+                            float(point[0]), float(point[1])
+                        ):
+                            result[index] = frame_index
+                            break
+                return result
+
+            geometry.center_choice_points = choice(path.center(grid))
+            geometry.center_choice_pieces = choice(path.center(middle))
+        cache[key] = geometry
+        return geometry
+
+    def _lateral_profiles(self, target_id: int, time_step: int):
+        key = (int(target_id), int(time_step))
+        cache = getattr(self, "_lateral_profile_cache", None)
+        if cache is None:
+            cache = {}
+            self._lateral_profile_cache = cache
+        if key in cache:
+            return cache[key]
+        result = None
+        try:
+            from crmonitor.predicates.utils import distance_to_lanes
+            from crrepairer.repairer.vp.lateral_piecewise_profile import (
+                SameLaneProfile,
+                SameLaneQuery,
+            )
+
+            context = self._lateral_context()
+            if context is not None:
+                target = self.world.vehicle_by_id(int(target_id))
+                assignment = context["assignment"]
+                union = assignment.lane_union(
+                    frozenset(
+                        int(item)
+                        for item in target.lanelet_assignment[int(time_step)]
+                    )
+                )
+                try:
+                    cutting_lane = target.get_lane(int(time_step))
+                except Exception:
+                    cutting_lane = None
+                geometry = self._lateral_geometry(union, cutting_lane)
+                if geometry is not None:
+                    unions = set(geometry.point_unions) | set(geometry.mid_unions)
+                    target_term = {
+                        item: float(
+                            distance_to_lanes(
+                                target, item, self.world, int(time_step)
+                            )
+                        )
+                        for item in unions
+                    }
+                    profile = SameLaneProfile(geometry, target_term)
+                    result = {
+                        "geometry": geometry,
+                        "same": profile,
+                        "same_query": SameLaneQuery(profile),
+                        "cutting_lane": cutting_lane,
+                    }
+        except Exception:
+            result = None
+        cache[key] = result
+        return result
+
+    def _cut_in_profile(self, evaluator: Any, cutting_id: int, time_step: int):
+        key = (int(cutting_id), int(time_step))
+        cache = getattr(self, "_cut_in_profile_cache", None)
+        if cache is None:
+            cache = {}
+            self._cut_in_profile_cache = cache
+        if key in cache:
+            return cache[key]
+        result = None
+        try:
+            from commonroad.common.util import subtract_orientations
+            from crrepairer.repairer.vp.lateral_piecewise_profile import (
+                CutInProfile,
+            )
+
+            profiles = self._lateral_profiles(cutting_id, time_step)
+            geometry = None if profiles is None else profiles["geometry"]
+            if geometry is not None and geometry.center_frames:
+                cutting = self.world.vehicle_by_id(int(cutting_id))
+                single = float(
+                    evaluator._single_lane_evaluator.evaluate_robustness_with_cache(
+                        self.world, None, int(time_step), [int(cutting_id)]
+                    )
+                )
+                cutting_lat = cutting.get_lat_state(int(time_step))
+                eps = float(evaluator.eps)
+                result = CutInProfile(
+                    profiles["same"],
+                    geometry.center_choice_points,
+                    geometry.center_choice_pieces,
+                    evaluator._scale_lat_dist,
+                    -single,
+                    float(cutting_lat.d),
+                    float(evaluator._scale_angle(
+                        subtract_orientations(cutting_lat.theta, eps)
+                    )),
+                    float(evaluator._scale_angle(
+                        subtract_orientations(-eps, cutting_lat.theta)
+                    )),
+                )
+        except Exception:
+            result = None
+        cache[key] = result
+        return result
 
     def _same_lane_region(
         self, target_id: int, time_step: int
@@ -3336,6 +4041,18 @@ class SemanticINPredicateRegionBuilder:
             clearance = np.asarray(
                 shapely.distance(occupancies, target_polygon), dtype=float
             )
+            boundary_clearance = np.asarray(
+                shapely.distance(occupancies, target_polygon.boundary),
+                dtype=float,
+            )
+            contained = np.asarray(
+                shapely.covers(target_polygon, occupancies), dtype=bool
+            )
+            signed_clearance = np.where(
+                contained,
+                boundary_clearance,
+                np.where(clearance > 0.0, -clearance, 0.0),
+            )
         except Exception:
             return SemanticIntervalSet.unknown(
                 "same_lane:occupancy_distance_unavailable"
@@ -3368,6 +4085,36 @@ class SemanticINPredicateRegionBuilder:
             0.5 * float(self.ego.shape.width),
         )
         error = displacement + radius * angle_delta + self.uncertainty
+        profile_valid = (
+            valid
+            & np.isfinite(signed_clearance[:-1])
+            & np.isfinite(signed_clearance[1:])
+        )
+        value_delta = np.diff(signed_clearance)
+        value_sign = np.sign(value_delta)
+        monotone_breaks = [float(s_values[0])]
+        previous_sign = 0.0
+        for index, sign in enumerate(value_sign):
+            if not profile_valid[index]:
+                monotone_breaks.extend(
+                    (float(s_values[index]), float(s_values[index + 1]))
+                )
+                previous_sign = 0.0
+                continue
+            if sign != 0.0 and previous_sign != 0.0 and sign != previous_sign:
+                monotone_breaks.append(float(s_values[index]))
+            if sign != 0.0:
+                previous_sign = float(sign)
+        monotone_breaks.append(float(s_values[-1]))
+        self._same_lane_lateral_profile_cache[key] = {
+            "s_lower": s_lower,
+            "s_upper": s_upper,
+            "value_left": signed_clearance[:-1],
+            "value_right": signed_clearance[1:],
+            "error": error,
+            "valid": profile_valid,
+            "partition_points": tuple(sorted(set(monotone_breaks))),
+        }
         # Distance between compact sets is 1-Lipschitz under rigid-body
         # translation.  ``radius * angle_delta`` bounds the additional corner
         # displacement under rotation, so clearance larger than the complete
@@ -3399,6 +4146,137 @@ class SemanticINPredicateRegionBuilder:
         self._same_lane_robustness_region_cache[key] = region
         return region
 
+    @staticmethod
+    def _scale_lateral_range(
+        evaluator: Any, lower: float, upper: float
+    ) -> Tuple[float, float]:
+        scaled_lower = float(evaluator._scale_lat_dist(float(lower)))
+        scaled_upper = float(evaluator._scale_lat_dist(float(upper)))
+        if not (math.isfinite(scaled_lower) and math.isfinite(scaled_upper)):
+            raise ValueError("non-finite lateral robustness range")
+        return (
+            min(scaled_lower, scaled_upper),
+            max(scaled_lower, scaled_upper),
+        )
+
+    @staticmethod
+    def _profile_cells_for_reachable(
+        profile: Mapping[str, Any], reachable: Sequence[float]
+    ) -> np.ndarray:
+        pair = _finite_pair(reachable)
+        if pair is None:
+            return np.asarray([], dtype=int)
+        lower, upper = pair
+        s_lower = np.asarray(profile["s_lower"], dtype=float)
+        s_upper = np.asarray(profile["s_upper"], dtype=float)
+        valid = np.asarray(profile["valid"], dtype=bool)
+        return np.flatnonzero(
+            valid & (s_upper >= lower) & (s_lower <= upper)
+        )
+
+    def _same_lane_lateral_robustness_range(
+        self,
+        evaluator: Any,
+        target_id: int,
+        time_step: int,
+        reachable: Optional[Sequence[float]],
+    ) -> Optional[Tuple[TruthDomain, Dict[str, Any]]]:
+        if reachable is None:
+            return None
+        try:
+            target = self.world.vehicle_by_id(int(target_id))
+            target_lanes = self.world.road_network.find_lanes_by_lanelets(
+                target.lanelet_assignment[int(time_step)]
+            )
+            key = tuple(
+                sorted(
+                    int(item)
+                    for lane in target_lanes
+                    for item in lane.contained_lanelets
+                )
+            )
+        except Exception:
+            return None
+        if key not in self._same_lane_lateral_profile_cache:
+            self._same_lane_robustness_region(target_id, time_step)
+        profile = self._same_lane_lateral_profile_cache.get(key)
+        if profile is None:
+            return None
+        selected = self._profile_cells_for_reachable(profile, reachable)
+        if len(selected) == 0:
+            return None
+        left = np.asarray(profile["value_left"], dtype=float)[selected]
+        right = np.asarray(profile["value_right"], dtype=float)[selected]
+        error = np.asarray(profile["error"], dtype=float)[selected]
+        raw_lower = float(np.min(np.minimum(left, right) - error))
+        raw_upper = float(np.max(np.maximum(left, right) + error))
+        try:
+            robustness_lower, robustness_upper = self._scale_lateral_range(
+                evaluator, raw_lower, raw_upper
+            )
+        except (AttributeError, TypeError, ValueError):
+            return None
+        domain = classify_robustness_range(
+            robustness_lower, robustness_upper, uncertainty=0.0
+        )
+        pair = _finite_pair(reachable)
+        partition_points = [
+            point
+            for point in profile.get("partition_points", ())
+            if pair is not None and pair[0] <= point <= pair[1]
+        ]
+        return domain, {
+            "lateral_profile_robustness_min": robustness_lower,
+            "lateral_profile_robustness_max": robustness_upper,
+            "lateral_profile_partition_points": partition_points,
+            "lateral_profile_cell_count": int(len(selected)),
+        }
+
+    # ------------------------------------------------------------------
+    # Monitor-consistent lateral-distance profile of ``in_same_lane``
+    # ------------------------------------------------------------------
+    #
+    # The monitor defines (crmonitor.predicates.position.PredInSameLane)
+    #
+    #     rho(k, p) = fmin(D(k, lanes(p)), D(p, lanes(k)))
+    #     D(v, L)   = fmin(-min_c l_left(c), max_c l_right(c))
+    #
+    # where ``c`` ranges over the footprint corners of ``v`` and ``l_*`` is
+    # the lateral coordinate of a corner w.r.t. the left/right boundaries of
+    # ``L`` that face a lanelet outside ``L``.  Along the VP reference path
+    # the ego pose is a function of progress ``s`` only, so ``rho`` becomes a
+    # one-dimensional lateral-distance profile ``rho(s)``:
+    #
+    # * ``D(ego(s), lanes(target))`` is evaluated with the monitor formula at
+    #   every path sample.  Between two samples every corner moves by at most
+    #   ``|dp| + r |dtheta|`` and the lateral coordinate is 1-Lipschitz, which
+    #   gives a per-cell error bound.
+    # * ``D(target, lanes(ego(s)))`` depends on ``s`` only through the ego's
+    #   shape lanelet assignment.  On a cell whose assignment provably cannot
+    #   change (all lanelets meeting the dilated footprint also meet the
+    #   eroded one) it is a constant; elsewhere only its upper side is known.
+    #
+    # The sampled profile is partitioned into monotone segments.  For a
+    # reachable progress interval the extrema of the sampled profile are
+    # therefore attained at the interval's boundary samples or at interior
+    # segment breaks, and the cell error widens this range soundly.
+
+    def _vp_lateral_offset(self) -> float:
+        if getattr(self.repairer, "_vp_repair_mode", "deceleration") == (
+            "acceleration"
+        ):
+            return float(
+                getattr(self.repairer, "_trajectory_clcs_lateral_offset", 0.0)
+            )
+        return 0.0
+
+    def _analytic_lateral_applicable(self) -> bool:
+        value = os.environ.get("CRREPAIR_VP_LATERAL_ANALYTIC", "1")
+        if str(value).strip().lower() in {"0", "false", "no", "off"}:
+            return False
+        if self.trajectory_clcs is None or self._vp_lateral_offset() != 0.0:
+            return False
+        return self._same_lane_sample_context() is not None
 
     def _longitudinal_cell_region(
         self,
@@ -3818,6 +4696,20 @@ class SemanticINPredicateRegionBuilder:
             diagnostics=diagnostics,
         )
 
+    def _refine_same_lane_domain(
+        self,
+        evaluator: Any,
+        target_id: int,
+        time_step: int,
+        reachable: Optional[Sequence[float]],
+        boolean_domain: TruthDomain,
+        diagnostics: Dict[str, Any],
+    ) -> Tuple[TruthDomain, Dict[str, Any]]:
+        """Footprint-only fallback (used when no lateral profile exists)."""
+        diagnostics = dict(diagnostics)
+        diagnostics["analysis_mode"] = "footprint_fallback"
+        return boolean_domain, diagnostics
+
     def _cut_in_frame(
         self,
         evaluator: Any,
@@ -3852,6 +4744,28 @@ class SemanticINPredicateRegionBuilder:
                 return FramePredicateEstimate(
                     FALSE_DOMAIN, "cut_in:fixed_orientation_false"
                 )
+            alpha = self._cut_in_alpha_domain(
+                evaluator, int(cutting_id), int(time_step), reachable
+            )
+            if alpha is not None:
+                return FramePredicateEstimate(
+                    alpha[0],
+                    "cut_in:piecewise_monotone_robustness",
+                    diagnostics=alpha[1],
+                )
+            _lateral_stat("cut_in_footprint_fallback")
+            decisive_same_lane = self._decisive_same_lane_domain(
+                evaluator, int(cutting_id), int(time_step), reachable
+            )
+            if decisive_same_lane is not None and (
+                decisive_same_lane[0] == FALSE_DOMAIN
+            ):
+                # cut_in requires in_same_lane(cutting, cutted).
+                return FramePredicateEstimate(
+                    FALSE_DOMAIN,
+                    "cut_in:same_lane_lateral_distance_false",
+                    diagnostics=decisive_same_lane[1],
+                )
 
             same_lane = self._same_lane_region(int(cutting_id), int(time_step))
             lateral = self._cut_in_lateral_region(
@@ -3860,9 +4774,69 @@ class SemanticINPredicateRegionBuilder:
             region = self._intersect_semantic_regions(
                 same_lane, lateral, "cut_in:reachable_lane_lateral"
             )
-            domain, region_diagnostics = self._classify_region_estimate(
+            domain, region_diagnostics = self._classify_lateral_region_estimate(
                 region, reachable
             )
+            if decisive_same_lane is not None:
+                same_lane_domain = decisive_same_lane[0]
+                same_lane_diagnostics = decisive_same_lane[1]
+            else:
+                same_lane_domain, _ = self._classify_lateral_region_estimate(
+                    same_lane, reachable
+                )
+                same_lane_domain, same_lane_diagnostics = (
+                    self._refine_same_lane_domain(
+                        evaluator, int(cutting_id), int(time_step), reachable,
+                        same_lane_domain, {},
+                    )
+                )
+            region_diagnostics.update(
+                {
+                    f"same_lane_{name}": value
+                    for name, value in same_lane_diagnostics.items()
+                }
+            )
+            lateral_quantitative = self._cut_in_lateral_robustness_range(
+                evaluator,
+                cutting_lane,
+                cutting_d,
+                theta > epsilon,
+                reachable,
+            )
+            if lateral_quantitative is not None:
+                lateral_domain, lateral_diagnostics = lateral_quantitative
+                quantitative_domain = self._and_domains(
+                    (same_lane_domain, lateral_domain)
+                )
+                region_diagnostics.update(lateral_diagnostics)
+                region_diagnostics["quantitative_lateral_domain"] = sorted(
+                    quantitative_domain
+                )
+                region_diagnostics["quantitative_lateral_agrees"] = (
+                    quantitative_domain == domain
+                )
+                if lateral_distance_estimation_enabled():
+                    # Both estimates are sound for the same monitor value.
+                    combined = frozenset(domain) & frozenset(
+                        quantitative_domain
+                    )
+                    region_diagnostics["boolean_lateral_domain"] = sorted(
+                        domain
+                    )
+                    if not combined:
+                        region_diagnostics["lateral_domain_conflict"] = True
+                        domain = UNKNOWN_DOMAIN
+                    else:
+                        domain = frozenset(combined)
+            elif lateral_distance_estimation_enabled() and (
+                same_lane_domain == FALSE_DOMAIN
+            ):
+                # cut_in requires in_same_lane; a certified false gate alone
+                # is sufficient.
+                domain = (
+                    FALSE_DOMAIN if FALSE_DOMAIN <= frozenset(domain)
+                    else UNKNOWN_DOMAIN
+                )
             return FramePredicateEstimate(
                 domain,
                 region.source,
@@ -3909,10 +4883,9 @@ class SemanticINPredicateRegionBuilder:
         """Bound the lateral-side term of ``cut_in(other, ego)`` over path s."""
         if cutting_lane is None or not math.isfinite(float(cutting_d)):
             return self._unknown_path_region("cut_in:lateral_lane_missing")
-        lane_key = tuple(sorted(
-            int(item)
-            for item in getattr(cutting_lane, "contained_lanelets", ())
-        )) or (id(cutting_lane),)
+        lane_key = self._cut_in_lane_key(cutting_lane)
+        if lane_key is None:
+            return self._unknown_path_region("cut_in:lateral_lane_missing")
         context = self._cut_in_path_lateral_cache.get(lane_key)
         if lane_key not in self._cut_in_path_lateral_cache:
             context = self._build_cut_in_lateral_context(cutting_lane)
@@ -3944,6 +4917,18 @@ class SemanticINPredicateRegionBuilder:
                 "invalid_cell_count": int(np.count_nonzero(~valid)),
             },
         )
+
+    @staticmethod
+    def _cut_in_lane_key(cutting_lane: Any) -> Optional[Tuple[Any, ...]]:
+        if cutting_lane is None:
+            return None
+        lanelets = tuple(
+            sorted(
+                int(item)
+                for item in getattr(cutting_lane, "contained_lanelets", ())
+            )
+        )
+        return lanelets or ("lane_object", id(cutting_lane))
 
     def _build_cut_in_lateral_context(
         self, cutting_lane: Any
@@ -3986,13 +4971,86 @@ class SemanticINPredicateRegionBuilder:
             & np.isfinite(lateral[:-1])
             & np.isfinite(lateral[1:])
         )
+        lateral_delta = np.diff(lateral)
+        lateral_sign = np.sign(lateral_delta)
+        partition_points = [float(s_values[0])]
+        previous_sign = 0.0
+        for index, sign in enumerate(lateral_sign):
+            if not valid[index]:
+                partition_points.extend(
+                    (float(s_values[index]), float(s_values[index + 1]))
+                )
+                previous_sign = 0.0
+                continue
+            if sign != 0.0 and previous_sign != 0.0 and sign != previous_sign:
+                partition_points.append(float(s_values[index]))
+            if sign != 0.0:
+                previous_sign = float(sign)
+        partition_points.append(float(s_values[-1]))
         return {
             "s_lower": np.minimum(s_values[:-1], s_values[1:]),
             "s_upper": np.maximum(s_values[:-1], s_values[1:]),
+            "d_left": lateral[:-1],
+            "d_right": lateral[1:],
             "d_lower": np.minimum(lateral[:-1], lateral[1:]),
             "d_upper": np.maximum(lateral[:-1], lateral[1:]),
             "error": displacement + self.uncertainty,
             "valid": valid,
+            "partition_points": tuple(sorted(set(partition_points))),
+        }
+
+    def _cut_in_lateral_robustness_range(
+        self,
+        evaluator: Any,
+        cutting_lane: Any,
+        cutting_d: float,
+        ego_must_be_above: bool,
+        reachable: Optional[Sequence[float]],
+    ) -> Optional[Tuple[TruthDomain, Dict[str, Any]]]:
+        if reachable is None:
+            return None
+        lane_key = self._cut_in_lane_key(cutting_lane)
+        if lane_key is None:
+            return None
+        context = self._cut_in_path_lateral_cache.get(lane_key)
+        if context is None:
+            context = self._build_cut_in_lateral_context(cutting_lane)
+            self._cut_in_path_lateral_cache[lane_key] = context
+        if context is None:
+            return None
+        selected = self._profile_cells_for_reachable(context, reachable)
+        if len(selected) == 0:
+            return None
+        d_lower = np.asarray(context["d_lower"], dtype=float)[selected]
+        d_upper = np.asarray(context["d_upper"], dtype=float)[selected]
+        error = np.asarray(context["error"], dtype=float)[selected]
+        threshold = float(cutting_d)
+        if ego_must_be_above:
+            raw_lower = float(np.min(d_lower - error - threshold))
+            raw_upper = float(np.max(d_upper + error - threshold))
+        else:
+            raw_lower = float(np.min(threshold - d_upper - error))
+            raw_upper = float(np.max(threshold - d_lower + error))
+        try:
+            robustness_lower, robustness_upper = self._scale_lateral_range(
+                evaluator, raw_lower, raw_upper
+            )
+        except (AttributeError, TypeError, ValueError):
+            return None
+        domain = classify_robustness_range(
+            robustness_lower, robustness_upper, uncertainty=0.0
+        )
+        pair = _finite_pair(reachable)
+        partition_points = [
+            point
+            for point in context.get("partition_points", ())
+            if pair is not None and pair[0] <= point <= pair[1]
+        ]
+        return domain, {
+            "cut_in_lateral_robustness_min": robustness_lower,
+            "cut_in_lateral_robustness_max": robustness_upper,
+            "cut_in_lateral_partition_points": partition_points,
+            "cut_in_lateral_cell_count": int(len(selected)),
         }
 
     @staticmethod

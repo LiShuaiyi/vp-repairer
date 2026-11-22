@@ -165,27 +165,42 @@ class VPPredicateEstimation:
         try:
             semantic_builder = None
             if semantic_prop_nodes:
-                semantic_builder = build_semantic_in_predicate_region_builder(
-                    self,
-                    trajectory_clcs,
-                    ref_path,
-                    reachable_by_time,
-                    lanelet_clcs=lanelet_clcs,
-                    reachable_velocity_by_time=reachable_velocity_by_time,
-                    reachable_acceleration_by_time=(
-                        reachable_acceleration_by_time
-                    ),
-                    fixed_domain_cache=self._semantic_fixed_domain_cache,
-                    # Spatial construction margin for sampled cells and
-                    # footprint inner/outer fallbacks only.  Analytic
-                    # robustness estimators explicitly classify with zero.
-                    uncertainty=float(
-                        os.environ.get(
-                            "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY",
-                            "0.05",
-                        )
-                    ),
+                semantic_builder = getattr(
+                    self, "_semantic_in_region_builder", None
                 )
+                if (
+                    semantic_builder is None
+                    or semantic_builder.trajectory_clcs is not trajectory_clcs
+                ):
+                    semantic_builder = build_semantic_in_predicate_region_builder(
+                        self,
+                        trajectory_clcs,
+                        ref_path,
+                        reachable_by_time,
+                        lanelet_clcs=lanelet_clcs,
+                        reachable_velocity_by_time=reachable_velocity_by_time,
+                        reachable_acceleration_by_time=(
+                            reachable_acceleration_by_time
+                        ),
+                        fixed_domain_cache=self._semantic_fixed_domain_cache,
+                        # Spatial construction margin for sampled cells and
+                        # footprint inner/outer fallbacks only.  Analytic
+                        # robustness estimators explicitly classify with zero.
+                        uncertainty=float(
+                            os.environ.get(
+                                "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY",
+                                "0.05",
+                            )
+                        ),
+                    )
+                else:
+                    semantic_builder.update_reachable_envelopes(
+                        reachable_by_time,
+                        reachable_velocity_by_time=reachable_velocity_by_time,
+                        reachable_acceleration_by_time=(
+                            reachable_acceleration_by_time
+                        ),
+                    )
                 self._semantic_in_region_builder = semantic_builder
                 self._semantic_in_region_context = {
                     "source": "rg_reachable_set",
@@ -630,10 +645,17 @@ class VPPredicateEstimation:
         # guidance.  If this list is empty, Boolean models in the current
         # repair phase cannot produce any trajectory constraint and therefore
         # cannot repair an already violating trajectory.
-        self._constraint_repair_literals = list(dict.fromkeys(
-            core_constraint_repair_literals
-            + deferred_region_repair_literals
-        ))
+        # Keep the two SAT searches genuinely separate.  Tier-2 actions are
+        # not executable (or useful as branch guidance) until the independent
+        # deferred fallback search is started.
+        active_constraint_literals = (
+            deferred_region_repair_literals
+            if use_deferred_fallback
+            else core_constraint_repair_literals
+        )
+        self._constraint_repair_literals = list(
+            dict.fromkeys(active_constraint_literals)
+        )
         self._constraint_repair_analysis_complete = (
             constraint_repair_analysis_complete
         )
@@ -660,10 +682,11 @@ class VPPredicateEstimation:
                 current_guidance_literals.append(guidance_literal)
                 current_value_guidance_count += 1
 
-        # Retain the new executable polarities in the branch order, but after
-        # the current-value preference above.  The domains stay {0, 1}, so SAT
-        # can still reach and execute these fallbacks when required.
-        repair_literals.extend(deferred_region_repair_literals)
+        # Deferred actions belong only to the independent fallback search.
+        # Merely appending Tier 2 in the core search is insufficient because
+        # DomainDPLL can still branch on it after exhausting earlier literals.
+        if use_deferred_fallback:
+            repair_literals.extend(deferred_region_repair_literals)
 
         self._repair_literals = repair_literals
         if additional_constraint_extraction_enabled():
@@ -983,24 +1006,30 @@ class VPPredicateEstimation:
             all_states,
             trajectory_clcs,
         )
-        builder = build_semantic_in_predicate_region_builder(
-            self,
-            trajectory_clcs,
-            ref_path,
-            reachable_by_time,
-            lanelet_clcs=self._get_vp_lanelet_clcs(),
-            reachable_velocity_by_time=velocity_reachable_by_time,
-            fixed_domain_cache=self._semantic_fixed_domain_cache,
-            # Keep the configurable spatial margin available to certified
-            # cells and footprint fallbacks; analytic ranges do not use it.
-            uncertainty=(
-                float(
-                    os.environ.get(
-                        "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY", "0.05"
+        if builder is not None and builder.trajectory_clcs is trajectory_clcs:
+            builder.update_reachable_envelopes(
+                reachable_by_time,
+                reachable_velocity_by_time=velocity_reachable_by_time,
+            )
+        else:
+            builder = build_semantic_in_predicate_region_builder(
+                self,
+                trajectory_clcs,
+                ref_path,
+                reachable_by_time,
+                lanelet_clcs=self._get_vp_lanelet_clcs(),
+                reachable_velocity_by_time=velocity_reachable_by_time,
+                fixed_domain_cache=self._semantic_fixed_domain_cache,
+                # Keep the configurable spatial margin available to certified
+                # cells and footprint fallbacks; analytic ranges do not use it.
+                uncertainty=(
+                    float(
+                        os.environ.get(
+                            "CRREPAIR_VP_CRITICAL_BOUNDARY_UNCERTAINTY", "0.05"
+                        )
                     )
-                )
-            ),
-        )
+                ),
+            )
         # Constraint extraction uses the same path-specific certified conflict
         # cover.  Reusing this builder avoids reconstructing geometry and keeps
         # SAT estimation and LP bounds on exactly the same reference path.

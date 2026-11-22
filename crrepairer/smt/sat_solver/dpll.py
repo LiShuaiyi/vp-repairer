@@ -54,7 +54,7 @@ class DPLL:
     def get_domain_guided_literal(cnf, prop_nodes, tv_time_step: int):
         """Return the VP-aware ordering used only by DomainDPLL.
 
-        Plain DPLL deliberately keeps the original robustness-only order.
+        Plain DPLL deliberately keeps the CNF's original literal order.
         DomainDPLL may additionally prioritize constraint-backed predicates
         and the polarity that changes the monitored value.
         """

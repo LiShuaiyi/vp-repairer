@@ -1149,6 +1149,57 @@ def test_cut_in_lateral_cell_bound_retains_spatial_uncertainty():
     assert context["error"].tolist() == pytest.approx([1.1])
 
 
+@pytest.mark.parametrize(
+    ("reachable", "expected"),
+    [
+        ((1.25, 2.75), TRUE_DOMAIN),
+        ((-2.0, -1.0), FALSE_DOMAIN),
+        ((0.25, 1.25), UNKNOWN_DOMAIN),
+    ],
+)
+def test_lateral_region_uses_piecewise_monotone_robustness_range(
+    reachable, expected
+):
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder._lateral_region_geometry_cache = {}
+    region = SemanticIntervalSet(
+        inner_true=(ClosedInterval(1.0, 3.0),),
+        outer_true=(ClosedInterval(0.5, 3.5),),
+        complete=True,
+        source="same_lane:test",
+    )
+
+    domain, diagnostics = builder._classify_lateral_region_estimate(
+        region, reachable
+    )
+
+    assert domain == expected
+    assert diagnostics["analysis_mode"] == (
+        "piecewise_monotone_lateral_region"
+    )
+    if expected == TRUE_DOMAIN:
+        assert 2.0 in diagnostics["inner_partition_points"]
+
+
+def test_lateral_reachability_update_preserves_geometry_and_clears_frames():
+    builder = object.__new__(SemanticINPredicateRegionBuilder)
+    builder._frame_cache = {"old": object()}
+    builder._lateral_region_geometry_cache = {"geometry": object()}
+    builder.reachable_by_time = {}
+    builder.reachable_velocity_by_time = {}
+    builder.reachable_acceleration_by_time = {}
+
+    builder.update_reachable_envelopes(
+        {3: (2.0, 1.0)},
+        reachable_velocity_by_time={3: (4.0, 5.0)},
+    )
+
+    assert builder.reachable_by_time == {3: (1.0, 2.0)}
+    assert builder.reachable_velocity_by_time == {3: (4.0, 5.0)}
+    assert builder._frame_cache == {}
+    assert "geometry" in builder._lateral_region_geometry_cache
+
+
 def test_same_lane_footprint_region_retains_inner_outer_uncertainty_band():
     target = SimpleNamespace(lanelet_assignment={0: {7}})
     lane = SimpleNamespace(contained_lanelets={7})
