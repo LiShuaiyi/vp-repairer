@@ -507,6 +507,23 @@ def evaluate_temporal_truth_nodes(
     )
     cache = {}
     atomic_cache = {}
+    # ``(node, anchor)`` keys share results between structurally equal
+    # nodes, but hashing a frozen dataclass node rehashes its whole subtree on
+    # every lookup.  Map each node object once to the index of its equality
+    # class; keys built from that index identify exactly the same entries.
+    node_class_by_object = {}
+    node_class_by_value = {}
+
+    def node_class(node):
+        object_key = id(node)
+        entry = node_class_by_object.get(object_key)
+        if entry is None:
+            entry = (
+                node,
+                node_class_by_value.setdefault(node, len(node_class_by_value)),
+            )
+            node_class_by_object[object_key] = entry
+        return entry[1]
 
     def aggregate(kind, masks):
         existential = kind in {"once", "eventually"}
@@ -535,7 +552,7 @@ def evaluate_temporal_truth_nodes(
         return result or _UNKNOWN_MASK
 
     def evaluate(node, anchor):
-        key = (node, int(anchor))
+        key = (node_class(node), int(anchor))
         if key in cache:
             return cache[key]
         if node.kind == "atom":

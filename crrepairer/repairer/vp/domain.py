@@ -852,7 +852,9 @@ class VPPredicateEstimation:
                 )
             evaluator = matches[0]
             token = f"__vp_atom_{id(evaluator)}_{atom_key}"
-            evaluator_tokens[token] = (evaluator, atom)
+            # ``atom_key`` is ``normalized(atom)``; keep it with the entry so
+            # the per-frame cache key below need not normalize again.
+            evaluator_tokens[token] = (evaluator, atom, atom_key)
             return TemporalTruthNode(kind="atom", value=token)
 
         for prop in prop_nodes:
@@ -914,8 +916,8 @@ class VPPredicateEstimation:
             entry = evaluator_tokens.get(str(token))
             if entry is None:
                 return UNKNOWN_DOMAIN
-            evaluator, original_atom = entry
-            cache_key = (id(evaluator), normalized(original_atom), int(time_step))
+            evaluator, original_atom, normalized_atom = entry
+            cache_key = (id(evaluator), normalized_atom, int(time_step))
             if cache_key not in atomic_cache:
                 frame = builder.estimate_frame(
                     evaluator, original_atom, int(time_step)

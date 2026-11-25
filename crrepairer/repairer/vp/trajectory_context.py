@@ -12,6 +12,12 @@ from commonroad_clcs.clcs import CurvilinearCoordinateSystem
 from commonroad_clcs.config import CLCSParams
 from commonroad_clcs.util import resample_polyline
 
+from crrepairer.repairer.vp import clcs_fastpath
+
+# Bitwise-identical vectorised path length for CLCS construction and
+# polyline resampling (see ``clcs_fastpath``).
+clcs_fastpath.install()
+
 
 class VPTrajectoryContext:
     """Provides trajectory, CLCS, and mode-selection helpers shared by VP steps."""

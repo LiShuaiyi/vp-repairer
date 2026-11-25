@@ -243,6 +243,41 @@ def estimate_acceleration_predicate_frame(
     )
 
 
+def _scatter_partial_batch_projection(
+    clcs: Any, points: np.ndarray, projected: np.ndarray
+) -> Optional[np.ndarray]:
+    """Place a shortened C++ batch result back at its input positions.
+
+    The batch conversion does not raise for points outside the projection
+    domain; it silently omits them and returns the remaining points in input
+    order.  The scalar conversion rejects exactly those points through the
+    same C++ projection-domain test, which is exposed point-wise.  Using that
+    test recovers the positions of the returned rows, so out-of-domain points
+    become ``nan`` exactly as in the scalar fallback, without converting every
+    point a second time.  ``None`` (inconsistent row count or missing API)
+    selects the unchanged chunked/scalar fallback.
+    """
+    inside = getattr(clcs, "cartesian_point_inside_projection_domain", None)
+    if (
+        inside is None
+        or projected.ndim != 2
+        or projected.shape[1] != 2
+        or len(projected) >= len(points)
+    ):
+        return None
+    mask = np.fromiter(
+        (bool(inside(float(x), float(y))) for x, y in points),
+        dtype=bool,
+        count=len(points),
+    )
+    if int(np.count_nonzero(mask)) != len(projected):
+        return None
+    values = projected[:, 0]
+    result = np.full(len(points), math.nan, dtype=float)
+    result[mask] = np.where(np.isfinite(values), values, math.nan)
+    return result
+
+
 def _project_points_to_s(
     clcs: Any,
     points: Any,
@@ -276,6 +311,11 @@ def _project_points_to_s(
             if projected.shape == (len(points), 2):
                 values = projected[:, 0]
                 return np.where(np.isfinite(values), values, math.nan)
+            recovered = _scatter_partial_batch_projection(
+                clcs, points, projected
+            )
+            if recovered is not None:
+                return recovered
         except Exception:
             # Retry in chunks below.  Only a chunk containing an out-of-domain
             # sample then needs the scalar compatibility path.
@@ -834,6 +874,8 @@ class SemanticINPredicateRegionBuilder:
         )
         self._frame_cache: Dict[Any, FramePredicateEstimate] = {}
         self._evaluator_semantic_key_cache: Dict[int, Tuple[Any, ...]] = {}
+        # Time-independent parts of frame cache keys, see ``estimate_frame``.
+        self._frame_static_key_cache: Dict[Tuple[int, str], Tuple[Any, ...]] = {}
         self._path_line = LineString(np.asarray(self.ref_path, dtype=float)[:, :2])
         self._same_lane_sample_context_cache: Optional[Mapping[str, Any]] = None
         self._same_lane_robustness_region_cache: Dict[Any, SemanticIntervalSet] = {}
@@ -1035,34 +1077,55 @@ class SemanticINPredicateRegionBuilder:
         reachable: Optional[Sequence[float]] = None,
     ) -> FramePredicateEstimate:
         """Return ``{0}``, ``{1}``, or ``{0,1}`` for one frame."""
-        vehicle_ids = tuple(
-            int(item)
-            for item in (
-                vehicle_ids
-                if vehicle_ids is not None
-                else self._default_vehicle_ids(evaluator, prop_name)
-            )
+        # The evaluator name, alias context, evaluator key and default
+        # argument order depend only on the evaluator object and proposition
+        # name, both fixed for this builder.  Computing them once per pair
+        # yields exactly the keys built below on every call.  The cached
+        # tuple keeps the evaluator alive, so its ``id`` cannot be reused.
+        static_cache = self.__dict__.setdefault("_frame_static_key_cache", {})
+        static_key = (
+            (id(evaluator), prop_name) if isinstance(prop_name, str) else None
         )
+        static = static_cache.get(static_key) if static_key is not None else None
+        if static is None:
+            # The monitor can reuse one atomic PredicateNode in several
+            # temporal propositions (for example IN5 c/g).  Temporal wrappers
+            # do not change a frame predicate's semantics; only argument
+            # order and the explicit not-oncoming composite marker do.  Share
+            # the exact frame result across those aliases rather than
+            # evaluating it twice.
+            name = _predicate_name(evaluator)
+            static = [
+                evaluator,
+                (
+                    name,
+                    "__1_0" in str(prop_name),
+                    "not_oncoming" in str(prop_name).lower(),
+                ),
+                (
+                    ("object", id(evaluator))
+                    if hasattr(evaluator, "_turning_ego")
+                    else self._semantic_evaluator_key(evaluator)
+                ),
+                None,  # default argument order, computed on first use
+            ]
+            if static_key is not None:
+                static_cache[static_key] = static
+        frame_context = static[1]
+        evaluator_key = static[2]
+        if vehicle_ids is None:
+            if static[3] is None:
+                static[3] = tuple(
+                    int(item)
+                    for item in self._default_vehicle_ids(evaluator, prop_name)
+                )
+            vehicle_ids = static[3]
+        else:
+            vehicle_ids = tuple(int(item) for item in vehicle_ids)
         reachable_pair = _finite_pair(
             reachable
             if reachable is not None
             else self.reachable_by_time.get(int(time_step))
-        )
-        # The monitor can reuse one atomic PredicateNode in several temporal
-        # propositions (for example IN5 c/g).  Temporal wrappers do not change
-        # a frame predicate's semantics; only argument order and the explicit
-        # not-oncoming composite marker do.  Share the exact frame result
-        # across those aliases rather than evaluating it twice.
-        name = _predicate_name(evaluator)
-        frame_context = (
-            name,
-            "__1_0" in str(prop_name),
-            "not_oncoming" in str(prop_name).lower(),
-        )
-        evaluator_key = (
-            ("object", id(evaluator))
-            if hasattr(evaluator, "_turning_ego")
-            else self._semantic_evaluator_key(evaluator)
         )
         key = (
             evaluator_key,
