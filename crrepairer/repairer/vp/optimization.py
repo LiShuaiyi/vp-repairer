@@ -4,7 +4,7 @@ import math
 from typing import List
 
 import numpy as np
-from scipy.optimize import linprog
+from crrepairer.repairer.vp.lp_fastpath import highs_linprog
 from scipy.sparse import csr_matrix, vstack as sparse_vstack
 
 from commonroad.scenario.state import CustomState
@@ -507,14 +507,13 @@ class VPOptimization:
             bounds.append((lb, ub))
         bounds.extend((0.0, None) for _ in range(3 * T - 1))
 
-        result = linprog(
+        result = highs_linprog(
             c=template["primary_c"],
             A_ub=template["A_ub"],
             b_ub=template["b_ub"],
             A_eq=template["A_eq"],
             b_eq=template["b_eq"],
             bounds=bounds,
-            method="highs",
         )
         if not result.success:
             raise RuntimeError(f"LP failed: {result.message}")
@@ -524,14 +523,13 @@ class VPOptimization:
             float(self.config.repair.acceleration_smoothing_position_relative_tolerance)
             * max(1.0, abs(float(result.fun))),
         )
-        secondary_result = linprog(
+        secondary_result = highs_linprog(
             c=template["secondary_c"],
             A_ub=template["secondary_A_ub"],
             b_ub=np.append(template["b_ub"], primary_limit),
             A_eq=template["A_eq"],
             b_eq=template["b_eq"],
             bounds=bounds,
-            method="highs",
         )
         if secondary_result.success:
             result = secondary_result
@@ -935,14 +933,13 @@ class VPOptimization:
             bounds.extend((0.0, None) for _ in range(n_delta_acceleration))
             bounds.extend((0.0, None) for _ in range(n_delta_jerk))
 
-        result = linprog(
+        result = highs_linprog(
             c=c,
             A_ub=A_ub,
             b_ub=b_ub,
             A_eq=A_eq,
             b_eq=b_eq,
             bounds=bounds,
-            method="highs",
         )
         if not result.success:
             raise RuntimeError(f"LP failed: {result.message}")
@@ -975,14 +972,13 @@ class VPOptimization:
             )
             for t in range(n_delta_jerk):
                 secondary_c[delta_jerk_idx(t)] = jerk_weight
-            secondary_result = linprog(
+            secondary_result = highs_linprog(
                 c=secondary_c,
                 A_ub=secondary_A_ub,
                 b_ub=secondary_b_ub,
                 A_eq=A_eq,
                 b_eq=b_eq,
                 bounds=bounds,
-                method="highs",
             )
             if secondary_result.success:
                 result = secondary_result
