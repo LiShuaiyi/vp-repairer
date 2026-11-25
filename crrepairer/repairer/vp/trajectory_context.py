@@ -519,33 +519,39 @@ class VPTrajectoryContext:
         if float(np.dot(start_tangent, end_tangent)) < -0.5:
             end_tangent = -end_tangent
 
-        continuation = []
-        for distance in continuation_distances:
-            distance = float(distance)
+        # Cubic Hermite transition into the route centre, then route samples.
+        # The Hermite weights are evaluated per sample with the scalar
+        # expressions below; only their combination with the four endpoint
+        # vectors is done for all transition rows at once (the same
+        # element-wise products and left-to-right sums as per sample).
+        continuation = np.empty((len(continuation_distances), 2), dtype=float)
+        hermite_rows, h00s, h10s, h01s, h11s = [], [], [], [], []
+        for index, distance in enumerate(continuation_distances.tolist()):
             if distance <= transition_distance:
                 u = distance / transition_distance
-                h00 = 2.0 * u**3 - 3.0 * u**2 + 1.0
-                h10 = u**3 - 2.0 * u**2 + u
-                h01 = -2.0 * u**3 + 3.0 * u**2
-                h11 = u**3 - u**2
-                point = (
-                    h00 * transition_start
-                    + h10 * transition_distance * start_tangent
-                    + h01 * transition_end
-                    + h11 * transition_distance * end_tangent
-                )
+                hermite_rows.append(index)
+                h00s.append(2.0 * u**3 - 3.0 * u**2 + 1.0)
+                h10s.append((u**3 - 2.0 * u**2 + u) * transition_distance)
+                h01s.append(-2.0 * u**3 + 3.0 * u**2)
+                h11s.append((u**3 - u**2) * transition_distance)
             else:
                 route_s = last_s + direction * distance
-                point = route_clcs.convert_to_cartesian_coords(route_s, 0.0)
-            continuation.append(point)
-        if not continuation:
+                continuation[index] = route_clcs.convert_to_cartesian_coords(
+                    route_s, 0.0
+                )
+        if len(continuation) == 0:
             raise ValueError(
                 "Acceleration reference route continuation contains no samples."
             )
+        if hermite_rows:
+            continuation[hermite_rows] = (
+                np.asarray(h00s)[:, None] * transition_start
+                + np.asarray(h10s)[:, None] * start_tangent
+                + np.asarray(h01s)[:, None] * transition_end
+                + np.asarray(h11s)[:, None] * end_tangent
+            )
 
-        extended_source_path = np.vstack(
-            (source_path, np.asarray(continuation, dtype=float))
-        )
+        extended_source_path = np.vstack((source_path, continuation))
         ref_path, processed_ref_path = self._build_stable_reference_paths(
             extended_source_path
         )
