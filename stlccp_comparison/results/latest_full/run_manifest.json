@@ -33,13 +33,13 @@
     {
       "cohort": "in3_hand_draft",
       "rows": 68,
-      "successful": 28,
+      "successful": 29,
       "output": "stlccp_comparison/results/latest_full/in3_hand_draft.csv"
     },
     {
       "cohort": "in4",
-      "rows": 46,
-      "successful": 14,
+      "rows": 49,
+      "successful": 15,
       "output": "stlccp_comparison/results/latest_full/in4.csv"
     },
     {

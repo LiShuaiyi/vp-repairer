@@ -1,8 +1,9 @@
-# STLCCP 704-case comparison result
+# STLCCP 707-case comparison result
 
-Run date: 2026-09-22.
+Run date: 2026-09-22; 11 IN rows re-run on 2026-11-25 for regenerated
+scenario windows.
 
-This run uses the established MICP population: the same 704 unique
+This run uses the established MICP population: the same 707 unique
 `(scenario_id, ego_id, rule)` cases, Lin2025 rule semantics, full 2-D CLCS
 dynamics, fixed surrounding-vehicle trajectories, and final
 `STLRuleMonitor` validation. STLCCP uses LSE (`k=10`) followed by sound
@@ -22,34 +23,34 @@ point or that the comparison encoding accepted the point.
 | R_G1_R_G3 | 87 | 87 | 87 | 85 | 1.022 | 84 | 1.688 | 0.623 |
 | R_G2 | 69 | 60 | 43 | 16 | 0.507 | 16 | 1.149 | 0.466 |
 | R_G3 | 100 | 100 | 99 | 100 | 0.314 | 100 | 0.861 | 0.470 |
-| R_IN1 | 91 | 81 | 69 | 35 | 0.497 | 75 | 0.439 | 1.073 |
-| R_IN3_hand_draft | 68 | 60 | 39 | 28 | 2.303 | 28 | 1.413 | 1.291 |
-| R_IN4 | 46 | 34 | 28 | 14 | 1.313 | 12 | 1.390 | 0.899 |
+| R_IN1 | 91 | 82 | 70 | 35 | 0.482 | 76 | 0.439 | 1.039 |
+| R_IN3_hand_draft | 68 | 61 | 39 | 29 | 2.233 | 28 | 1.410 | 1.303 |
+| R_IN4 | 49 | 37 | 29 | 15 | 1.327 | 12 | 1.385 | 0.906 |
 | R_IN5 | 50 | 44 | 44 | 23 | 1.193 | 22 | 1.398 | 0.756 |
-| **ALL** | **704** | **659** | **601** | **491 (69.7%)** | **0.644** | **528 (75.0%)** | **0.890** | **0.671** |
+| **ALL** | **707** | **664** | **603** | **493 (69.7%)** | **0.641** | **529 (74.8%)** | **0.890** | **0.671** |
 
 The runtime ratio is computed case-by-case over cases timed by both methods;
 values below one favor STLCCP. Across all timed cases the ratio is 0.671.
-Restricting it to the 480 cases repaired by both methods gives 0.588. This run
+Restricting it to the 480 cases repaired by both methods gives 0.586. This run
 therefore shows a clear speed advantage over MICP, but not an overall success
 advantage.
 
 The paired success table is:
 
 - both succeed: 480;
-- STLCCP only: 11;
-- MICP only: 48;
+- STLCCP only: 13;
+- MICP only: 49;
 - neither: 165.
 
-STLCCP's Wilson 95% interval for overall monitor success is 66.3%--73.0%; the
-MICP point result is 75.0%. The largest accuracy loss is R_IN1 (35 versus 75).
+STLCCP's Wilson 95% interval for overall monitor success is 66.2%--73.0%; the
+MICP point result is 74.8%. The largest accuracy loss is R_IN1 (35 versus 76).
 STLCCP is tied or slightly ahead on R_G1_R_G3, R_G2, IN3, IN4, and IN5, though
 small differences from a single run should not be over-interpreted.
 
 ## Generated-sampling subset
 
 All 70 XML scenarios under `scenarios/experiment_scenarios/generated_sampling/`
-are included in the 704-case table above. They were originally aggregated into
+are included in the 707-case table above. They were originally aggregated into
 their corresponding IN rules; the following table reports that new-scenario
 subset separately.
 
@@ -86,24 +87,24 @@ therefore the success oracle.
 
 ## Diagnostics
 
-Across all rules, 601 candidates satisfy exact unsmoothed robustness of the
-comparison formula and 491 pass the external monitor. There are 123
-encoded-pass/monitor-fail cases and 13 encoded-fail/monitor-pass cases. The gap
+Across all rules, 603 candidates satisfy exact unsmoothed robustness of the
+comparison formula and 493 pass the external monitor. There are 125
+encoded-pass/monitor-fail cases and 15 encoded-fail/monitor-pass cases. The gap
 arises where the comparison uses fixed witnesses, polygonal or linearized
 predicates, and reconstructed lane assignments.
 
-Terminal solver states are 593 `optimal`, 52 `iteration_limit`, 40
-`infeasible`, 14 Gurobi/CVXPY solver errors, and 5 setup errors. The errors are
+Terminal solver states are 593 `optimal`, 57 `iteration_limit`, 39
+`infeasible`, 14 Gurobi/CVXPY solver errors, and 4 setup errors. The errors are
 kept as failed cases rather than dropped.
 
-VP succeeds on 700/704 cases and has a 0.0101-second median core time. On cases
-where both STLCCP and VP succeed, STLCCP is 51.0x slower by geometric mean.
+VP succeeds on 704/707 cases and has a 0.0117-second median core time. On cases
+where both STLCCP and VP succeed, STLCCP is 50.5x slower by geometric mean.
 STLCCP's useful performance comparison in this repository is therefore mainly
 against the mixed-integer formulation.
 
 ## Artifacts
 
-- `results/latest_full/all_stlccp_results.csv`: all 704 raw case records;
+- `results/latest_full/all_stlccp_results.csv`: all 707 raw case records;
 - `results/latest_full/summary.json`: per-rule STLCCP-vs-VP, MICP-vs-VP, and
   direct paired STLCCP-vs-MICP statistics;
 - `results/latest_full/run_manifest.json`: run options and cohort counts;

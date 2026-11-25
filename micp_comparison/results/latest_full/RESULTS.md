@@ -2,9 +2,15 @@
 
 This result set uses the current CSV files in
 `evaluation/config/vp_temporal_full/` as the sole definition of the VP test
-population. The unified manifest contains 704 unique `(scenario_id, ego_id,
+population. The unified manifest contains 707 unique `(scenario_id, ego_id,
 rule)` cases, and `all_micp_results.csv` contains exactly one MICP result for
 each manifest entry.
+
+Eleven IN rows (6 `R_IN1`, 3 `R_IN3_hand_draft`, 2 `R_IN4`) were re-run on
+2026-11-25 for regenerated converter windows of the same recordings, with the
+standard encoding, the rule semantics of the rows they replace, a 30 s Gurobi
+limit and one thread. Their per-case output is
+`in_time_shift_2026-11-25.csv` (`result_provenance=time_shift_2026-11-25`).
 
 ## Supplemental IN runs
 
@@ -33,8 +39,8 @@ stored persistently below `scenarios/experiment_scenarios/`. Every non-empty
 
 | Cohort | Cases | Solver feasible | Successful | Success rate | Mean core time | Median core time |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| R_IN3_hand_draft | 68 | 50 | 28 | 41.18% | 1.572 s | 1.413 s |
-| R_IN4 | 46 | 30 | 12 | 26.09% | 1.462 s | 1.390 s |
+| R_IN3_hand_draft | 68 | 50 | 28 | 41.18% | 1.557 s | 1.410 s |
+| R_IN4 | 49 | 31 | 12 | 24.49% | 1.433 s | 1.385 s |
 | R_IN5, standard 20-step | 44 | 44 | 22 | 50.00% | 1.465 s | 1.383 s |
 | R_IN5, 150-step variants | 6 | 0 | 0 | 0.00% | 11.200 s | 10.549 s |
 
