@@ -240,6 +240,15 @@ class VehicleConfiguration(BaseConfiguration):
     config_builder.set_root_path(root=os.path.normpath(os.path.join(os.path.dirname(__file__), "../../../commonroad-qp-planner")),
                                  path_to_config="configurations")
     qp_veh_config = config_builder.build_configuration()
+    # The commonroad-qp-planner defaults (a_lon in [-15, 15] m/s^2, j_lon in
+    # [-1000, 1000] m/s^3) are numerical placeholders.  Plan with physical
+    # passenger-car limits instead: braking down to the tyre-road friction
+    # limit (-10 m/s^2), at most 5 m/s^2 acceleration, and jerk within
+    # +-50 m/s^3 (full braking builds up in about 0.2 s).
+    qp_veh_config.a_lon_min = -10.0
+    qp_veh_config.a_lon_max = 5.0
+    qp_veh_config.j_lon_min = -50.0
+    qp_veh_config.j_lon_max = 50.0
 
 
     kappa_dot_dot_min: float = -100
