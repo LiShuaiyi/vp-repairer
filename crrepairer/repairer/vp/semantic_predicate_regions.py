@@ -278,7 +278,36 @@ def _scatter_partial_batch_projection(
     return result
 
 
+# Memo of exact projections: the same points are projected onto the same CLCS
+# in every SAT iteration.  Entries keep the CLCS object (a hit requires the
+# very same object) and a private copy of the result.
+_PROJECTION_MEMO: Dict[Any, Tuple[Any, np.ndarray]] = {}
+_PROJECTION_MEMO_SIZE = 256
+
+
 def _project_points_to_s(
+    clcs: Any,
+    points: Any,
+    *,
+    chunk_size: int = 128,
+) -> np.ndarray:
+    """Memoised :func:`_project_points_to_s_uncached` (identical results)."""
+    try:
+        array = np.ascontiguousarray(np.asarray(points, dtype=float))
+        key = (id(clcs), int(chunk_size), array.shape, array.tobytes())
+    except (TypeError, ValueError):
+        return _project_points_to_s_uncached(clcs, points, chunk_size=chunk_size)
+    entry = _PROJECTION_MEMO.get(key)
+    if entry is not None and entry[0] is clcs:
+        return entry[1].copy()
+    result = _project_points_to_s_uncached(clcs, points, chunk_size=chunk_size)
+    if len(_PROJECTION_MEMO) >= _PROJECTION_MEMO_SIZE:
+        _PROJECTION_MEMO.clear()
+    _PROJECTION_MEMO[key] = (clcs, np.array(result, copy=True))
+    return result
+
+
+def _project_points_to_s_uncached(
     clcs: Any,
     points: Any,
     *,

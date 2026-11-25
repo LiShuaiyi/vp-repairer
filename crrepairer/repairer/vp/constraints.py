@@ -117,6 +117,30 @@ def _compile_boolean_formula(expression):
     return build(expression), tuple(str(symbol) for symbol in expression.free_symbols)
 
 
+# Smoothed curvature profile of a trajectory CLCS, which depends only on the
+# CLCS reference path (fixed after construction) and the smoothing distance.
+# Entries keep the CLCS object; a hit requires the very same object.  Failures
+# are not cached, so they recompute and raise exactly as before.
+_SMOOTHED_CURVATURE_CACHE = {}
+_SMOOTHED_CURVATURE_CACHE_SIZE = 64
+
+
+def _cached_smoothed_curvature_profile(trajectory_clcs, smoothing_distance):
+    """Return ``VPConstraintExtraction._smoothed_curvature_profile`` once per CLCS."""
+    key = (id(trajectory_clcs), float(smoothing_distance))
+    entry = _SMOOTHED_CURVATURE_CACHE.get(key)
+    if entry is not None and entry[0] is trajectory_clcs:
+        return entry[1], entry[2]
+    positions, curvature = VPConstraintExtraction._smoothed_curvature_profile(
+        trajectory_clcs,
+        smoothing_distance=float(smoothing_distance),
+    )
+    if len(_SMOOTHED_CURVATURE_CACHE) >= _SMOOTHED_CURVATURE_CACHE_SIZE:
+        _SMOOTHED_CURVATURE_CACHE.clear()
+    _SMOOTHED_CURVATURE_CACHE[key] = (trajectory_clcs, positions, curvature)
+    return positions, curvature
+
+
 class UnsupportedVPCandidateError(RuntimeError):
     """A SAT assignment that cannot be represented by VP constraints."""
 
@@ -4092,9 +4116,9 @@ class VPConstraintExtraction:
         if not np.isfinite(path_length) or path_length <= 0:
             raise ValueError(f"Invalid trajectory CLCS length: {path_length!r}")
         try:
-            curvature_positions, curvature_profile = VPConstraintExtraction._smoothed_curvature_profile(
+            curvature_positions, curvature_profile = _cached_smoothed_curvature_profile(
                 trajectory_clcs,
-                smoothing_distance=float(smoothing_distance),
+                float(smoothing_distance),
             )
         except (AttributeError, TypeError, ValueError):
             curvature_positions = curvature_profile = None
