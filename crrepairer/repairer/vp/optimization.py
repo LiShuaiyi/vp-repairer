@@ -40,6 +40,35 @@ def _curvilinear_s_range(clcs):
     return s_range
 
 
+# Interior of the segment table, ``(s[3], s[-4])``.  The curvilinear projection
+# domain of a commonroad-clcs CLCS omits at most the first and last two
+# segments (its extent starts at ``s[1]`` or ``s[2]`` up to rounding and ends at
+# ``s[-2]``), so this interval, one further segment inside, lies within the
+# domain's longitudinal extent.  Queries inside it need no domain test; only
+# queries near the path ends fetch the (expensive) exact extent.
+_SEGMENT_INTERIOR_CACHE = {}
+
+
+def _segment_interior_s_range(clcs):
+    """Return ``(s[3], s[-4])`` of the CLCS segment table or ``None``."""
+    entry = _SEGMENT_INTERIOR_CACHE.get(id(clcs))
+    if entry is not None and entry[0] is clcs:
+        return entry[1]
+    interior = None
+    segments_fn = getattr(clcs, "segments_longitudinal_coordinates", None)
+    if segments_fn is not None:
+        try:
+            segments = np.asarray(segments_fn(), dtype=float)
+            if segments.ndim == 1 and len(segments) >= 8:
+                interior = (float(segments[3]), float(segments[-4]))
+        except Exception:
+            interior = None
+    if len(_SEGMENT_INTERIOR_CACHE) >= _CURVILINEAR_S_RANGE_CACHE_SIZE:
+        _SEGMENT_INTERIOR_CACHE.clear()
+    _SEGMENT_INTERIOR_CACHE[id(clcs)] = (clcs, interior)
+    return interior
+
+
 class VPOptimization:
     """Solves the velocity-planning optimization problem and reconstructs trajectories."""
 
@@ -1033,12 +1062,22 @@ class VPOptimization:
         # between the reference-path start and the domain start (it can raise
         # or return a point depending on memory contents), so such offsets are
         # skipped here exactly as a rejected conversion is.
-        s_range = _curvilinear_s_range(trajectory_clcs)
+        interior = _segment_interior_s_range(trajectory_clcs)
+        s_range = None
+        s_range_known = False
         for ds in ds_candidates:
-            if s_range is not None and not (
-                s_range[0] <= s - ds and s + ds <= s_range[1]
+            if not (
+                interior is not None
+                and interior[0] <= s - ds
+                and s + ds <= interior[1]
             ):
-                continue
+                if not s_range_known:
+                    s_range = _curvilinear_s_range(trajectory_clcs)
+                    s_range_known = True
+                if s_range is not None and not (
+                    s_range[0] <= s - ds and s + ds <= s_range[1]
+                ):
+                    continue
             try:
                 p_prev = np.asarray(
                     trajectory_clcs.convert_to_cartesian_coords(s - ds, 0.0),

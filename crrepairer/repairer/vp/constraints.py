@@ -67,6 +67,56 @@ def _unified_constraint_anchors_enabled():
     ).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _compile_boolean_formula(expression):
+    """Return a plain-tuple copy of a SymPy Boolean formula and its symbols.
+
+    The per-anchor proofs and nominal evaluations traverse the same rule
+    formula many times.  Walking SymPy objects there costs printing
+    (``str(symbol)``) and SymPy equality (``node == True``) on every visit.
+    The compiled node ``(uid, kind, payload)`` classifies each SymPy node with
+    exactly the tests, and in exactly the order, used by those traversals:
+    ``True``/``False`` constants, symbols, ``Not``/``And``/``Or``/``Implies``
+    with their argument order, and ``"?"`` for anything else.  Nodes are
+    shared by structure, so ``uid`` identifies the same equality classes that
+    SymPy-keyed memo tables used.
+    """
+    nodes = {}
+
+    def intern(kind, payload, key):
+        node = nodes.get(key)
+        if node is None:
+            node = (len(nodes), kind, payload)
+            nodes[key] = node
+        return node
+
+    def build(node):
+        if node is True or node == True:
+            return intern("T", None, ("T",))
+        if node is False or node == False:
+            return intern("F", None, ("F",))
+        if bool(getattr(node, "is_Symbol", False)):
+            name = str(node)
+            return intern("S", name, ("S", name))
+        arguments = tuple(getattr(node, "args", ()))
+        operator = type(node).__name__
+        if operator == "Not" and len(arguments) == 1:
+            child = build(arguments[0])
+            return intern("Not", (child,), ("Not", child[0]))
+        if operator in {"And", "Or"}:
+            children = tuple(build(argument) for argument in arguments)
+            return intern(
+                operator, children, (operator, tuple(c[0] for c in children))
+            )
+        if operator == "Implies" and len(arguments) == 2:
+            children = (build(arguments[0]), build(arguments[1]))
+            return intern(
+                "Implies", children, ("Implies", tuple(c[0] for c in children))
+            )
+        return intern("?", None, ("?",))
+
+    return build(expression), tuple(str(symbol) for symbol in expression.free_symbols)
+
+
 class UnsupportedVPCandidateError(RuntimeError):
     """A SAT assignment that cannot be represented by VP constraints."""
 
@@ -513,9 +563,20 @@ class VPConstraintExtraction:
                     continue
                 base_variable = str(node.alphabet).lstrip("~")
                 rule_propositions[base_variable] = node
-            formula_symbols = {
-                str(symbol): symbol for symbol in formula.free_symbols
-            }
+            # The compiled formula is cached with the formula object itself;
+            # a hit requires the very same object.
+            compiled_cache = self.__dict__.setdefault(
+                "_compiled_rule_formula_cache", {}
+            )
+            compiled_entry = compiled_cache.get(id(formula))
+            if compiled_entry is None or compiled_entry[0] is not formula:
+                compiled, symbol_names = _compile_boolean_formula(formula)
+                compiled_entry = (formula, compiled, symbol_names, str(formula))
+                compiled_cache[id(formula)] = compiled_entry
+            _, compiled_formula, formula_symbol_names, formula_text = (
+                compiled_entry
+            )
+            formula_symbols = set(formula_symbol_names)
         except (AttributeError, KeyError, TypeError, ValueError):
             return None
 
@@ -524,7 +585,7 @@ class VPConstraintExtraction:
         if proposition_variable not in formula_symbols:
             return None
 
-        formula_variables = {str(symbol) for symbol in formula.free_symbols}
+        formula_variables = set(formula_symbol_names)
         if formula_variables - set(rule_propositions):
             return None
         nominal_sequences = {
@@ -790,53 +851,52 @@ class VPConstraintExtraction:
             proof_cache = {}
 
             def prove_mask(node, desired_value):
+                # ``node`` is a compiled formula node ``(uid, kind, payload)``.
                 desired_value = bool(desired_value)
-                cache_key = (node, desired_value)
+                cache_key = (node[0], desired_value)
                 if cache_key in proof_cache:
                     return proof_cache[cache_key]
 
-                if node is True or node == True:
+                kind = node[1]
+                if kind == "T":
                     result = both_targets if desired_value else 0
-                elif node is False or node == False:
+                elif kind == "F":
                     result = both_targets if not desired_value else 0
-                elif bool(getattr(node, "is_Symbol", False)):
-                    variable = str(node)
+                elif kind == "S":
+                    variable = node[2]
                     if variable == target_variable:
                         result = target_true if desired_value else target_false
                     else:
                         domain = leaf_domain(rule_propositions[variable])
                         required = TRUE_DOMAIN if desired_value else FALSE_DOMAIN
                         result = both_targets if domain == required else 0
-                else:
-                    arguments = tuple(getattr(node, "args", ()))
-                    operator = type(node).__name__
-                    if operator == "Not" and len(arguments) == 1:
-                        result = prove_mask(arguments[0], not desired_value)
-                    elif operator in {"And", "Or"}:
-                        use_intersection = (operator == "And") == desired_value
-                        result = both_targets if use_intersection else 0
-                        for argument in arguments:
-                            child = prove_mask(argument, desired_value)
-                            if use_intersection:
-                                result &= child
-                                if result == 0:
-                                    break
-                            else:
-                                result |= child
-                                if result == both_targets:
-                                    break
-                    elif operator == "Implies" and len(arguments) == 2:
-                        antecedent, consequent = arguments
-                        if desired_value:
-                            result = prove_mask(antecedent, False)
-                            if result != both_targets:
-                                result |= prove_mask(consequent, True)
+                elif kind == "Not":
+                    result = prove_mask(node[2][0], not desired_value)
+                elif kind in ("And", "Or"):
+                    use_intersection = (kind == "And") == desired_value
+                    result = both_targets if use_intersection else 0
+                    for argument in node[2]:
+                        child = prove_mask(argument, desired_value)
+                        if use_intersection:
+                            result &= child
+                            if result == 0:
+                                break
                         else:
-                            result = prove_mask(antecedent, True)
-                            if result:
-                                result &= prove_mask(consequent, False)
+                            result |= child
+                            if result == both_targets:
+                                break
+                elif kind == "Implies":
+                    antecedent, consequent = node[2]
+                    if desired_value:
+                        result = prove_mask(antecedent, False)
+                        if result != both_targets:
+                            result |= prove_mask(consequent, True)
                     else:
-                        result = 0
+                        result = prove_mask(antecedent, True)
+                        if result:
+                            result &= prove_mask(consequent, False)
+                else:
+                    result = 0
 
                 proof_cache[cache_key] = result
                 return result
@@ -844,13 +904,14 @@ class VPConstraintExtraction:
             return prove_mask(expression, True) == both_targets
 
         def nominal_formula_at_anchor(expression, nominal_index, values):
-            """Evaluate the monitor trace lazily without SymPy substitution."""
-            if expression is True or expression == True:
+            """Evaluate the monitor trace lazily on the compiled formula."""
+            kind = expression[1]
+            if kind == "T":
                 return True
-            if expression is False or expression == False:
+            if kind == "F":
                 return False
-            if bool(getattr(expression, "is_Symbol", False)):
-                variable = str(expression)
+            if kind == "S":
+                variable = expression[2]
                 if variable in values:
                     return values[variable]
                 nominal_cache = getattr(
@@ -882,9 +943,9 @@ class VPConstraintExtraction:
                 nominal_cache[nominal_key] = values[variable]
                 return values[variable]
 
-            arguments = tuple(getattr(expression, "args", ()))
-            operator = type(expression).__name__
-            if operator == "Not" and len(arguments) == 1:
+            arguments = expression[2] if kind != "?" else ()
+            operator = kind
+            if operator == "Not":
                 value = nominal_formula_at_anchor(
                     arguments[0], nominal_index, values
                 )
@@ -909,7 +970,7 @@ class VPConstraintExtraction:
                         return True
                     has_unknown = has_unknown or value is None
                 return None if has_unknown else False
-            if operator == "Implies" and len(arguments) == 2:
+            if operator == "Implies":
                 antecedent = nominal_formula_at_anchor(
                     arguments[0], nominal_index, values
                 )
@@ -937,12 +998,13 @@ class VPConstraintExtraction:
                 bitmask_cache = self._nominal_proposition_bitmask_cache = {}
 
             def evaluate(node):
-                if node is True or node == True:
+                kind = node[1]
+                if kind == "T":
                     return all_mask, 0
-                if node is False or node == False:
+                if kind == "F":
                     return 0, all_mask
-                if bool(getattr(node, "is_Symbol", False)):
-                    variable = str(node)
+                if kind == "S":
+                    variable = node[2]
                     if variable == target_variable:
                         return (
                             (all_mask, 0)
@@ -979,9 +1041,9 @@ class VPConstraintExtraction:
                     bitmask_cache[cache_key] = result
                     return result
 
-                arguments = tuple(getattr(node, "args", ()))
-                operator = type(node).__name__
-                if operator == "Not" and len(arguments) == 1:
+                arguments = node[2] if kind != "?" else ()
+                operator = kind
+                if operator == "Not":
                     true_mask, false_mask = evaluate(arguments[0])
                     return false_mask, true_mask
                 if operator == "And":
@@ -1000,7 +1062,7 @@ class VPConstraintExtraction:
                         true_mask |= child_true
                         false_mask &= child_false
                     return true_mask, false_mask
-                if operator == "Implies" and len(arguments) == 2:
+                if operator == "Implies":
                     antecedent_true, antecedent_false = evaluate(arguments[0])
                     consequent_true, consequent_false = evaluate(arguments[1])
                     return (
@@ -1031,7 +1093,7 @@ class VPConstraintExtraction:
         last_evaluation_anchor = int(trajectory_end) + monitor_delay
         alignment_key = (
             str(proposition.source_rule),
-            str(formula),
+            formula_text,
             int(first_evaluation_anchor),
             int(last_evaluation_anchor),
         )
@@ -1039,7 +1101,7 @@ class VPConstraintExtraction:
         if pointwise_aligned is None:
             pointwise_aligned = any(
                 nominal_formula_at_anchor(
-                    formula,
+                    compiled_formula,
                     int(source_anchor) - monitor_start,
                     {},
                 )
@@ -1062,7 +1124,7 @@ class VPConstraintExtraction:
         first_nominal_index = first_evaluation_anchor - monitor_start
         nominal_true_masks = [
             nominal_formula_true_mask(
-                formula,
+                compiled_formula,
                 first_nominal_index,
                 anchor_count,
                 target_value,
@@ -1081,7 +1143,7 @@ class VPConstraintExtraction:
                 "filtered_source_anchors": [],
                 "unknown_source_anchors": [],
                 "anchor_evaluations": [],
-                "formula": str(formula),
+                "formula": formula_text,
                 "reason": "empty_nominal_two_cofactor_mask",
                 "unified_anchors": unified_anchors,
             }
@@ -1123,7 +1185,7 @@ class VPConstraintExtraction:
             if len(source_anchors) < 2:
                 continue
             span_proven = prove_formula_for_unknown_target(
-                formula,
+                compiled_formula,
                 lambda node: estimate_at_anchor_span(node, source_anchors),
             )
             if span_proven:
@@ -1154,7 +1216,7 @@ class VPConstraintExtraction:
                     return domain
 
                 formula_proven = prove_formula_for_unknown_target(
-                    formula,
+                    compiled_formula,
                     estimate_domain_with_diagnostics,
                 )
                 formula_domain = (
@@ -1192,7 +1254,7 @@ class VPConstraintExtraction:
             "filtered_source_anchors": filtered_anchors,
             "unknown_source_anchors": unknown_anchors,
             "anchor_evaluations": anchor_evaluations,
-            "formula": str(formula),
+            "formula": formula_text,
             "unified_anchors": unified_anchors,
         }
         if os.environ.get("CRREPAIR_VP_FORMULA_DEBUG"):
