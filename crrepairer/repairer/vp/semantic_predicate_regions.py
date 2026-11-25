@@ -1059,11 +1059,13 @@ class SemanticINPredicateRegionBuilder:
 
     def _semantic_evaluator_key(self, evaluator: Any) -> Tuple[Any, ...]:
         object_key = id(evaluator)
-        cached = self._evaluator_semantic_key_cache.get(object_key)
-        if cached is None:
-            cached = _evaluator_semantic_key(evaluator)
-            self._evaluator_semantic_key_cache[object_key] = cached
-        return cached
+        entry = self._evaluator_semantic_key_cache.get(object_key)
+        # The entry keeps the evaluator, so its ``id`` cannot be reused while
+        # cached, and a hit requires the same object.
+        if entry is None or entry[0] is not evaluator:
+            entry = (evaluator, _evaluator_semantic_key(evaluator))
+            self._evaluator_semantic_key_cache[object_key] = entry
+        return entry[1]
 
     # ------------------------------------------------------------------
     # Public API

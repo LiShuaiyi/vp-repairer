@@ -1250,8 +1250,19 @@ class VPConstraintExtraction:
             cache = {}
             self._temporal_constraint_steps_cache = cache
         cached = cache.get(cache_key)
+        # The key identifies propositions by ``id``; the entry also keeps the
+        # proposition objects, and a hit requires the same objects (an ``id``
+        # of a released proposition can be reused by a new one).
+        if cached is not None and (
+            len(cached[2]) != len(propositions)
+            or any(
+                stored is not current
+                for stored, current in zip(cached[2], propositions)
+            )
+        ):
+            cached = None
         if cached is not None:
-            active_steps, diagnostics = cached
+            active_steps, diagnostics = cached[0], cached[1]
             self._last_temporal_expansion_time = time.perf_counter() - start
             self._last_temporal_expansion_debug = diagnostics
             return active_steps
@@ -1439,7 +1450,7 @@ class VPConstraintExtraction:
             )
         self._last_temporal_expansion_time = time.perf_counter() - start
         self._last_temporal_expansion_debug = diagnostics
-        cache[cache_key] = (active_steps, diagnostics)
+        cache[cache_key] = (active_steps, diagnostics, propositions)
         return active_steps
 
     def _extract_interstate_constraints_manually(
@@ -3293,6 +3304,18 @@ class VPConstraintExtraction:
         if geometry_cache is None:
             geometry_cache = {}
             self._rg1_safe_distance_geometry_cache = geometry_cache
+        # Keys identify the lane CLCS by ``id``.  The cache also records the
+        # CLCS objects it was filled with (keeping them alive) so that a new
+        # CLCS can never reuse a released object's ``id`` and hit its entries.
+        clcs_objects = geometry_cache.setdefault("__clcs_objects__", {})
+        if clcs_objects.get(id(lanelet_clcs)) is not lanelet_clcs:
+            stale_id = id(lanelet_clcs)
+            for stale_key in [
+                key for key in geometry_cache
+                if isinstance(key, tuple) and len(key) > 1 and key[1] == stale_id
+            ]:
+                del geometry_cache[stale_key]
+            clcs_objects[stale_id] = lanelet_clcs
         clcs_key = id(lanelet_clcs)
 
         follow_key = ("follow", clcs_key, int(follow_id), int(time_step))
@@ -3915,6 +3938,10 @@ class VPConstraintExtraction:
         )
         key = (id(trajectory_clcs), smoothing_distance)
         profile_data = cache.get(key)
+        # Entries keep the CLCS object; an ``id`` reused by a new CLCS (for
+        # example the preprocessed retry) must not return a stale profile.
+        if profile_data is not None and profile_data[3] is not trajectory_clcs:
+            profile_data = None
         if profile_data is None:
             try:
                 positions, profile = self._smoothed_curvature_profile(
@@ -3939,10 +3966,10 @@ class VPConstraintExtraction:
                     np.maximum(previous[:-half], previous[half:])
                 )
                 span *= 2
-            profile_data = (positions, profile, levels)
+            profile_data = (positions, profile, levels, trajectory_clcs)
             cache.clear()
             cache[key] = profile_data
-        positions, profile, levels = profile_data
+        positions, profile, levels = profile_data[:3]
 
         def sampled_maximum(lower, upper):
             left = int(np.searchsorted(positions, lower, side="left"))

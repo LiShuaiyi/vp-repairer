@@ -13,6 +13,33 @@ from commonroad.scenario.trajectory import Trajectory
 from commonroad_clcs.clcs import CurvilinearCoordinateSystem
 
 
+# Longitudinal extent of each CLCS's curvilinear projection domain.  Entries
+# keep the CLCS object, so a hit requires the very same object (an ``id`` of a
+# released object can be reused by a new one).
+_CURVILINEAR_S_RANGE_CACHE = {}
+_CURVILINEAR_S_RANGE_CACHE_SIZE = 64
+
+
+def _curvilinear_s_range(clcs):
+    """Return ``(s_min, s_max)`` of the curvilinear projection domain or ``None``."""
+    entry = _CURVILINEAR_S_RANGE_CACHE.get(id(clcs))
+    if entry is not None and entry[0] is clcs:
+        return entry[1]
+    s_range = None
+    domain_fn = getattr(clcs, "curvilinear_projection_domain", None)
+    if domain_fn is not None:
+        try:
+            domain = np.asarray(domain_fn(), dtype=float)
+            if domain.ndim == 2 and len(domain) and domain.shape[1] >= 1:
+                s_range = (float(np.min(domain[:, 0])), float(np.max(domain[:, 0])))
+        except Exception:
+            s_range = None
+    if len(_CURVILINEAR_S_RANGE_CACHE) >= _CURVILINEAR_S_RANGE_CACHE_SIZE:
+        _CURVILINEAR_S_RANGE_CACHE.clear()
+    _CURVILINEAR_S_RANGE_CACHE[id(clcs)] = (clcs, s_range)
+    return s_range
+
+
 class VPOptimization:
     """Solves the velocity-planning optimization problem and reconstructs trajectories."""
 
@@ -33,9 +60,12 @@ class VPOptimization:
             int(all_states[-1].time_step),
             len(all_states),
         )
+        # The entry stores the CLCS itself: a CLCS replaced during the repair
+        # (e.g. the preprocessed retry) can reuse the address of the released
+        # one, which must not return the previous CLCS's positions.
         cached = cache.get(key)
-        if cached is not None:
-            return cached.copy()
+        if cached is not None and cached[0] is trajectory_clcs:
+            return cached[1].copy()
 
         s_hat = np.zeros(all_states[-1].time_step - int(self._tc))
         for time_step in range(int(self._tc) + 1, all_states[-1].time_step + 1):
@@ -45,7 +75,7 @@ class VPOptimization:
                 float(state.position[1]),
             )
             s_hat[time_step - int(self._tc) - 1] = ct_pos[0]
-        cache[key] = s_hat.copy()
+        cache[key] = (trajectory_clcs, s_hat.copy())
         return s_hat
 
     def _get_velocity_planning_initial_conditions(
@@ -998,7 +1028,17 @@ class VPOptimization:
         fallback: float = 0.0,
     ) -> float:
         ds_candidates = (0.25, 0.1, 0.05)
+        # A longitudinal coordinate outside the curvilinear projection domain
+        # must be rejected.  The C++ conversion does not reject it reliably
+        # between the reference-path start and the domain start (it can raise
+        # or return a point depending on memory contents), so such offsets are
+        # skipped here exactly as a rejected conversion is.
+        s_range = _curvilinear_s_range(trajectory_clcs)
         for ds in ds_candidates:
+            if s_range is not None and not (
+                s_range[0] <= s - ds and s + ds <= s_range[1]
+            ):
+                continue
             try:
                 p_prev = np.asarray(
                     trajectory_clcs.convert_to_cartesian_coords(s - ds, 0.0),

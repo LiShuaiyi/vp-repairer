@@ -2269,7 +2269,14 @@ class VPPredicateEstimation:
 
         cache = getattr(self, "_vp_lane_speed_limit_profile_cache", None)
         cache_key = (id(lanelet_clcs), id(evaluator))
-        if cache is not None and cache.get("key") == cache_key:
+        # The entry also keeps both objects: an ``id`` reused by a new CLCS or
+        # evaluator must not return the profile of a released one.
+        if (
+            cache is not None
+            and cache.get("key") == cache_key
+            and cache.get("objects", (None, None))[0] is lanelet_clcs
+            and cache.get("objects", (None, None))[1] is evaluator
+        ):
             return cache["profile"]
 
         world = self.rule_monitor.world
@@ -2311,6 +2318,7 @@ class VPPredicateEstimation:
         profile = tuple(profile)
         self._vp_lane_speed_limit_profile_cache = {
             "key": cache_key,
+            "objects": (lanelet_clcs, evaluator),
             "profile": profile,
         }
         return profile
