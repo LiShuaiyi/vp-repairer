@@ -1,0 +1,163 @@
+## General
+general:
+  max_time_horizon:       8.0 # [s]
+  delta_t:                0.2 # [s]
+  delta_v:                1.0 # [m/s]
+  k_opt:                  1   # [-] additional scaling for da and ds
+
+  state_rounding_precision:  5 # [decimal places]
+
+## Vehicle Model
+vehicle_model:
+  v_max_extension:  0.0 # [m/s]
+  v_min_extension:  0.0 # [m/s]
+  a_min_extension:  0.0 # [m/s²]
+  a_max_extension:  0.0 # [m/s²]
+
+## Rule parameters
+safety:
+  clearance:
+    clearance_distance:           1.0 # [m]
+
+  clearance_front:
+    distance:                     1.9 # [m]
+
+  clearance_back:
+    distance:                     1.5 # [m]
+    v_min:                        1.0 # [m/s]
+
+  crash_impact:
+    area_mass_ratio:              200.0 # [kg/m²]
+
+  narrow_passing:
+    distance_threshold:           2.0 # [m]
+    v_max_at_distance_threshold: 15.0 # [m]
+
+system:
+  degradation:
+    activation_time:     5.0 # [s]
+    active_level:          1 # [0,1,2,3]  0: no, 1: minor, 2: major internal error, 3: super gau
+    v_max_level_1:       5.0 # [m/s]
+    v_max_level_2:       1.0 # [m/s]
+    v_max_level_3:       0.0 # [m/s]
+
+traffic_rules:
+  safe_distance:
+    a_min_leading_vehicle:  -10.5 # [m/s²]
+    t_react:                0.4   # [s]
+    corridor_width:         4.0   # [m]
+    delta_orientation:      0.8   # [rad]
+
+  visibility_and_weather_conditions:
+    time_of_day:
+      v_max_day:          50.0   # [m/s]
+      v_max_night:        30.0   # [m/s]
+    weather:
+      v_max_sunny:        50.0   # [m/s]
+      v_max_light_rain:   30.0   # [m/s]
+      v_max_heavy_rain:   20.0   # [m/s]
+      v_max_fog:          10.0   # [m/s]
+      v_max_snow:         10.0   # [m/s]
+      v_max_hail:         10.0   # [m/s]
+
+  road_conditions:
+    v_max_clean:          50.0   # [m/s]
+    v_max_wet:            30.0   # [m/s]
+    v_max_dirty:          30.0   # [m/s]
+    v_max_damaged:        15.0   # [m/s]
+    v_max_snow:           10.0   # [m/s]
+    v_max_ice:             5.0   # [m/s]
+
+  emergency_vehicles_in_duty:
+    clearance_front:      2.0  # [m]
+    clearance_back:       3.0  # [m]
+    clearance_left_right: 0.5  # [m]
+
+  stopping_on_highway:
+    v_stop_lower:       -0.1  # [m/s]
+    v_stop_upper:        1.0  # [m/s]
+
+  reversing_on_highway:
+    v_reversing_threshold: -0.5 # [m/s]
+
+  driving_faster_than_left_traffic:
+    corridor_width:                  2.5   # [m]
+    obstacle_consideration_radius:  10.0   # [m]
+
+  preserve_traffic_flow:
+    admissible_lane_v_max_offset:    1.0 # [m/s]
+
+  abrupt_braking:
+    delta_a:  10.0 # [m/s²]
+
+  stop_at_stop_sign:
+    v_stop_threshold: 0.5 # [m/s]
+
+  stop_at_crosswalk:
+    clearance_radius: 2.0 # [m]
+
+  keep_distance_to_bicycles:
+    safety_distance: 1.9 # [m]
+
+  passing_of_buses:
+    consideration_distance_right: 3.0 # [m]
+    walking_speed:                3.0 # [m/s]
+
+  blocking_of_crossings:
+    velocity_threshold: 2.0 # [m/s]
+
+  priority:
+    time_ahead:   2.0 # [s]
+    time_behind:  1.5 # [s]
+
+comfort:
+  acceleration_longitudinal:
+    a_max: 10.5   # [m/s²]
+
+  acceleration_lateral:
+    a_max: 5.0   # [m/s²]
+
+  noise_emission:
+    v_max: 30.0   # [m/s]
+
+  vertical_comfort:
+    active:               True
+    s_bump_start: 80.0    # [m]
+    s_bump_end:   81.0    # [m]
+    height_or_depth: 0.1  # [m]
+    v_max_h_min: 10.0     # [m/s]
+    h_min: 0.025          # [m]
+    h_max: 0.15           # [m]
+
+mission:
+  global_velocity_limit:
+    v_max: 22.0  # [m/s]
+
+  global_desired_velocity:
+    v_min: 5.0  # [m/s]
+    v_max: 100.0 # [m/s]
+
+  global_acceleration_limit:
+    a_max: 12.0   # [m/s²]
+
+  schedule:
+    t_min: 10.0  # [s]
+    t_max: 11.0  # [s]
+    s_min: 25.0 # [m]
+    s_max: 30.0 # [m]
+
+  bus_stop:
+    s_min: 25.0   # [m]
+    s_max: 30.0   # [m]
+    v_max: 1.0    # [m/s]
+
+  energy:
+
+    max_power: 35 # [kW]
+    c_w: 0.3      # [-]
+    A: 2.0        # [m²]
+    rho: 1.225    # [kg/m³]
+    f_roll: 0.015 # [-]
+    alpha: 0.0    # [rad]
+
+

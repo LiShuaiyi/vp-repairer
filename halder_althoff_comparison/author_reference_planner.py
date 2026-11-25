@@ -22,11 +22,12 @@ from .planner import PlanResult
 from .history_aware_search import execute_history_aware_astar
 
 
+# The released author checkout is vendored verbatim (see vendor/README.md);
+# HALDER_AUTHOR_SOURCE selects another checkout.
 DEFAULT_AUTHOR_SOURCE = Path(
     os.environ.get(
         "HALDER_AUTHOR_SOURCE",
-        "/home/shuaiyi/Downloads/Halder-2022-ITSC/software_data/"
-        "minimum-violation-velocity-planner-master",
+        str(Path(__file__).resolve().parent / "vendor" / "minimum-violation-velocity-planner-master"),
     )
 )
 

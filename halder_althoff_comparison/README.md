@@ -8,8 +8,9 @@ This directory contains two isolated implementations related to:
 It does not modify `crrepairer` or the authors' checkout. `planner.py` is an
 early diagnostic reimplementation and must not be used for paper runtime
 comparisons. `author_reference_planner.py` directly executes the search,
-vehicle model, node and priority-queue code from the supplied author checkout,
-with a project-rule facade.
+vehicle model, node and priority-queue code from the authors' release, which
+is vendored verbatim under `vendor/` (see `vendor/README.md`; set
+`HALDER_AUTHOR_SOURCE` to use another checkout), with a project-rule facade.
 
 The versioned result is `halder_full_timing_results_2026-09-03.csv`. It
 contains 719 `row_type=case` rows and 10 `row_type=rule_summary` rows,
